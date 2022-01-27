@@ -4,5 +4,5 @@ COPY wasm.go .
 RUN tinygo build --target=wasi -o wasm wasm.go
 
 FROM scratch
-ENTRYPOINT /wasm
+ENTRYPOINT ["/wasm"]
 COPY --from=build /opt/wasmtest/wasm /

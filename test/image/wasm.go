@@ -9,6 +9,12 @@ import (
 )
 
 func main() {
+	defer fmt.Fprintln(os.Stderr, "exiting")
+	if len(os.Args) == 1 {
+		fmt.Println("Hello fromw wasm!")
+		return
+	}
+
 	switch os.Args[1] {
 	case "sleep":
 		dur, err := time.ParseDuration(os.Args[2])
@@ -33,5 +39,4 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Fprintln(os.Stderr, "exiting")
 }
