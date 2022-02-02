@@ -13,6 +13,14 @@ func (s *Service) State(ctx context.Context, req *task.StateRequest) (*task.Stat
 		return nil, fmt.Errorf("exec: %w", errdefs.ErrNotImplemented)
 	}
 
+	client, err := s.getSandboxClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.State(ctx, req)
+}
+
+func (s *Sandbox) State(ctx context.Context, req *task.StateRequest) (*task.StateResponse, error) {
 	i := s.instances.Get(req.ID)
 	if i == nil {
 		return nil, errdefs.ErrNotFound

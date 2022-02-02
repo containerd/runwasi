@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/bytecodealliance/wasmtime-go"
-	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/pkg/shutdown"
 	"github.com/containerd/containerd/runtime/v2/shim"
@@ -24,36 +23,37 @@ var empty = &ptypes.Empty{}
 
 type Service struct {
 	publisher       shim.Publisher
+	sandboxBin      string
 	shutdownService shutdown.Service
 
-	engine *wasmtime.Engine
-	linker *wasmtime.Linker
-	store  *wasmtime.Store
-
-	instances *instanceStore
+	mu            sync.Mutex
+	cond          *sync.Cond
+	sandboxClient task.TaskService
+	sandboxID     string
+	pid           uint32
+	cmd           *exec.Cmd
+	exitedAt      time.Time
 }
 
-func NewService(publisher shim.Publisher, shutdownService shutdown.Service) (task.TaskService, error) {
-	engine := wasmtime.NewEngine()
-
-	linker := wasmtime.NewLinker(engine)
-	store := wasmtime.NewStore(engine)
-
-	if err := linker.DefineWasi(); err != nil {
-		return nil, err
-	}
-
-	return &Service{
+func NewService(publisher shim.Publisher, shutdownService shutdown.Service, sandboxBin string) (task.TaskService, error) {
+	s := &Service{
 		publisher:       publisher,
+		sandboxBin:      sandboxBin,
 		shutdownService: shutdownService,
-		engine:          engine,
-		linker:          linker,
-		store:           store,
-		instances:       &instanceStore{ls: make(map[string]*instanceWrapper)},
-	}, nil
+	}
+	s.cond = sync.NewCond(&s.mu)
+	return s, nil
 }
 
 func (s *Service) Connect(ctx context.Context, req *task.ConnectRequest) (_ *task.ConnectResponse, retErr error) {
+	client, err := s.getSandboxClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.Connect(ctx, req)
+}
+
+func (s *Sandbox) Connect(ctx context.Context, req *task.ConnectRequest) (_ *task.ConnectResponse, retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = fmt.Errorf("connect: %w", retErr)
@@ -72,10 +72,10 @@ func (s *Service) Connect(ctx context.Context, req *task.ConnectRequest) (_ *tas
 }
 
 func (s *Service) Shutdown(ctx context.Context, req *task.ShutdownRequest) (*ptypes.Empty, error) {
-	if s.instances.Len() > 0 {
-		return empty, nil
-	}
-	s.shutdownService.Shutdown()
+	return empty, nil
+}
+
+func (s *Sandbox) Shutdown(ctx context.Context, req *task.ShutdownRequest) (*ptypes.Empty, error) {
 	return empty, nil
 }
 
@@ -95,69 +95,4 @@ func readBundleConfig(bundle, name string, i interface{}) error {
 		return fmt.Errorf("unmarshal config: %w", err)
 	}
 	return nil
-}
-
-type instanceWrapper struct {
-	i      *wasmtime.Instance
-	done   <-chan struct{}
-	cancel func()
-
-	bundle string
-	stdin  string
-	stdout string
-	stderr string
-	pid    uint32
-
-	mu       sync.Mutex
-	cond     *sync.Cond
-	status   taskapi.Status
-	exitedAt time.Time
-	exitCode uint32
-}
-
-func (i *instanceWrapper) getStatus() taskapi.Status {
-	select {
-	case <-i.done:
-		return taskapi.StatusStopped
-	default:
-		i.mu.Lock()
-		defer i.mu.Unlock()
-
-		select {
-		case <-i.done:
-			return taskapi.StatusStopped
-		default:
-			return i.status
-		}
-	}
-}
-
-type instanceStore struct {
-	mu sync.Mutex
-	ls map[string]*instanceWrapper
-}
-
-func (s *instanceStore) Get(id string) *instanceWrapper {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	i := s.ls[id]
-	return i
-}
-
-func (s *instanceStore) Delete(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.ls, id)
-}
-
-func (s *instanceStore) Add(id string, i *instanceWrapper) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.ls[id] = i
-}
-
-func (s *instanceStore) Len() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.ls)
 }

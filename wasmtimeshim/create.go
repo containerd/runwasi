@@ -5,15 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/bytecodealliance/wasmtime-go"
 	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	"github.com/containerd/containerd/runtime/v2/task"
+	"github.com/containerd/ttrpc"
 	"github.com/cpuguy83/runwasi/wasmtimeoci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
@@ -22,6 +27,7 @@ import (
 func (s *Service) Create(ctx context.Context, req *task.CreateTaskRequest) (_ *task.CreateTaskResponse, retErr error) {
 	defer func() {
 		if retErr != nil {
+			os.RemoveAll(req.Bundle)
 			retErr = fmt.Errorf("create: %w", retErr)
 		}
 	}()
@@ -32,6 +38,100 @@ func (s *Service) Create(ctx context.Context, req *task.CreateTaskRequest) (_ *t
 
 	if req.Terminal {
 		return nil, fmt.Errorf("terminal: %w", errdefs.ErrNotImplemented)
+	}
+
+	s.mu.Lock()
+	if client := s.sandboxClient; client != nil {
+		s.mu.Unlock()
+		return client.Create(ctx, req)
+	}
+	s.mu.Unlock()
+
+	var spec specs.Spec
+	if err := readBundleConfig(req.Bundle, "config", &spec); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command(s.sandboxBin)
+	cmd.Env = append(cmd.Env, "_RUNWASI_SANDBOX=1")
+
+	for _, ns := range spec.Linux.Namespaces {
+		if ns.Type == specs.NetworkNamespace {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", "_RUNWASI_NETNS_PATH", ns.Path))
+			break
+		}
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("error starting sandbox: %w", err)
+	}
+	go func() {
+		cmd.Wait()
+		now := time.Now()
+		s.mu.Lock()
+		s.exitedAt = now
+		s.mu.Unlock()
+	}()
+
+	dialer := &net.Dialer{}
+	var (
+		conn net.Conn
+		err  error
+	)
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	for {
+		conn, err = dialer.DialContext(ctx, "unix", "sandbox.sock")
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				// TODO: logs from sandbox
+				return nil, err
+			}
+			continue
+		}
+		break
+	}
+
+	sandbox := task.NewTaskClient(ttrpc.NewClient(conn))
+	s.mu.Lock()
+	s.sandboxClient = sandbox
+	s.cond.Broadcast()
+	s.pid = uint32(cmd.Process.Pid)
+	s.sandboxID = req.ID
+	s.cmd = cmd
+	s.mu.Unlock()
+
+	// If there is no sandbox grouping from cri, then we need to create the task for real here.
+	if _, ok := spec.Annotations[annotations.SandboxID]; !ok {
+		return sandbox.Create(ctx, req)
+	}
+
+	return &task.CreateTaskResponse{Pid: uint32(cmd.Process.Pid)}, nil
+}
+
+func configureStdio(setStdioFile func(string) error, p string) (*os.File, error) {
+	if p == "" {
+		return nil, nil
+	}
+
+	f, err := os.OpenFile(p, os.O_RDWR, 0)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	defer f.Close()
+
+	if err := setStdioFile(p); err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
+func (s *Sandbox) Create(ctx context.Context, unmarshal func(i interface{}) error) (_ interface{}, retErr error) {
+	req := task.CreateTaskRequest{}
+	if err := unmarshal(&req); err != nil {
+		return nil, err
 	}
 
 	var spec specs.Spec
@@ -131,23 +231,5 @@ func (s *Service) Create(ctx context.Context, req *task.CreateTaskRequest) (_ *t
 
 	s.instances.Add(req.ID, i)
 
-	return &task.CreateTaskResponse{Pid: pid}, nil
-}
-
-func configureStdio(setStdioFile func(string) error, p string) (*os.File, error) {
-	if p == "" {
-		return nil, nil
-	}
-
-	f, err := os.OpenFile(p, os.O_RDWR, 0)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, err
-	}
-	defer f.Close()
-
-	if err := setStdioFile(p); err != nil {
-		return nil, err
-	}
-
-	return f, nil
+	return &task.CreateTaskResponse{Pid: uint32(os.Getpid())}, nil
 }

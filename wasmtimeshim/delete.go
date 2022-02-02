@@ -24,6 +24,14 @@ func (s *Service) Delete(ctx context.Context, req *task.DeleteRequest) (_ *task.
 		return nil, fmt.Errorf("exec: %w", errdefs.ErrNotImplemented)
 	}
 
+	client, err := s.getSandboxClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.Delete(ctx, req)
+}
+
+func (s *Sandbox) Delete(ctx context.Context, req *task.DeleteRequest) (*task.DeleteResponse, error) {
 	i := s.instances.Get(req.ID)
 	if i == nil {
 		return nil, errdefs.ErrNotFound

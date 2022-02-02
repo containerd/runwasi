@@ -3,6 +3,8 @@
 package plugin
 
 import (
+	"os"
+
 	"github.com/containerd/containerd/pkg/shutdown"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/v2/shim"
@@ -26,7 +28,13 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			svc, err := wasmtimeshim.NewService(pp.(shim.Publisher), ss.(shutdown.Service))
+
+			exe, err := os.Executable()
+			if err != nil {
+				return nil, err
+			}
+
+			svc, err := wasmtimeshim.NewService(pp.(shim.Publisher), ss.(shutdown.Service), exe)
 			if err != nil {
 				return nil, err
 			}

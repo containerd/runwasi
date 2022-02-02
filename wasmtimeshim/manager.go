@@ -13,9 +13,11 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	"github.com/containerd/containerd/runtime/v2/shim"
 	"github.com/containerd/containerd/runtime/v2/task"
 	"github.com/containerd/ttrpc"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func New(name string) *Manager {
@@ -60,7 +62,17 @@ func (m *Manager) Start(ctx context.Context, id string, opts shim.StartOpts) (_ 
 		Cloneflags: syscall.CLONE_NEWNS,
 	}
 
-	addr, err := shim.SocketAddress(ctx, opts.Address, id)
+	var spec specs.Spec
+	if err := readBundleConfig(cwd, "config", &spec); err != nil {
+		return "", err
+	}
+
+	grouping := id
+	if groupID, ok := spec.Annotations[annotations.SandboxID]; ok {
+		grouping = groupID
+	}
+
+	addr, err := shim.SocketAddress(ctx, opts.Address, grouping)
 	if err != nil {
 		return "", err
 	}

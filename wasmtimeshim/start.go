@@ -23,6 +23,22 @@ func (s *Service) Start(ctx context.Context, req *task.StartRequest) (_ *task.St
 		return nil, fmt.Errorf("exec: %w", errdefs.ErrNotImplemented)
 	}
 
+	s.mu.Lock()
+	if s.sandboxID == req.ID {
+		pid := s.pid
+		s.mu.Unlock()
+		return &task.StartResponse{Pid: pid}, nil
+	}
+	s.mu.Unlock()
+
+	client, err := s.getSandboxClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.Start(ctx, req)
+}
+
+func (s *Sandbox) Start(Ctx context.Context, req *task.StartRequest) (*task.StartResponse, error) {
 	i := s.instances.Get(req.ID)
 	if i == nil {
 		return nil, errdefs.ErrNotFound
