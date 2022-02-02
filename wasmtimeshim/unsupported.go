@@ -24,10 +24,6 @@ func (s *Service) Checkpoint(ctx context.Context, req *task.CheckpointTaskReques
 	return nil, fmt.Errorf("checkpoint: %w", errdefs.ErrNotImplemented)
 }
 
-func (s *Service) Kill(ctx context.Context, req *task.KillRequest) (*ptypes.Empty, error) {
-	return nil, fmt.Errorf("kill: %w", errdefs.ErrNotImplemented)
-}
-
 func (s *Service) Exec(ctx context.Context, req *task.ExecProcessRequest) (*ptypes.Empty, error) {
 	return nil, fmt.Errorf("exec: %w", errdefs.ErrNotImplemented)
 }

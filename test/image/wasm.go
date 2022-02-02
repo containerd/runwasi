@@ -34,6 +34,11 @@ func main() {
 			panic(err)
 		}
 		os.Exit(code)
+	case "daemon":
+		for {
+			fmt.Println("Hello from wasm!")
+			time.Sleep(time.Second)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "unknown command", os.Args[1])
 		os.Exit(1)

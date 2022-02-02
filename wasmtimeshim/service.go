@@ -34,8 +34,10 @@ type Service struct {
 }
 
 func NewService(publisher shim.Publisher, shutdownService shutdown.Service) (task.TaskService, error) {
-	engine := wasmtime.NewEngine()
+	cfg := wasmtime.NewConfig()
+	cfg.SetInterruptable(true)
 
+	engine := wasmtime.NewEngineWithConfig(cfg)
 	linker := wasmtime.NewLinker(engine)
 	store := wasmtime.NewStore(engine)
 
@@ -160,4 +162,11 @@ func (s *instanceStore) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.ls)
+}
+
+func wrapErr(err error, msg string) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", msg, err)
 }
