@@ -26,6 +26,10 @@ type Service struct {
 	publisher       shim.Publisher
 	shutdownService shutdown.Service
 
+	mu             sync.Mutex
+	sandboxCreated bool
+	sandboxID      string
+
 	engine *wasmtime.Engine
 	linker *wasmtime.Linker
 	store  *wasmtime.Store
@@ -64,6 +68,15 @@ func (s *Service) Connect(ctx context.Context, req *task.ConnectRequest) (_ *tas
 
 	i := s.instances.Get(req.ID)
 	if i == nil {
+		s.mu.Lock()
+		if req.ID == s.sandboxID {
+			s.mu.Unlock()
+			return &task.ConnectResponse{
+				ShimPid: uint32(os.Getpid()),
+				TaskPid: uint32(os.Getpid()),
+			}, nil
+		}
+		s.mu.Unlock()
 		return nil, errdefs.ErrNotFound
 	}
 

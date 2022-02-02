@@ -3,7 +3,9 @@ package wasmtimeshim
 import (
 	"context"
 	"fmt"
+	"os"
 
+	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/task"
 )
@@ -15,6 +17,19 @@ func (s *Service) State(ctx context.Context, req *task.StateRequest) (*task.Stat
 
 	i := s.instances.Get(req.ID)
 	if i == nil {
+		s.mu.Lock()
+		if req.ID == s.sandboxID {
+			s.mu.Unlock()
+			// TODO: save sandbox bundle/stdio paths
+			cwd, _ := os.Getwd()
+			return &task.StateResponse{
+				Bundle: cwd,
+				ID:     req.ID,
+				Pid:    uint32(os.Getpid()),
+				Status: taskapi.StatusRunning,
+			}, nil
+		}
+		s.mu.Unlock()
 		return nil, errdefs.ErrNotFound
 	}
 

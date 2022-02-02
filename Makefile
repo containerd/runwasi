@@ -2,6 +2,7 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 GO ?= go
 TEST_IMG_NAME ?= wasmtest:latest
+export CONTAINERD_NAMESPACE
 
 .PHONY: bin
 build:

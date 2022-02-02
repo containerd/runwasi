@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
@@ -26,7 +27,18 @@ func (s *Service) Delete(ctx context.Context, req *task.DeleteRequest) (_ *task.
 
 	i := s.instances.Get(req.ID)
 	if i == nil {
-		return nil, errdefs.ErrNotFound
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if req.ID != s.sandboxID {
+			return nil, errdefs.ErrNotFound
+		}
+
+		h, err := s.store.InterruptHandle()
+		if err != nil {
+			return nil, err
+		}
+		h.Interrupt()
+		return &task.DeleteResponse{Pid: uint32(os.Getpid()), ExitStatus: 137, ExitedAt: time.Now()}, nil
 	}
 
 	switch i.getStatus() {

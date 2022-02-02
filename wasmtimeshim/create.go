@@ -13,6 +13,7 @@ import (
 	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	"github.com/containerd/containerd/runtime/v2/task"
 	"github.com/cpuguy83/runwasi/wasmtimeoci"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -37,6 +38,20 @@ func (s *Service) Create(ctx context.Context, req *task.CreateTaskRequest) (_ *t
 	var spec specs.Spec
 	if err := readBundleConfig(req.Bundle, "config", &spec); err != nil {
 		return nil, err
+	}
+
+	if _, ok := spec.Annotations[annotations.SandboxID]; ok {
+		s.mu.Lock()
+		if !s.sandboxCreated {
+			// This is the first container in the cri sandbox ("pause"), which we can't really run, nor is there any real point to.
+			s.sandboxCreated = true
+			s.sandboxID = req.ID
+			s.mu.Unlock()
+			return &task.CreateTaskResponse{
+				Pid: uint32(os.Getpid()),
+			}, nil
+		}
+		s.mu.Unlock()
 	}
 
 	if len(req.Rootfs) > 0 {

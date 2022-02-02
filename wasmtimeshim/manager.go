@@ -13,10 +13,14 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	"github.com/containerd/containerd/runtime/v2/shim"
 	"github.com/containerd/containerd/runtime/v2/task"
 	"github.com/containerd/ttrpc"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
+
+const criSandboxEnabled = "CRI_SANDBOX_ENABLED"
 
 func New(name string) *Manager {
 	return &Manager{name}
@@ -59,39 +63,54 @@ func (m *Manager) Start(ctx context.Context, id string, opts shim.StartOpts) (_ 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS,
 	}
+	grouping := id
 
-	addr, err := shim.SocketAddress(ctx, opts.Address, id)
+	var spec specs.Spec
+	if err := readBundleConfig(cwd, "config", &spec); err != nil {
+		return "", err
+	}
+
+	if groupID, ok := spec.Annotations[annotations.SandboxID]; ok {
+		grouping = groupID
+		cmd.Env = append(cmd.Env, criSandboxEnabled+"=1")
+	}
+
+	address, err := shim.SocketAddress(ctx, opts.Address, grouping)
 	if err != nil {
 		return "", err
 	}
 
-	socket, err := shim.NewSocket(addr)
+	socket, err := shim.NewSocket(address)
 	if err != nil {
+		// the only time where this would happen is if there is a bug and the socket
+		// was not cleaned up in the cleanup method of the shim or we are using the
+		// grouping functionality where the new process should be run with the same
+		// shim as an existing container
 		if !shim.SocketEaddrinuse(err) {
 			return "", fmt.Errorf("create new shim socket: %w", err)
 		}
-		if shim.CanConnect(addr) {
-			if err := shim.WriteAddress("address", addr); err != nil {
+		if shim.CanConnect(address) {
+			if err := shim.WriteAddress("address", address); err != nil {
 				return "", fmt.Errorf("write existing socket for shim: %w", err)
 			}
-			return addr, nil
+			return address, nil
 		}
-		if err := shim.RemoveSocket(addr); err != nil {
+		if err := shim.RemoveSocket(address); err != nil {
 			return "", fmt.Errorf("remove pre-existing socket: %w", err)
 		}
-		if socket, err = shim.NewSocket(addr); err != nil {
+		if socket, err = shim.NewSocket(address); err != nil {
 			return "", fmt.Errorf("try create new shim socket 2x: %w", err)
 		}
 	}
-
 	defer func() {
 		if retErr != nil {
 			socket.Close()
-			shim.RemoveSocket(addr)
+			_ = shim.RemoveSocket(address)
 		}
 	}()
 
-	if err := shim.WriteAddress("address", addr); err != nil {
+	// make sure that reexec shim-v2 binary use the value if need
+	if err := shim.WriteAddress("address", address); err != nil {
 		return "", err
 	}
 
@@ -111,7 +130,7 @@ func (m *Manager) Start(ctx context.Context, id string, opts shim.StartOpts) (_ 
 	// TODO: support shim configs like ShimCgroup in the runc shim?
 	io.Copy(ioutil.Discard, os.Stdin)
 
-	return addr, nil
+	return address, nil
 }
 
 func (m *Manager) Stop(ctx context.Context, id string) (shim.StopStatus, error) {

@@ -25,6 +25,13 @@ func (s *Service) Start(ctx context.Context, req *task.StartRequest) (_ *task.St
 
 	i := s.instances.Get(req.ID)
 	if i == nil {
+		s.mu.Lock()
+		if s.sandboxID == req.ID {
+			// Nothing to start for the sandbox ID.
+			s.mu.Unlock()
+			return &task.StartResponse{Pid: uint32(os.Getpid())}, nil
+		}
+		s.mu.Unlock()
 		return nil, errdefs.ErrNotFound
 	}
 

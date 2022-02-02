@@ -3,6 +3,7 @@ package wasmtimeshim
 import (
 	"context"
 	"fmt"
+	"time"
 
 	taskapi "github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/errdefs"
@@ -19,6 +20,30 @@ func (s *Service) Wait(ctx context.Context, req *task.WaitRequest) (_ *task.Wait
 	if req.ExecID != "" {
 		return nil, fmt.Errorf("exec: %w", errdefs.ErrNotImplemented)
 	}
+
+	s.mu.Lock()
+	if s.sandboxID == req.ID {
+		s.mu.Unlock()
+		ch := make(chan struct{})
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		s.shutdownService.RegisterCallback(func(ctx context.Context) error {
+			close(ch)
+			return nil
+		})
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ch:
+			return &task.WaitResponse{
+				ExitStatus: uint32(0),
+				ExitedAt:   time.Now(),
+			}, nil
+		}
+	}
+	s.mu.Unlock()
 
 	i := s.instances.Get(req.ID)
 	if i == nil {

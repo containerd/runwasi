@@ -23,7 +23,12 @@ func (s *Service) Kill(ctx context.Context, req *task.KillRequest) (_ *ptypes.Em
 
 	instance := s.instances.Get(req.ID)
 	if instance == nil {
-		return nil, errdefs.ErrNotFound
+		s.mu.Lock()
+		if req.ID != s.sandboxID {
+			s.mu.Unlock()
+			return nil, errdefs.ErrNotFound
+		}
+		s.mu.Unlock()
 	}
 
 	h, err := s.store.InterruptHandle()
