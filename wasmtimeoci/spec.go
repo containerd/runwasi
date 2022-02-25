@@ -13,7 +13,7 @@ func PrepareRootfs(spec *specs.Spec, bundle string, wasi *wasmtime.WasiConfig) (
 	rootfs := spec.Root.Path
 	if rootfs == "" {
 		if bundle == "" {
-			return "", fmt.Errorf("no rootfs or bundle patth specified")
+			return "", fmt.Errorf("no rootfs or bundle path specified")
 		}
 		rootfs = filepath.Join(bundle, "rootfs")
 	}
