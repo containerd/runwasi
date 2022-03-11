@@ -1,0 +1,36 @@
+[package]
+name = "containerd-shim-wasmtime-v1"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+containerd-shim = "0.3.0"
+containerd-shim-protos = "0.1"
+wasmtime = "0.35.1"
+anyhow = "1.0"
+serde_json = "1.0"
+oci-spec = "0.5"
+command-fds = "0.2"
+serde = "1.0"
+thiserror = "1.0"
+protobuf = "2.23.0"
+ttrpc = "0.6"
+nix = "0.23"
+wasmtime-wasi = "0.35.1"
+cap-std= "0.24.1"
+chrono = "0.4.19"
+wasi-common = "0.35.1"
+log = "0.4"
+
+[build-dependencies]
+ttrpc-codegen = { version = "0.3.0", optional = true }
+
+[features]
+default = []
+generate_bindings = ["ttrpc-codegen"]
+
+[[bin]]
+name = "containerd-wasmtimed"
+path = "src/daemon/main.rs"
