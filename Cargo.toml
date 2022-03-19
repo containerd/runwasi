@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "crates/containerd-shim-wasmtime-v1",
+]
+
+[profile.release]
+panic = "abort"
