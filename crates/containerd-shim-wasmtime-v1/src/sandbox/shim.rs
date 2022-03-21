@@ -1,10 +1,11 @@
 use super::instance::{Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
+use chrono::{DateTime, Utc};
 use containerd_shim::{
     self as shim, api, error::Error as ShimError, mount::mount_rootfs,
     protos::protobuf::well_known_types::Timestamp, protos::protobuf::Message,
-    protos::shim::shim_ttrpc::Task, publisher::RemotePublisher, util::write_address,
-    util::IntoOption, warn, ExitSignal, TtrpcContext, TtrpcResult,
+    protos::shim::shim_ttrpc::Task, protos::types::task::Status, publisher::RemotePublisher,
+    util::write_address, util::IntoOption, warn, ExitSignal, TtrpcContext, TtrpcResult,
 };
 use log::{debug, error, info};
 use nix::mount::{mount, MsFlags};
@@ -23,10 +24,17 @@ use std::thread;
 use ttrpc::context::Context;
 use wasmtime::{Config as EngineConfig, Engine};
 
+struct InstanceData<T: Instance + Send + Sync> {
+    instance: Box<T>,
+    cfg: InstanceConfig,
+    pid: RwLock<Option<u32>>,
+    status: Arc<RwLock<Option<(u32, DateTime<Utc>)>>>,
+}
+
 #[derive(Clone)]
 pub struct Local<T: Instance + Send + Sync> {
     engine: Engine,
-    instances: Arc<RwLock<HashMap<String, T>>>,
+    instances: Arc<RwLock<HashMap<String, InstanceData<T>>>>,
     base: Arc<RwLock<Option<Nop>>>,
 }
 
@@ -154,7 +162,12 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .set_bundle(req.get_bundle().into());
         instances.insert(
             req.get_id().to_string(),
-            T::new(req.get_id().to_string(), &builder),
+            InstanceData {
+                instance: Box::new(T::new(req.get_id().to_string(), &builder)),
+                cfg: builder,
+                pid: RwLock::new(None),
+                status: Arc::new(RwLock::new(None)),
+            },
         );
 
         debug!("create done");
@@ -180,11 +193,32 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .get(req.get_id())
             .ok_or(Error::NotFound(req.get_id().to_string()))?;
 
-        i.start()?;
+        let pid = i.instance.start()?;
+
+        let mut pid_w = i.pid.write().unwrap();
+        *pid_w = Some(pid);
+        drop(pid_w);
+
+        let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
+        i.instance.wait(tx)?;
+
+        let lock = i.status.clone();
+
+        thread::Builder::new()
+            .name(format!("{}-wait", req.get_id()))
+            .spawn(move || {
+                let ec = rx.recv().unwrap();
+                let mut status = lock.write().unwrap();
+                *status = Some(ec);
+            })
+            .map_err(|err| {
+                Error::Others(format!("could not spawn thread to wait exit: {}", err))
+            })?;
+
         debug!("started: {:?}", req);
 
         Ok(api::StartResponse {
-            pid: 1,
+            pid: pid,
             ..Default::default()
         })
     }
@@ -200,7 +234,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .get(req.get_id())
             .ok_or_else(|| Error::NotFound("instance not found".to_string()))?;
 
-        i.kill(req.get_signal())?;
+        i.instance.kill(req.get_signal())?;
 
         Ok(api::Empty::new())
     }
@@ -220,7 +254,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .get(req.get_id())
             .ok_or(Error::NotFound(req.get_id().to_string()))?;
 
-        i.delete()?;
+        i.instance.delete()?;
 
         instances.remove(req.get_id());
 
@@ -241,7 +275,10 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .get(req.get_id())
             .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
 
-        let code = i.wait()?;
+        let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
+        i.instance.wait(tx)?;
+
+        let code = rx.recv().unwrap();
         debug!("wait done: {:?}", req);
 
         let mut timestamp = Timestamp::new();
@@ -272,6 +309,52 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             task_pid: std::process::id(),
             ..Default::default()
         })
+    }
+
+    fn state(
+        &self,
+        _ctx: &TtrpcContext,
+        req: api::StateRequest,
+    ) -> TtrpcResult<api::StateResponse> {
+        debug!("state: {:?}", req);
+        if !req.get_exec_id().is_empty() {
+            return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
+        }
+
+        let instances = self.instances.read().unwrap();
+        let i = instances
+            .get(req.get_id())
+            .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
+
+        let mut state = api::StateResponse {
+            bundle: i.cfg.get_bundle().unwrap_or_default(),
+            stdin: i.cfg.get_stdin().unwrap_or_default(),
+            stdout: i.cfg.get_stdout().unwrap_or_default(),
+            stderr: i.cfg.get_stderr().unwrap_or_default(),
+            ..Default::default()
+        };
+
+        let pid = i.pid.read().unwrap();
+        if pid.is_none() {
+            state.status = Status::CREATED;
+            return Ok(state);
+        }
+        let code = *i.status.read().unwrap();
+
+        if code.is_some() {
+            state.status = Status::STOPPED;
+            let ec = code.unwrap();
+            state.exit_status = ec.0;
+
+            let mut timestamp = Timestamp::new();
+            timestamp.set_seconds(ec.1.timestamp());
+            timestamp.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
+            state.set_exited_at(timestamp);
+        } else {
+            state.status = Status::RUNNING;
+        }
+
+        Ok(state)
     }
 }
 

@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use log::{debug, error, info};
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use wasmtime::{Engine, Linker, Module, Store};
@@ -72,12 +73,12 @@ pub trait Instance {
     fn start(&self) -> Result<u32, Error>;
     fn kill(&self, signal: u32) -> Result<(), Error>;
     fn delete(&self) -> Result<(), Error>;
-    fn wait(&self) -> Result<(u32, DateTime<Utc>), Error>;
+    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
 }
 
 pub struct Wasi {
     interupt: Arc<RwLock<Option<wasmtime::InterruptHandle>>>,
-    exit_code: Arc<(Mutex<(Option<u32>, Option<DateTime<Utc>>)>, Condvar)>,
+    exit_code: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
     engine: wasmtime::Engine,
 
     id: String,
@@ -175,7 +176,7 @@ impl Instance for Wasi {
     fn new(id: String, cfg: &InstanceConfig) -> Self {
         Wasi {
             interupt: Arc::new(RwLock::new(None)),
-            exit_code: Arc::new((Mutex::new((None, None)), Condvar::new())),
+            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
             engine: cfg.engine.clone(),
             id,
             stdin: cfg.get_stdin().unwrap_or_default(),
@@ -274,12 +275,12 @@ impl Instance for Wasi {
                         Ok(_) => {
                             debug!("exit code: {}", 0);
                             let mut lock = lock.lock().unwrap();
-                            *lock = (Some(0), Some(Utc::now()));
+                            *lock = Some((0, Utc::now()));
                         }
                         Err(_) => {
                             error!("exit code: {}", 137);
                             let mut lock = lock.lock().unwrap();
-                            *lock = (Some(137), Some(Utc::now()));
+                            *lock = Some((137, Utc::now()));
                         }
                     };
 
@@ -312,14 +313,16 @@ impl Instance for Wasi {
         Ok(())
     }
 
-    fn wait(&self) -> Result<(u32, DateTime<Utc>), Error> {
+    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
         let (lock, cvar) = &*self.exit_code;
         let mut exit = lock.lock().unwrap();
-        while (*exit).0.is_none() {
+        while (*exit).is_none() {
             exit = cvar.wait(exit).unwrap();
         }
 
-        Ok(((*exit).0.unwrap(), (*exit).1.unwrap()))
+        let ec = (*exit).unwrap();
+        channel.send(ec).unwrap();
+        Ok(())
     }
 }
 
@@ -327,13 +330,13 @@ impl Instance for Wasi {
 pub struct Nop {
     // Since we are faking the container, we need to keep track of the "exit" code/time
     // We'll just mark it as exited when kill is called.
-    exit_code: Arc<(Mutex<(Option<u32>, Option<DateTime<Utc>>)>, Condvar)>,
+    exit_code: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
 }
 
 impl Instance for Nop {
     fn new(_id: String, _cfg: &InstanceConfig) -> Self {
         Nop {
-            exit_code: Arc::new((Mutex::new((None, None)), Condvar::new())),
+            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
         }
     }
     fn start(&self) -> Result<u32, Error> {
@@ -352,7 +355,7 @@ impl Instance for Nop {
         let exit_code = self.exit_code.clone();
         let (lock, cvar) = &*exit_code;
         let mut lock = lock.lock().unwrap();
-        *lock = (Some(code), Some(Utc::now()));
+        *lock = Some((code, Utc::now()));
         cvar.notify_all();
 
         Ok(())
@@ -360,13 +363,16 @@ impl Instance for Nop {
     fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
-    fn wait(&self) -> Result<(u32, DateTime<Utc>), Error> {
+
+    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
         let (lock, cvar) = &*self.exit_code;
         let mut exit = lock.lock().unwrap();
-        while (*exit).0.is_none() {
+        while (*exit).is_none() {
             exit = cvar.wait(exit).unwrap();
         }
 
-        Ok(((*exit).0.unwrap(), (*exit).1.unwrap()))
+        let ec = (*exit).unwrap();
+        send.send((ec.0, ec.1)).unwrap();
+        Ok(())
     }
 }
