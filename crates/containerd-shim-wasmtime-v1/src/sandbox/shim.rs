@@ -27,7 +27,7 @@ use std::env::current_dir;
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
-use std::sync::mpsc::{channel, Receiver, Sender, SyncSender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use ttrpc::context::Context;
@@ -48,13 +48,18 @@ pub struct Local<T: Instance + Send + Sync> {
     instances: Arc<RwLock<HashMap<String, InstanceData<T>>>>,
     base: Arc<RwLock<Option<Nop>>>,
     events: Arc<Mutex<EventSender>>,
+    exit: Arc<ExitSignal>,
 }
 
 impl<T> Local<T>
 where
     T: Instance + Send + Sync,
 {
-    pub fn new(engine: Engine, tx: Sender<(String, Box<dyn Message>)>) -> Self
+    pub fn new(
+        engine: Engine,
+        tx: Sender<(String, Box<dyn Message>)>,
+        exit: Arc<ExitSignal>,
+    ) -> Self
     where
         T: Instance + Sync + Send,
     {
@@ -64,6 +69,7 @@ where
             instances: Arc::new(RwLock::new(HashMap::new())),
             base: Arc::new(RwLock::new(None)),
             events: Arc::new(Mutex::new(tx)),
+            exit: exit,
         }
     }
 
@@ -96,7 +102,7 @@ where
     fn new(namespace: String, _id: String, engine: Engine, publisher: RemotePublisher) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
         forward_events(namespace.to_string(), publisher, rx);
-        Local::<T>::new(engine, tx.clone())
+        Local::<T>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
     }
 }
 
@@ -456,6 +462,19 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
 
         Ok(state)
     }
+
+    fn shutdown(&self, _ctx: &TtrpcContext, _req: api::ShutdownRequest) -> TtrpcResult<api::Empty> {
+        debug!("shutdown");
+
+        let instances = self.instances.read().unwrap();
+        if instances.len() > 0 {
+            return Ok(api::Empty::new());
+        }
+
+        self.exit.signal();
+
+        Ok(api::Empty::new())
+    }
 }
 
 pub struct Cli<T: Instance + Sync + Send> {
@@ -553,7 +572,7 @@ where
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
         forward_events(self.namespace.to_string(), publisher, rx);
-        Local::<T>::new(self.engine.clone(), tx.clone())
+        Local::<T>::new(self.engine.clone(), tx.clone(), self.exit.clone())
     }
 
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
