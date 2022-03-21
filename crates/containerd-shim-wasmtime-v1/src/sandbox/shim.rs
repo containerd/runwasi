@@ -2,10 +2,19 @@ use super::instance::{Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
-    self as shim, api, error::Error as ShimError, mount::mount_rootfs,
-    protos::protobuf::well_known_types::Timestamp, protos::protobuf::Message,
-    protos::shim::shim_ttrpc::Task, protos::types::task::Status, publisher::RemotePublisher,
-    util::write_address, util::IntoOption, warn, ExitSignal, TtrpcContext, TtrpcResult,
+    self as shim, api,
+    error::Error as ShimError,
+    event::Event,
+    mount::mount_rootfs,
+    protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart},
+    protos::protobuf::well_known_types::Timestamp,
+    protos::protobuf::{Message, SingularPtrField},
+    protos::shim::shim_ttrpc::Task,
+    protos::types::task::Status,
+    publisher::RemotePublisher,
+    util::write_address,
+    util::IntoOption,
+    warn, ExitSignal, TtrpcContext, TtrpcResult,
 };
 use log::{debug, error, info};
 use nix::mount::{mount, MsFlags};
@@ -18,8 +27,8 @@ use std::env::current_dir;
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, RwLock};
+use std::sync::mpsc::{channel, Receiver, Sender, SyncSender};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use ttrpc::context::Context;
 use wasmtime::{Config as EngineConfig, Engine};
@@ -31,18 +40,21 @@ struct InstanceData<T: Instance + Send + Sync> {
     status: Arc<RwLock<Option<(u32, DateTime<Utc>)>>>,
 }
 
+type EventSender = Sender<(String, Box<dyn Message>)>;
+
 #[derive(Clone)]
 pub struct Local<T: Instance + Send + Sync> {
     engine: Engine,
     instances: Arc<RwLock<HashMap<String, InstanceData<T>>>>,
     base: Arc<RwLock<Option<Nop>>>,
+    events: Arc<Mutex<EventSender>>,
 }
 
 impl<T> Local<T>
 where
     T: Instance + Send + Sync,
 {
-    pub fn new(engine: Engine, _tx: Sender<(String, Box<dyn Message>)>) -> Self
+    pub fn new(engine: Engine, tx: Sender<(String, Box<dyn Message>)>) -> Self
     where
         T: Instance + Sync + Send,
     {
@@ -51,6 +63,7 @@ where
             engine: engine.clone(),
             instances: Arc::new(RwLock::new(HashMap::new())),
             base: Arc::new(RwLock::new(None)),
+            events: Arc::new(Mutex::new(tx)),
         }
     }
 
@@ -63,6 +76,15 @@ where
         } else {
             false
         }
+    }
+
+    fn send_event(&self, event: impl Event) {
+        let topic = event.topic();
+        self.events
+            .lock()
+            .unwrap()
+            .send((topic.clone(), Box::new(event)))
+            .unwrap_or_else(|e| warn!("failed to send event for topic {}: {}", topic, e));
     }
 }
 
@@ -119,6 +141,19 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
                     if !self.new_base(req.id.clone()) {
                         return Err(Error::AlreadyExists("already exists".to_string()))?;
                     };
+
+                    self.send_event(TaskCreate {
+                        container_id: req.get_id().into(),
+                        bundle: req.get_bundle().into(),
+                        rootfs: req.get_rootfs().into(),
+                        io: SingularPtrField::some(TaskIO {
+                            stdin: req.get_stdin().into(),
+                            stdout: req.get_stdout().into(),
+                            stderr: req.get_stderr().into(),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    });
                     return Ok(api::CreateTaskResponse {
                         pid: 0, // TODO: PID
                         ..Default::default()
@@ -170,6 +205,19 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             },
         );
 
+        self.send_event(TaskCreate {
+            container_id: req.get_id().into(),
+            bundle: req.get_bundle().into(),
+            rootfs: req.get_rootfs().into(),
+            io: SingularPtrField::some(TaskIO {
+                stdin: req.get_stdin().into(),
+                stdout: req.get_stdout().into(),
+                stderr: req.get_stderr().into(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+
         debug!("create done");
 
         Ok(api::CreateTaskResponse {
@@ -194,6 +242,11 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .ok_or(Error::NotFound(req.get_id().to_string()))?;
 
         let pid = i.instance.start()?;
+        self.send_event(TaskStart {
+            container_id: req.get_id().into(),
+            pid: pid,
+            ..Default::default()
+        });
 
         let mut pid_w = i.pid.write().unwrap();
         *pid_w = Some(pid);
@@ -203,6 +256,9 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         i.instance.wait(tx)?;
 
         let lock = i.status.clone();
+        let sender = self.events.clone();
+
+        let id = req.get_id().to_string();
 
         thread::Builder::new()
             .name(format!("{}-wait", req.get_id()))
@@ -210,6 +266,25 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
                 let ec = rx.recv().unwrap();
                 let mut status = lock.write().unwrap();
                 *status = Some(ec);
+                let mut event = TaskExit {
+                    container_id: id,
+                    exit_status: ec.0,
+                    ..Default::default()
+                };
+
+                let mut timestamp = Timestamp::new();
+                timestamp.set_seconds(ec.1.timestamp());
+                timestamp.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
+
+                event.set_exited_at(timestamp);
+                let topic = event.topic();
+                sender
+                    .lock()
+                    .unwrap()
+                    .send((topic.clone(), Box::new(event)))
+                    .unwrap_or_else(|err| {
+                        error!("failed to send event for topic {}: {}", topic, err)
+                    });
             })
             .map_err(|err| {
                 Error::Others(format!("could not spawn thread to wait exit: {}", err))
@@ -256,12 +331,37 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
 
         i.instance.delete()?;
 
+        let pid = i.pid.read().unwrap().unwrap_or_default();
+
+        let mut event = TaskDelete {
+            container_id: req.get_id().into(),
+            pid: pid,
+            ..Default::default()
+        };
+
+        let mut resp = api::DeleteResponse {
+            pid: pid,
+            ..Default::default()
+        };
+
+        let status = i.status.read().unwrap();
+        if status.is_some() {
+            let ec = status.unwrap();
+            event.exit_status = ec.0;
+            resp.exit_status = ec.0;
+
+            let mut timestamp = Timestamp::new();
+            timestamp.set_seconds(ec.1.timestamp());
+            timestamp.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
+            event.set_exited_at(timestamp.clone());
+            resp.set_exited_at(timestamp);
+        }
+        drop(status);
+
         instances.remove(req.get_id());
 
-        Ok(api::DeleteResponse {
-            pid: 0,
-            ..Default::default()
-        })
+        self.send_event(event);
+        Ok(resp)
     }
 
     fn wait(&self, _ctx: &TtrpcContext, req: api::WaitRequest) -> TtrpcResult<api::WaitResponse> {
