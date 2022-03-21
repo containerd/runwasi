@@ -65,7 +65,7 @@ where
     type Instance = T;
     fn new(namespace: String, _id: String, engine: Engine, publisher: RemotePublisher) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        foward_events(namespace.to_string(), publisher, rx);
+        forward_events(namespace.to_string(), publisher, rx);
         Local::<T>::new(engine, tx.clone())
     }
 }
@@ -369,7 +369,7 @@ where
 
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        foward_events(self.namespace.to_string(), publisher, rx);
+        forward_events(self.namespace.to_string(), publisher, rx);
         Local::<T>::new(self.engine.clone(), tx.clone())
     }
 
@@ -378,7 +378,7 @@ where
     }
 }
 
-fn foward_events(
+fn forward_events(
     namespace: String,
     publisher: RemotePublisher,
     events: Receiver<(String, Box<dyn Message>)>,
