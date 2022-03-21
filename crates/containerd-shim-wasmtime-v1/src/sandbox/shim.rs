@@ -12,8 +12,8 @@ use containerd_shim::{
     protos::shim::shim_ttrpc::Task,
     protos::types::task::Status,
     publisher::RemotePublisher,
-    util::write_address,
     util::IntoOption,
+    util::{timestamp as new_timestamp, write_address},
     warn, ExitSignal, TtrpcContext, TtrpcResult,
 };
 use log::{debug, error, info};
@@ -270,19 +270,18 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .name(format!("{}-wait", req.get_id()))
             .spawn(move || {
                 let ec = rx.recv().unwrap();
+
                 let mut status = lock.write().unwrap();
                 *status = Some(ec);
+
+                let timestamp = new_timestamp().unwrap();
                 let mut event = TaskExit {
                     container_id: id,
                     exit_status: ec.0,
+                    exited_at: SingularPtrField::some(timestamp),
                     ..Default::default()
                 };
 
-                let mut timestamp = Timestamp::new();
-                timestamp.set_seconds(ec.1.timestamp());
-                timestamp.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
-
-                event.set_exited_at(timestamp);
                 let topic = event.topic();
                 sender
                     .lock()
@@ -356,9 +355,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             event.exit_status = ec.0;
             resp.exit_status = ec.0;
 
-            let mut timestamp = Timestamp::new();
-            timestamp.set_seconds(ec.1.timestamp());
-            timestamp.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
+            let timestamp = new_timestamp()?;
             event.set_exited_at(timestamp.clone());
             resp.set_exited_at(timestamp);
         }
@@ -482,6 +479,7 @@ pub struct Cli<T: Instance + Sync + Send> {
     namespace: String,
     phantom: std::marker::PhantomData<T>,
     exit: Arc<ExitSignal>,
+    _id: String,
 }
 
 impl<T> shim::Shim for Cli<T>
@@ -490,13 +488,14 @@ where
 {
     type T = Local<T>;
 
-    fn new(_runtime_id: &str, _id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
+    fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
         let engine = Engine::new(EngineConfig::new().interruptable(true)).unwrap();
         Cli {
             engine,
             phantom: std::marker::PhantomData,
             namespace: namespace.to_string(),
             exit: Arc::new(ExitSignal::default()),
+            _id: id.to_string(),
         }
     }
 
@@ -576,7 +575,12 @@ where
     }
 
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
-        todo!()
+        let timestamp = new_timestamp()?;
+        Ok(api::DeleteResponse {
+            exit_status: 137,
+            exited_at: SingularPtrField::some(timestamp),
+            ..Default::default()
+        })
     }
 }
 
