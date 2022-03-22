@@ -1,10 +1,12 @@
 use containerd_shim_wasmtime_v1::sandbox::{shim::Local, ManagerService, WasiInstance};
 use containerd_shim_wasmtime_v1::services::sandbox_ttrpc::{create_manager, Manager};
+use log::{info, warn};
 use std::sync::Arc;
 use ttrpc::{self, Server};
 use wasmtime::{Config, Engine};
 
 fn main() {
+    info!("starting up!");
     let s: ManagerService<Local<WasiInstance>> =
         ManagerService::new(Engine::new(Config::new().interruptable(true)).unwrap());
     let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
@@ -16,6 +18,7 @@ fn main() {
         .register_service(service);
 
     server.start().unwrap();
+    info!("server started!");
     let (_tx, rx) = std::sync::mpsc::channel::<()>();
     rx.recv().unwrap();
 }

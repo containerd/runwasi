@@ -169,8 +169,6 @@ pub struct Shim {
 
 impl Task for Shim {}
 
-// TODO:: This is a temporary implementation.
-// The plan is to move off this Shim type since it is not designed to do what we want.
 impl shim::Shim for Shim {
     type T = Self;
 
