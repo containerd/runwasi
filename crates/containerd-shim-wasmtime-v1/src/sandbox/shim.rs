@@ -275,7 +275,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
                 *status = Some(ec);
 
                 let timestamp = new_timestamp().unwrap();
-                let mut event = TaskExit {
+                let event = TaskExit {
                     container_id: id,
                     exit_status: ec.0,
                     exited_at: SingularPtrField::some(timestamp),

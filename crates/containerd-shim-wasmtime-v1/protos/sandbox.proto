@@ -6,6 +6,7 @@ option go_package = "github.com/cpuguy83/runwasi/api/services/sandbox/v1;sandbox
 service Manager {
     rpc Create(CreateRequest) returns (CreateResponse) {}
     rpc Connect(ConnectRequest) returns (ConnectResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
 }
 
 message CreateRequest {
@@ -29,3 +30,11 @@ message ConnectResponse {
     // Path of the socket file serving the shim API
     string socket_path = 1;
 }
+
+message DeleteRequest {
+    string namespace = 1;
+    string id = 2;
+    string ttrpc_address = 3;
+}
+
+message DeleteResponse {}

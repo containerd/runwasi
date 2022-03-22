@@ -44,6 +44,12 @@ impl ManagerClient {
         ::ttrpc::client_request!(self, ctx, req, "runwasi.services.sandbox.v1.Manager", "Connect", cres);
         Ok(cres)
     }
+
+    pub fn delete(&self, ctx: ttrpc::context::Context, req: &super::sandbox::DeleteRequest) -> ::ttrpc::Result<super::sandbox::DeleteResponse> {
+        let mut cres = super::sandbox::DeleteResponse::new();
+        ::ttrpc::client_request!(self, ctx, req, "runwasi.services.sandbox.v1.Manager", "Delete", cres);
+        Ok(cres)
+    }
 }
 
 struct CreateMethod {
@@ -68,12 +74,26 @@ impl ::ttrpc::MethodHandler for ConnectMethod {
     }
 }
 
+struct DeleteMethod {
+    service: Arc<std::boxed::Box<dyn Manager + Send + Sync>>,
+}
+
+impl ::ttrpc::MethodHandler for DeleteMethod {
+    fn handler(&self, ctx: ::ttrpc::TtrpcContext, req: ::ttrpc::Request) -> ::ttrpc::Result<()> {
+        ::ttrpc::request_handler!(self, ctx, req, sandbox, DeleteRequest, delete);
+        Ok(())
+    }
+}
+
 pub trait Manager {
     fn create(&self, _ctx: &::ttrpc::TtrpcContext, _req: super::sandbox::CreateRequest) -> ::ttrpc::Result<super::sandbox::CreateResponse> {
         Err(::ttrpc::Error::RpcStatus(::ttrpc::get_status(::ttrpc::Code::NOT_FOUND, "/runwasi.services.sandbox.v1.Manager/Create is not supported".to_string())))
     }
     fn connect(&self, _ctx: &::ttrpc::TtrpcContext, _req: super::sandbox::ConnectRequest) -> ::ttrpc::Result<super::sandbox::ConnectResponse> {
         Err(::ttrpc::Error::RpcStatus(::ttrpc::get_status(::ttrpc::Code::NOT_FOUND, "/runwasi.services.sandbox.v1.Manager/Connect is not supported".to_string())))
+    }
+    fn delete(&self, _ctx: &::ttrpc::TtrpcContext, _req: super::sandbox::DeleteRequest) -> ::ttrpc::Result<super::sandbox::DeleteResponse> {
+        Err(::ttrpc::Error::RpcStatus(::ttrpc::get_status(::ttrpc::Code::NOT_FOUND, "/runwasi.services.sandbox.v1.Manager/Delete is not supported".to_string())))
     }
 }
 
@@ -85,6 +105,9 @@ pub fn create_manager(service: Arc<std::boxed::Box<dyn Manager + Send + Sync>>) 
 
     methods.insert("/runwasi.services.sandbox.v1.Manager/Connect".to_string(),
                     std::boxed::Box::new(ConnectMethod{service: service.clone()}) as std::boxed::Box<dyn ::ttrpc::MethodHandler + Send + Sync>);
+
+    methods.insert("/runwasi.services.sandbox.v1.Manager/Delete".to_string(),
+                    std::boxed::Box::new(DeleteMethod{service: service.clone()}) as std::boxed::Box<dyn ::ttrpc::MethodHandler + Send + Sync>);
 
     methods
 }

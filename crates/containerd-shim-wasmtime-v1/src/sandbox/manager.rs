@@ -9,6 +9,7 @@ use containerd_shim::{
     error::Error as ShimError,
     protos::shim::shim_ttrpc::{create_task, Task},
     protos::ttrpc::{Client, Server},
+    protos::TaskClient,
     publisher::RemotePublisher,
     TtrpcContext, TtrpcResult,
 };
@@ -112,6 +113,31 @@ where
             ..Default::default()
         });
     }
+
+    fn delete(
+        &self,
+        _ctx: &TtrpcContext,
+        req: sandbox::DeleteRequest,
+    ) -> TtrpcResult<sandbox::DeleteResponse> {
+        let mut sandboxes = self.sandboxes.write().unwrap();
+        if !sandboxes.contains_key(&req.id) {
+            return Err(Error::NotFound(req.get_id().to_string()))?;
+        }
+        let sock = sandboxes.remove(&req.id).unwrap();
+        let c = Client::connect(&sock)?;
+        let tc = TaskClient::new(c);
+
+        tc.shutdown(
+            context::Context::default(),
+            &api::ShutdownRequest {
+                id: req.id,
+                now: true,
+                ..Default::default()
+            },
+        )?;
+
+        return Ok(sandbox::DeleteResponse::default());
+    }
 }
 
 // Note that this changes the current thread's state.
@@ -136,7 +162,10 @@ fn start_sandbox(cfg: runtime::Spec, server: &mut Server) -> Result<(), Error> {
     Ok(())
 }
 
-pub struct Shim {}
+pub struct Shim {
+    id: String,
+    namespace: String,
+}
 
 impl Task for Shim {}
 
@@ -145,8 +174,11 @@ impl Task for Shim {}
 impl shim::Shim for Shim {
     type T = Self;
 
-    fn new(_runtime_id: &str, _id: &str, _namespace: &str, _config: &mut shim::Config) -> Self {
-        return Shim {};
+    fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
+        return Shim {
+            id: id.to_string(),
+            namespace: namespace.to_string(),
+        };
     }
 
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
@@ -189,6 +221,8 @@ impl shim::Shim for Shim {
             }
         };
 
+        shim::util::write_address(&addr)?;
+
         return Ok(addr);
     }
 
@@ -197,10 +231,38 @@ impl shim::Shim for Shim {
     }
 
     fn create_task_service(&self, _publisher: RemotePublisher) -> Self::T {
-        todo!()
+        todo!() // but not really, haha
     }
 
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
-        todo!()
+        let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
+        let spec = oci::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
+            shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
+        })?;
+
+        let default = HashMap::new() as HashMap<String, String>;
+        let annotations = spec.annotations().as_ref().unwrap_or(&default);
+
+        let sandbox = annotations
+            .get("io.kubernetes.cri.sandbox-id")
+            .unwrap_or(&self.id)
+            .to_string();
+        if sandbox != self.id {
+            return Ok(api::DeleteResponse::default());
+        }
+
+        let client = Client::connect("unix:///run/io.containerd.wasmtime.v1/manager.sock")?;
+        let mc = ManagerClient::new(client);
+        mc.delete(
+            context::Context::default(),
+            &sandbox::DeleteRequest {
+                id: sandbox.clone(),
+                namespace: self.namespace.clone(),
+                ..Default::default()
+            },
+        )?;
+
+        // TODO: write pid, exit code, etc to disk so we can use it here.
+        Ok(api::DeleteResponse::default())
     }
 }

@@ -827,6 +827,365 @@ impl ::protobuf::reflect::ProtobufValue for ConnectResponse {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct DeleteRequest {
+    // message fields
+    pub namespace: ::std::string::String,
+    pub id: ::std::string::String,
+    pub ttrpc_address: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a DeleteRequest {
+    fn default() -> &'a DeleteRequest {
+        <DeleteRequest as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl DeleteRequest {
+    pub fn new() -> DeleteRequest {
+        ::std::default::Default::default()
+    }
+
+    // string namespace = 1;
+
+
+    pub fn get_namespace(&self) -> &str {
+        &self.namespace
+    }
+    pub fn clear_namespace(&mut self) {
+        self.namespace.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_namespace(&mut self, v: ::std::string::String) {
+        self.namespace = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_namespace(&mut self) -> &mut ::std::string::String {
+        &mut self.namespace
+    }
+
+    // Take field
+    pub fn take_namespace(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.namespace, ::std::string::String::new())
+    }
+
+    // string id = 2;
+
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+    pub fn clear_id(&mut self) {
+        self.id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_id(&mut self, v: ::std::string::String) {
+        self.id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_id(&mut self) -> &mut ::std::string::String {
+        &mut self.id
+    }
+
+    // Take field
+    pub fn take_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.id, ::std::string::String::new())
+    }
+
+    // string ttrpc_address = 3;
+
+
+    pub fn get_ttrpc_address(&self) -> &str {
+        &self.ttrpc_address
+    }
+    pub fn clear_ttrpc_address(&mut self) {
+        self.ttrpc_address.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_ttrpc_address(&mut self, v: ::std::string::String) {
+        self.ttrpc_address = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_ttrpc_address(&mut self) -> &mut ::std::string::String {
+        &mut self.ttrpc_address
+    }
+
+    // Take field
+    pub fn take_ttrpc_address(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.ttrpc_address, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for DeleteRequest {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.namespace)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.id)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.ttrpc_address)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.namespace.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.namespace);
+        }
+        if !self.id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.id);
+        }
+        if !self.ttrpc_address.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.ttrpc_address);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.namespace.is_empty() {
+            os.write_string(1, &self.namespace)?;
+        }
+        if !self.id.is_empty() {
+            os.write_string(2, &self.id)?;
+        }
+        if !self.ttrpc_address.is_empty() {
+            os.write_string(3, &self.ttrpc_address)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> DeleteRequest {
+        DeleteRequest::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "namespace",
+                |m: &DeleteRequest| { &m.namespace },
+                |m: &mut DeleteRequest| { &mut m.namespace },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "id",
+                |m: &DeleteRequest| { &m.id },
+                |m: &mut DeleteRequest| { &mut m.id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "ttrpc_address",
+                |m: &DeleteRequest| { &m.ttrpc_address },
+                |m: &mut DeleteRequest| { &mut m.ttrpc_address },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<DeleteRequest>(
+                "DeleteRequest",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static DeleteRequest {
+        static instance: ::protobuf::rt::LazyV2<DeleteRequest> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(DeleteRequest::new)
+    }
+}
+
+impl ::protobuf::Clear for DeleteRequest {
+    fn clear(&mut self) {
+        self.namespace.clear();
+        self.id.clear();
+        self.ttrpc_address.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for DeleteRequest {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for DeleteRequest {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct DeleteResponse {
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a DeleteResponse {
+    fn default() -> &'a DeleteResponse {
+        <DeleteResponse as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl DeleteResponse {
+    pub fn new() -> DeleteResponse {
+        ::std::default::Default::default()
+    }
+}
+
+impl ::protobuf::Message for DeleteResponse {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> DeleteResponse {
+        DeleteResponse::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let fields = ::std::vec::Vec::new();
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<DeleteResponse>(
+                "DeleteResponse",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static DeleteResponse {
+        static instance: ::protobuf::rt::LazyV2<DeleteResponse> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(DeleteResponse::new)
+    }
+}
+
+impl ::protobuf::Clear for DeleteResponse {
+    fn clear(&mut self) {
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for DeleteResponse {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for DeleteResponse {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\rsandbox.proto\x12\x1brunwasi.services.sandbox.v1\"\x99\x01\n\rCreate\
     Request\x12\x1e\n\tnamespace\x18\x01\x20\x01(\tR\tnamespaceB\0\x12\x10\n\
@@ -836,7 +1195,10 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     th\x18\x01\x20\x01(\tR\nsocketPathB\0:\0\"K\n\x0eConnectRequest\x12\x10\
     \n\x02id\x18\x01\x20\x01(\tR\x02idB\0\x12%\n\rttrpc_address\x18\x02\x20\
     \x01(\tR\x0cttrpcAddressB\0:\0\"6\n\x0fConnectResponse\x12!\n\x0bsocket_\
-    path\x18\x01\x20\x01(\tR\nsocketPathB\0:\0B\0b\x06proto3\
+    path\x18\x01\x20\x01(\tR\nsocketPathB\0:\0\"j\n\rDeleteRequest\x12\x1e\n\
+    \tnamespace\x18\x01\x20\x01(\tR\tnamespaceB\0\x12\x10\n\x02id\x18\x02\
+    \x20\x01(\tR\x02idB\0\x12%\n\rttrpc_address\x18\x03\x20\x01(\tR\x0cttrpc\
+    AddressB\0:\0\"\x12\n\x0eDeleteResponse:\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
