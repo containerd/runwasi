@@ -162,6 +162,7 @@ fn start_sandbox(cfg: runtime::Spec, server: &mut Server) -> Result<(), Error> {
     Ok(())
 }
 
+/// Shim implements the containerd-shim CLI for connecting to a Manager service.
 pub struct Shim {
     id: String,
     namespace: String,

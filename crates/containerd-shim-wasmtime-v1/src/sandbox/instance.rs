@@ -2,9 +2,10 @@ use super::error::Error;
 use super::oci;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use log::{debug, error, info};
+use log::{debug, error};
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
@@ -88,9 +89,34 @@ pub struct Wasi {
     bundle: String,
 }
 
-// containerd can send an empty path or a non-existant path
-// In both these cases we should just assume that the stdio stream was not setup (intentionally)
-// Any other error is a real error.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_maybe_open_stdio() -> Result<(), Error> {
+        let f = maybe_open_stdio("")?;
+        assert!(f.is_none());
+
+        let f = maybe_open_stdio("/some/nonexistent/path")?;
+        assert!(f.is_none());
+
+        let dir = tempdir()?;
+        let temp = File::create(dir.path().join("testfile"))?;
+        drop(temp);
+        let f = maybe_open_stdio(&dir.path().join("testfile").as_path().to_str().unwrap())?;
+        assert!(f.is_some());
+        drop(f);
+
+        Ok(())
+    }
+}
+
+/// containerd can send an empty path or a non-existant path
+/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
+/// Any other error is a real error.
 pub fn maybe_open_stdio(path: &str) -> Result<Option<WasiFile>, Error> {
     if path.is_empty() {
         return Ok(None);
@@ -190,7 +216,7 @@ impl Instance for Wasi {
 
         let exit_code = self.exit_code.clone();
         let interupt = self.interupt.clone();
-        let (tx, rx) = std::sync::mpsc::channel::<Result<(), Error>>();
+        let (tx, rx) = channel::<Result<(), Error>>();
         let bundle = self.bundle.clone();
         let stdin = self.stdin.clone();
         let stdout = self.stdout.clone();
@@ -326,6 +352,108 @@ impl Instance for Wasi {
     }
 }
 
+#[cfg(test)]
+mod wasitest {
+    use super::*;
+    use std::fs::{create_dir, read_to_string, write, File};
+    use std::io::prelude::*;
+    use std::time::Duration;
+    use tempfile::tempdir;
+    use wasmtime::Config;
+
+    // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
+    const WASI_HELLO_WAT: &[u8]= r#"(module
+        ;; Import the required fd_write WASI function which will write the given io vectors to stdout
+        ;; The function signature for fd_write is:
+        ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
+        (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
+
+        (memory 1)
+        (export "memory" (memory 0))
+
+        ;; Write 'hello world\n' to memory at an offset of 8 bytes
+        ;; Note the trailing newline which is required for the text to appear
+        (data (i32.const 8) "hello world\n")
+
+        (func $main (export "_start")
+            ;; Creating a new io vector within linear memory
+            (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
+            (i32.store (i32.const 4) (i32.const 12))  ;; iov.iov_len - The length of the 'hello world\n' string
+
+            (call $fd_write
+                (i32.const 1) ;; file_descriptor - 1 for stdout
+                (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
+                (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
+                (i32.const 20) ;; nwritten - A place in memory to store the number of bytes written
+            )
+            drop ;; Discard the number of bytes written from the top of the stack
+        )
+    )
+    "#.as_bytes();
+
+    #[test]
+    fn test_wasi() -> Result<(), Error> {
+        let dir = tempdir()?;
+        create_dir(&dir.path().join("rootfs"))?;
+
+        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
+        f.write_all(WASI_HELLO_WAT)?;
+
+        let stdout = File::create(dir.path().join("stdout"))?;
+        drop(stdout);
+
+        write(
+            dir.path().join("config.json"),
+            "{
+                \"root\": {
+                    \"path\": \"rootfs\"
+                },
+                \"process\":{
+                    \"cwd\": \"/\",
+                    \"args\": [\"hello.wat\"],
+                    \"user\": {
+                        \"uid\": 0,
+                        \"gid\": 0
+                    }
+                }
+            }"
+            .as_bytes(),
+        )?;
+
+        let mut cfg = InstanceConfig::new(Engine::new(Config::new().interruptable(true))?);
+        let cfg = cfg
+            .set_bundle(dir.path().to_str().unwrap().to_string())
+            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
+
+        let wasi = Arc::new(Wasi::new("test".to_string(), cfg));
+
+        wasi.start()?;
+
+        let w = wasi.clone();
+        let (tx, rx) = channel();
+        thread::spawn(move || {
+            w.wait(tx).unwrap();
+        });
+
+        let res = match rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(res) => res,
+            Err(e) => {
+                wasi.kill(9).unwrap();
+                return Err(Error::Others(format!(
+                    "error waiting for module to finish: {0}",
+                    e
+                )));
+            }
+        };
+        assert_eq!(res.0, 0);
+
+        let output = read_to_string(dir.path().join("stdout"))?;
+        assert_eq!(output, "hello world\n");
+
+        Ok(())
+    }
+}
+
 // This is used for the "pause" container with cri.
 pub struct Nop {
     // Since we are faking the container, we need to keep track of the "exit" code/time
@@ -348,7 +476,7 @@ impl Instance for Nop {
             9 => 137,
             2 | 15 => 0,
             s => {
-                return Err(Error::Others(format!("unsupported signal: {}", s)));
+                return Err(Error::InvalidArgument(format!("unsupported signal: {}", s)));
             }
         };
 
@@ -373,6 +501,87 @@ impl Instance for Nop {
 
         let ec = (*exit).unwrap();
         send.send((ec.0, ec.1)).unwrap();
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod noptests {
+    use super::*;
+    use std::sync::mpsc::channel;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    #[test]
+    fn test_nop_kill_sigkill() -> Result<(), Error> {
+        let nop = Arc::new(Nop::new(
+            "".to_string(),
+            &InstanceConfig::new(Engine::default()),
+        ));
+        let (tx, rx) = channel();
+
+        let n = nop.clone();
+
+        thread::spawn(move || {
+            n.wait(tx).unwrap();
+        });
+
+        nop.kill(9)?;
+        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert_eq!(ec.0, 137);
+        Ok(())
+    }
+
+    #[test]
+    fn test_nop_kill_sigterm() -> Result<(), Error> {
+        let nop = Arc::new(Nop::new(
+            "".to_string(),
+            &InstanceConfig::new(Engine::default()),
+        ));
+        let (tx, rx) = channel();
+
+        let n = nop.clone();
+
+        thread::spawn(move || {
+            n.wait(tx).unwrap();
+        });
+
+        nop.kill(15)?;
+        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert_eq!(ec.0, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_nop_kill_sigint() -> Result<(), Error> {
+        let nop = Arc::new(Nop::new(
+            "".to_string(),
+            &InstanceConfig::new(Engine::default()),
+        ));
+        let (tx, rx) = channel();
+
+        let n = nop.clone();
+
+        thread::spawn(move || {
+            n.wait(tx).unwrap();
+        });
+
+        nop.kill(2)?;
+        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert_eq!(ec.0, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_op_kill_other() -> Result<(), Error> {
+        let nop = Nop::new("".to_string(), &InstanceConfig::new(Engine::default()));
+
+        let err = nop.kill(1).unwrap_err();
+        match err {
+            Error::InvalidArgument(_) => {}
+            _ => panic!("unexpected error: {}", err),
+        }
+
         Ok(())
     }
 }

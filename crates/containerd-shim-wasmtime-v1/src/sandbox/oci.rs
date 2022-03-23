@@ -29,7 +29,14 @@ pub fn load(path: &str) -> Result<Spec, Error> {
 }
 
 pub fn env_to_wasi(spec: &Spec) -> Vec<(String, String)> {
-    let env = spec.process().as_ref().unwrap().env().as_ref().unwrap();
+    let default = vec![];
+    let env = spec
+        .process()
+        .as_ref()
+        .unwrap()
+        .env()
+        .as_ref()
+        .unwrap_or(&default);
     let mut vec: Vec<(String, String)> = Vec::with_capacity(env.len());
 
     for v in env {

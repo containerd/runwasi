@@ -16,7 +16,7 @@ use containerd_shim::{
     util::{timestamp as new_timestamp, write_address},
     warn, ExitSignal, TtrpcContext, TtrpcResult,
 };
-use log::{debug, error, info};
+use log::{debug, error};
 use nix::mount::{mount, MsFlags};
 use nix::sched::{setns, unshare, CloneFlags};
 use nix::sys::stat::Mode;
@@ -42,10 +42,13 @@ struct InstanceData<T: Instance + Send + Sync> {
 
 type EventSender = Sender<(String, Box<dyn Message>)>;
 
+/// Local implements the Task service for a containerd shim.
+/// It defers all task operations to the `Instance` implementation.
 #[derive(Clone)]
 pub struct Local<T: Instance + Send + Sync> {
     engine: Engine,
     instances: Arc<RwLock<HashMap<String, InstanceData<T>>>>,
+    /// base is used as a no-op instance for cri "pause" containers.
     base: Arc<RwLock<Option<Nop>>>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
@@ -55,6 +58,7 @@ impl<T> Local<T>
 where
     T: Instance + Send + Sync,
 {
+    /// Creates a new local task service.
     pub fn new(
         engine: Engine,
         tx: Sender<(String, Box<dyn Message>)>,
@@ -474,6 +478,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
     }
 }
 
+// Cli implements the containerd-shim cli interface using Local<T> as the task service.
 pub struct Cli<T: Instance + Sync + Send> {
     pub engine: Engine,
     namespace: String,

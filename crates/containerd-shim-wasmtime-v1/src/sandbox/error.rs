@@ -69,3 +69,88 @@ impl From<Error> for ttrpc::Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use thiserror::Error;
+
+    #[derive(Debug, Error)]
+    enum TestError {
+        #[error("{0}")]
+        AnError(String),
+    }
+
+    #[test]
+    fn test_error_to_ttrpc_status() {
+        let e = Error::InvalidArgument("invalid argument".to_string());
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::INVALID_ARGUMENT);
+                assert_eq!(s.message, "invalid argument");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::NotFound("not found".to_string());
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::NOT_FOUND);
+                assert_eq!(s.message, "not found");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::AlreadyExists("already exists".to_string());
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::ALREADY_EXISTS);
+                assert_eq!(s.message, "already exists");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::FailedPrecondition("failed precondition".to_string());
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::FAILED_PRECONDITION);
+                assert_eq!(s.message, "failed precondition");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::Oci(oci::Error::InvalidArgument("invalid argument".to_string()));
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::INVALID_ARGUMENT);
+                assert_eq!(s.message, "invalid argument");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::Shim(ShimError::InvalidArgument("invalid argument".to_string()));
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::INVALID_ARGUMENT);
+                assert_eq!(s.message, "invalid argument");
+            }
+            _ => panic!("unexpected error"),
+        }
+
+        let e = Error::Any(AnyError::new(TestError::AnError("any error".to_string())));
+        let t: ttrpc::Error = e.into();
+        match t {
+            ttrpc::Error::RpcStatus(s) => {
+                assert_eq!(s.code, ttrpc::Code::UNKNOWN);
+                assert_eq!(s.message, "any error");
+            }
+            _ => panic!("unexpected error"),
+        }
+    }
+}
