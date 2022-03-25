@@ -156,6 +156,7 @@ pub fn prepare_module(
     let args = oci::get_args(&spec);
     let env = oci::env_to_wasi(&spec);
 
+    debug!("setting up wasi");
     let mut wasi_builder = WasiCtxBuilder::new()
         .args(args)?
         .envs(env.as_slice())?
@@ -340,14 +341,17 @@ impl Instance for Wasi {
     }
 
     fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
-        let (lock, cvar) = &*self.exit_code;
-        let mut exit = lock.lock().unwrap();
-        while (*exit).is_none() {
-            exit = cvar.wait(exit).unwrap();
-        }
+        let code = self.exit_code.clone();
+        thread::spawn(move || {
+            let (lock, cvar) = &*code;
+            let mut exit = lock.lock().unwrap();
+            while (*exit).is_none() {
+                exit = cvar.wait(exit).unwrap();
+            }
+            let ec = (*exit).unwrap();
+            channel.send(ec).unwrap();
+        });
 
-        let ec = (*exit).unwrap();
-        channel.send(ec).unwrap();
         Ok(())
     }
 }
@@ -492,15 +496,17 @@ impl Instance for Nop {
         Ok(())
     }
 
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
-        let (lock, cvar) = &*self.exit_code;
-        let mut exit = lock.lock().unwrap();
-        while (*exit).is_none() {
-            exit = cvar.wait(exit).unwrap();
-        }
-
-        let ec = (*exit).unwrap();
-        send.send((ec.0, ec.1)).unwrap();
+    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+        let code = self.exit_code.clone();
+        thread::spawn(move || {
+            let (lock, cvar) = &*code;
+            let mut exit = lock.lock().unwrap();
+            while (*exit).is_none() {
+                exit = cvar.wait(exit).unwrap();
+            }
+            let ec = (*exit).unwrap();
+            channel.send(ec).unwrap();
+        });
         Ok(())
     }
 }
