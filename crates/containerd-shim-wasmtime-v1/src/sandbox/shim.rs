@@ -24,7 +24,7 @@ use nix::unistd::mkdir;
 use oci_spec::runtime;
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::fs::File;
+use std::fs::{self, File};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -47,7 +47,7 @@ type EventSender = Sender<(String, Box<dyn Message>)>;
 #[derive(Clone)]
 pub struct Local<T: Instance + Send + Sync> {
     engine: Engine,
-    instances: Arc<RwLock<HashMap<String, InstanceData<T>>>>,
+    instances: Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>,
     /// base is used as a no-op instance for cri "pause" containers.
     base: Arc<RwLock<Option<Nop>>>,
     events: Arc<Mutex<EventSender>>,
@@ -172,30 +172,105 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             }
         }
 
+        spec.canonicalize_rootfs(req.get_bundle()).map_err(|err| {
+            ShimError::InvalidArgument(format!("could not canonicalize rootfs: {}", err))
+        })?;
+        let rootfs = spec
+            .root()
+            .as_ref()
+            .ok_or(Error::InvalidArgument(
+                "rootfs is not set in runtime spec".to_string(),
+            ))?
+            .path();
+
+        match mkdir(rootfs, Mode::from_bits(0o755).unwrap()) {
+            Ok(_) => (),
+            Err(_) => (),
+        };
+
         let rootfs_mounts = req.get_rootfs().to_vec();
         if !rootfs_mounts.is_empty() {
-            spec.canonicalize_rootfs(req.get_bundle()).map_err(|err| {
-                ShimError::InvalidArgument(format!("could not canonicalize rootfs: {}", err))
-            })?;
-
-            let rootfs = spec
-                .root()
-                .as_ref()
-                .ok_or(Error::InvalidArgument(
-                    "rootfs is not set in runtime spec".to_string(),
-                ))?
-                .path();
-
-            match mkdir(rootfs, Mode::from_bits(0o755).unwrap()) {
-                Ok(_) => (),
-                Err(_) => (),
-            };
-
             for m in rootfs_mounts {
                 let mount_type = m.field_type.as_str().none_if(|&x| x.is_empty());
                 let source = m.source.as_str().none_if(|&x| x.is_empty());
                 mount_rootfs(mount_type, source, &m.options.to_vec(), rootfs)?;
             }
+        }
+
+        let default_mounts = vec![];
+        let mounts = spec.mounts().as_ref().unwrap_or(&default_mounts);
+        for m in mounts {
+            warn!("mount: {:?}", m);
+            if m.typ().is_some() {
+                match m.typ().as_ref().unwrap().as_str() {
+                    "tmpfs" | "proc" | "cgroup" | "sysfs" | "devpts" | "mqueue" => continue,
+                    _ => (),
+                };
+            };
+
+            let source = m.source().as_deref().map(|x| x.to_str()).unwrap_or(None);
+            let target = m
+                .destination()
+                .strip_prefix(std::path::MAIN_SEPARATOR.to_string())
+                .map_err(|err| {
+                    ShimError::InvalidArgument(format!("error stripping path prefix: {}", err))
+                })?;
+
+            let rootfs_target = Path::new(rootfs).join(target);
+
+            if source.is_some() {
+                let md = fs::metadata(source.unwrap()).map_err(|err| {
+                    Error::InvalidArgument(format!("could not get metadata for source: {}", err))
+                })?;
+
+                if md.is_dir() {
+                    fs::create_dir_all(&rootfs_target).map_err(|err| {
+                        ShimError::Other(format!(
+                            "error creating directory for mount target {}: {}",
+                            target.to_str().unwrap(),
+                            err
+                        ))
+                    })?;
+                } else {
+                    let parent = rootfs_target.parent();
+                    if parent.is_some() {
+                        fs::create_dir_all(&parent.unwrap()).map_err(|err| {
+                            ShimError::Other(format!(
+                                "error creating parent for mount target {}: {}",
+                                parent.unwrap().to_str().unwrap(),
+                                err
+                            ))
+                        })?;
+                    }
+                    File::create(&rootfs_target)
+                        .map_err(|err| ShimError::Other(format!("{}", err)))?;
+                }
+            }
+
+            let mut newopts = vec![];
+            let opts = m.options().as_ref();
+            if opts.is_some() {
+                for o in opts.unwrap() {
+                    newopts.push(o.to_string());
+                }
+            }
+
+            let mut typ = m.typ().as_deref();
+            if typ.is_some() {
+                if typ.unwrap() == "bind" {
+                    typ = None;
+                    newopts.push("rbind".to_string());
+                }
+            }
+            mount_rootfs(typ, source, &newopts, &rootfs_target).map_err(|err| {
+                ShimError::Other(format!(
+                    "error mounting {} to {} as {}: {}",
+                    source.unwrap_or_default(),
+                    rootfs_target.to_str().unwrap(),
+                    m.typ().as_deref().unwrap_or(&"none"),
+                    err
+                ))
+            })?;
         }
 
         let engine = self.engine.clone();
@@ -207,12 +282,12 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .set_bundle(req.get_bundle().into());
         instances.insert(
             req.get_id().to_string(),
-            InstanceData {
+            Arc::new(InstanceData {
                 instance: Box::new(T::new(req.get_id().to_string(), &builder)),
                 cfg: builder,
                 pid: RwLock::new(None),
                 status: Arc::new(RwLock::new(None)),
-            },
+            }),
         );
 
         self.send_event(TaskCreate {
@@ -562,7 +637,8 @@ where
         )
         .map_err(|err| shim::Error::Other(format!("failed to remount rootfs as slave: {}", err)))?;
 
-        let (_child, address) = shim::spawn(opts, &grouping, envs)?;
+        let (_child, address) =
+            shim::spawn(containerd_shim::StartOpts { ..opts }, &grouping, envs)?;
 
         write_address(&address)?;
 
