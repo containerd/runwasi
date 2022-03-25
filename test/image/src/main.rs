@@ -7,11 +7,6 @@ fn main() {
         cmd = &args[1];
     }
 
-    let entries = std::fs::read_dir("/").unwrap();
-    entries.for_each(|entry| {
-        println!("{:?}", entry);
-    });
-
     match cmd {
         "echo" => println!("{}", &args[2..].join(" ")),
         "sleep" => sleep(Duration::from_secs_f64(args[2].parse::<f64>().unwrap())),

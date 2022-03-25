@@ -200,7 +200,6 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         let default_mounts = vec![];
         let mounts = spec.mounts().as_ref().unwrap_or(&default_mounts);
         for m in mounts {
-            warn!("mount: {:?}", m);
             if m.typ().is_some() {
                 match m.typ().as_ref().unwrap().as_str() {
                     "tmpfs" | "proc" | "cgroup" | "sysfs" | "devpts" | "mqueue" => continue,
