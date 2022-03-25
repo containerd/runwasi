@@ -20,7 +20,7 @@ install:
 	$(INSTALL) target/$(TARGET)/containerd-wasmtimed $(PREFIX)/bin
 
 # TODO: build this manually instead of requiring buildx
-test/out/img.tar: test/image/Dockerfile test/image/wasm.go
+test/out/img.tar: test/image/Dockerfile test/image/src/main.rs test/image/Cargo.toml test/image/Cargo.lock
 	mkdir -p $(@D)
 	docker buildx build --platform=wasi/wasm -o type=docker,dest=$@ -t $(TEST_IMG_NAME) ./test/image
 

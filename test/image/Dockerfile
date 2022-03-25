@@ -1,8 +1,9 @@
-FROM --platform=${BUILDPLATFORM} tinygo/tinygo:0.21.0 AS build
+FROM --platform=${BUILDPLATFORM} rust:1.59 AS build
+RUN rustup target add wasm32-wasi
 WORKDIR /opt/wasmtest
-COPY wasm.go .
-RUN tinygo build --target=wasi -o wasm wasm.go
+COPY . .
+RUN cargo build --target=wasm32-wasi --release
 
 FROM scratch
 ENTRYPOINT ["/wasm"]
-COPY --from=build /opt/wasmtest/wasm /
+COPY --from=build /opt/wasmtest/target/wasm32-wasi/release/containerd-shim-wasmtime-demo.wasm /wasm
