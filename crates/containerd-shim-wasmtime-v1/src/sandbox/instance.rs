@@ -301,13 +301,13 @@ impl Instance for Wasi {
                     let _ret = match f.call(&mut store, &mut vec![], &mut vec![]) {
                         Ok(_) => {
                             debug!("exit code: {}", 0);
-                            let mut lock = lock.lock().unwrap();
-                            *lock = Some((0, Utc::now()));
+                            let mut ec = lock.lock().unwrap();
+                            *ec = Some((0, Utc::now()));
                         }
                         Err(_) => {
                             error!("exit code: {}", 137);
-                            let mut lock = lock.lock().unwrap();
-                            *lock = Some((137, Utc::now()));
+                            let mut ec = lock.lock().unwrap();
+                            *ec = Some((137, Utc::now()));
                         }
                     };
 
@@ -315,7 +315,19 @@ impl Instance for Wasi {
                 })?;
 
         debug!("Waiting for start notification");
-        rx.recv().unwrap()?;
+        match rx.recv().unwrap() {
+            Ok(_) => (),
+            Err(err) => {
+                debug!("error starting instance: {}", err);
+                let code = self.exit_code.clone();
+
+                let (lock, cvar) = &*code;
+                let mut ec = lock.lock().unwrap();
+                *ec = Some((139, Utc::now()));
+                cvar.notify_all();
+                return Err(err);
+            }
+        }
 
         Ok(1) // TODO: PID: I wanted to use a thread ID here, but threads use a u64, the API wants a u32
     }

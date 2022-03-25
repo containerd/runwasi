@@ -351,6 +351,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
 
                 let mut status = lock.write().unwrap();
                 *status = Some(ec);
+                drop(status);
 
                 let timestamp = new_timestamp().unwrap();
                 let event = TaskExit {
@@ -451,7 +452,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
-        let instances = self.instances.write().unwrap();
+        let instances = self.instances.read().unwrap();
         let i = instances
             .get(req.get_id())
             .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
@@ -515,12 +516,18 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             ..Default::default()
         };
 
-        let pid = i.pid.read().unwrap();
+        let pid_lock = i.pid.read().unwrap();
+        let pid = *pid_lock;
         if pid.is_none() {
             state.status = Status::CREATED;
             return Ok(state);
         }
-        let code = *i.status.read().unwrap();
+        drop(pid_lock);
+
+        let status = i.status.read().unwrap();
+
+        let code = *status;
+        drop(status);
 
         if code.is_some() {
             state.status = Status::STOPPED;
