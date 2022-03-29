@@ -33,11 +33,45 @@ use std::thread;
 use ttrpc::context::Context;
 use wasmtime::{Config as EngineConfig, Engine};
 
-struct InstanceData<T: Instance + Send + Sync> {
-    instance: Box<T>,
+struct InstanceData<T: Instance> {
+    instance: Option<T>,
+    base: Option<Nop>,
     cfg: InstanceConfig,
     pid: RwLock<Option<u32>>,
     status: Arc<RwLock<Option<(u32, DateTime<Utc>)>>>,
+}
+
+impl<T> InstanceData<T>
+where
+    T: Instance,
+{
+    fn start(&self) -> Result<u32, Error> {
+        if self.instance.is_some() {
+            return self.instance.as_ref().unwrap().start();
+        }
+        self.base.as_ref().unwrap().start()
+    }
+
+    fn kill(&self, signal: u32) -> Result<(), Error> {
+        if self.instance.is_some() {
+            return self.instance.as_ref().unwrap().kill(signal);
+        }
+        self.base.as_ref().unwrap().kill(signal)
+    }
+
+    fn delete(&self) -> Result<(), Error> {
+        if self.instance.is_some() {
+            return self.instance.as_ref().unwrap().delete();
+        }
+        self.base.as_ref().unwrap().delete()
+    }
+
+    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+        if self.instance.is_some() {
+            return self.instance.as_ref().unwrap().wait(send);
+        }
+        self.base.as_ref().unwrap().wait(send)
+    }
 }
 
 type EventSender = Sender<(String, Box<dyn Message>)>;
@@ -48,8 +82,6 @@ type EventSender = Sender<(String, Box<dyn Message>)>;
 pub struct Local<T: Instance + Send + Sync> {
     engine: Engine,
     instances: Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>,
-    /// base is used as a no-op instance for cri "pause" containers.
-    base: Arc<RwLock<Option<Nop>>>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
 }
@@ -67,24 +99,23 @@ where
     where
         T: Instance + Sync + Send,
     {
-        Local {
+        Local::<T> {
             // Note: engine.clone() is a shallow clone, is really cheap to do, and is safe to pass around.
             engine: engine.clone(),
             instances: Arc::new(RwLock::new(HashMap::new())),
-            base: Arc::new(RwLock::new(None)),
             events: Arc::new(Mutex::new(tx)),
             exit: exit,
         }
     }
 
-    fn new_base(&self, id: String) -> bool {
-        let mut base = self.base.write().unwrap();
-        if base.is_none() {
-            let nop = Nop::new(id, &InstanceConfig::new(self.engine.clone()));
-            *base = Some(nop);
-            true
-        } else {
-            false
+    fn new_base(&self, id: String) -> InstanceData<T> {
+        let cfg = InstanceConfig::new(self.engine.clone());
+        InstanceData {
+            instance: None,
+            base: Some(Nop::new(id, &cfg)),
+            cfg: cfg,
+            pid: RwLock::new(None),
+            status: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -95,6 +126,15 @@ where
             .unwrap()
             .send((topic.clone(), Box::new(event)))
             .unwrap_or_else(|e| warn!("failed to send event for topic {}: {}", topic, e));
+    }
+
+    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>, Error> {
+        self.instances
+            .read()
+            .unwrap()
+            .get(id)
+            .ok_or_else(|| Error::NotFound(id.to_string()))
+            .map(|i| i.clone())
     }
 }
 
@@ -148,10 +188,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             if !spec.annotations().is_none() {
                 let annotations = spec.annotations().as_ref().unwrap();
                 if annotations.contains_key("io.kubernetes.cri.sandbox-id") {
-                    if !self.new_base(req.id.clone()) {
-                        return Err(Error::AlreadyExists("already exists".to_string()))?;
-                    };
-
+                    instances.insert(req.id.clone(), Arc::new(self.new_base(req.id.clone())));
                     self.send_event(TaskCreate {
                         container_id: req.get_id().into(),
                         bundle: req.get_bundle().into(),
@@ -282,7 +319,8 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         instances.insert(
             req.get_id().to_string(),
             Arc::new(InstanceData {
-                instance: Box::new(T::new(req.get_id().to_string(), &builder)),
+                instance: Some(T::new(req.get_id().to_string(), &builder)),
+                base: None,
                 cfg: builder,
                 pid: RwLock::new(None),
                 status: Arc::new(RwLock::new(None)),
@@ -320,12 +358,9 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             return Err(ShimError::Unimplemented("exec is not supported".to_string()).into());
         }
 
-        let instances = self.instances.read().unwrap();
-        let i = instances
-            .get(req.get_id())
-            .ok_or(Error::NotFound(req.get_id().to_string()))?;
+        let i = self.get_instance(req.get_id())?;
+        let pid = i.start()?;
 
-        let pid = i.instance.start()?;
         self.send_event(TaskStart {
             container_id: req.get_id().into(),
             pid: pid,
@@ -337,7 +372,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         drop(pid_w);
 
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        i.instance.wait(tx)?;
+        i.wait(tx)?;
 
         let lock = i.status.clone();
         let sender = self.events.clone();
@@ -388,13 +423,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         }
         debug!("kill: {:?}", req);
 
-        let instances = self.instances.read().unwrap();
-        let i = instances
-            .get(req.get_id())
-            .ok_or_else(|| Error::NotFound("instance not found".to_string()))?;
-
-        i.instance.kill(req.get_signal())?;
-
+        self.get_instance(req.get_id())?.kill(req.get_signal())?;
         Ok(api::Empty::new())
     }
 
@@ -408,12 +437,9 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
-        let mut instances = self.instances.write().unwrap();
-        let i = instances
-            .get(req.get_id())
-            .ok_or(Error::NotFound(req.get_id().to_string()))?;
+        let i = self.get_instance(req.get_id())?;
 
-        i.instance.delete()?;
+        i.delete()?;
 
         let pid = i.pid.read().unwrap().unwrap_or_default();
 
@@ -434,13 +460,17 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             event.exit_status = ec.0;
             resp.exit_status = ec.0;
 
+            let mut ts = Timestamp::new();
+            ts.set_seconds(ec.1.timestamp());
+            ts.set_nanos(ec.1.timestamp_subsec_nanos() as i32);
+
             let timestamp = new_timestamp()?;
             event.set_exited_at(timestamp.clone());
             resp.set_exited_at(timestamp);
         }
         drop(status);
 
-        instances.remove(req.get_id());
+        self.instances.write().unwrap().remove(req.get_id());
 
         self.send_event(event);
         Ok(resp)
@@ -452,13 +482,9 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
-        let instances = self.instances.read().unwrap();
-        let i = instances
-            .get(req.get_id())
-            .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
-
+        let i = self.get_instance(req.get_id())?;
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        i.instance.wait(tx)?;
+        i.wait(tx)?;
 
         let code = rx.recv().unwrap();
         debug!("wait done: {:?}", req);
@@ -481,10 +507,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::ConnectRequest,
     ) -> TtrpcResult<api::ConnectResponse> {
         debug!("connect: {:?}", req);
-        let instances = self.instances.read().unwrap();
-        instances
-            .get(req.get_id())
-            .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
+        self.get_instance(req.get_id())?;
 
         Ok(api::ConnectResponse {
             shim_pid: std::process::id(),
@@ -503,11 +526,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
-        let instances = self.instances.read().unwrap();
-        let i = instances
-            .get(req.get_id())
-            .ok_or_else(|| Error::NotFound(req.get_id().to_string()))?;
-
+        let i = self.get_instance(req.get_id())?;
         let mut state = api::StateResponse {
             bundle: i.cfg.get_bundle().unwrap_or_default(),
             stdin: i.cfg.get_stdin().unwrap_or_default(),
