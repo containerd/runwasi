@@ -25,6 +25,7 @@ use oci_spec::runtime;
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{self, File};
+use std::ops::Not;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -136,6 +137,14 @@ where
             .ok_or_else(|| Error::NotFound(id.to_string()))
             .map(|i| i.clone())
     }
+
+    fn instance_exists(&self, id: &str) -> bool {
+        self.instances.read().unwrap().contains_key(id)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.instances.read().unwrap().is_empty()
+    }
 }
 
 impl<T> SandboxService for Local<T>
@@ -167,10 +176,8 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             ))?;
         }
 
-        let mut instances = self.instances.write().unwrap();
-
-        if instances.contains_key(&req.id) {
-            return Err(Error::AlreadyExists("aleady exists".to_string()).into());
+        if self.instance_exists(req.get_id()) {
+            return Err(Error::AlreadyExists(req.get_id().to_string()).into());
         }
 
         let mut spec = oci::load(
@@ -182,13 +189,16 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         )
         .map_err(|err| Error::InvalidArgument(format!("could not load runtime spec: {}", err)))?;
 
-        if instances.len() == 0 {
+        if self.is_empty() {
             // Check if this is a cri container
             // If it is cri, then this is the "pause" container, which we don't need to deal with.
-            if !spec.annotations().is_none() {
+            if spec.annotations().is_some() {
                 let annotations = spec.annotations().as_ref().unwrap();
                 if annotations.contains_key("io.kubernetes.cri.sandbox-id") {
-                    instances.insert(req.id.clone(), Arc::new(self.new_base(req.id.clone())));
+                    self.instances
+                        .write()
+                        .unwrap()
+                        .insert(req.id.clone(), Arc::new(self.new_base(req.id.clone())));
                     self.send_event(TaskCreate {
                         container_id: req.get_id().into(),
                         bundle: req.get_bundle().into(),
@@ -202,7 +212,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
                         ..Default::default()
                     });
                     return Ok(api::CreateTaskResponse {
-                        pid: 0, // TODO: PID
+                        pid: std::process::id(), // TODO: PID
                         ..Default::default()
                     });
                 }
@@ -316,7 +326,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
             .set_stdout(req.get_stdout().into())
             .set_stderr(req.get_stderr().into())
             .set_bundle(req.get_bundle().into());
-        instances.insert(
+        self.instances.write().unwrap().insert(
             req.get_id().to_string(),
             Arc::new(InstanceData {
                 instance: Some(T::new(req.get_id().to_string(), &builder)),
@@ -343,7 +353,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         debug!("create done");
 
         Ok(api::CreateTaskResponse {
-            pid: 0, // TODO: PID
+            pid: std::process::id(),
             ..Default::default()
         })
     }
@@ -354,7 +364,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::StartRequest,
     ) -> TtrpcResult<api::StartResponse> {
         debug!("start: {:?}", req);
-        if !req.get_exec_id().is_empty() {
+        if req.get_exec_id().is_empty().not() {
             return Err(ShimError::Unimplemented("exec is not supported".to_string()).into());
         }
 
@@ -418,7 +428,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
     }
 
     fn kill(&self, _ctx: &TtrpcContext, req: api::KillRequest) -> TtrpcResult<api::Empty> {
-        if !req.get_exec_id().is_empty() {
+        if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
         debug!("kill: {:?}", req);
@@ -433,7 +443,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::DeleteRequest,
     ) -> TtrpcResult<api::DeleteResponse> {
         debug!("delete: {:?}", req);
-        if !req.get_exec_id().is_empty() {
+        if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
@@ -478,7 +488,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
 
     fn wait(&self, _ctx: &TtrpcContext, req: api::WaitRequest) -> TtrpcResult<api::WaitResponse> {
         debug!("wait: {:?}", req);
-        if !req.get_exec_id().is_empty() {
+        if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
@@ -522,7 +532,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::StateRequest,
     ) -> TtrpcResult<api::StateResponse> {
         debug!("state: {:?}", req);
-        if !req.get_exec_id().is_empty() {
+        if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
 
@@ -536,12 +546,14 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         };
 
         let pid_lock = i.pid.read().unwrap();
-        let pid = *pid_lock;
+        let pid = (*pid_lock).clone();
         if pid.is_none() {
             state.status = Status::CREATED;
             return Ok(state);
         }
         drop(pid_lock);
+
+        state.set_pid(pid.unwrap());
 
         let status = i.status.read().unwrap();
 
@@ -567,8 +579,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
     fn shutdown(&self, _ctx: &TtrpcContext, _req: api::ShutdownRequest) -> TtrpcResult<api::Empty> {
         debug!("shutdown");
 
-        let instances = self.instances.read().unwrap();
-        if instances.len() > 0 {
+        if self.is_empty().not() {
             return Ok(api::Empty::new());
         }
 
@@ -634,7 +645,11 @@ where
                 if ns.path().is_some() {
                     let p = ns.path().clone().unwrap();
                     let f = File::open(p).map_err(|err| {
-                        ShimError::Other(format!("could not open network namespace: {0}", err))
+                        ShimError::Other(format!(
+                            "could not open network namespace {}: {}",
+                            ns.path().clone().unwrap().to_str().unwrap(),
+                            err
+                        ))
                     })?;
                     setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
                         ShimError::Other(format!("could not set network namespace: {0}", err))

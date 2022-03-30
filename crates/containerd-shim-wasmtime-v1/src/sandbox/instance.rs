@@ -484,7 +484,7 @@ impl Instance for Nop {
         }
     }
     fn start(&self) -> Result<u32, Error> {
-        Ok(0) // TODO: PID
+        Ok(std::process::id())
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
