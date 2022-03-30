@@ -517,11 +517,13 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::ConnectRequest,
     ) -> TtrpcResult<api::ConnectResponse> {
         debug!("connect: {:?}", req);
-        self.get_instance(req.get_id())?;
+
+        let i = self.get_instance(req.get_id())?;
+        let pid = *i.pid.read().unwrap().as_ref().unwrap_or(&0);
 
         Ok(api::ConnectResponse {
             shim_pid: std::process::id(),
-            task_pid: std::process::id(),
+            task_pid: pid,
             ..Default::default()
         })
     }
