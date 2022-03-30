@@ -9,6 +9,8 @@ ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
 
+CONTAINERD_NAMESPACE ?= default
+
 .PHONY: build
 build:
 	cargo build $(RELEASE_FLAG)
@@ -25,4 +27,4 @@ test/out/img.tar: test/image/Dockerfile test/image/src/main.rs test/image/Cargo.
 	docker buildx build --platform=wasi/wasm -o type=docker,dest=$@ -t $(TEST_IMG_NAME) ./test/image
 
 load: test/out/img.tar
-	sudo ctr image import $<
+	sudo ctr -n $(CONTAINERD_NAMESPACE) image import $<
