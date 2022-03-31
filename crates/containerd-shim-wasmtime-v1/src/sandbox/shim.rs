@@ -171,7 +171,7 @@ mod localtests {
         let sandbox_id = "test-cri-task".to_string();
         create_bundle(&dir, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
 
-        local.create_task(api::CreateTaskRequest {
+        local.task_create(api::CreateTaskRequest {
             id: "testbase".to_string(),
             bundle: dir.to_str().unwrap().to_string(),
             ..Default::default()
@@ -188,7 +188,7 @@ mod localtests {
         assert!(i.base.is_some());
         assert!(i.instance.is_none());
 
-        local.start_task(api::StartRequest {
+        local.task_start(api::StartRequest {
             id: "testbase".to_string(),
             ..Default::default()
         })?;
@@ -202,7 +202,7 @@ mod localtests {
         let ll = local.clone();
         let (base_tx, base_rx) = channel();
         thread::spawn(move || {
-            let resp = ll.wait_task(api::WaitRequest {
+            let resp = ll.task_wait(api::WaitRequest {
                 id: "testbase".to_string(),
                 ..Default::default()
             });
@@ -214,7 +214,7 @@ mod localtests {
         let dir2 = temp2.path();
         create_bundle(&dir2, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
 
-        local.create_task(api::CreateTaskRequest {
+        local.task_create(api::CreateTaskRequest {
             id: "testinstance".to_string(),
             bundle: dir2.to_str().unwrap().to_string(),
             ..Default::default()
@@ -232,7 +232,7 @@ mod localtests {
         assert!(i.base.is_none());
         assert!(i.instance.is_some());
 
-        local.start_task(api::StartRequest {
+        local.task_start(api::StartRequest {
             id: "testinstance".to_string(),
             ..Default::default()
         })?;
@@ -246,7 +246,7 @@ mod localtests {
         let ll = local.clone();
         let (instance_tx, instance_rx) = channel();
         std::thread::spawn(move || {
-            let resp = ll.wait_task(api::WaitRequest {
+            let resp = ll.task_wait(api::WaitRequest {
                 id: "testinstance".to_string(),
                 ..Default::default()
             });
@@ -254,7 +254,7 @@ mod localtests {
         });
         instance_rx.try_recv().unwrap_err();
 
-        local.kill_task(api::KillRequest {
+        local.task_kill(api::KillRequest {
             id: "testinstance".to_string(),
             signal: 9,
             ..Default::default()
@@ -267,7 +267,7 @@ mod localtests {
             ..Default::default()
         })?;
         assert_eq!(state.status, Status::STOPPED);
-        local.delete_task(api::DeleteRequest {
+        local.task_delete(api::DeleteRequest {
             id: "testinstance".to_string(),
             ..Default::default()
         })?;
@@ -290,7 +290,7 @@ mod localtests {
         })?;
         assert_eq!(state.status, Status::RUNNING);
 
-        local.kill_task(api::KillRequest {
+        local.task_kill(api::KillRequest {
             id: "testbase".to_string(),
             signal: 9,
             ..Default::default()
@@ -303,7 +303,7 @@ mod localtests {
         })?;
         assert_eq!(state.status, Status::STOPPED);
 
-        local.delete_task(api::DeleteRequest {
+        local.task_delete(api::DeleteRequest {
             id: "testbase".to_string(),
             ..Default::default()
         })?;
@@ -348,14 +348,14 @@ mod localtests {
             e => return Err(e),
         }
 
-        local.create_task(api::CreateTaskRequest {
+        local.task_create(api::CreateTaskRequest {
             id: "test".to_string(),
             bundle: dir.to_str().unwrap().to_string(),
             ..Default::default()
         })?;
 
         match local
-            .create_task(api::CreateTaskRequest {
+            .task_create(api::CreateTaskRequest {
                 id: "test".to_string(),
                 bundle: dir.to_str().unwrap().to_string(),
                 ..Default::default()
@@ -373,7 +373,7 @@ mod localtests {
 
         assert_eq!(state.get_status(), Status::CREATED);
 
-        local.start_task(api::StartRequest {
+        local.task_start(api::StartRequest {
             id: "test".to_string(),
             ..Default::default()
         })?;
@@ -388,7 +388,7 @@ mod localtests {
         let (tx, rx) = channel();
         let ll = local.clone();
         thread::spawn(move || {
-            let resp = ll.wait_task(api::WaitRequest {
+            let resp = ll.task_wait(api::WaitRequest {
                 id: "test".to_string(),
                 ..Default::default()
             });
@@ -397,7 +397,7 @@ mod localtests {
 
         rx.try_recv().unwrap_err();
 
-        local.kill_task(api::KillRequest {
+        local.task_kill(api::KillRequest {
             id: "test".to_string(),
             signal: 9,
             ..Default::default()
@@ -411,7 +411,7 @@ mod localtests {
         })?;
         assert_eq!(state.get_status(), Status::STOPPED);
 
-        local.delete_task(api::DeleteRequest {
+        local.task_delete(api::DeleteRequest {
             id: "test".to_string(),
             ..Default::default()
         })?;
@@ -490,7 +490,7 @@ where
         self.instances.read().unwrap().is_empty()
     }
 
-    fn create_task(&self, req: api::CreateTaskRequest) -> Result<api::CreateTaskResponse> {
+    fn task_create(&self, req: api::CreateTaskRequest) -> Result<api::CreateTaskResponse> {
         if !req.get_checkpoint().is_empty() || !req.get_parent_checkpoint().is_empty() {
             return Err(ShimError::Unimplemented("checkpoint is not supported".to_string()).into());
         }
@@ -685,7 +685,7 @@ where
         })
     }
 
-    fn start_task(&self, req: api::StartRequest) -> Result<api::StartResponse> {
+    fn task_start(&self, req: api::StartRequest) -> Result<api::StartResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(ShimError::Unimplemented("exec is not supported".to_string()).into());
         }
@@ -749,7 +749,7 @@ where
         })
     }
 
-    fn kill_task(&self, req: api::KillRequest) -> Result<()> {
+    fn task_kill(&self, req: api::KillRequest) -> Result<()> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -757,7 +757,7 @@ where
         Ok(())
     }
 
-    fn delete_task(&self, req: api::DeleteRequest) -> Result<api::DeleteResponse> {
+    fn task_delete(&self, req: api::DeleteRequest) -> Result<api::DeleteResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -801,7 +801,7 @@ where
         Ok(resp)
     }
 
-    fn wait_task(&self, req: api::WaitRequest) -> Result<api::WaitResponse> {
+    fn task_wait(&self, req: api::WaitRequest) -> Result<api::WaitResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -889,7 +889,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::CreateTaskRequest,
     ) -> TtrpcResult<api::CreateTaskResponse> {
         debug!("create: {:?}", req);
-        let resp = self.create_task(req)?;
+        let resp = self.task_create(req)?;
         Ok(resp)
     }
 
@@ -899,13 +899,13 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::StartRequest,
     ) -> TtrpcResult<api::StartResponse> {
         debug!("start: {:?}", req);
-        let resp = self.start_task(req)?;
+        let resp = self.task_start(req)?;
         Ok(resp)
     }
 
     fn kill(&self, _ctx: &TtrpcContext, req: api::KillRequest) -> TtrpcResult<api::Empty> {
         debug!("kill: {:?}", req);
-        self.kill_task(req)?;
+        self.task_kill(req)?;
         Ok(api::Empty::new())
     }
 
@@ -915,13 +915,13 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         req: api::DeleteRequest,
     ) -> TtrpcResult<api::DeleteResponse> {
         debug!("delete: {:?}", req);
-        let resp = self.delete_task(req)?;
+        let resp = self.task_delete(req)?;
         Ok(resp)
     }
 
     fn wait(&self, _ctx: &TtrpcContext, req: api::WaitRequest) -> TtrpcResult<api::WaitResponse> {
         debug!("wait: {:?}", req);
-        let resp = self.wait_task(req)?;
+        let resp = self.task_wait(req)?;
         Ok(resp)
     }
 
