@@ -42,32 +42,34 @@ struct InstanceData<T: Instance> {
     status: Arc<RwLock<Option<(u32, DateTime<Utc>)>>>,
 }
 
+type Result<T> = std::result::Result<T, Error>;
+
 impl<T> InstanceData<T>
 where
     T: Instance,
 {
-    fn start(&self) -> Result<u32, Error> {
+    fn start(&self) -> Result<u32> {
         if self.instance.is_some() {
             return self.instance.as_ref().unwrap().start();
         }
         self.base.as_ref().unwrap().start()
     }
 
-    fn kill(&self, signal: u32) -> Result<(), Error> {
+    fn kill(&self, signal: u32) -> Result<()> {
         if self.instance.is_some() {
             return self.instance.as_ref().unwrap().kill(signal);
         }
         self.base.as_ref().unwrap().kill(signal)
     }
 
-    fn delete(&self) -> Result<(), Error> {
+    fn delete(&self) -> Result<()> {
         if self.instance.is_some() {
             return self.instance.as_ref().unwrap().delete();
         }
         self.base.as_ref().unwrap().delete()
     }
 
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<()> {
         if self.instance.is_some() {
             return self.instance.as_ref().unwrap().wait(send);
         }
@@ -85,6 +87,348 @@ pub struct Local<T: Instance + Send + Sync> {
     instances: Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
+}
+
+#[cfg(test)]
+mod localtests {
+    use super::*;
+    use anyhow::Context;
+    use serde_json as json;
+    use std::fs::create_dir;
+    use std::time::Duration;
+    use tempfile::tempdir;
+
+    struct LocalWithDescrutor<T: Instance + Send + Sync> {
+        local: Arc<Local<T>>,
+    }
+
+    impl<T> LocalWithDescrutor<T>
+    where
+        T: Instance + Send + Sync,
+    {
+        fn new(local: Arc<Local<T>>) -> Self {
+            Self { local }
+        }
+    }
+
+    impl<T> Drop for LocalWithDescrutor<T>
+    where
+        T: Instance + Send + Sync,
+    {
+        fn drop(&mut self) {
+            self.local
+                .instances
+                .write()
+                .unwrap()
+                .iter()
+                .for_each(|(_, v)| {
+                    v.kill(9).unwrap();
+                    v.delete().unwrap();
+                });
+        }
+    }
+
+    fn with_cri_sandbox(spec: Option<runtime::Spec>, id: String) -> runtime::Spec {
+        let mut s = spec.unwrap_or(runtime::Spec::default());
+        let mut annotations = HashMap::new();
+        s.annotations().as_ref().map(|a| {
+            a.iter().map(|(k, v)| {
+                annotations.insert(k.to_string(), v.to_string());
+            })
+        });
+        annotations.insert("io.kubernetes.cri.sandbox-id".to_string(), id);
+
+        s.set_annotations(Some(annotations));
+        return s;
+    }
+
+    fn create_bundle(dir: &std::path::Path, spec: Option<runtime::Spec>) -> Result<()> {
+        create_dir(dir.join("rootfs"))?;
+
+        let s = spec.unwrap_or(runtime::Spec::default());
+
+        json::to_writer(File::create(dir.join("config.json"))?, &s)
+            .context("could not write config.json")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_cri_task() -> Result<()> {
+        // Currently the relationship between the "base" container and the "instances" are pretty weak.
+        // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
+        let (etx, _erx) = channel();
+        let exit_signal = Arc::new(ExitSignal::default());
+        let local = Arc::new(Local::<Nop>::new(
+            Engine::new(&EngineConfig::default())?,
+            etx,
+            exit_signal.clone(),
+        ));
+
+        let mut _wrapped = LocalWithDescrutor::new(local.clone());
+
+        let temp = tempdir().unwrap();
+        let dir = temp.path();
+        let sandbox_id = "test-cri-task".to_string();
+        create_bundle(&dir, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
+
+        local.create_task(api::CreateTaskRequest {
+            id: "testbase".to_string(),
+            bundle: dir.to_str().unwrap().to_string(),
+            ..Default::default()
+        })?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::CREATED);
+
+        // A little janky since this is internal data, but check that this is seen as a sandbox container
+        let i = local.get_instance("testbase")?;
+        assert!(i.base.is_some());
+        assert!(i.instance.is_none());
+
+        local.start_task(api::StartRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::RUNNING);
+
+        let ll = local.clone();
+        let (base_tx, base_rx) = channel();
+        thread::spawn(move || {
+            let resp = ll.wait_task(api::WaitRequest {
+                id: "testbase".to_string(),
+                ..Default::default()
+            });
+            base_tx.send(resp).unwrap();
+        });
+        base_rx.try_recv().unwrap_err();
+
+        let temp2 = tempdir().unwrap();
+        let dir2 = temp2.path();
+        create_bundle(&dir2, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
+
+        local.create_task(api::CreateTaskRequest {
+            id: "testinstance".to_string(),
+            bundle: dir2.to_str().unwrap().to_string(),
+            ..Default::default()
+        })?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::CREATED);
+
+        // again, this is janky since it is internal data, but check that this is seen as a "real" container.
+        // this is the inverse of the above test case.
+        let i = local.get_instance("testinstance")?;
+        assert!(i.base.is_none());
+        assert!(i.instance.is_some());
+
+        local.start_task(api::StartRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::RUNNING);
+
+        let ll = local.clone();
+        let (instance_tx, instance_rx) = channel();
+        std::thread::spawn(move || {
+            let resp = ll.wait_task(api::WaitRequest {
+                id: "testinstance".to_string(),
+                ..Default::default()
+            });
+            instance_tx.send(resp).unwrap();
+        });
+        instance_rx.try_recv().unwrap_err();
+
+        local.kill_task(api::KillRequest {
+            id: "testinstance".to_string(),
+            signal: 9,
+            ..Default::default()
+        })?;
+
+        instance_rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::STOPPED);
+        local.delete_task(api::DeleteRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+
+        match local
+            .task_state(api::StateRequest {
+                id: "testinstance".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err()
+        {
+            Error::NotFound(_) => {}
+            e => return Err(e),
+        }
+
+        base_rx.try_recv().unwrap_err();
+        let state = local.task_state(api::StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::RUNNING);
+
+        local.kill_task(api::KillRequest {
+            id: "testbase".to_string(),
+            signal: 9,
+            ..Default::default()
+        })?;
+
+        base_rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
+        let state = local.task_state(api::StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.status, Status::STOPPED);
+
+        local.delete_task(api::DeleteRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })?;
+        match local
+            .task_state(api::StateRequest {
+                id: "testbase".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err()
+        {
+            Error::NotFound(_) => {}
+            e => return Err(e),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_task_lifecycle() -> Result<()> {
+        let (etx, _erx) = channel(); // TODO: check events
+        let exit_signal = Arc::new(ExitSignal::default());
+        let local = Arc::new(Local::<Nop>::new(
+            Engine::new(&EngineConfig::default())?,
+            etx,
+            exit_signal.clone(),
+        ));
+
+        let mut _wrapped = LocalWithDescrutor::new(local.clone());
+
+        let temp = tempdir().unwrap();
+        let dir = temp.path();
+        create_bundle(dir, None)?;
+
+        match local
+            .task_state(api::StateRequest {
+                id: "test".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err()
+        {
+            Error::NotFound(_) => {}
+            e => return Err(e),
+        }
+
+        local.create_task(api::CreateTaskRequest {
+            id: "test".to_string(),
+            bundle: dir.to_str().unwrap().to_string(),
+            ..Default::default()
+        })?;
+
+        match local
+            .create_task(api::CreateTaskRequest {
+                id: "test".to_string(),
+                bundle: dir.to_str().unwrap().to_string(),
+                ..Default::default()
+            })
+            .unwrap_err()
+        {
+            Error::AlreadyExists(_) => {}
+            e => return Err(e),
+        }
+
+        let state = local.task_state(api::StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+
+        assert_eq!(state.get_status(), Status::CREATED);
+
+        local.start_task(api::StartRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+
+        assert_eq!(state.get_status(), Status::RUNNING);
+
+        let (tx, rx) = channel();
+        let ll = local.clone();
+        thread::spawn(move || {
+            let resp = ll.wait_task(api::WaitRequest {
+                id: "test".to_string(),
+                ..Default::default()
+            });
+            tx.send(resp).unwrap();
+        });
+
+        rx.try_recv().unwrap_err();
+
+        local.kill_task(api::KillRequest {
+            id: "test".to_string(),
+            signal: 9,
+            ..Default::default()
+        })?;
+
+        rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
+
+        let state = local.task_state(api::StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+        assert_eq!(state.get_status(), Status::STOPPED);
+
+        local.delete_task(api::DeleteRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+
+        match local
+            .task_state(api::StateRequest {
+                id: "test".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err()
+        {
+            Error::NotFound(_) => {}
+            e => return Err(e),
+        }
+
+        Ok(())
+    }
 }
 
 impl<T> Local<T>
@@ -129,7 +473,7 @@ where
             .unwrap_or_else(|e| warn!("failed to send event for topic {}: {}", topic, e));
     }
 
-    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>, Error> {
+    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>> {
         self.instances
             .read()
             .unwrap()
@@ -145,27 +489,8 @@ where
     fn is_empty(&self) -> bool {
         self.instances.read().unwrap().is_empty()
     }
-}
 
-impl<T> SandboxService for Local<T>
-where
-    T: Instance + Sync + Send,
-{
-    type Instance = T;
-    fn new(namespace: String, _id: String, engine: Engine, publisher: RemotePublisher) -> Self {
-        let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(namespace.to_string(), publisher, rx);
-        Local::<T>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
-    }
-}
-
-impl<T: Instance + Sync + Send> Task for Local<T> {
-    fn create(
-        &self,
-        _ctx: &TtrpcContext,
-        req: api::CreateTaskRequest,
-    ) -> TtrpcResult<api::CreateTaskResponse> {
-        debug!("create: {:?}", req);
+    fn create_task(&self, req: api::CreateTaskRequest) -> Result<api::CreateTaskResponse> {
         if !req.get_checkpoint().is_empty() || !req.get_parent_checkpoint().is_empty() {
             return Err(ShimError::Unimplemented("checkpoint is not supported".to_string()).into());
         }
@@ -192,6 +517,8 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         if self.is_empty() {
             // Check if this is a cri container
             // If it is cri, then this is the "pause" container, which we don't need to deal with.
+            //
+            // TODO: maybe we can just go ahead and execute the actual container with runc?
             if spec.annotations().is_some() {
                 let annotations = spec.annotations().as_ref().unwrap();
                 if annotations.contains_key("io.kubernetes.cri.sandbox-id") {
@@ -358,12 +685,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         })
     }
 
-    fn start(
-        &self,
-        _ctx: &::ttrpc::TtrpcContext,
-        req: api::StartRequest,
-    ) -> TtrpcResult<api::StartResponse> {
-        debug!("start: {:?}", req);
+    fn start_task(&self, req: api::StartRequest) -> Result<api::StartResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(ShimError::Unimplemented("exec is not supported".to_string()).into());
         }
@@ -427,22 +749,15 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         })
     }
 
-    fn kill(&self, _ctx: &TtrpcContext, req: api::KillRequest) -> TtrpcResult<api::Empty> {
+    fn kill_task(&self, req: api::KillRequest) -> Result<()> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
-        debug!("kill: {:?}", req);
-
         self.get_instance(req.get_id())?.kill(req.get_signal())?;
-        Ok(api::Empty::new())
+        Ok(())
     }
 
-    fn delete(
-        &self,
-        _ctx: &TtrpcContext,
-        req: api::DeleteRequest,
-    ) -> TtrpcResult<api::DeleteResponse> {
-        debug!("delete: {:?}", req);
+    fn delete_task(&self, req: api::DeleteRequest) -> Result<api::DeleteResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -486,8 +801,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         Ok(resp)
     }
 
-    fn wait(&self, _ctx: &TtrpcContext, req: api::WaitRequest) -> TtrpcResult<api::WaitResponse> {
-        debug!("wait: {:?}", req);
+    fn wait_task(&self, req: api::WaitRequest) -> Result<api::WaitResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -511,29 +825,7 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         Ok(wr)
     }
 
-    fn connect(
-        &self,
-        _ctx: &TtrpcContext,
-        req: api::ConnectRequest,
-    ) -> TtrpcResult<api::ConnectResponse> {
-        debug!("connect: {:?}", req);
-
-        let i = self.get_instance(req.get_id())?;
-        let pid = *i.pid.read().unwrap().as_ref().unwrap_or(&0);
-
-        Ok(api::ConnectResponse {
-            shim_pid: std::process::id(),
-            task_pid: pid,
-            ..Default::default()
-        })
-    }
-
-    fn state(
-        &self,
-        _ctx: &TtrpcContext,
-        req: api::StateRequest,
-    ) -> TtrpcResult<api::StateResponse> {
-        debug!("state: {:?}", req);
+    fn task_state(&self, req: api::StateRequest) -> Result<api::StateResponse> {
         if req.get_exec_id().is_empty().not() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
         }
@@ -574,8 +866,90 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
         } else {
             state.status = Status::RUNNING;
         }
-
         Ok(state)
+    }
+}
+
+impl<T> SandboxService for Local<T>
+where
+    T: Instance + Sync + Send,
+{
+    type Instance = T;
+    fn new(namespace: String, _id: String, engine: Engine, publisher: RemotePublisher) -> Self {
+        let (tx, rx) = channel::<(String, Box<dyn Message>)>();
+        forward_events(namespace.to_string(), publisher, rx);
+        Local::<T>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
+    }
+}
+
+impl<T: Instance + Sync + Send> Task for Local<T> {
+    fn create(
+        &self,
+        _ctx: &TtrpcContext,
+        req: api::CreateTaskRequest,
+    ) -> TtrpcResult<api::CreateTaskResponse> {
+        debug!("create: {:?}", req);
+        let resp = self.create_task(req)?;
+        Ok(resp)
+    }
+
+    fn start(
+        &self,
+        _ctx: &::ttrpc::TtrpcContext,
+        req: api::StartRequest,
+    ) -> TtrpcResult<api::StartResponse> {
+        debug!("start: {:?}", req);
+        let resp = self.start_task(req)?;
+        Ok(resp)
+    }
+
+    fn kill(&self, _ctx: &TtrpcContext, req: api::KillRequest) -> TtrpcResult<api::Empty> {
+        debug!("kill: {:?}", req);
+        self.kill_task(req)?;
+        Ok(api::Empty::new())
+    }
+
+    fn delete(
+        &self,
+        _ctx: &TtrpcContext,
+        req: api::DeleteRequest,
+    ) -> TtrpcResult<api::DeleteResponse> {
+        debug!("delete: {:?}", req);
+        let resp = self.delete_task(req)?;
+        Ok(resp)
+    }
+
+    fn wait(&self, _ctx: &TtrpcContext, req: api::WaitRequest) -> TtrpcResult<api::WaitResponse> {
+        debug!("wait: {:?}", req);
+        let resp = self.wait_task(req)?;
+        Ok(resp)
+    }
+
+    fn connect(
+        &self,
+        _ctx: &TtrpcContext,
+        req: api::ConnectRequest,
+    ) -> TtrpcResult<api::ConnectResponse> {
+        debug!("connect: {:?}", req);
+
+        let i = self.get_instance(req.get_id())?;
+        let pid = *i.pid.read().unwrap().as_ref().unwrap_or(&0);
+
+        Ok(api::ConnectResponse {
+            shim_pid: std::process::id(),
+            task_pid: pid,
+            ..Default::default()
+        })
+    }
+
+    fn state(
+        &self,
+        _ctx: &TtrpcContext,
+        req: api::StateRequest,
+    ) -> TtrpcResult<api::StateResponse> {
+        debug!("state: {:?}", req);
+        let resp = self.task_state(req)?;
+        Ok(resp)
     }
 
     fn shutdown(&self, _ctx: &TtrpcContext, _req: api::ShutdownRequest) -> TtrpcResult<api::Empty> {
