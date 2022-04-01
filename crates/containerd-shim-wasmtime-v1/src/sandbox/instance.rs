@@ -408,6 +408,12 @@ mod wasitest {
     "#.as_bytes();
 
     #[test]
+    fn test_delete_after_create() {
+        let i = Wasi::new("".to_string(), &InstanceConfig::new(Engine::default()));
+        i.delete().unwrap();
+    }
+
+    #[test]
     fn test_wasi() -> Result<(), Error> {
         let dir = tempdir()?;
         create_dir(&dir.path().join("rootfs"))?;
@@ -601,5 +607,11 @@ mod noptests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_nop_delete_after_create() {
+        let nop = Nop::new("".to_string(), &InstanceConfig::new(Engine::default()));
+        nop.delete().unwrap();
     }
 }
