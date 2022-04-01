@@ -29,7 +29,7 @@ use std::ops::Not;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use ttrpc::context::Context;
 use wasmtime::{Config as EngineConfig, Engine};
@@ -39,7 +39,8 @@ struct InstanceData<T: Instance> {
     base: Option<Nop>,
     cfg: InstanceConfig,
     pid: RwLock<Option<u32>>,
-    status: Arc<RwLock<Option<(u32, DateTime<Utc>)>>>,
+    status: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
+    state: Arc<RwLock<TaskStateWrapper>>,
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -49,13 +50,56 @@ where
     T: Instance,
 {
     fn start(&self) -> Result<u32> {
+        let mut s = self.state.write().unwrap();
+        let new_state = s.start()?;
+        *s = new_state.into();
         if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().start();
-        }
-        self.base.as_ref().unwrap().start()
+            return self
+                .instance
+                .as_ref()
+                .unwrap()
+                .start()
+                .map(|pid| {
+                    s.started().and_then(|new_state| {
+                        *s = new_state.into();
+                        Ok(new_state)
+                    })?;
+                    Ok(pid)
+                })
+                .map_err(|err| {
+                    let _ = s
+                        .stop()
+                        .and_then(|new_state| {
+                            *s = new_state.into();
+                            Ok(new_state)
+                        })
+                        .map_err(|e| warn!("could not set exited state after failed start: {}", e));
+                    err
+                })?;
+        };
+
+        return self.base.as_ref().unwrap().start().and_then(|pid| {
+            s.started()
+                .and_then(|new_state| {
+                    *s = new_state.into();
+                    Ok(new_state)
+                })
+                .map_err(|err| {
+                    let new_state = s
+                        .stop()
+                        .map_err(|e| warn!("could not set exited state after failed start: {}", e));
+                    if new_state.is_ok() {
+                        *s = new_state.unwrap().into();
+                    }
+                    err
+                })?;
+            Ok(pid)
+        });
     }
 
     fn kill(&self, signal: u32) -> Result<()> {
+        let s = self.state.read().unwrap();
+        s.kill()?;
         if self.instance.is_some() {
             return self.instance.as_ref().unwrap().kill(signal);
         }
@@ -63,10 +107,33 @@ where
     }
 
     fn delete(&self) -> Result<()> {
+        let mut s = self.state.write().unwrap();
+        let new_state = s.delete()?;
+        *s = new_state.into();
         if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().delete();
+            return self.instance.as_ref().unwrap().delete().map_err(|err| {
+                let _ = s
+                    .stop()
+                    .and_then(|new_state| {
+                        *s = new_state.into();
+                        Ok(new_state)
+                    })
+                    .map_err(|e| warn!("could not set reset state after failed delete: {}", e));
+                err
+            });
         }
-        self.base.as_ref().unwrap().delete()
+        self.base.as_ref().unwrap().delete().map_err(|err| {
+            let _ = s
+                .stop()
+                .and_then(|new_state| {
+                    *s = new_state.into();
+                    Ok(new_state)
+                })
+                .map_err(|e| {
+                    warn!("could not set exited state after failed delete: {}", e);
+                });
+            err
+        })
     }
 
     fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<()> {
@@ -78,6 +145,173 @@ where
 }
 
 type EventSender = Sender<(String, Box<dyn Message>)>;
+
+#[derive(Debug, Clone, Copy)]
+struct Created {}
+#[derive(Debug, Clone, Copy)]
+struct Starting {}
+#[derive(Debug, Clone, Copy)]
+struct Started {}
+#[derive(Debug, Clone, Copy)]
+struct Exited {}
+#[derive(Debug, Clone, Copy)]
+struct Deleting {}
+
+#[derive(Debug, Clone, Copy)]
+struct TaskState<T> {
+    s: std::marker::PhantomData<T>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum TaskStateWrapper {
+    Created(TaskState<Created>),
+    Starting(TaskState<Starting>),
+    Started(TaskState<Started>),
+    Exited(TaskState<Exited>),
+    Deleting(TaskState<Deleting>),
+}
+
+impl TaskStateWrapper {
+    fn start(self) -> Result<TaskState<Starting>> {
+        match self {
+            TaskStateWrapper::Created(s) => Ok(s.into()),
+            s => Err(Error::FailedPrecondition(format!(
+                "invalid state transition: ${:?} => Starting",
+                s,
+            ))),
+        }
+    }
+
+    fn kill(self) -> Result<()> {
+        match self {
+            TaskStateWrapper::Started(_) => Ok(()),
+            s => Err(Error::FailedPrecondition(format!(
+                "cannot kill non-running container, current state: {:?}",
+                s,
+            ))),
+        }
+    }
+
+    fn delete(self) -> Result<TaskState<Deleting>> {
+        match self {
+            TaskStateWrapper::Created(s) => Ok(s.into()),
+            TaskStateWrapper::Exited(s) => Ok(s.into()),
+            s => Err(Error::FailedPrecondition(format!(
+                "cannot delete non-exted container, current state: {:?}",
+                s,
+            ))),
+        }
+    }
+
+    fn started(self) -> Result<TaskState<Started>> {
+        match self {
+            TaskStateWrapper::Starting(s) => Ok(s.into()),
+            s => Err(Error::FailedPrecondition(format!(
+                "invalid state transition: ${:?} => Started",
+                s,
+            ))),
+        }
+    }
+
+    fn stop(self) -> Result<TaskState<Exited>> {
+        match self {
+            TaskStateWrapper::Started(s) => Ok(s.into()),
+            TaskStateWrapper::Starting(s) => Ok(s.into()),
+            TaskStateWrapper::Deleting(s) => Ok(s.into()),
+            s => Err(Error::FailedPrecondition(format!(
+                "invalid state transition: ${:?} => Exited",
+                s,
+            ))),
+        }
+    }
+}
+
+impl Into<TaskStateWrapper> for TaskState<Created> {
+    fn into(self) -> TaskStateWrapper {
+        TaskStateWrapper::Created(self)
+    }
+}
+
+impl Into<TaskStateWrapper> for TaskState<Starting> {
+    fn into(self) -> TaskStateWrapper {
+        TaskStateWrapper::Starting(self)
+    }
+}
+
+impl Into<TaskStateWrapper> for TaskState<Started> {
+    fn into(self) -> TaskStateWrapper {
+        TaskStateWrapper::Started(self)
+    }
+}
+
+impl Into<TaskStateWrapper> for TaskState<Exited> {
+    fn into(self) -> TaskStateWrapper {
+        TaskStateWrapper::Exited(self)
+    }
+}
+
+impl Into<TaskStateWrapper> for TaskState<Deleting> {
+    fn into(self) -> TaskStateWrapper {
+        TaskStateWrapper::Deleting(self)
+    }
+}
+
+impl From<TaskState<Created>> for TaskState<Starting> {
+    fn from(_val: TaskState<Created>) -> Self {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+impl From<TaskState<Created>> for TaskState<Deleting> {
+    fn from(_val: TaskState<Created>) -> TaskState<Deleting> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+impl From<TaskState<Starting>> for TaskState<Started> {
+    fn from(_val: TaskState<Starting>) -> TaskState<Started> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+impl From<TaskState<Starting>> for TaskState<Exited> {
+    fn from(_val: TaskState<Starting>) -> TaskState<Exited> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+impl From<TaskState<Started>> for TaskState<Exited> {
+    fn from(_val: TaskState<Started>) -> TaskState<Exited> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+impl From<TaskState<Exited>> for TaskState<Deleting> {
+    fn from(_val: TaskState<Exited>) -> TaskState<Deleting> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
+
+// This is for potential failure cases where we want delete to be able to be retried.
+impl From<TaskState<Deleting>> for TaskState<Exited> {
+    fn from(_val: TaskState<Deleting>) -> TaskState<Exited> {
+        TaskState {
+            s: std::marker::PhantomData,
+        }
+    }
+}
 
 /// Local implements the Task service for a containerd shim.
 /// It defers all task operations to the `Instance` implementation.
@@ -122,7 +356,7 @@ mod localtests {
                 .unwrap()
                 .iter()
                 .for_each(|(_, v)| {
-                    v.kill(9).unwrap();
+                    let _ = v.kill(9);
                     v.delete().unwrap();
                 });
         }
@@ -150,6 +384,36 @@ mod localtests {
         json::to_writer(File::create(dir.join("config.json"))?, &s)
             .context("could not write config.json")?;
         Ok(())
+    }
+
+    #[test]
+    fn test_delete_after_create() {
+        let dir = tempdir().unwrap();
+        let id = "test-delete-after-create";
+        create_bundle(&dir.path(), None).unwrap();
+
+        let (tx, _rx) = channel();
+        let local = Arc::new(Local::<Nop>::new(
+            Engine::default(),
+            tx,
+            Arc::new(ExitSignal::default()),
+        ));
+        let mut _wrapped = LocalWithDescrutor::new(local.clone());
+
+        local
+            .task_create(api::CreateTaskRequest {
+                id: id.to_string(),
+                bundle: dir.path().to_str().unwrap().to_string(),
+                ..Default::default()
+            })
+            .unwrap();
+
+        local
+            .task_delete(api::DeleteRequest {
+                id: id.to_string(),
+                ..Default::default()
+            })
+            .unwrap();
     }
 
     #[test]
@@ -460,7 +724,12 @@ where
             base: Some(Nop::new(id, &cfg)),
             cfg: cfg,
             pid: RwLock::new(None),
-            status: Arc::new(RwLock::new(None)),
+            status: Arc::new((Mutex::new(None), Condvar::new())),
+            state: Arc::new(RwLock::new(TaskStateWrapper::Created(
+                TaskState::<Created> {
+                    s: std::marker::PhantomData,
+                },
+            ))),
         }
     }
 
@@ -660,7 +929,12 @@ where
                 base: None,
                 cfg: builder,
                 pid: RwLock::new(None),
-                status: Arc::new(RwLock::new(None)),
+                status: Arc::new((Mutex::new(None), Condvar::new())),
+                state: Arc::new(RwLock::new(TaskStateWrapper::Created(
+                    TaskState::<Created> {
+                        s: std::marker::PhantomData,
+                    },
+                ))),
             }),
         );
 
@@ -693,31 +967,40 @@ where
         let i = self.get_instance(req.get_id())?;
         let pid = i.start()?;
 
+        let mut pid_w = i.pid.write().unwrap();
+        *pid_w = Some(pid);
+        drop(pid_w);
+
         self.send_event(TaskStart {
             container_id: req.get_id().into(),
             pid: pid,
             ..Default::default()
         });
 
-        let mut pid_w = i.pid.write().unwrap();
-        *pid_w = Some(pid);
-        drop(pid_w);
-
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
         i.wait(tx)?;
 
-        let lock = i.status.clone();
+        let status = i.status.clone();
+
         let sender = self.events.clone();
 
         let id = req.get_id().to_string();
+        let state = i.state.clone();
 
         thread::Builder::new()
             .name(format!("{}-wait", req.get_id()))
             .spawn(move || {
                 let ec = rx.recv().unwrap();
 
-                let mut status = lock.write().unwrap();
+                let mut s = state.write().unwrap();
+                *s = TaskStateWrapper::Exited(TaskState::<Exited> {
+                    s: std::marker::PhantomData,
+                });
+
+                let (lock, cvar) = &*status;
+                let mut status = lock.lock().unwrap();
                 *status = Some(ec);
+                cvar.notify_all();
                 drop(status);
 
                 let timestamp = new_timestamp().unwrap();
@@ -779,7 +1062,7 @@ where
             ..Default::default()
         };
 
-        let status = i.status.read().unwrap();
+        let status = i.status.0.lock().unwrap();
         if status.is_some() {
             let ec = status.unwrap();
             event.exit_status = ec.0;
@@ -807,6 +1090,13 @@ where
         }
 
         let i = self.get_instance(req.get_id())?;
+
+        let (lock, cvar) = &*i.status.clone();
+        let mut status = lock.lock().unwrap();
+        while (*status).is_none() {
+            status = cvar.wait(status).unwrap();
+        }
+
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
         i.wait(tx)?;
 
@@ -849,7 +1139,7 @@ where
 
         state.set_pid(pid.unwrap());
 
-        let status = i.status.read().unwrap();
+        let status = i.status.0.lock().unwrap();
 
         let code = *status;
         drop(status);
@@ -1038,7 +1328,7 @@ where
             }
         }
 
-        // Keep all mounts chanmges (such as for the rootfs) private to the shim
+        // Keep all mounts changes (such as for the rootfs) private to the shim
         // This way mounts will automatically be cleaned up when the shim exits.
         unshare(CloneFlags::CLONE_NEWNS).map_err(|err| {
             shim::Error::Other(format!("failed to unshare mount namespace: {}", err))
@@ -1053,8 +1343,7 @@ where
         )
         .map_err(|err| shim::Error::Other(format!("failed to remount rootfs as slave: {}", err)))?;
 
-        let (_child, address) =
-            shim::spawn(containerd_shim::StartOpts { ..opts }, &grouping, envs)?;
+        let (_child, address) = shim::spawn(opts, &grouping, envs)?;
 
         write_address(&address)?;
 
