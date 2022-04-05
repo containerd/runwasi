@@ -67,6 +67,10 @@ impl InstanceConfig {
     pub fn get_bundle(&self) -> Option<String> {
         self.bundle.clone()
     }
+
+    pub fn get_engine(&self) -> Engine {
+        self.engine.clone()
+    }
 }
 
 pub trait Instance {
