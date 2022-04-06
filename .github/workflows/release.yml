@@ -1,0 +1,63 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.*'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test --verbose
+  release:
+    permissions:
+      contents: write
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set RELEASE_VERSION ENV var
+        run: echo "RELEASE_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
+      - name: Install latest Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+      - name: build release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: package release assets
+        run: |
+          mkdir _dist
+          cp target/release/containerd-shim-wasmtime-v1 _dist/
+          cd _dist
+          tar czf containerd-shim-wasmtime-v1-${{ env.RELEASE_VERSION }}-${{ env.RUNNER_OS }}-amd64.tar.gz containerd-shim-wasmtime-v1
+      - name: upload binary as GitHub artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: containerd-shim-wasmtime-v1
+          path: _dist/containerd-shim-wasmtime-v1-${{ env.RELEASE_VERSION }}-${{ env.RUNNER_OS }}-amd64.tar.gz
+      - name: upload binary to GitHub release
+        uses: svenstaro/upload-release-action@2.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: _dist/containerd-shim-wasmtime-v1-${{ env.RELEASE_VERSION }}-${{ env.RUNNER_OS }}-amd64.tar.gz
+          asset_name: containerd-shim-wasmtime-v1-${{ env.RELEASE_VERSION }}-${{ env.RUNNER_OS }}-amd64.tar.gz
+          overwrite: true
+          prerelease: true
+          body: |
+            Release of containerd-shim-wasmtime-v1:${{ env.RELEASE_VERSION }} for amd64
+
