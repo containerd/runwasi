@@ -58,6 +58,7 @@ jobs:
           asset_name: containerd-shim-wasmtime-v1-${{ env.RELEASE_VERSION }}-${{ env.RUNNER_OS }}-amd64.tar.gz
           overwrite: true
           prerelease: true
+          tag: ${{ github.ref }}
           body: |
             Release of containerd-shim-wasmtime-v1:${{ env.RELEASE_VERSION }} for amd64
 
