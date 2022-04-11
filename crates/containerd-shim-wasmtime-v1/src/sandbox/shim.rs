@@ -1,4 +1,4 @@
-use super::instance::{Instance, InstanceConfig, Nop};
+use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
@@ -32,7 +32,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use ttrpc::context::Context;
-use wasmtime::{Config as EngineConfig, Engine};
+use wasmtime::Engine;
 
 struct InstanceData<T: Instance> {
     instance: Option<T>,
@@ -331,6 +331,7 @@ mod localtests {
     use std::fs::create_dir;
     use std::time::Duration;
     use tempfile::tempdir;
+    use wasmtime::Config as EngineConfig;
 
     struct LocalWithDescrutor<T: Instance + Send + Sync> {
         local: Arc<Local<T>>,
@@ -1266,14 +1267,13 @@ pub struct Cli<T: Instance + Sync + Send> {
 
 impl<T> shim::Shim for Cli<T>
 where
-    T: Instance + Sync + Send,
+    T: Instance + Sync + Send + EngineGetter,
 {
     type T = Local<T>;
 
     fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
-        let engine = Engine::new(EngineConfig::new().interruptable(true)).unwrap();
         Cli {
-            engine,
+            engine: T::new_engine().unwrap(),
             phantom: std::marker::PhantomData,
             namespace: namespace.to_string(),
             exit: Arc::new(ExitSignal::default()),

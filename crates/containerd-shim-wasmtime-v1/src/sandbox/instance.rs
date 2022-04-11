@@ -9,7 +9,7 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
-use wasmtime::{Engine, Linker, Module, Store};
+use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
 #[derive(Clone)]
@@ -619,3 +619,12 @@ mod noptests {
         nop.delete().unwrap();
     }
 }
+
+pub trait EngineGetter {
+    fn new_engine() -> Result<Engine, Error> {
+        let engine = Engine::new(EngineConfig::default().interruptable(true))?;
+        Ok(engine)
+    }
+}
+
+impl EngineGetter for Wasi {}
