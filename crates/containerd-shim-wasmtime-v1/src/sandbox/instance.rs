@@ -145,18 +145,8 @@ pub fn prepare_module(
 
     spec.canonicalize_rootfs(&bundle)
         .map_err(|err| Error::Others(format!("could not canonicalize rootfs: {}", err)))?;
-    let root = match spec.root() {
-        Some(r) => r.path(),
-        None => {
-            return Err(Error::Others(
-                "rootfs is not specified in the config.json".to_string(),
-            ));
-        }
-    };
-
     debug!("opening rootfs");
-    let rootfs = oci::wasi_dir(root.to_str().unwrap(), OpenOptions::new().read(true))
-        .map_err(|err| Error::Others(format!("could not open rootfs: {}", err)))?;
+    let rootfs = oci::get_rootfs(&spec)?;
     let args = oci::get_args(&spec);
     let env = oci::env_to_wasi(&spec);
 
@@ -194,7 +184,7 @@ pub fn prepare_module(
         cmd = stripped.unwrap().to_string();
     }
 
-    let mod_path = root.join(cmd);
+    let mod_path = oci::get_root(&spec)?.join(cmd);
 
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
