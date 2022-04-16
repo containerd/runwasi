@@ -1,5 +1,6 @@
 use anyhow::{Context, Error as AnyError};
 use cap_std::fs::File as CapFile;
+use cap_std::path::PathBuf;
 use oci_spec::runtime::Spec;
 use oci_spec::OciSpecError;
 use serde_json as json;
@@ -26,6 +27,17 @@ pub enum Error {
 pub fn load(path: &str) -> Result<Spec, Error> {
     let spec = Spec::load(path)?;
     Ok(spec)
+}
+
+pub fn get_root(spec: &Spec) -> &PathBuf {
+    let root = spec.root().as_ref().unwrap();
+    root.path()
+}
+
+pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {
+    let path = get_root(spec).to_str().unwrap();
+    let rootfs = wasi_dir(path, OpenOptions::new().read(true))?;
+    Ok(rootfs)
 }
 
 pub fn env_to_wasi(spec: &Spec) -> Vec<(String, String)> {
