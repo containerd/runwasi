@@ -1,15 +1,14 @@
 use anyhow::{Context, Error as AnyError};
 use cap_std::fs::File as CapFile;
+use cap_std::path::PathBuf;
 use oci_spec::runtime::Spec;
 use oci_spec::OciSpecError;
 use serde_json as json;
 use std::fs::{File, OpenOptions};
-use std::path::{Path};
-use cap_std::path::PathBuf;
+use std::path::Path;
 use thiserror::Error;
 use wasmtime_wasi::sync::file::File as WasiFile;
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
-use log::info;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -30,13 +29,13 @@ pub fn load(path: &str) -> Result<Spec, Error> {
     Ok(spec)
 }
 
-pub fn get_root(spec: &Spec) -> Result<&PathBuf, Error> {
+pub fn get_root(spec: &Spec) -> &PathBuf {
     let root = spec.root().as_ref().unwrap();
-    Ok(root.path())
+    root.path()
 }
 
 pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {
-    let path = get_root(spec)?.to_str().unwrap();
+    let path = get_root(spec).to_str().unwrap();
     let rootfs = wasi_dir(path, OpenOptions::new().read(true))?;
     Ok(rootfs)
 }

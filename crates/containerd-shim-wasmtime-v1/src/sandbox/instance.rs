@@ -184,7 +184,7 @@ pub fn prepare_module(
         cmd = stripped.unwrap().to_string();
     }
 
-    let mod_path = oci::get_root(&spec)?.join(cmd);
+    let mod_path = oci::get_root(&spec).join(cmd);
 
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
