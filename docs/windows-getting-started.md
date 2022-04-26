@@ -1,6 +1,6 @@
 # Windows: Getting Started
 
-Currently, **runwasi** depends on POSIX environment (i.e., because it has to wire up networking and rootfs mounts). Therefore, to run it on Windows, we recommend utilizing the Windows Subsystem for Linux (WSL).
+Currently, **runwasi** depends on a Linux environment (i.e., because it has to wire up networking and rootfs mounts). Therefore, to run it on Windows, we recommend utilizing the Windows Subsystem for Linux (WSL).
 
 To get started with WSL, see [this](https://docs.microsoft.com/en-us/windows/wsl/install).
 
