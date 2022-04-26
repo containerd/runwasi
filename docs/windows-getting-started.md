@@ -21,8 +21,5 @@ After following these steps and navigating to the runwasi directory in your term
 
 After this, you can execute an example, like: `ctr run --rm --runtime=io.containerd.wasmtime.v1 docker.io/library/wasmtest:latest testwasm`.
 
-> To kill the process from the example:
->> - open a secondary terminal and run `ps aux | grep ctr`,
->> - find the process you want to kill, and
->> - run `kill -9 <the pid from the process you want to kill>`
+> To kill the process from the example, you can run: `ctr kill -s SIGKILL testwasm`.
 
