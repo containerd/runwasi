@@ -66,4 +66,23 @@ jobs:
           tag: ${{ github.ref }}
           body: |
             Release of containerd-shim-wasmtime-v1:${{ env.RELEASE_VERSION }} for amd64
-
+  crate:
+    name: Publish crate
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+      - name: Cargo login
+        env:
+          CRATES_TOKEN: ${{ secrets.cratesToken }}
+        run: cargo login ${{ env.CRATES_TOKEN }}
+        shell: bash
+      - name: Cargo publish
+        run: cargo publish
+        shell: bash
