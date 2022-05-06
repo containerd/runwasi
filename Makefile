@@ -1,15 +1,13 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
-export CONTAINERD_NAMESPACE
+export CONTAINERD_NAMESPACE ?= default
 
 TARGET ?= debug
 RELEASE_FLAG :=
 ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
-
-CONTAINERD_NAMESPACE ?= default
 
 .PHONY: build
 build:
