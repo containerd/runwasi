@@ -33,7 +33,10 @@ use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use ttrpc::context::Context;
 
-struct InstanceData<T: Instance<E = E>, E: Sync + Send + Clone> {
+struct InstanceData<T: Instance<E = E>, E>
+where
+    E: Sync + Send + Clone,
+{
     instance: Option<T>,
     base: Option<Nop>,
     cfg: InstanceConfig<E>,
@@ -707,7 +710,7 @@ where
     pub fn new(engine: E, tx: Sender<(String, Box<dyn Message>)>, exit: Arc<ExitSignal>) -> Self
     where
         T: Instance<E = E> + Sync + Send,
-        E: Clone + Sync + Send,
+        E: Send + Sync + Clone,
     {
         Local::<T, E> {
             // Note: engine.clone() is a shallow clone, is really cheap to do, and is safe to pass around.

@@ -13,7 +13,10 @@ use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
 #[derive(Clone)]
-pub struct InstanceConfig<E: Send + Sync + Clone> {
+pub struct InstanceConfig<E>
+where
+    E: Send + Sync + Clone,
+{
     engine: E,
     stdin: Option<String>,
     stdout: Option<String>,

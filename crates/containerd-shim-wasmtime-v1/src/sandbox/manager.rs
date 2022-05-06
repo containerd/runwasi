@@ -34,13 +34,21 @@ where
     fn new(namespace: String, id: String, engine: E, publisher: RemotePublisher) -> Self;
 }
 
-pub struct Service<E: Send + Sync + Clone, T: Sandbox<E>> {
+pub struct Service<E, T>
+where
+    E: Send + Sync + Clone,
+    T: Sandbox<E>,
+{
     sandboxes: RwLock<HashMap<String, String>>,
     engine: E,
     phantom: std::marker::PhantomData<T>,
 }
 
-impl<E: Send + Sync + Clone, T: Sandbox<E>> Service<E, T> {
+impl<E, T> Service<E, T>
+where
+    E: Send + Sync + Clone,
+    T: Sandbox<E>,
+{
     pub fn new(engine: E) -> Self {
         Service::<E, T> {
             sandboxes: RwLock::new(HashMap::new()),
@@ -50,9 +58,10 @@ impl<E: Send + Sync + Clone, T: Sandbox<E>> Service<E, T> {
     }
 }
 
-impl<E: Send + Sync + Clone, T> Manager for Service<E, T>
+impl<E, T> Manager for Service<E, T>
 where
     T: Sandbox<E, Instance = WasiInstance> + 'static,
+    E: Send + Sync + Clone,
 {
     fn create(
         &self,
