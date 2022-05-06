@@ -404,8 +404,8 @@ mod localtests {
         create_bundle(&dir.path(), None).unwrap();
 
         let (tx, _rx) = channel();
-        let local = Arc::new(Local::<Nop>::new(
-            Engine::default(),
+        let local = Arc::new(Local::<Nop, _>::new(
+            (),
             tx,
             Arc::new(ExitSignal::default()),
         ));
@@ -433,11 +433,7 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop>::new(
-            Engine::new(&EngineConfig::default())?,
-            etx,
-            exit_signal.clone(),
-        ));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -600,11 +596,7 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop>::new(
-            Engine::new(&EngineConfig::default())?,
-            etx,
-            exit_signal.clone(),
-        ));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 

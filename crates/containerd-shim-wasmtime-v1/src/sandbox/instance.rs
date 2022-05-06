@@ -450,7 +450,7 @@ mod wasitest {
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
 
-        let wasi = Arc::new(Wasi::new("test".to_string(), cfg));
+        let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
 
         wasi.start()?;
 
@@ -487,7 +487,7 @@ pub struct Nop {
 }
 
 impl Instance for Nop {
-    type E = wasmtime::Engine;
+    type E = ();
     fn new(_id: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
