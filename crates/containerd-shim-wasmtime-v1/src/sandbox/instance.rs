@@ -13,16 +13,19 @@ use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
 #[derive(Clone)]
-pub struct InstanceConfig {
-    engine: Engine,
+pub struct InstanceConfig<E: Send + Sync + Clone> {
+    engine: E,
     stdin: Option<String>,
     stdout: Option<String>,
     stderr: Option<String>,
     bundle: Option<String>,
 }
 
-impl InstanceConfig {
-    pub fn new(engine: Engine) -> Self {
+impl<E> InstanceConfig<E>
+where
+    E: Send + Sync + Clone,
+{
+    pub fn new(engine: E) -> Self {
         Self {
             engine,
             stdin: None,
@@ -68,13 +71,14 @@ impl InstanceConfig {
         self.bundle.clone()
     }
 
-    pub fn get_engine(&self) -> Engine {
+    pub fn get_engine(&self) -> E {
         self.engine.clone()
     }
 }
 
 pub trait Instance {
-    fn new(id: String, cfg: &InstanceConfig) -> Self;
+    type E: Send + Sync + Clone;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
     fn start(&self) -> Result<u32, Error>;
     fn kill(&self, signal: u32) -> Result<(), Error>;
     fn delete(&self) -> Result<(), Error>;
@@ -194,7 +198,9 @@ pub fn prepare_module(
 }
 
 impl Instance for Wasi {
-    fn new(id: String, cfg: &InstanceConfig) -> Self {
+    type E = wasmtime::Engine;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        let cfg = cfg.unwrap(); // TODO: handle error
         Wasi {
             interupt: Arc::new(RwLock::new(None)),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
@@ -403,7 +409,10 @@ mod wasitest {
 
     #[test]
     fn test_delete_after_create() {
-        let i = Wasi::new("".to_string(), &InstanceConfig::new(Engine::default()));
+        let i = Wasi::new(
+            "".to_string(),
+            Some(&InstanceConfig::new(Engine::default())),
+        );
         i.delete().unwrap();
     }
 
@@ -478,7 +487,8 @@ pub struct Nop {
 }
 
 impl Instance for Nop {
-    fn new(_id: String, _cfg: &InstanceConfig) -> Self {
+    type E = wasmtime::Engine;
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
         }
@@ -532,10 +542,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new(
-            "".to_string(),
-            &InstanceConfig::new(Engine::default()),
-        ));
+        let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -552,10 +559,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigterm() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new(
-            "".to_string(),
-            &InstanceConfig::new(Engine::default()),
-        ));
+        let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -572,10 +576,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigint() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new(
-            "".to_string(),
-            &InstanceConfig::new(Engine::default()),
-        ));
+        let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -592,7 +593,7 @@ mod noptests {
 
     #[test]
     fn test_op_kill_other() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), &InstanceConfig::new(Engine::default()));
+        let nop = Nop::new("".to_string(), None);
 
         let err = nop.kill(1).unwrap_err();
         match err {
@@ -605,16 +606,20 @@ mod noptests {
 
     #[test]
     fn test_nop_delete_after_create() {
-        let nop = Nop::new("".to_string(), &InstanceConfig::new(Engine::default()));
+        let nop = Nop::new("".to_string(), None);
         nop.delete().unwrap();
     }
 }
 
 pub trait EngineGetter {
+    type E: Send + Sync + Clone;
+    fn new_engine() -> Result<Self::E, Error>;
+}
+
+impl EngineGetter for Wasi {
+    type E = wasmtime::Engine;
     fn new_engine() -> Result<Engine, Error> {
         let engine = Engine::new(EngineConfig::default().interruptable(true))?;
         Ok(engine)
     }
 }
-
-impl EngineGetter for Wasi {}
