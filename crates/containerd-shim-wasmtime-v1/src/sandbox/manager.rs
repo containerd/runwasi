@@ -24,23 +24,33 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread;
 use ttrpc::context;
-use wasmtime::Engine;
 
-pub trait Sandbox: Task + Send + Sync {
-    type Instance: Instance;
+pub trait Sandbox<E>: Task + Send + Sync
+where
+    E: Send + Sync + Clone,
+{
+    type Instance: Instance<E = E>;
 
-    fn new(namespace: String, id: String, engine: Engine, publisher: RemotePublisher) -> Self;
+    fn new(namespace: String, id: String, engine: E, publisher: RemotePublisher) -> Self;
 }
 
-pub struct Service<T: Sandbox> {
+pub struct Service<E, T>
+where
+    E: Send + Sync + Clone,
+    T: Sandbox<E>,
+{
     sandboxes: RwLock<HashMap<String, String>>,
-    engine: Engine,
+    engine: E,
     phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Sandbox> Service<T> {
-    pub fn new(engine: Engine) -> Self {
-        Service::<T> {
+impl<E, T> Service<E, T>
+where
+    E: Send + Sync + Clone,
+    T: Sandbox<E>,
+{
+    pub fn new(engine: E) -> Self {
+        Service::<E, T> {
             sandboxes: RwLock::new(HashMap::new()),
             engine: engine,
             phantom: std::marker::PhantomData,
@@ -48,9 +58,10 @@ impl<T: Sandbox> Service<T> {
     }
 }
 
-impl<T> Manager for Service<T>
+impl<E, T> Manager for Service<E, T>
 where
-    T: Sandbox<Instance = WasiInstance> + 'static,
+    T: Sandbox<E, Instance = WasiInstance> + 'static,
+    E: Send + Sync + Clone,
 {
     fn create(
         &self,
