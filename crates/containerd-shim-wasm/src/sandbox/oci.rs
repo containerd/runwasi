@@ -52,13 +52,13 @@ pub fn env_to_wasi(spec: &Spec) -> Vec<(String, String)> {
     let mut vec: Vec<(String, String)> = Vec::with_capacity(env.len());
 
     for v in env {
-        match v.split_once("=") {
+        match v.split_once('=') {
             None => vec.push((v.to_string(), "".to_string())),
             Some(t) => vec.push((t.0.to_string(), t.1.to_string())),
         };
     }
 
-    return vec;
+    vec
 }
 
 pub fn get_args(spec: &Spec) -> &[String] {
@@ -69,14 +69,14 @@ pub fn get_args(spec: &Spec) -> &[String] {
 
     match p.args() {
         None => &[],
-        Some(args) => return args.as_slice(),
+        Some(args) => args.as_slice(),
     }
 }
 
 pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec, Error> {
     let file = File::open(path)?;
     let cfg: Spec = json::from_reader(file)?;
-    return Ok(cfg);
+    Ok(cfg)
 }
 
 pub fn spec_to_wasi<P: AsRef<Path>>(
@@ -101,11 +101,11 @@ pub fn spec_to_wasi<P: AsRef<Path>>(
     };
 
     let args = get_args(spec);
-    if args.len() == 0 {
+    if args.is_empty() {
         return Err(Error::InvalidArgument("args is not set".to_string()));
     }
 
-    let env = env_to_wasi(&spec);
+    let env = env_to_wasi(spec);
     let builder = builder
         .preopened_dir(rootfs, "/")
         .context("could not set rootfs")?
@@ -114,7 +114,7 @@ pub fn spec_to_wasi<P: AsRef<Path>>(
         .args(args)
         .context("could not set command args")?;
 
-    return Ok(builder);
+    Ok(builder)
 }
 
 pub fn wasi_dir(path: &str, opts: &OpenOptions) -> Result<WasiDir, std::io::Error> {

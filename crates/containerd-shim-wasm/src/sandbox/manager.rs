@@ -52,7 +52,7 @@ where
     pub fn new(engine: E) -> Self {
         Service::<E, T> {
             sandboxes: RwLock::new(HashMap::new()),
-            engine: engine,
+            engine,
             phantom: std::marker::PhantomData,
         }
     }
@@ -71,7 +71,7 @@ where
         let mut sandboxes = self.sandboxes.write().unwrap();
 
         if sandboxes.contains_key(&req.id) {
-            return Err(Error::AlreadyExists(req.get_id().to_string()))?;
+            return Err(Error::AlreadyExists(req.get_id().to_string()).into());
         }
 
         let sock = format!("unix://{}/shim.sock", &req.working_directory);
@@ -112,17 +112,17 @@ where
                 return Err(Error::Others(format!(
                     "failed to spawn sandbox thread: {}",
                     e
-                )))?;
+                )).into());
             }
         }
 
         rx.recv()
             .context("could not receive sandbox result")
             .map_err(|err| Error::Others(format!("{}", err)))??;
-        return Ok(sandbox::CreateResponse {
+        Ok(sandbox::CreateResponse {
             socket_path: sock,
             ..Default::default()
-        });
+        })
     }
 
     fn delete(
@@ -132,7 +132,7 @@ where
     ) -> TtrpcResult<sandbox::DeleteResponse> {
         let mut sandboxes = self.sandboxes.write().unwrap();
         if !sandboxes.contains_key(&req.id) {
-            return Err(Error::NotFound(req.get_id().to_string()))?;
+            return Err(Error::NotFound(req.get_id().to_string()).into());
         }
         let sock = sandboxes.remove(&req.id).unwrap();
         let c = Client::connect(&sock)?;
@@ -147,7 +147,7 @@ where
             },
         )?;
 
-        return Ok(sandbox::DeleteResponse::default());
+        Ok(sandbox::DeleteResponse::default())
     }
 }
 
@@ -185,10 +185,10 @@ impl shim::Shim for Shim {
     type T = Self;
 
     fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
-        return Shim {
+        Shim {
             id: id.to_string(),
             namespace: namespace.to_string(),
-        };
+        }
     }
 
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
@@ -222,8 +222,8 @@ impl shim::Shim for Shim {
                 let res = mc.connect(
                     context::Context::default(),
                     &sandbox::ConnectRequest {
-                        id: sandbox.clone(),
-                        ttrpc_address: opts.ttrpc_address.clone(),
+                        id: sandbox,
+                        ttrpc_address: opts.ttrpc_address,
                         ..Default::default()
                     },
                 )?;
@@ -233,7 +233,7 @@ impl shim::Shim for Shim {
 
         shim::util::write_address(&addr)?;
 
-        return Ok(addr);
+        Ok(addr)
     }
 
     fn wait(&mut self) {
@@ -266,7 +266,7 @@ impl shim::Shim for Shim {
         mc.delete(
             context::Context::default(),
             &sandbox::DeleteRequest {
-                id: sandbox.clone(),
+                id: sandbox,
                 namespace: self.namespace.clone(),
                 ..Default::default()
             },

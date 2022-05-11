@@ -63,18 +63,18 @@ where
                 .unwrap()
                 .start()
                 .map(|pid| {
-                    s.started().and_then(|new_state| {
+                    s.started().map(|new_state| {
                         *s = new_state.into();
-                        Ok(new_state)
+                        new_state
                     })?;
                     Ok(pid)
                 })
                 .map_err(|err| {
                     let _ = s
                         .stop()
-                        .and_then(|new_state| {
+                        .map(|new_state| {
                             *s = new_state.into();
-                            Ok(new_state)
+                            new_state
                         })
                         .map_err(|e| warn!("could not set exited state after failed start: {}", e));
                     err
@@ -83,9 +83,9 @@ where
 
         return self.base.as_ref().unwrap().start().and_then(|pid| {
             s.started()
-                .and_then(|new_state| {
+                .map(|new_state| {
                     *s = new_state.into();
-                    Ok(new_state)
+                    new_state
                 })
                 .map_err(|err| {
                     let new_state = s
@@ -117,9 +117,9 @@ where
             return self.instance.as_ref().unwrap().delete().map_err(|err| {
                 let _ = s
                     .stop()
-                    .and_then(|new_state| {
+                    .map(|new_state| {
                         *s = new_state.into();
-                        Ok(new_state)
+                        new_state
                     })
                     .map_err(|e| warn!("could not set reset state after failed delete: {}", e));
                 err
@@ -128,9 +128,9 @@ where
         self.base.as_ref().unwrap().delete().map_err(|err| {
             let _ = s
                 .stop()
-                .and_then(|new_state| {
+                .map(|new_state| {
                     *s = new_state.into();
-                    Ok(new_state)
+                    new_state
                 })
                 .map_err(|e| {
                     warn!("could not set exited state after failed delete: {}", e);
@@ -338,7 +338,7 @@ mod localtests {
     use std::fs::create_dir;
     use std::time::Duration;
     use tempfile::tempdir;
-    use wasmtime::Config as EngineConfig;
+    
 
     struct LocalWithDescrutor<T, E>
     where
@@ -377,7 +377,7 @@ mod localtests {
     }
 
     fn with_cri_sandbox(spec: Option<runtime::Spec>, id: String) -> runtime::Spec {
-        let mut s = spec.unwrap_or(runtime::Spec::default());
+        let mut s = spec.unwrap_or_default();
         let mut annotations = HashMap::new();
         s.annotations().as_ref().map(|a| {
             a.iter().map(|(k, v)| {
@@ -387,13 +387,13 @@ mod localtests {
         annotations.insert("io.kubernetes.cri.sandbox-id".to_string(), id);
 
         s.set_annotations(Some(annotations));
-        return s;
+        s
     }
 
     fn create_bundle(dir: &std::path::Path, spec: Option<runtime::Spec>) -> Result<()> {
         create_dir(dir.join("rootfs"))?;
 
-        let s = spec.unwrap_or(runtime::Spec::default());
+        let s = spec.unwrap_or_default();
 
         json::to_writer(File::create(dir.join("config.json"))?, &s)
             .context("could not write config.json")?;
@@ -404,7 +404,7 @@ mod localtests {
     fn test_delete_after_create() {
         let dir = tempdir().unwrap();
         let id = "test-delete-after-create";
-        create_bundle(&dir.path(), None).unwrap();
+        create_bundle(dir.path(), None).unwrap();
 
         let (tx, _rx) = channel();
         let local = Arc::new(Local::<Nop, _>::new(
@@ -436,14 +436,14 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
         let temp = tempdir().unwrap();
         let dir = temp.path();
         let sandbox_id = "test-cri-task".to_string();
-        create_bundle(&dir, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
+        create_bundle(dir, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
 
         local.task_create(api::CreateTaskRequest {
             id: "testbase".to_string(),
@@ -486,7 +486,7 @@ mod localtests {
 
         let temp2 = tempdir().unwrap();
         let dir2 = temp2.path();
-        create_bundle(&dir2, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
+        create_bundle(dir2, Some(with_cri_sandbox(None, sandbox_id)))?;
 
         local.task_create(api::CreateTaskRequest {
             id: "testinstance".to_string(),
@@ -599,7 +599,7 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -714,10 +714,10 @@ where
     {
         Local::<T, E> {
             // Note: engine.clone() is a shallow clone, is really cheap to do, and is safe to pass around.
-            engine: engine.clone(),
+            engine,
             instances: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(Mutex::new(tx)),
-            exit: exit,
+            exit,
         }
     }
 
@@ -726,7 +726,7 @@ where
         InstanceData {
             instance: None,
             base: Some(Nop::new(id, None)),
-            cfg: cfg,
+            cfg,
             pid: RwLock::new(None),
             status: Arc::new((Mutex::new(None), Condvar::new())),
             state: Arc::new(RwLock::new(TaskStateWrapper::Created(
@@ -771,11 +771,11 @@ where
         if req.get_terminal() {
             return Err(Error::InvalidArgument(
                 "terminal is not supported".to_string(),
-            ))?;
+            ));
         }
 
         if self.instance_exists(req.get_id()) {
-            return Err(Error::AlreadyExists(req.get_id().to_string()).into());
+            return Err(Error::AlreadyExists(req.get_id().to_string()));
         }
 
         let mut spec = oci::load(
@@ -902,18 +902,16 @@ where
             }
 
             let mut typ = m.typ().as_deref();
-            if typ.is_some() {
-                if typ.unwrap() == "bind" {
-                    typ = None;
-                    newopts.push("rbind".to_string());
-                }
+            if typ.is_some() && typ.unwrap() == "bind" {
+                typ = None;
+                newopts.push("rbind".to_string());
             }
             mount_rootfs(typ, source, &newopts, &rootfs_target).map_err(|err| {
                 ShimError::Other(format!(
                     "error mounting {} to {} as {}: {}",
                     source.unwrap_or_default(),
                     rootfs_target.to_str().unwrap(),
-                    m.typ().as_deref().unwrap_or(&"none"),
+                    m.typ().as_deref().unwrap_or("none"),
                     err
                 ))
             })?;
@@ -977,7 +975,7 @@ where
 
         self.send_event(TaskStart {
             container_id: req.get_id().into(),
-            pid: pid,
+            pid,
             ..Default::default()
         });
 
@@ -1031,14 +1029,14 @@ where
         debug!("started: {:?}", req);
 
         Ok(api::StartResponse {
-            pid: pid,
+            pid,
             ..Default::default()
         })
     }
 
     fn task_kill(&self, req: api::KillRequest) -> Result<()> {
         if req.get_exec_id().is_empty().not() {
-            return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
+            return Err(Error::InvalidArgument("exec is not supported".to_string()));
         }
         self.get_instance(req.get_id())?.kill(req.get_signal())?;
         Ok(())
@@ -1046,7 +1044,7 @@ where
 
     fn task_delete(&self, req: api::DeleteRequest) -> Result<api::DeleteResponse> {
         if req.get_exec_id().is_empty().not() {
-            return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
+            return Err(Error::InvalidArgument("exec is not supported".to_string()));
         }
 
         let i = self.get_instance(req.get_id())?;
@@ -1057,12 +1055,12 @@ where
 
         let mut event = TaskDelete {
             container_id: req.get_id().into(),
-            pid: pid,
+            pid,
             ..Default::default()
         };
 
         let mut resp = api::DeleteResponse {
-            pid: pid,
+            pid,
             ..Default::default()
         };
 
@@ -1090,7 +1088,7 @@ where
 
     fn task_wait(&self, req: api::WaitRequest) -> Result<api::WaitResponse> {
         if req.get_exec_id().is_empty().not() {
-            return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
+            return Err(Error::InvalidArgument("exec is not supported".to_string()));
         }
 
         let i = self.get_instance(req.get_id())?;
@@ -1121,7 +1119,7 @@ where
 
     fn task_state(&self, req: api::StateRequest) -> Result<api::StateResponse> {
         if req.get_exec_id().is_empty().not() {
-            return Err(Error::InvalidArgument("exec is not supported".to_string()))?;
+            return Err(Error::InvalidArgument("exec is not supported".to_string()));
         }
 
         let i = self.get_instance(req.get_id())?;
@@ -1134,7 +1132,7 @@ where
         };
 
         let pid_lock = i.pid.read().unwrap();
-        let pid = (*pid_lock).clone();
+        let pid = *pid_lock;
         if pid.is_none() {
             state.status = Status::CREATED;
             return Ok(state);
@@ -1172,7 +1170,7 @@ where
     type Instance = T;
     fn new(namespace: String, _id: String, engine: E, publisher: RemotePublisher) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(namespace.to_string(), publisher, rx);
+        forward_events(namespace, publisher, rx);
         Local::<T, E>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
     }
 }
@@ -1301,7 +1299,7 @@ where
         })?;
 
         let default = HashMap::new() as HashMap<String, String>;
-        let annotations = spec.annotations().as_ref().unwrap_or_else(|| &default);
+        let annotations = spec.annotations().as_ref().unwrap_or(&default);
 
         let id = opts.id.clone();
 
@@ -1360,7 +1358,7 @@ where
 
         write_address(&address)?;
 
-        return Ok(address);
+        Ok(address)
     }
 
     fn wait(&mut self) {

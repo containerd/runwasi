@@ -134,7 +134,7 @@ impl Instance for Wasi {
         Wasi {
             interupt: Arc::new(RwLock::new(None)),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            engine: cfg.get_engine().clone(),
+            engine: cfg.get_engine(),
             id,
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
@@ -228,7 +228,7 @@ impl Instance for Wasi {
                     // TODO: How to get exit code?
                     // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
                     let (lock, cvar) = &*exit_code;
-                    let _ret = match f.call(&mut store, &mut vec![], &mut vec![]) {
+                    let _ret = match f.call(&mut store, &mut [], &mut []) {
                         Ok(_) => {
                             debug!("exit code: {}", 0);
                             let mut ec = lock.lock().unwrap();
