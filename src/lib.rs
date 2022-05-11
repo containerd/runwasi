@@ -44,7 +44,7 @@ mod tests {
         let dir = tempdir()?;
         let temp = File::create(dir.path().join("testfile"))?;
         drop(temp);
-        let f = maybe_open_stdio(&dir.path().join("testfile").as_path().to_str().unwrap())?;
+        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
         assert!(f.is_some());
         drop(f);
 
