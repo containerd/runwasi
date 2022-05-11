@@ -1,5 +1,5 @@
 use super::error::Error;
-use super::instance::{Instance, Wasi as WasiInstance};
+use super::instance::Instance;
 use super::oci;
 use super::sandbox;
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
@@ -60,7 +60,7 @@ where
 
 impl<E, T> Manager for Service<E, T>
 where
-    T: Sandbox<E, Instance = WasiInstance> + 'static,
+    T: Sandbox<E> + 'static,
     E: Send + Sync + Clone,
 {
     fn create(

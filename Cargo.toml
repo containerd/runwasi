@@ -1,7 +1,37 @@
+[package]
+name = "runwasi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+containerd-shim = "0.3.0"
+containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
+log = "0.4"
+ttrpc = "0.6"
+wasmtime = "^0.35"
+wasmtime-wasi = "^0.35"
+wasi-common = "^0.35"
+chrono = "0.4.19"
+anyhow = "1.0"
+
+
 [workspace]
 members = [
-    "crates/containerd-shim-wasmtime-v1",
+    "crates/containerd-shim-wasm",
 ]
+
+[[bin]]
+name = "containerd-shim-wasmtime-v1"
+path = "src/bin/containerd-shim-wasmtime-v1/main.rs"
+
+[[bin]]
+name = "containerd-shim-wasmtimed-v1"
+path = "src/bin/containerd-shim-wasmtimed-v1/main.rs"
+
+[[bin]]
+name = "containerd-wasmtimed"
+path = "src/bin/containerd-wasmtimed/main.rs"
+
 
 [profile.release]
 panic = "abort"

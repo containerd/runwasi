@@ -278,7 +278,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "containerd-shim-wasmtime-v1"
+name = "containerd-shim-wasm"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1349,6 +1349,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "runwasi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "containerd-shim",
+ "containerd-shim-wasm",
+ "log",
+ "ttrpc 0.6.0",
+ "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
