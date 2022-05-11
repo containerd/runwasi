@@ -436,7 +436,7 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -599,7 +599,7 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal.clone()));
+        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -726,7 +726,7 @@ where
         InstanceData {
             instance: None,
             base: Some(Nop::new(id, None)),
-            cfg: cfg,
+            cfg,
             pid: RwLock::new(None),
             status: Arc::new((Mutex::new(None), Condvar::new())),
             state: Arc::new(RwLock::new(TaskStateWrapper::Created(
@@ -1170,7 +1170,7 @@ where
     type Instance = T;
     fn new(namespace: String, _id: String, engine: E, publisher: RemotePublisher) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(namespace.to_string(), publisher, rx);
+        forward_events(namespace, publisher, rx);
         Local::<T, E>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
     }
 }

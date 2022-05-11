@@ -1360,6 +1360,7 @@ dependencies = [
  "containerd-shim",
  "containerd-shim-wasm",
  "log",
+ "tempfile",
  "ttrpc 0.6.0",
  "wasi-common",
  "wasmtime",
