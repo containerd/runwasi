@@ -18,7 +18,7 @@ thiserror = "1.0"
 protobuf = "2.23.0"
 ttrpc = "0.6"
 nix = "0.23"
-cap-std= "0.24.1"
+cap-std = "0.24.1"
 chrono = "0.4.19"
 log = "0.4"
 
