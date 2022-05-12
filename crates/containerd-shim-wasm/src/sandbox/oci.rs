@@ -1,4 +1,4 @@
-use anyhow::{Context, Error as AnyError};
+use anyhow::{Error as AnyError};
 use cap_std::path::PathBuf;
 use oci_spec::runtime::Spec;
 use oci_spec::OciSpecError;
