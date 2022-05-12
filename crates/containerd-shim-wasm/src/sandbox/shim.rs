@@ -1,5 +1,13 @@
-use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
-use super::{oci, Error, SandboxService};
+use std::collections::HashMap;
+use std::env::current_dir;
+use std::fs::{self, File};
+use std::ops::Not;
+use std::os::unix::io::AsRawFd;
+use std::path::Path;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::thread;
+
 use chrono::{DateTime, Utc};
 use containerd_shim::{
     self as shim, api,
@@ -22,16 +30,10 @@ use nix::sched::{setns, unshare, CloneFlags};
 use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
-use std::collections::HashMap;
-use std::env::current_dir;
-use std::fs::{self, File};
-use std::ops::Not;
-use std::os::unix::io::AsRawFd;
-use std::path::Path;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
-use std::thread;
 use ttrpc::context::Context;
+
+use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
+use super::{oci, Error, SandboxService};
 
 struct InstanceData<T: Instance<E = E>, E>
 where
@@ -332,12 +334,14 @@ where
 
 #[cfg(test)]
 mod localtests {
-    use super::*;
-    use anyhow::Context;
-    use serde_json as json;
     use std::fs::create_dir;
     use std::time::Duration;
+
+    use anyhow::Context;
+    use serde_json as json;
     use tempfile::tempdir;
+
+    use super::*;
 
     struct LocalWithDescrutor<T, E>
     where

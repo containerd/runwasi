@@ -1,9 +1,10 @@
-use super::error::Error;
-
-use chrono::{DateTime, Utc};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
+
+use chrono::{DateTime, Utc};
+
+use super::error::Error;
 
 #[derive(Clone)]
 pub struct InstanceConfig<E>
@@ -137,10 +138,11 @@ impl Instance for Nop {
 
 #[cfg(test)]
 mod noptests {
-    use super::*;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
     use std::time::Duration;
+
+    use super::*;
 
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {

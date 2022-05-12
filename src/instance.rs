@@ -1,10 +1,3 @@
-use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-
-use anyhow::Context;
-use chrono::{DateTime, Utc};
-use containerd_shim_wasm::sandbox::oci;
-use log::{debug, error};
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::mpsc::channel;
@@ -12,10 +5,17 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use super::error::WasmtimeError;
-use super::oci_wasmtime;
+use anyhow::Context;
+use chrono::{DateTime, Utc};
+use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::oci;
+use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use log::{debug, error};
 use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
+
+use super::error::WasmtimeError;
+use super::oci_wasmtime;
 
 pub struct Wasi {
     interupt: Arc<RwLock<Option<wasmtime::InterruptHandle>>>,
@@ -31,9 +31,11 @@ pub struct Wasi {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs::File;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_maybe_open_stdio() -> Result<(), Error> {
@@ -306,12 +308,14 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use super::*;
     use std::fs::{create_dir, read_to_string, write, File};
     use std::io::prelude::*;
     use std::time::Duration;
+
     use tempfile::tempdir;
     use wasmtime::Config;
+
+    use super::*;
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module

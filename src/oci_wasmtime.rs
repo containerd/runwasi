@@ -1,10 +1,11 @@
+use std::fs::OpenOptions;
+use std::path::Path;
+
 use anyhow::Context;
 use cap_std::fs::File as CapFile;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::oci::Error;
 use oci_spec::runtime::Spec;
-use std::fs::OpenOptions;
-use std::path::Path;
 use wasmtime_wasi::sync::file::File as WasiFile;
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
 

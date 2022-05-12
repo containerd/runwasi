@@ -1,8 +1,9 @@
-use super::oci;
 use anyhow::Error as AnyError;
 use containerd_shim::Error as ShimError;
 use thiserror::Error;
 use ttrpc;
+
+use super::oci;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -68,8 +69,9 @@ impl From<Error> for ttrpc::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use thiserror::Error;
+
+    use super::*;
 
     #[derive(Debug, Error)]
     enum TestError {

@@ -1,5 +1,6 @@
 #[cfg(feature = "generate_bindings")]
 use std::fs;
+
 #[cfg(feature = "generate_bindings")]
 use ttrpc_codegen::{Codegen, ProtobufCustomize};
 
