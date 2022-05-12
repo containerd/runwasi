@@ -1,3 +1,4 @@
 bin/
 test/out/img.tar
 **/target/
+!src/bin/
