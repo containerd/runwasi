@@ -3,7 +3,7 @@ use cap_std::path::PathBuf;
 use oci_spec::runtime::Spec;
 use oci_spec::OciSpecError;
 use serde_json as json;
-use std::fs::{File};
+use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
 

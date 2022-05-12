@@ -1,5 +1,5 @@
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -12,10 +12,10 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
-use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 use super::error::WasmtimeError;
 use super::oci_wasmtime;
+use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
+use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
 pub struct Wasi {
     interupt: Arc<RwLock<Option<wasmtime::InterruptHandle>>>,
@@ -79,8 +79,12 @@ pub fn prepare_module(
 ) -> Result<(WasiCtx, Module), WasmtimeError> {
     let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
 
-    spec.canonicalize_rootfs(&bundle)
-        .map_err(|err| WasmtimeError::Error(Error::Others(format!("could not canonicalize rootfs: {}", err))))?;
+    spec.canonicalize_rootfs(&bundle).map_err(|err| {
+        WasmtimeError::Error(Error::Others(format!(
+            "could not canonicalize rootfs: {}",
+            err
+        )))
+    })?;
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(&spec)?;
     let args = oci::get_args(&spec);

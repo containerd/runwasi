@@ -1,12 +1,12 @@
-use anyhow::{Context};
+use anyhow::Context;
 use cap_std::fs::File as CapFile;
+use containerd_shim_wasm::sandbox::oci;
+use containerd_shim_wasm::sandbox::oci::Error;
 use oci_spec::runtime::Spec;
-use std::fs::{OpenOptions};
+use std::fs::OpenOptions;
 use std::path::Path;
 use wasmtime_wasi::sync::file::File as WasiFile;
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
-use containerd_shim_wasm::sandbox::oci;
-use containerd_shim_wasm::sandbox::oci::{Error};
 
 pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {
     let path = oci::get_root(spec).to_str().unwrap();
@@ -34,7 +34,6 @@ pub fn env_to_wasi(spec: &Spec) -> Vec<(String, String)> {
 
     vec
 }
-
 
 pub fn spec_to_wasi<P: AsRef<Path>>(
     builder: WasiCtxBuilder,

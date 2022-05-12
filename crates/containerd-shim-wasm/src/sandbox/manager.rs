@@ -109,10 +109,7 @@ where
             }) {
             Ok(_) => {}
             Err(e) => {
-                return Err(Error::Others(format!(
-                    "failed to spawn sandbox thread: {}",
-                    e
-                )).into());
+                return Err(Error::Others(format!("failed to spawn sandbox thread: {}", e)).into());
             }
         }
 

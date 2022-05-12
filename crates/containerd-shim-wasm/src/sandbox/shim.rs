@@ -338,7 +338,6 @@ mod localtests {
     use std::fs::create_dir;
     use std::time::Duration;
     use tempfile::tempdir;
-    
 
     struct LocalWithDescrutor<T, E>
     where
