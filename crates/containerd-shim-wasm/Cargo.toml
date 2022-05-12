@@ -9,9 +9,6 @@ doctest = false
 [dependencies]
 containerd-shim = "0.3.0"
 containerd-shim-protos = "0.1"
-# wasmtime = "^0.35"
-# wasmtime-wasi = "^0.35"
-# wasi-common = "^0.35"
 anyhow = "1.0"
 serde_json = "1.0"
 oci-spec = "0.5"
