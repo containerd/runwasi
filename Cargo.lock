@@ -297,9 +297,6 @@ dependencies = [
  "thiserror",
  "ttrpc 0.6.0",
  "ttrpc-codegen",
- "wasi-common",
- "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]
@@ -1356,11 +1353,15 @@ name = "runwasi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cap-std",
  "chrono",
  "containerd-shim",
  "containerd-shim-wasm",
  "log",
+ "oci-spec",
+ "serde_json",
  "tempfile",
+ "thiserror",
  "ttrpc 0.6.0",
  "wasi-common",
  "wasmtime",

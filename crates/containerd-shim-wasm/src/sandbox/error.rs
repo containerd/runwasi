@@ -13,10 +13,6 @@ pub enum Error {
     #[error("{0}")]
     Others(String),
     #[error("{0}")]
-    Wasi(#[from] wasmtime_wasi::Error),
-    #[error("{0}")]
-    WasiCommonStringArray(#[from] wasi_common::StringArrayError),
-    #[error("{0}")]
     Shim(#[from] ShimError),
     #[error("not found: {0}")]
     NotFound(String),
@@ -25,7 +21,7 @@ pub enum Error {
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
     #[error("{0}")]
-    Any(AnyError),
+    Any(#[from] AnyError),
     #[error("{0}")]
     FailedPrecondition(String),
 }
