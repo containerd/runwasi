@@ -1,7 +1,9 @@
-use containerd_shim_wasmtime_v1::sandbox::{Local, ManagerService, WasiInstance};
-use containerd_shim_wasmtime_v1::services::sandbox_ttrpc::{create_manager, Manager};
-use log::info;
 use std::sync::Arc;
+
+use containerd_shim_wasm::sandbox::{Local, ManagerService};
+use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
+use log::info;
+use runwasi::instance::Wasi as WasiInstance;
 use ttrpc::{self, Server};
 use wasmtime::{Config, Engine};
 

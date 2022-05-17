@@ -1,41 +1,16 @@
-use anyhow::{Context, Error as AnyError};
-use cap_std::fs::File as CapFile;
-use cap_std::path::PathBuf;
-use oci_spec::runtime::Spec;
-use oci_spec::OciSpecError;
-use serde_json as json;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::path::Path;
-use thiserror::Error;
+
+use anyhow::Context;
+use cap_std::fs::File as CapFile;
+use containerd_shim_wasm::sandbox::oci;
+use containerd_shim_wasm::sandbox::oci::Error;
+use oci_spec::runtime::Spec;
 use wasmtime_wasi::sync::file::File as WasiFile;
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("invalid argument: {0}")]
-    InvalidArgument(String),
-    #[error("failed to load spec: {0}")]
-    Spec(#[from] OciSpecError),
-    #[error("failed to open file: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("failed to decode spec json: ${0}")]
-    Json(#[from] json::Error),
-    #[error("{0}")]
-    Any(#[from] AnyError),
-}
-
-pub fn load(path: &str) -> Result<Spec, Error> {
-    let spec = Spec::load(path)?;
-    Ok(spec)
-}
-
-pub fn get_root(spec: &Spec) -> &PathBuf {
-    let root = spec.root().as_ref().unwrap();
-    root.path()
-}
-
 pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {
-    let path = get_root(spec).to_str().unwrap();
+    let path = oci::get_root(spec).to_str().unwrap();
     let rootfs = wasi_dir(path, OpenOptions::new().read(true))?;
     Ok(rootfs)
 }
@@ -52,31 +27,13 @@ pub fn env_to_wasi(spec: &Spec) -> Vec<(String, String)> {
     let mut vec: Vec<(String, String)> = Vec::with_capacity(env.len());
 
     for v in env {
-        match v.split_once("=") {
+        match v.split_once('=') {
             None => vec.push((v.to_string(), "".to_string())),
             Some(t) => vec.push((t.0.to_string(), t.1.to_string())),
         };
     }
 
-    return vec;
-}
-
-pub fn get_args(spec: &Spec) -> &[String] {
-    let p = match spec.process() {
-        None => return &[],
-        Some(p) => p,
-    };
-
-    match p.args() {
-        None => &[],
-        Some(args) => return args.as_slice(),
-    }
-}
-
-pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec, Error> {
-    let file = File::open(path)?;
-    let cfg: Spec = json::from_reader(file)?;
-    return Ok(cfg);
+    vec
 }
 
 pub fn spec_to_wasi<P: AsRef<Path>>(
@@ -100,12 +57,12 @@ pub fn spec_to_wasi<P: AsRef<Path>>(
         }
     };
 
-    let args = get_args(spec);
-    if args.len() == 0 {
+    let args = oci::get_args(spec);
+    if args.is_empty() {
         return Err(Error::InvalidArgument("args is not set".to_string()));
     }
 
-    let env = env_to_wasi(&spec);
+    let env = env_to_wasi(spec);
     let builder = builder
         .preopened_dir(rootfs, "/")
         .context("could not set rootfs")?
@@ -114,7 +71,7 @@ pub fn spec_to_wasi<P: AsRef<Path>>(
         .args(args)
         .context("could not set command args")?;
 
-    return Ok(builder);
+    Ok(builder)
 }
 
 pub fn wasi_dir(path: &str, opts: &OpenOptions) -> Result<WasiDir, std::io::Error> {

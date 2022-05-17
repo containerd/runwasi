@@ -1,92 +1,21 @@
-use super::error::Error;
-use super::oci;
-use anyhow::Context;
-use chrono::{DateTime, Utc};
-use log::{debug, error};
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
+
+use anyhow::Context;
+use chrono::{DateTime, Utc};
+use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::oci;
+use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use log::{debug, error};
 use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
-#[derive(Clone)]
-pub struct InstanceConfig<E>
-where
-    E: Send + Sync + Clone,
-{
-    engine: E,
-    stdin: Option<String>,
-    stdout: Option<String>,
-    stderr: Option<String>,
-    bundle: Option<String>,
-}
-
-impl<E> InstanceConfig<E>
-where
-    E: Send + Sync + Clone,
-{
-    pub fn new(engine: E) -> Self {
-        Self {
-            engine,
-            stdin: None,
-            stdout: None,
-            stderr: None,
-            bundle: None,
-        }
-    }
-
-    pub fn set_stdin(&mut self, stdin: String) -> &mut Self {
-        self.stdin = Some(stdin);
-        self
-    }
-
-    pub fn get_stdin(&self) -> Option<String> {
-        self.stdin.clone()
-    }
-
-    pub fn set_stdout(&mut self, stdout: String) -> &mut Self {
-        self.stdout = Some(stdout);
-        self
-    }
-
-    pub fn get_stdout(&self) -> Option<String> {
-        self.stdout.clone()
-    }
-
-    pub fn set_stderr(&mut self, stderr: String) -> &mut Self {
-        self.stderr = Some(stderr);
-        self
-    }
-
-    pub fn get_stderr(&self) -> Option<String> {
-        self.stderr.clone()
-    }
-
-    pub fn set_bundle(&mut self, bundle: String) -> &mut Self {
-        self.bundle = Some(bundle);
-        self
-    }
-
-    pub fn get_bundle(&self) -> Option<String> {
-        self.bundle.clone()
-    }
-
-    pub fn get_engine(&self) -> E {
-        self.engine.clone()
-    }
-}
-
-pub trait Instance {
-    type E: Send + Sync + Clone;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
-    fn start(&self) -> Result<u32, Error>;
-    fn kill(&self, signal: u32) -> Result<(), Error>;
-    fn delete(&self) -> Result<(), Error>;
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
-}
+use super::error::WasmtimeError;
+use super::oci_wasmtime;
 
 pub struct Wasi {
     interupt: Arc<RwLock<Option<wasmtime::InterruptHandle>>>,
@@ -102,9 +31,11 @@ pub struct Wasi {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs::File;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_maybe_open_stdio() -> Result<(), Error> {
@@ -117,7 +48,7 @@ mod tests {
         let dir = tempdir()?;
         let temp = File::create(dir.path().join("testfile"))?;
         drop(temp);
-        let f = maybe_open_stdio(&dir.path().join("testfile").as_path().to_str().unwrap())?;
+        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
         assert!(f.is_some());
         drop(f);
 
@@ -132,7 +63,7 @@ pub fn maybe_open_stdio(path: &str) -> Result<Option<WasiFile>, Error> {
     if path.is_empty() {
         return Ok(None);
     }
-    match oci::wasi_file(path, OpenOptions::new().read(true).write(true)) {
+    match oci_wasmtime::wasi_file(path, OpenOptions::new().read(true).write(true)) {
         Ok(f) => Ok(Some(f)),
         Err(err) => match err.kind() {
             std::io::ErrorKind::NotFound => Ok(None),
@@ -147,15 +78,19 @@ pub fn prepare_module(
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
-) -> Result<(WasiCtx, Module), Error> {
+) -> Result<(WasiCtx, Module), WasmtimeError> {
     let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
 
-    spec.canonicalize_rootfs(&bundle)
-        .map_err(|err| Error::Others(format!("could not canonicalize rootfs: {}", err)))?;
+    spec.canonicalize_rootfs(&bundle).map_err(|err| {
+        WasmtimeError::Error(Error::Others(format!(
+            "could not canonicalize rootfs: {}",
+            err
+        )))
+    })?;
     debug!("opening rootfs");
-    let rootfs = oci::get_rootfs(&spec)?;
+    let rootfs = oci_wasmtime::get_rootfs(&spec)?;
     let args = oci::get_args(&spec);
-    let env = oci::env_to_wasi(&spec);
+    let env = oci_wasmtime::env_to_wasi(&spec);
 
     debug!("setting up wasi");
     let mut wasi_builder = WasiCtxBuilder::new()
@@ -207,7 +142,7 @@ impl Instance for Wasi {
         Wasi {
             interupt: Arc::new(RwLock::new(None)),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            engine: cfg.engine.clone(),
+            engine: cfg.get_engine(),
             id,
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
@@ -247,7 +182,7 @@ impl Instance for Wasi {
                     let m = match prepare_module(engine.clone(), bundle, stdin, stdout, stderr) {
                         Ok(f) => f,
                         Err(err) => {
-                            tx.send(Err(err)).unwrap();
+                            tx.send(Err(Error::Others(err.to_string()))).unwrap();
                             return;
                         }
                     };
@@ -301,7 +236,7 @@ impl Instance for Wasi {
                     // TODO: How to get exit code?
                     // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
                     let (lock, cvar) = &*exit_code;
-                    let _ret = match f.call(&mut store, &mut vec![], &mut vec![]) {
+                    let _ret = match f.call(&mut store, &mut [], &mut []) {
                         Ok(_) => {
                             debug!("exit code: {}", 0);
                             let mut ec = lock.lock().unwrap();
@@ -373,12 +308,14 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use super::*;
     use std::fs::{create_dir, read_to_string, write, File};
     use std::io::prelude::*;
     use std::time::Duration;
+
     use tempfile::tempdir;
     use wasmtime::Config;
+
+    use super::*;
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module
@@ -480,143 +417,6 @@ mod wasitest {
 
         Ok(())
     }
-}
-
-// This is used for the "pause" container with cri.
-pub struct Nop {
-    // Since we are faking the container, we need to keep track of the "exit" code/time
-    // We'll just mark it as exited when kill is called.
-    exit_code: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
-}
-
-impl Instance for Nop {
-    type E = ();
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
-        Nop {
-            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-        }
-    }
-    fn start(&self) -> Result<u32, Error> {
-        Ok(std::process::id())
-    }
-
-    fn kill(&self, signal: u32) -> Result<(), Error> {
-        let code = match signal {
-            9 => 137,
-            2 | 15 => 0,
-            s => {
-                return Err(Error::InvalidArgument(format!("unsupported signal: {}", s)));
-            }
-        };
-
-        let exit_code = self.exit_code.clone();
-        let (lock, cvar) = &*exit_code;
-        let mut lock = lock.lock().unwrap();
-        *lock = Some((code, Utc::now()));
-        cvar.notify_all();
-
-        Ok(())
-    }
-    fn delete(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
-        let code = self.exit_code.clone();
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            channel.send(ec).unwrap();
-        });
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod noptests {
-    use super::*;
-    use std::sync::mpsc::channel;
-    use std::sync::Arc;
-    use std::time::Duration;
-
-    #[test]
-    fn test_nop_kill_sigkill() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
-        let (tx, rx) = channel();
-
-        let n = nop.clone();
-
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
-
-        nop.kill(9)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-        assert_eq!(ec.0, 137);
-        Ok(())
-    }
-
-    #[test]
-    fn test_nop_kill_sigterm() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
-        let (tx, rx) = channel();
-
-        let n = nop.clone();
-
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
-
-        nop.kill(15)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-        assert_eq!(ec.0, 0);
-        Ok(())
-    }
-
-    #[test]
-    fn test_nop_kill_sigint() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
-        let (tx, rx) = channel();
-
-        let n = nop.clone();
-
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
-
-        nop.kill(2)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-        assert_eq!(ec.0, 0);
-        Ok(())
-    }
-
-    #[test]
-    fn test_op_kill_other() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
-
-        let err = nop.kill(1).unwrap_err();
-        match err {
-            Error::InvalidArgument(_) => {}
-            _ => panic!("unexpected error: {}", err),
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_nop_delete_after_create() {
-        let nop = Nop::new("".to_string(), None);
-        nop.delete().unwrap();
-    }
-}
-
-pub trait EngineGetter {
-    type E: Send + Sync + Clone;
-    fn new_engine() -> Result<Self::E, Error>;
 }
 
 impl EngineGetter for Wasi {

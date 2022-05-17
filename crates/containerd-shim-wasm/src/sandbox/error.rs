@@ -1,8 +1,9 @@
-use super::oci;
 use anyhow::Error as AnyError;
 use containerd_shim::Error as ShimError;
 use thiserror::Error;
 use ttrpc;
+
+use super::oci;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -13,10 +14,6 @@ pub enum Error {
     #[error("{0}")]
     Others(String),
     #[error("{0}")]
-    Wasi(#[from] wasmtime_wasi::Error),
-    #[error("{0}")]
-    WasiCommonStringArray(#[from] wasi_common::StringArrayError),
-    #[error("{0}")]
     Shim(#[from] ShimError),
     #[error("not found: {0}")]
     NotFound(String),
@@ -25,7 +22,7 @@ pub enum Error {
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
     #[error("{0}")]
-    Any(AnyError),
+    Any(#[from] AnyError),
     #[error("{0}")]
     FailedPrecondition(String),
 }
@@ -72,8 +69,9 @@ impl From<Error> for ttrpc::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use thiserror::Error;
+
+    use super::*;
 
     #[derive(Debug, Error)]
     enum TestError {

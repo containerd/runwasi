@@ -36,7 +36,7 @@ To use your implementation in "normal" mode, you'll need to create a binary whic
 
 ```rust
 use containerd_shim as shim;
-use containerd_shim_wasmtime_v1::sandbox::{ShimCli, Instance}
+use containerd_shim_wasm::sandbox::{ShimCli, Instance}
 
 struct MyInstance {
  // ...
@@ -59,8 +59,8 @@ The shim binary just needs to be installed into `$PATH` (as seen by the containe
 For the shared mode:
 
 ```rust
-use containerd_shim_wasmtime_v1::sandbox::{Local, ManagerService, Instance};
-use containerd_shim_wasmtime_v1::services::sandbox_ttrpc::{create_manager, Manager};
+use containerd_shim_wasm::sandbox::{Local, ManagerService, Instance};
+use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
 use std::sync::Arc;
 use ttrpc::{self, Server};
 use wasmtime::{Config, Engine};
