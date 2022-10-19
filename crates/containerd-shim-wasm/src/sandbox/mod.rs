@@ -4,6 +4,7 @@ pub mod error;
 pub mod instance;
 pub mod manager;
 pub mod shim;
+pub mod exec;
 
 pub use error::Error;
 pub use instance::{EngineGetter, Instance, InstanceConfig};
