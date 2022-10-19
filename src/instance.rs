@@ -8,6 +8,7 @@ use std::thread;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
@@ -156,7 +157,7 @@ impl Instance for Wasi {
 
         let exit_code = self.exit_code.clone();
         let interupt = self.interupt.clone();
-        let (tx, rx) = channel::<Result<(), Error>>();
+        let (tx, rx) = channel::<Result<u32, Error>>();
         let bundle = self.bundle.clone();
         let stdin = self.stdin.clone();
         let stdout = self.stdout.clone();
@@ -218,9 +219,11 @@ impl Instance for Wasi {
                 };
 
                 debug!("getting start function");
-                let f = match i.get_func(&mut store, "_start").ok_or_else(|| {
-                    Error::InvalidArgument("module does not have a wasi start function".to_string())
-                }) {
+                let f = match i
+                    .get_func(&mut store, "_start")
+                    .ok_or(Error::InvalidArgument(
+                        "module does not have a wasi start function".to_string(),
+                    )) {
                     Ok(f) => f,
                     Err(err) => {
                         tx.send(Err(err)).unwrap();
@@ -228,33 +231,57 @@ impl Instance for Wasi {
                     }
                 };
 
-                debug!("notifying main thread we are about to start");
-                tx.send(Ok(())).unwrap();
-
                 debug!("starting wasi instance");
 
-                // TODO: How to get exit code?
-                // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
                 let (lock, cvar) = &*exit_code;
-                match f.call(&mut store, &[], &mut []) {
-                    Ok(_) => {
-                        debug!("exit code: {}", 0);
-                        let mut ec = lock.lock().unwrap();
-                        *ec = Some((0, Utc::now()));
-                    }
-                    Err(_) => {
-                        error!("exit code: {}", 137);
-                        let mut ec = lock.lock().unwrap();
-                        *ec = Some((137, Utc::now()));
+
+                unsafe {
+                    let mut pidfd = exec::PidFD::from(-1);
+
+                    match exec::perform_start(Some(&mut pidfd)) {
+                        Ok(exec::Context::Parent(tid)) => {
+                            debug!("started wasi instance with tid {}", tid);
+                            debug!("notifying main thread we are about to start");
+                            tx.send(Ok(tid)).unwrap();
+
+                            match exec::wait_for_pidfd(pidfd) {
+                                Ok(status) => {
+                                    debug!("wasi instance exited with status {}", status.status);
+                                    let mut ec = lock.lock().unwrap();
+                                    *ec = Some((status.status, Utc::now()));
+                                    drop(lock);
+                                    cvar.notify_all();
+                                    return;
+                                }
+                                Err(err) => {
+                                    error!("error waiting for pidfd: {}", err);
+                                    let mut ec = lock.lock().unwrap();
+                                    *ec = Some((137, Utc::now()));
+                                    return;
+                                }
+                            }
+                        }
+                        Ok(exec::Context::Child) => {
+                            // child process
+
+                            // TODO: How to get exit code?
+                            // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
+                            let _ret = match f.call(&mut store, &mut [], &mut []) {
+                                Ok(_) => std::process::exit(0),
+                                Err(_) => std::process::exit(137),
+                            };
+                        }
+                        Err(err) => {
+                            tx.send(Err(err)).unwrap();
+                            return;
+                        }
                     }
                 };
-
-                cvar.notify_all();
             })?;
 
         debug!("Waiting for start notification");
         match rx.recv().unwrap() {
-            Ok(_) => (),
+            Ok(pid) => Ok(pid),
             Err(err) => {
                 debug!("error starting instance: {}", err);
                 let code = self.exit_code.clone();
@@ -266,8 +293,6 @@ impl Instance for Wasi {
                 return Err(err);
             }
         }
-
-        Ok(1) // TODO: PID: I wanted to use a thread ID here, but threads use a u64, the API wants a u32
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
@@ -308,6 +333,7 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
+    use nix::sys::wait;
     use std::fs::{create_dir, read_to_string, write, File};
     use std::io::prelude::*;
     use std::time::Duration;
@@ -392,7 +418,13 @@ mod wasitest {
 
         let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
 
-        wasi.start()?;
+        let pid = wasi.start()?;
+        // poll the process just to make sure this pid is legit
+        wait::waitpid(
+            nix::unistd::Pid::from_raw(pid as i32),
+            Some(wait::WaitPidFlag::WNOHANG),
+        )
+        .map_err(|e| std::io::Error::from(e))?;
 
         let w = wasi.clone();
         let (tx, rx) = channel();
