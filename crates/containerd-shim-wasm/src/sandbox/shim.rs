@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{self, File};
+use std::fs::{canonicalize, create_dir_all, OpenOptions};
 use std::ops::Not;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -1364,12 +1365,39 @@ where
                     continue;
                 }
 
-                let os_source = m.source().as_ref().unwrap().clone().into_os_string();
-                let source = os_source.to_string_lossy();
+                let dest = m.destination();
+                let source = m.source().as_ref().unwrap();
+                let src = canonicalize(source).unwrap();
 
-                let flags = parse_mount(m);
+                let dir = if src.is_file() {
+                    Path::new(&dest).parent().unwrap()
+                } else {
+                    Path::new(&dest)
+                };
 
-                mount::<str, Path, str, str>(Some(&source), m.destination(), None, flags, None)?;
+                create_dir_all(dir).unwrap();
+
+                if src.is_file() {
+                    OpenOptions::new()
+                        .create(true)
+                        .write(true)
+                        .open(&dest)
+                        .unwrap();
+                }
+
+                mount::<str, Path, str, str>(
+                    Some(&src.to_string_lossy()),
+                    dest,
+                    None,
+                    parse_mount(m),
+                    None,
+                )
+                .map_err(|err| {
+                    shim::Error::Other(format!(
+                        "failed to mount targets that list in spec.mount: {}",
+                        err
+                    ))
+                })?;
             }
         }
 
