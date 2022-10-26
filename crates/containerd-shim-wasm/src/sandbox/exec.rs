@@ -1,13 +1,15 @@
+use super::cgroups::{Cgroup, Version as CgroupVersion};
 use super::error::Error;
 use caps::{CapSet, Capability};
 use clone3::Clone3;
 use log::debug;
+use log::info;
 use nix::sys::signal::SIGCHLD;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
+use nix::unistd::close;
 use std::os::raw::c_int as RawFD;
 
 pub type PidFD = RawFD;
-pub type CGroupFD = RawFD;
 
 #[derive(Debug)]
 pub struct ExitStatus {
@@ -20,7 +22,7 @@ pub enum Context {
     Child,
 }
 
-fn has_cap_sys_admin() -> bool {
+pub fn has_cap_sys_admin() -> bool {
     let caps = caps::read(None, CapSet::Effective).unwrap();
     caps.contains(&Capability::CAP_SYS_ADMIN)
 }
@@ -35,7 +37,7 @@ fn has_cap_sys_admin() -> bool {
 //
 // Optionally you can pass in a reference to a file descriptor which will be populated with the pidfd (see pidfd_open(2)).
 pub unsafe fn perform_start(
-    cgroupfd: Option<&CGroupFD>,
+    cgroup: Option<&Box<dyn Cgroup>>,
     pidfd: Option<&mut PidFD>,
 ) -> Result<Context, Error> {
     let mut builder = Clone3::default();
@@ -46,11 +48,17 @@ pub unsafe fn perform_start(
     };
 
     builder.exit_signal(SIGCHLD as u64).flag_ptrace();
-    if has_cap_sys_admin() {
-        if cgroupfd.is_some() {
-            let fd = cgroupfd.unwrap();
-            builder.flag_into_cgroup(fd);
-        };
+
+    let is_root = has_cap_sys_admin();
+
+    let mut fd: RawFD = -1; // Keep the fd alive until we return
+    if is_root {
+        if let Some(cgroup) = &cgroup {
+            if cgroup.version() == CgroupVersion::V2 {
+                fd = cgroup.open()?;
+                builder.flag_into_cgroup(&fd);
+            }
+        }
 
         builder
             .flag_newpid()
@@ -62,11 +70,30 @@ pub unsafe fn perform_start(
         debug!("no CAP_SYS_ADMIN, not creating new namespaces");
     }
 
-    // TODO: close fd's in the child?
-
-    match { builder.call() } {
+    let res = { builder.call() };
+    if fd > -1 {
+        match close(fd) {
+            Ok(_) => {}
+            Err(e) => {
+                info!("failed to close cgroup fd: {}", e);
+            }
+        }
+    }
+    match res {
         Ok(tid) => match tid {
-            0 => Ok(Context::Child),
+            0 => {
+                if is_root {
+                    if let Some(cgroup) = cgroup {
+                        // With v2 we use clone_into_cgroup, so we only want to handle this for v1
+                        if cgroup.version() == CgroupVersion::V1 {
+                            cgroup.add_task(std::process::id()).map_err(|e| {
+                                Error::Others(format!("error adding pid to cgroup: {}", e))
+                            })?;
+                        }
+                    }
+                }
+                Ok(Context::Child)
+            }
             _ => Ok(Context::Parent(tid as u32)),
         },
         Err(e) => Err(std::io::Error::from(e).into()),
@@ -84,70 +111,50 @@ pub fn wait_for_pidfd(pidfd: PidFD) -> Result<ExitStatus, Error> {
             pid: pid.as_raw() as u32,
             status: status as u32,
         }),
+        WaitStatus::Signaled(pid, sig, dumped) => {
+            info!("child {} killed by signal {}, dumped: {}", pid, sig, dumped);
+            Ok(ExitStatus {
+                pid: pid.as_raw() as u32,
+                status: 128 + sig as u32,
+            })
+        }
         _ => Err(Error::Others(format!("unexpected wait status: {:?}", info))),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::cgroups;
     use super::*;
-    use proc_mounts::MountIter;
-    use std::os::unix::prelude::AsRawFd;
-    use tempfile::{tempdir_in, TempDir};
-
-    fn cgroup2_mount() -> Option<(TempDir, nix::dir::Dir)> {
-        if !has_cap_sys_admin() {
-            // We can't create a cgroup without cap_sys_admin
-            return None;
-        }
-        for mount in MountIter::new().unwrap() {
-            let mnt = mount.unwrap();
-            if mnt.fstype == "cgroup2" {
-                let cgdir = tempdir_in(&mnt.dest).unwrap();
-                let fd = nix::dir::Dir::open(
-                    cgdir.path(),
-                    nix::fcntl::OFlag::O_DIRECTORY
-                        | nix::fcntl::OFlag::O_CLOEXEC
-                        | nix::fcntl::OFlag::O_RDONLY,
-                    nix::sys::stat::Mode::empty(),
-                )
-                .map_err(|e| std::io::Error::from(e))
-                .unwrap();
-                return Some((cgdir, fd));
-            }
-        }
-        None
-    }
 
     #[test]
     fn test_perform_start() -> Result<(), Error> {
         let test_exit_code = 42;
+        let cg = cgroups::new("test_perform_start".to_string())?;
+
+        let mut pidfd = RawFD::from(-1);
+
         unsafe {
-            let mut pidfd = RawFD::from(-1);
-
-            let cg = cgroup2_mount();
-            let cgres: (TempDir, nix::dir::Dir);
-            let cgresfd: RawFD;
-            let cgfd: Option<&RawFD>;
-            if cg.is_some() {
-                cgres = cg.unwrap();
-                cgresfd = cgres.1.as_raw_fd();
-                cgfd = Some(&cgresfd);
-            } else {
-                cgfd = None;
-            }
-
-            match perform_start(cgfd, Some(&mut pidfd)) {
+            let ret = perform_start(Some(&cg), Some(&mut pidfd));
+            match ret {
                 Ok(Context::Parent(tid)) => {
+                    // Wait for the child to exit before trying to delete the cgroup
+                    let status = wait_for_pidfd(pidfd)
+                        .map_err(|e| Error::Others(format!("error waiting for pidfd: {}", e)));
+
+                    if has_cap_sys_admin() {
+                        cg.delete()
+                            .map_err(|e| Error::Others(format!("error deleting cgroup: {}", e)))?;
+                    }
                     assert!(tid > 0);
-                    let status = wait_for_pidfd(pidfd)?;
+                    let status = status?;
                     if status.status != test_exit_code {
                         return Err(Error::Others(format!(
                             "unexpected exit status: {:?}",
                             status
                         )));
                     }
-                    Ok(())
+                    return Ok(());
                 }
                 Ok(Context::Child) => std::process::exit(test_exit_code as i32),
                 Err(e) => {

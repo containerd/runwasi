@@ -74,21 +74,20 @@ pub fn maybe_open_stdio(path: &str) -> Result<Option<WasiFile>, Error> {
     }
 }
 
+fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
+    let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
+    spec.canonicalize_rootfs(&bundle)
+        .map_err(|e| Error::Others(format!("error canonicalizing rootfs in spec: {}", e)))?;
+    Ok(spec)
+}
+
 pub fn prepare_module(
     engine: wasmtime::Engine,
-    bundle: String,
+    spec: &oci::Spec,
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
 ) -> Result<(WasiCtx, Module), WasmtimeError> {
-    let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
-
-    spec.canonicalize_rootfs(&bundle).map_err(|err| {
-        WasmtimeError::Error(Error::Others(format!(
-            "could not canonicalize rootfs: {}",
-            err
-        )))
-    })?;
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(&spec)?;
     let args = oci::get_args(&spec);
@@ -180,7 +179,15 @@ impl Instance for Wasi {
                 };
 
                 debug!("preparing module");
-                let m = match prepare_module(engine.clone(), bundle, stdin, stdout, stderr) {
+                let spec = match load_spec(bundle) {
+                    Ok(spec) => spec,
+                    Err(err) => {
+                        tx.send(Err(err)).unwrap();
+                        return;
+                    }
+                };
+
+                let m = match prepare_module(engine.clone(), &spec, stdin, stdout, stderr) {
                     Ok(f) => f,
                     Err(err) => {
                         tx.send(Err(Error::Others(err.to_string()))).unwrap();
@@ -235,10 +242,33 @@ impl Instance for Wasi {
 
                 let (lock, cvar) = &*exit_code;
 
+                let cg = match oci::get_cgroup(&spec) {
+                    Ok(cg) => cg,
+                    Err(err) => {
+                        tx.send(Err(anyhow::anyhow!("could not get cgroup: {}", err).into()))
+                            .unwrap();
+                        return;
+                    }
+                };
+
+                match oci::setup_cgroup(&cg, &spec) {
+                    Ok(_) => (),
+                    Err(err) => {
+                        tx.send(Err(anyhow::anyhow!(
+                            "could not setup cgroup {}: {}",
+                            cg.version(),
+                            err
+                        )
+                        .into()))
+                            .unwrap();
+                        return;
+                    }
+                };
+
                 unsafe {
                     let mut pidfd = exec::PidFD::from(-1);
 
-                    match exec::perform_start(None, Some(&mut pidfd)) {
+                    match exec::perform_start(Some(&cg), Some(&mut pidfd)) {
                         Ok(exec::Context::Parent(tid)) => {
                             debug!("started wasi instance with tid {}", tid);
                             debug!("notifying main thread we are about to start");
@@ -272,7 +302,11 @@ impl Instance for Wasi {
                             };
                         }
                         Err(err) => {
-                            tx.send(Err(err)).unwrap();
+                            tx.send(Err(Error::Others(format!(
+                                "Error starting up child: {}",
+                                err
+                            ))))
+                            .unwrap();
                             return;
                         }
                     }
@@ -312,6 +346,15 @@ impl Instance for Wasi {
     }
 
     fn delete(&self) -> Result<(), Error> {
+        let spec = match load_spec(self.bundle.clone()) {
+            Ok(spec) => spec,
+            Err(err) => {
+                error!("Could not load spec, skipping cgroup cleanup: {}", err);
+                return Ok(());
+            }
+        };
+        let cg = oci::get_cgroup(&spec)?;
+        cg.delete()?;
         Ok(())
     }
 

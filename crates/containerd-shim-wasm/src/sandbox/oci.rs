@@ -1,28 +1,13 @@
 use std::fs::File;
 use std::path::Path;
 
-use anyhow::Error as AnyError;
+use super::cgroups;
+use super::error::Result;
 use cap_std::path::PathBuf;
-use oci_spec::runtime::Spec;
-use oci_spec::OciSpecError;
+pub use oci_spec::runtime::Spec;
 use serde_json as json;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("invalid argument: {0}")]
-    InvalidArgument(String),
-    #[error("failed to load spec: {0}")]
-    Spec(#[from] OciSpecError),
-    #[error("failed to open file: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("failed to decode spec json: ${0}")]
-    Json(#[from] json::Error),
-    #[error("{0}")]
-    Any(#[from] AnyError),
-}
-
-pub fn load(path: &str) -> Result<Spec, Error> {
+pub fn load(path: &str) -> Result<Spec> {
     let spec = Spec::load(path)?;
     Ok(spec)
 }
@@ -44,8 +29,50 @@ pub fn get_args(spec: &Spec) -> &[String] {
     }
 }
 
-pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec, Error> {
+pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec> {
     let file = File::open(path)?;
     let cfg: Spec = json::from_reader(file)?;
     Ok(cfg)
+}
+
+struct NopCgroup {}
+
+impl cgroups::Cgroup for NopCgroup {
+    fn add_task(&self, _pid: u32) -> Result<()> {
+        Ok(())
+    }
+
+    fn version(&self) -> cgroups::Version {
+        cgroups::Version::V1
+    }
+
+    fn apply(&self, _res: Option<cgroups::Resources>) -> Result<()> {
+        Ok(())
+    }
+
+    fn delete(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+pub fn get_cgroup(spec: &Spec) -> Result<Box<dyn cgroups::Cgroup>> {
+    let linux = spec.linux();
+    if linux.is_none() {
+        return Ok(Box::new(NopCgroup {}));
+    }
+    let p = linux.as_ref().unwrap().cgroups_path();
+    if p.is_none() {
+        return Ok(Box::new(NopCgroup {}));
+    }
+
+    cgroups::new(p.as_ref().unwrap().to_str().unwrap().to_string())
+}
+
+pub fn setup_cgroup(cg: &Box<dyn cgroups::Cgroup>, spec: &Spec) -> Result<()> {
+    if let Some(linux) = spec.linux() {
+        if let Some(res) = linux.resources() {
+            cg.apply(Some(res.clone()))?;
+        }
+    }
+    Ok(())
 }
