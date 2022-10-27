@@ -27,16 +27,18 @@ pub fn has_cap_sys_admin() -> bool {
     caps.contains(&Capability::CAP_SYS_ADMIN)
 }
 
-// perform_start can be used to setup a new thread to run your code in.
-//
-// This works like fork semantics:
-// If this is the parent, the result will be Ok(Some(pid)), whre the pid is the pid of the new process.
-// If this is the child, the result will be Ok(None).
+// This is is a wrapper around clone3 which allows us to pass a pidfd
+// This works otherwise just like normal forking semantics:
+// If this is the parent, the result will be Ok(Context::Parent(pid)), where the pid is the pid of the new process.
+// If this is the child, the result will be Ok(Context::Child).
 //
 // Code that runs in the child must not do things like access locks or other shared state.
 //
+// This will also (currently) spawn the new process in a new set of namespaces (except for network namespaces).
+// This may change as the utility of such behavior is evaluated.
+//
 // Optionally you can pass in a reference to a file descriptor which will be populated with the pidfd (see pidfd_open(2)).
-pub unsafe fn perform_start(
+pub unsafe fn fork(
     cgroup: Option<&Box<dyn Cgroup>>,
     pidfd: Option<&mut PidFD>,
 ) -> Result<Context, Error> {
@@ -128,14 +130,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_perform_start() -> Result<(), Error> {
+    fn test_fork() -> Result<(), Error> {
         let test_exit_code = 42;
         let cg = cgroups::new("test_perform_start".to_string())?;
 
         let mut pidfd = RawFD::from(-1);
 
         unsafe {
-            let ret = perform_start(Some(&cg), Some(&mut pidfd));
+            let ret = fork(Some(&cg), Some(&mut pidfd));
             match ret {
                 Ok(Context::Parent(tid)) => {
                     // Wait for the child to exit before trying to delete the cgroup

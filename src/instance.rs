@@ -268,7 +268,7 @@ impl Instance for Wasi {
                 unsafe {
                     let mut pidfd = exec::PidFD::from(-1);
 
-                    match exec::perform_start(Some(&cg), Some(&mut pidfd)) {
+                    match exec::fork(Some(&cg), Some(&mut pidfd)) {
                         Ok(exec::Context::Parent(tid)) => {
                             debug!("started wasi instance with tid {}", tid);
                             debug!("notifying main thread we are about to start");
