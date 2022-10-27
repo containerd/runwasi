@@ -74,7 +74,18 @@ impl Cgroup for CgroupV1 {
     }
 
     fn add_task(&self, pid: u32) -> Result<()> {
-        vec!["cpu", "cpuset", "memory", "pids"]
+        // cpuset is special, we can't add a process to it unless values are already initialized
+        let cpuset = self.get_controller("cpuset")?;
+        match std::fs::read_to_string(cpuset.join("cpuset.cpus")) {
+            Ok(v) => {
+                if v.trim().len() > 0 {
+                    ensure_write_file(cpuset.join("cgroup.procs"), &format!("{}", pid))?;
+                }
+            }
+            Err(_) => {}
+        }
+
+        vec!["cpu", "memory", "pids"]
             .iter()
             .map(|subsys| {
                 let mut file = OpenOptions::new()
