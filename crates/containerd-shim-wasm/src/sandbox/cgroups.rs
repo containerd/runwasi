@@ -103,97 +103,89 @@ impl Cgroup for CgroupV1 {
             if let Some(cpu) = res.cpu() {
                 let controller_path = self.get_controller("cpu")?;
                 if let Some(quota) = cpu.quota() {
-                    let path = controller_path.join("cpu.cfs_quota_us");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", quota).as_bytes())?
+                    ensure_write_file(
+                        controller_path.join("cpu.cfs_quota_us"),
+                        &quota.to_string(),
+                    )?;
                 }
                 if let Some(period) = cpu.period() {
-                    let path = controller_path.join("cpu.cfs_period_us");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", period).as_bytes())?
+                    ensure_write_file(
+                        controller_path.join("cpu.cfs_period_us"),
+                        &period.to_string(),
+                    )?;
                 }
                 if let Some(shares) = cpu.shares() {
-                    let path = controller_path.join("cpu.shares");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", shares).as_bytes())?
+                    ensure_write_file(controller_path.join("cpu.shares"), &shares.to_string())?;
                 }
                 if let Some(realtime_period) = cpu.realtime_period() {
-                    let path = controller_path.join("cpu.rt_period_us");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", realtime_period).as_bytes())?
+                    ensure_write_file(
+                        controller_path.join("cpu.rt_period_us"),
+                        &realtime_period.to_string(),
+                    )?;
                 }
                 if let Some(realtime_runtime) = cpu.realtime_runtime() {
-                    let path = controller_path.join("cpu.rt_runtime_us");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", realtime_runtime).as_bytes())?
+                    ensure_write_file(
+                        controller_path.join("cpu.rt_runtime_us"),
+                        &realtime_runtime.to_string(),
+                    )?;
                 }
 
                 let cpuset_path = self.get_controller("cpuset")?;
                 if let Some(cpus) = cpu.cpus() {
-                    let path = cpuset_path.join("cpuset.cpus");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(cpus.as_bytes())?
-                } else {
-                    let path = cpuset_path.join("cpuset.cpus");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all("0".as_bytes())?
+                    ensure_write_file(cpuset_path.join("cpuset.cpus"), cpus)?;
                 }
-
                 if let Some(mems) = cpu.mems() {
-                    let path = cpuset_path.join("cpuset.mems");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(mems.as_bytes())?
-                } else {
-                    let path = cpuset_path.join("cpuset.mems");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all("0".as_bytes())?
+                    ensure_write_file(cpuset_path.join("cpuset.mems"), mems)?;
                 }
             }
             if let Some(memory) = &res.memory() {
                 let controller_path = self.get_controller("memory")?;
                 if let Some(limit) = memory.limit() {
-                    let path = controller_path.join("memory.limit_in_bytes");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", limit).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.limit_in_bytes"),
+                        &limit.to_string(),
+                    )?;
                 }
                 if let Some(reservation) = memory.reservation() {
-                    let path = controller_path.join("memory.soft_limit_in_bytes");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", reservation).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.soft_limit_in_bytes"),
+                        &reservation.to_string(),
+                    )?;
                 }
                 if let Some(swappiness) = memory.swappiness() {
-                    let path = controller_path.join("memory.swappiness");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", swappiness).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.swappiness"),
+                        &swappiness.to_string(),
+                    )?;
                 }
                 if let Some(kernel) = memory.kernel() {
-                    let path = controller_path.join("memory.kmem.limit_in_bytes");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", kernel).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.kmem.limit_in_bytes"),
+                        &kernel.to_string(),
+                    )?;
                 }
                 if let Some(kernel_tcp) = memory.kernel_tcp() {
-                    let path = controller_path.join("memory.kmem.tcp.limit_in_bytes");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", kernel_tcp).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.kmem.tcp.limit_in_bytes"),
+                        &kernel_tcp.to_string(),
+                    )?;
                 }
                 if let Some(swap) = memory.swap() {
-                    let path = controller_path.join("memory.memsw.limit_in_bytes");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(format!("{}", swap).as_bytes())?;
+                    ensure_write_file(
+                        controller_path.join("memory.memsw.limit_in_bytes"),
+                        &swap.to_string(),
+                    )?;
                 }
                 if let Some(oom_kill_disable) = memory.disable_oom_killer() {
-                    let path = controller_path.join("memory.oom_control");
-                    let mut file = OpenOptions::new().write(true).open(path)?;
-                    file.write_all(if oom_kill_disable { b"1" } else { b"0" })?;
+                    if oom_kill_disable {
+                        ensure_write_file(controller_path.join("memory.oom_control"), "1")?;
+                    }
                 }
             }
 
             if let Some(pids) = &res.pids() {
                 let controller_path = self.get_controller("pids")?;
-                let limit = pids.limit();
-                let path = controller_path.join("pids.max");
-                let mut file = OpenOptions::new().write(true).open(path)?;
-                file.write_all(format!("{}", limit).as_bytes())?;
+                ensure_write_file(controller_path.join("pids.max"), &pids.limit().to_string())?;
             }
         }
         Ok(())
