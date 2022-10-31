@@ -266,15 +266,13 @@ impl Instance for Wasi {
                 };
 
                 unsafe {
-                    let mut pidfd = exec::PidFD::from(-1);
-
-                    match exec::fork(Some(&cg), Some(&mut pidfd)) {
-                        Ok(exec::Context::Parent(tid)) => {
+                    match exec::fork(Some(&cg)) {
+                        Ok(exec::Context::Parent(tid, pidfd)) => {
                             debug!("started wasi instance with tid {}", tid);
                             debug!("notifying main thread we are about to start");
                             tx.send(Ok(tid)).unwrap();
 
-                            match exec::wait_for_pidfd(pidfd) {
+                            match pidfd.wait() {
                                 Ok(status) => {
                                     debug!("wasi instance exited with status {}", status.status);
                                     let mut ec = lock.lock().unwrap();
