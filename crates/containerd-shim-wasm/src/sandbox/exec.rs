@@ -12,6 +12,7 @@ use std::os::raw::c_int as RawFD;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 
+#[derive(Clone)]
 pub struct PidFD {
     fd: RawFD,
 }
