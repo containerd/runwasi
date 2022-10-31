@@ -11,7 +11,7 @@ use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
-use wasmtime::{Config as EngineConfig, Engine, Linker, Module, Store};
+use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
 use super::error::WasmtimeError;
@@ -279,7 +279,6 @@ mod wasitest {
     use std::time::Duration;
 
     use tempfile::tempdir;
-    use wasmtime::Config;
 
     use super::*;
 
@@ -351,7 +350,7 @@ mod wasitest {
             .as_bytes(),
         )?;
 
-        let mut cfg = InstanceConfig::new(Engine::new(Config::new().interruptable(true))?);
+        let mut cfg = InstanceConfig::new(Engine::default());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -388,7 +387,7 @@ mod wasitest {
 impl EngineGetter for Wasi {
     type E = wasmtime::Engine;
     fn new_engine() -> Result<Engine, Error> {
-        let engine = Engine::new(EngineConfig::default().interruptable(true))?;
+        let engine = Engine::default();
         Ok(engine)
     }
 }
