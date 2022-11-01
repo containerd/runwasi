@@ -122,9 +122,6 @@ pub fn has_cap_sys_admin() -> bool {
 //
 // Code that runs in the child must not do things like access locks or other shared state.
 //
-// This will also (currently) spawn the new process in a new set of namespaces (except for network namespaces).
-// This may change as the utility of such behavior is evaluated.
-//
 // Optionally you can pass in a reference to a file descriptor which will be populated with the pidfd (see pidfd_open(2)).
 pub unsafe fn fork(cgroup: Option<&Box<dyn Cgroup>>) -> Result<Context, Error> {
     let mut builder = Clone3::default();
@@ -141,16 +138,9 @@ pub unsafe fn fork(cgroup: Option<&Box<dyn Cgroup>>) -> Result<Context, Error> {
         if let Some(cgroup) = &cgroup {
             if cgroup.version() == CgroupVersion::V2 {
                 cgfd = cgroup.open()?;
-                builder.flag_into_cgroup(&cgfd);
+                builder.flag_into_cgroup(&cgfd).flag_newcgroup();
             }
         }
-
-        builder
-            .flag_newpid()
-            .flag_newuts()
-            .flag_newipc()
-            .flag_newcgroup()
-            .flag_newns();
     } else {
         debug!("no CAP_SYS_ADMIN, not creating new namespaces");
     }

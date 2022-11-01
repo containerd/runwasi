@@ -1,4 +1,5 @@
 use super::{Error, Result};
+use nix::sys::statfs::statfs;
 pub use oci_spec::runtime::LinuxResources as Resources;
 use proc_mounts::MountIter;
 use std::fs::{create_dir_all, OpenOptions};
@@ -352,13 +353,12 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
     let v1 = PathBuf::from("/sys/fs/cgroup");
     let v2 = PathBuf::from("/sys/fs/cgroup/unified");
     if v1.join("cpu").exists() {
-        let stat = nix::sys::statfs::statfs(v1.join("cpu").as_path())
-            .map_err(|e| std::io::Error::from(e))?;
+        let stat = statfs(v1.join("cpu").as_path()).map_err(|e| std::io::Error::from(e))?;
         let is_v1 = stat.filesystem_type() == nix::sys::statfs::CGROUP_SUPER_MAGIC;
         if is_v1 {
             if v2.exists() {
                 // Check if we are running in a hybrid cgroup setup
-                let data = std::fs::read("/sys/fs/cgroup/unified/cgroup.controllers")
+                let data = std::fs::read(v2.join("cgroup.controllers"))
                     .map_err(|e| std::io::Error::from(e))?;
 
                 let trimmed = std::str::from_utf8(&data)
@@ -384,6 +384,7 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
             return Ok(Box::new(CgroupV1::new(v1, PathBuf::from(name))));
         }
     }
+
     if v2.exists() {
         return Ok(Box::new(CgroupV2::new(v2, PathBuf::from(name))));
     }

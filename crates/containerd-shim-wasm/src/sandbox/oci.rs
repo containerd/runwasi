@@ -60,6 +60,7 @@ pub fn get_cgroup(spec: &Spec) -> Result<Box<dyn cgroups::Cgroup>> {
     if linux.is_none() {
         return Ok(Box::new(NopCgroup {}));
     }
+
     let p = linux.as_ref().unwrap().cgroups_path();
     if p.is_none() {
         return Ok(Box::new(NopCgroup {}));
