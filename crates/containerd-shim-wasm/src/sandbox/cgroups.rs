@@ -100,93 +100,178 @@ impl Cgroup for CgroupV1 {
     }
 
     fn apply(&self, res: Option<Resources>) -> Result<()> {
-        if let Some(res) = res {
-            if let Some(cpu) = res.cpu() {
-                let controller_path = self.get_controller("cpu")?;
-                if let Some(quota) = cpu.quota() {
-                    ensure_write_file(
-                        controller_path.join("cpu.cfs_quota_us"),
-                        &quota.to_string(),
-                    )?;
-                }
-                if let Some(period) = cpu.period() {
-                    ensure_write_file(
-                        controller_path.join("cpu.cfs_period_us"),
-                        &period.to_string(),
-                    )?;
-                }
-                if let Some(shares) = cpu.shares() {
-                    ensure_write_file(controller_path.join("cpu.shares"), &shares.to_string())?;
-                }
-                if let Some(realtime_period) = cpu.realtime_period() {
-                    ensure_write_file(
-                        controller_path.join("cpu.rt_period_us"),
-                        &realtime_period.to_string(),
-                    )?;
-                }
-                if let Some(realtime_runtime) = cpu.realtime_runtime() {
-                    ensure_write_file(
-                        controller_path.join("cpu.rt_runtime_us"),
-                        &realtime_runtime.to_string(),
-                    )?;
-                }
+        if res.is_none() {
+            return Ok(());
+        }
+        let res = res.unwrap();
 
-                let cpuset_path = self.get_controller("cpuset")?;
-                if let Some(cpus) = cpu.cpus() {
-                    ensure_write_file(cpuset_path.join("cpuset.cpus"), cpus)?;
-                }
-                if let Some(mems) = cpu.mems() {
-                    ensure_write_file(cpuset_path.join("cpuset.mems"), mems)?;
-                }
+        if let Some(cpu) = res.cpu() {
+            let controller_path = self.get_controller("cpu")?;
+            if let Some(quota) = cpu.quota() {
+                ensure_write_file(controller_path.join("cpu.cfs_quota_us"), &quota.to_string())?;
             }
-            if let Some(memory) = &res.memory() {
-                let controller_path = self.get_controller("memory")?;
-                if let Some(limit) = memory.limit() {
-                    ensure_write_file(
-                        controller_path.join("memory.limit_in_bytes"),
-                        &limit.to_string(),
-                    )?;
+            if let Some(period) = cpu.period() {
+                ensure_write_file(
+                    controller_path.join("cpu.cfs_period_us"),
+                    &period.to_string(),
+                )?;
+            }
+            if let Some(shares) = cpu.shares() {
+                ensure_write_file(controller_path.join("cpu.shares"), &shares.to_string())?;
+            }
+            if let Some(realtime_period) = cpu.realtime_period() {
+                ensure_write_file(
+                    controller_path.join("cpu.rt_period_us"),
+                    &realtime_period.to_string(),
+                )?;
+            }
+            if let Some(realtime_runtime) = cpu.realtime_runtime() {
+                ensure_write_file(
+                    controller_path.join("cpu.rt_runtime_us"),
+                    &realtime_runtime.to_string(),
+                )?;
+            }
+
+            let cpuset_path = self.get_controller("cpuset")?;
+            if let Some(cpus) = cpu.cpus() {
+                ensure_write_file(cpuset_path.join("cpuset.cpus"), cpus)?;
+            }
+            if let Some(mems) = cpu.mems() {
+                ensure_write_file(cpuset_path.join("cpuset.mems"), mems)?;
+            }
+        }
+        let mut mem_unlimited = false;
+        if let Some(memory) = res.memory() {
+            let controller_path = self.get_controller("memory")?;
+            if let Some(limit) = memory.limit() {
+                if limit == -1 {
+                    mem_unlimited = true;
                 }
-                if let Some(reservation) = memory.reservation() {
-                    ensure_write_file(
-                        controller_path.join("memory.soft_limit_in_bytes"),
-                        &reservation.to_string(),
-                    )?;
-                }
-                if let Some(swappiness) = memory.swappiness() {
-                    ensure_write_file(
-                        controller_path.join("memory.swappiness"),
-                        &swappiness.to_string(),
-                    )?;
-                }
-                if let Some(kernel) = memory.kernel() {
-                    ensure_write_file(
-                        controller_path.join("memory.kmem.limit_in_bytes"),
-                        &kernel.to_string(),
-                    )?;
-                }
-                if let Some(kernel_tcp) = memory.kernel_tcp() {
-                    ensure_write_file(
-                        controller_path.join("memory.kmem.tcp.limit_in_bytes"),
-                        &kernel_tcp.to_string(),
-                    )?;
-                }
-                if let Some(swap) = memory.swap() {
+                ensure_write_file(
+                    controller_path.join("memory.limit_in_bytes"),
+                    &limit.to_string(),
+                )?;
+            }
+            if let Some(swap) = memory.swap() {
+                ensure_write_file(
+                    controller_path.join("memory.memsw.limit_in_bytes"),
+                    &swap.to_string(),
+                )?;
+            } else {
+                // If memory is unlimited and swap is not explicitly set, set swap to unlimited
+                // See https://github.com/opencontainers/runc/blob/eddf35e5462e2a9f24d8279874a84cfc8b8453c2/libcontainer/cgroups/fs/memory.go#L70-L71
+                if mem_unlimited {
                     ensure_write_file(
                         controller_path.join("memory.memsw.limit_in_bytes"),
-                        &swap.to_string(),
+                        &"-1".to_string(),
                     )?;
                 }
-                if let Some(oom_kill_disable) = memory.disable_oom_killer() {
-                    if oom_kill_disable {
-                        ensure_write_file(controller_path.join("memory.oom_control"), "1")?;
+            }
+            if let Some(reservation) = memory.reservation() {
+                ensure_write_file(
+                    controller_path.join("memory.soft_limit_in_bytes"),
+                    &reservation.to_string(),
+                )?;
+            }
+            if let Some(swappiness) = memory.swappiness() {
+                ensure_write_file(
+                    controller_path.join("memory.swappiness"),
+                    &swappiness.to_string(),
+                )?;
+            }
+            if let Some(kernel) = memory.kernel() {
+                ensure_write_file(
+                    controller_path.join("memory.kmem.limit_in_bytes"),
+                    &kernel.to_string(),
+                )?;
+            }
+            if let Some(kernel_tcp) = memory.kernel_tcp() {
+                ensure_write_file(
+                    controller_path.join("memory.kmem.tcp.limit_in_bytes"),
+                    &kernel_tcp.to_string(),
+                )?;
+            }
+            if let Some(oom_kill_disable) = memory.disable_oom_killer() {
+                if oom_kill_disable {
+                    ensure_write_file(controller_path.join("memory.oom_control"), "1")?;
+                }
+            }
+        }
+
+        if let Some(pids) = &res.pids() {
+            let controller_path = self.get_controller("pids")?;
+            ensure_write_file(controller_path.join("pids.max"), &pids.limit().to_string())?;
+        }
+
+        if let Some(hugepages) = res.hugepage_limits() {
+            for page in hugepages {
+                let controller_path = self.get_controller("hugetlb")?;
+                let path =
+                    controller_path.join(format!("hugetlb.{}.limit_in_bytes", page.page_size()));
+                ensure_write_file(path, &page.limit().to_string())?;
+            }
+        }
+
+        if let Some(blkio) = res.block_io() {
+            let controller_path = self.get_controller("blkio")?;
+            if let Some(weight) = blkio.weight() {
+                ensure_write_file(controller_path.join("blkio.weight"), &weight.to_string())?;
+            }
+            if let Some(weight_device) = blkio.weight_device() {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .open(controller_path.join("blkio.weight_device"))?;
+                for device in weight_device {
+                    if let Some(weight) = device.weight() {
+                        file.write_all(
+                            format!("{}:{} {}", device.major(), device.minor(), weight).as_bytes(),
+                        )?;
                     }
                 }
             }
-
-            if let Some(pids) = &res.pids() {
-                let controller_path = self.get_controller("pids")?;
-                ensure_write_file(controller_path.join("pids.max"), &pids.limit().to_string())?;
+            if let Some(throttle_read_bps_device) = blkio.throttle_read_bps_device() {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .open(controller_path.join("blkio.throttle.read_bps_device"))?;
+                for device in throttle_read_bps_device {
+                    file.write_all(
+                        format!("{}:{} {}", device.major(), device.minor(), device.rate())
+                            .as_bytes(),
+                    )?;
+                }
+            }
+            if let Some(throttle_write_bps_device) = blkio.throttle_write_bps_device() {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .open(controller_path.join("blkio.throttle.write_bps_device"))?;
+                for device in throttle_write_bps_device {
+                    file.write_all(
+                        format!("{}:{} {}", device.major(), device.minor(), device.rate())
+                            .as_bytes(),
+                    )?;
+                }
+            }
+            if let Some(throttle_read_iops_device) = blkio.throttle_read_iops_device() {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .open(controller_path.join("blkio.throttle.read_iops_device"))?;
+                for device in throttle_read_iops_device {
+                    file.write_all(
+                        format!("{}:{} {}", device.major(), device.minor(), device.rate())
+                            .as_bytes(),
+                    )?;
+                }
+            }
+            if let Some(throttle_write_iops_device) = blkio.throttle_write_iops_device() {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .open(controller_path.join("blkio.throttle.write_iops_device"))?;
+                for device in throttle_write_iops_device {
+                    file.write_all(
+                        format!("{}:{} {}", device.major(), device.minor(), device.rate())
+                            .as_bytes(),
+                    )?;
+                }
             }
         }
         Ok(())
@@ -290,57 +375,142 @@ impl Cgroup for CgroupV2 {
         Ok(())
     }
 
+    // See https://github.com/containerd/cgroups/blob/724eb82fe759f3b3b9c5f07d22d2fab93467dc56/v2/utils.go#L164
+    // for details on converting the oci spec (which is heavily v1 focussed) to v2.
+    // Also https://github.com/containers/crun/blob/2497b9bb03623838d37a1587087f1ad3d6ff28ec/crun.1.md#cgroup-v2
     fn apply(&self, res: Option<Resources>) -> Result<()> {
-        if let Some(res) = res {
-            if let Some(cpu) = res.cpu() {
-                if let Some(shares) = cpu.shares() {
-                    ensure_write_file(self.get_file("cpu.weight"), &format!("{}", shares))?;
-                }
-                if let Some(quota) = cpu.quota() {
-                    ensure_write_file(self.get_file("cpu.max"), &format!("{}", quota))?;
-                }
-                if let Some(realtime_runtime) = cpu.realtime_runtime() {
-                    ensure_write_file(
-                        self.get_file("cpu.rt_runtime_us"),
-                        &format!("{}", realtime_runtime),
-                    )?;
-                }
-                if let Some(realtime_period) = cpu.realtime_period() {
-                    ensure_write_file(
-                        self.get_file("cpu.rt_period_us"),
-                        &format!("{}", realtime_period),
-                    )?;
-                }
+        if res.is_none() {
+            return Ok(());
+        }
+        let res = res.unwrap();
+
+        if let Some(cpu) = res.cpu() {
+            if let Some(shares) = cpu.shares() {
+                let s = 1 + ((shares - 2) * 9999) / 262142;
+                ensure_write_file(self.get_file("cpu.weight"), &format!("{}", s))?;
+            }
+            let mut max = "max".to_string();
+            if let Some(quota) = cpu.quota() {
+                max = format!("{}", quota);
+            }
+            if let Some(period) = cpu.period() {
+                ensure_write_file(self.get_file("cpu.max"), &format!("{} {}", max, period))?;
+            } else {
+                ensure_write_file(self.get_file("cpu.max"), max.as_str())?;
             }
 
-            if let Some(mem) = res.memory() {
-                if let Some(limit) = mem.limit() {
-                    ensure_write_file(self.get_file("memory.max"), &format!("{}", limit))?;
-                }
-                if let Some(reservation) = mem.reservation() {
-                    ensure_write_file(self.get_file("memory.low"), &format!("{}", reservation))?;
-                }
+            // no realtime support
+        }
+
+        if let Some(mem) = res.memory() {
+            if let Some(limit) = mem.limit() {
+                ensure_write_file(self.get_file("memory.max"), &format!("{}", limit))?;
+
                 if let Some(swap) = mem.swap() {
-                    // TODO: memory swap is calculated differently in v2, but the spec is very v1 focussed.
-                    // This code is almost certainly not right.
-                    ensure_write_file(self.get_file("memory.swap.max"), &format!("{}", swap))?;
-                }
-                if let Some(oom_kill_disable) = mem.disable_oom_killer() {
+                    // OCI spec expects swap to be memory+swap (because that's how cgroup v1 does things)
+                    // V2 expects just the swap limit, so we need to subtract the swap limit (again, memory+swap) from the memory limit to get the swap total.
                     ensure_write_file(
-                        self.get_file("memory.oom.group"),
-                        if oom_kill_disable { "1" } else { "0" },
+                        self.get_file("memory.swap.max"),
+                        &format!("{}", limit - swap),
                     )?;
                 }
             }
 
-            if let Some(pids) = res.pids() {
-                ensure_write_file(self.get_file("pids.max"), &format!("{}", pids.limit()))?;
+            if let Some(reservation) = mem.reservation() {
+                ensure_write_file(self.get_file("memory.low"), &format!("{}", reservation))?;
             }
 
-            if let Some(unified) = res.unified() {
-                for (k, v) in unified {
-                    ensure_write_file(self.get_file(k), v)?;
+            if let Some(oom_kill_disable) = mem.disable_oom_killer() {
+                ensure_write_file(
+                    self.get_file("memory.oom.group"),
+                    if oom_kill_disable { "1" } else { "0" },
+                )?;
+            }
+        }
+
+        if let Some(pids) = res.pids() {
+            ensure_write_file(self.get_file("pids.max"), &format!("{}", pids.limit()))?;
+        }
+
+        if let Some(hugepage) = res.hugepage_limits() {
+            for limit in hugepage {
+                let path = self.get_file(&format!("hugetlb.{}.max", limit.page_size()));
+                ensure_write_file(path, &format!("{}", limit.limit()))?;
+            }
+        }
+
+        if let Some(blkio) = res.block_io() {
+            if let Some(weight) = blkio.weight() {
+                ensure_write_file(
+                    self.get_file("io.weight"),
+                    &format!("{}", (weight - 10) * 9999 / 990),
+                )?;
+            }
+
+            if let Some(throttle_write_bps_device) = blkio.throttle_read_bps_device() {
+                for device in throttle_write_bps_device {
+                    let path = self.get_file(&format!("io.max"));
+                    ensure_write_file(
+                        path,
+                        &format!(
+                            "{}:{} rbps={}",
+                            device.major(),
+                            device.minor(),
+                            device.rate()
+                        ),
+                    )?;
                 }
+            }
+
+            if let Some(throttle_write_bps_device) = blkio.throttle_write_bps_device() {
+                for device in throttle_write_bps_device {
+                    let path = self.get_file(&format!("io.max"));
+                    ensure_write_file(
+                        path,
+                        &format!(
+                            "{}:{} wbps={}",
+                            device.major(),
+                            device.minor(),
+                            device.rate()
+                        ),
+                    )?;
+                }
+            }
+
+            if let Some(throttle_write_bps_device) = blkio.throttle_read_iops_device() {
+                for device in throttle_write_bps_device {
+                    let path = self.get_file(&format!("io.max"));
+                    ensure_write_file(
+                        path,
+                        &format!(
+                            "{}:{} riops={}",
+                            device.major(),
+                            device.minor(),
+                            device.rate()
+                        ),
+                    )?;
+                }
+            }
+
+            if let Some(throttle_write_bps_device) = blkio.throttle_write_iops_device() {
+                for device in throttle_write_bps_device {
+                    let path = self.get_file(&format!("io.max"));
+                    ensure_write_file(
+                        path,
+                        &format!(
+                            "{}:{} wiops={}",
+                            device.major(),
+                            device.minor(),
+                            device.rate()
+                        ),
+                    )?;
+                }
+            }
+        }
+
+        if let Some(unified) = res.unified() {
+            for (k, v) in unified {
+                ensure_write_file(self.get_file(k), v)?;
             }
         }
 
