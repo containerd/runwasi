@@ -883,7 +883,7 @@ where
                 } else {
                     let parent = rootfs_target.parent();
                     if parent.is_some() {
-                        fs::create_dir_all(&parent.unwrap()).map_err(|err| {
+                        fs::create_dir_all(parent.unwrap()).map_err(|err| {
                             ShimError::Other(format!(
                                 "error creating parent for mount target {}: {}",
                                 parent.unwrap().to_str().unwrap(),
