@@ -6,6 +6,8 @@ use chrono::{DateTime, Utc};
 
 use super::error::Error;
 
+type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
+
 #[derive(Clone)]
 pub struct InstanceConfig<E>
 where
@@ -86,7 +88,7 @@ pub trait Instance {
 pub struct Nop {
     // Since we are faking the container, we need to keep track of the "exit" code/time
     // We'll just mark it as exited when kill is called.
-    exit_code: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
+    exit_code: Arc<ExitCode>,
 }
 
 impl Instance for Nop {

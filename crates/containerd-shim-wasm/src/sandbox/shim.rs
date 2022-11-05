@@ -35,6 +35,8 @@ use ttrpc::context::Context;
 use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
 
+type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
+
 struct InstanceData<T: Instance<E = E>, E>
 where
     E: Sync + Send + Clone,
@@ -43,7 +45,7 @@ where
     base: Option<Nop>,
     cfg: InstanceConfig<E>,
     pid: RwLock<Option<u32>>,
-    status: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
+    status: Arc<InstanceDataStatus>,
     state: Arc<RwLock<TaskStateWrapper>>,
 }
 
@@ -93,8 +95,8 @@ where
                     let new_state = s
                         .stop()
                         .map_err(|e| warn!("could not set exited state after failed start: {}", e));
-                    if new_state.is_ok() {
-                        *s = new_state.unwrap().into();
+                    if let Ok(ns) = new_state {
+                        *s = ns.into();
                     }
                     err
                 })?;
@@ -231,33 +233,33 @@ impl TaskStateWrapper {
     }
 }
 
-impl Into<TaskStateWrapper> for TaskState<Created> {
-    fn into(self) -> TaskStateWrapper {
-        TaskStateWrapper::Created(self)
+impl From<TaskState<Created>> for TaskStateWrapper {
+    fn from(s: TaskState<Created>) -> Self {
+        TaskStateWrapper::Created(s)
     }
 }
 
-impl Into<TaskStateWrapper> for TaskState<Starting> {
-    fn into(self) -> TaskStateWrapper {
-        TaskStateWrapper::Starting(self)
+impl From<TaskState<Starting>> for TaskStateWrapper {
+    fn from(s: TaskState<Starting>) -> Self {
+        TaskStateWrapper::Starting(s)
     }
 }
 
-impl Into<TaskStateWrapper> for TaskState<Started> {
-    fn into(self) -> TaskStateWrapper {
-        TaskStateWrapper::Started(self)
+impl From<TaskState<Started>> for TaskStateWrapper {
+    fn from(s: TaskState<Started>) -> Self {
+        TaskStateWrapper::Started(s)
     }
 }
 
-impl Into<TaskStateWrapper> for TaskState<Exited> {
-    fn into(self) -> TaskStateWrapper {
-        TaskStateWrapper::Exited(self)
+impl From<TaskState<Exited>> for TaskStateWrapper {
+    fn from(s: TaskState<Exited>) -> Self {
+        TaskStateWrapper::Exited(s)
     }
 }
 
-impl Into<TaskStateWrapper> for TaskState<Deleting> {
-    fn into(self) -> TaskStateWrapper {
-        TaskStateWrapper::Deleting(self)
+impl From<TaskState<Deleting>> for TaskStateWrapper {
+    fn from(s: TaskState<Deleting>) -> Self {
+        TaskStateWrapper::Deleting(s)
     }
 }
 
@@ -318,6 +320,8 @@ impl From<TaskState<Deleting>> for TaskState<Exited> {
     }
 }
 
+type LocalInstances<T, E> = Arc<RwLock<HashMap<String, Arc<InstanceData<T, E>>>>>;
+
 /// Local implements the Task service for a containerd shim.
 /// It defers all task operations to the `Instance` implementation.
 #[derive(Clone)]
@@ -327,7 +331,7 @@ where
     E: Send + Sync + Clone,
 {
     engine: E,
-    instances: Arc<RwLock<HashMap<String, Arc<InstanceData<T, E>>>>>,
+    instances: LocalInstances<T, E>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
 }
@@ -828,15 +832,10 @@ where
         let rootfs = spec
             .root()
             .as_ref()
-            .ok_or(Error::InvalidArgument(
-                "rootfs is not set in runtime spec".to_string(),
-            ))?
+            .ok_or_else(|| Error::InvalidArgument("rootfs is not set in runtime spec".to_string()))?
             .path();
 
-        match mkdir(rootfs, Mode::from_bits(0o755).unwrap()) {
-            Ok(_) => (),
-            Err(_) => (),
-        };
+        if mkdir(rootfs, Mode::from_bits(0o755).unwrap()).is_ok() { /* ignore */ }
 
         let rootfs_mounts = req.get_rootfs().to_vec();
         if !rootfs_mounts.is_empty() {
@@ -898,8 +897,8 @@ where
 
             let mut newopts = vec![];
             let opts = m.options().as_ref();
-            if opts.is_some() {
-                for o in opts.unwrap() {
+            if let Some(os) = opts {
+                for o in os {
                     newopts.push(o.to_string());
                 }
             }
@@ -1149,9 +1148,9 @@ where
         let code = *status;
         drop(status);
 
-        if code.is_some() {
+        if let Some(c) = code {
             state.status = Status::STOPPED;
-            let ec = code.unwrap();
+            let ec = c;
             state.exit_status = ec.0;
 
             let mut timestamp = Timestamp::new();

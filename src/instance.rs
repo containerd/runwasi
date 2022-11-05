@@ -17,9 +17,10 @@ use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 use super::error::WasmtimeError;
 use super::oci_wasmtime;
 
+type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
     interupt: Arc<RwLock<Option<wasmtime::InterruptHandle>>>,
-    exit_code: Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>,
+    exit_code: Arc<ExitCode>,
     engine: wasmtime::Engine,
 
     id: String,
@@ -100,20 +101,20 @@ pub fn prepare_module(
 
     debug!("opening stdin");
     let stdin = maybe_open_stdio(&stdin_path).context("could not open stdin")?;
-    if stdin.is_some() {
-        wasi_builder = wasi_builder.stdin(Box::new(stdin.unwrap()));
+    if let Some(sin) = stdin {
+        wasi_builder = wasi_builder.stdin(Box::new(sin));
     }
 
     debug!("opening stdout");
     let stdout = maybe_open_stdio(&stdout_path).context("could not open stdout")?;
-    if stdout.is_some() {
-        wasi_builder = wasi_builder.stdout(Box::new(stdout.unwrap()));
+    if let Some(sout) = stdout {
+        wasi_builder = wasi_builder.stdout(Box::new(sout));
     }
 
     debug!("opening stderr");
     let stderr = maybe_open_stdio(&stderr_path).context("could not open stderr")?;
-    if stderr.is_some() {
-        wasi_builder = wasi_builder.stderr(Box::new(stderr.unwrap()));
+    if let Some(serr) = stderr {
+        wasi_builder = wasi_builder.stderr(Box::new(serr));
     }
 
     debug!("building wasi context");
@@ -122,8 +123,8 @@ pub fn prepare_module(
 
     let mut cmd = args[0].clone();
     let stripped = args[0].strip_prefix(std::path::MAIN_SEPARATOR);
-    if stripped.is_some() {
-        cmd = stripped.unwrap().to_string();
+    if let Some(strpd) = stripped {
+        cmd = strpd.to_string();
     }
 
     let mod_path = oci::get_root(&spec).join(cmd);
@@ -161,96 +162,95 @@ impl Instance for Wasi {
         let stdout = self.stdout.clone();
         let stderr = self.stderr.clone();
 
-        let _ =
-            thread::Builder::new()
-                .name(self.id.clone())
-                .spawn(move || {
-                    debug!("starting instance");
-                    let mut linker = Linker::new(&engine);
+        let _ = thread::Builder::new()
+            .name(self.id.clone())
+            .spawn(move || {
+                debug!("starting instance");
+                let mut linker = Linker::new(&engine);
 
-                    match wasmtime_wasi::add_to_linker(&mut linker, |s| s)
-                        .map_err(|err| Error::Others(format!("error adding to linker: {}", err)))
-                    {
-                        Ok(_) => (),
-                        Err(err) => {
-                            tx.send(Err(err)).unwrap();
-                            return;
-                        }
-                    };
+                match wasmtime_wasi::add_to_linker(&mut linker, |s| s)
+                    .map_err(|err| Error::Others(format!("error adding to linker: {}", err)))
+                {
+                    Ok(_) => (),
+                    Err(err) => {
+                        tx.send(Err(err)).unwrap();
+                        return;
+                    }
+                };
 
-                    debug!("preparing module");
-                    let m = match prepare_module(engine.clone(), bundle, stdin, stdout, stderr) {
-                        Ok(f) => f,
-                        Err(err) => {
-                            tx.send(Err(Error::Others(err.to_string()))).unwrap();
-                            return;
-                        }
-                    };
+                debug!("preparing module");
+                let m = match prepare_module(engine.clone(), bundle, stdin, stdout, stderr) {
+                    Ok(f) => f,
+                    Err(err) => {
+                        tx.send(Err(Error::Others(err.to_string()))).unwrap();
+                        return;
+                    }
+                };
 
-                    let mut store = Store::new(&engine, m.0);
+                let mut store = Store::new(&engine, m.0);
 
-                    debug!("instantiating instnace");
-                    let i = match linker.instantiate(&mut store, &m.1).map_err(|err| {
-                        Error::Others(format!("error instantiating module: {}", err))
-                    }) {
-                        Ok(i) => i,
-                        Err(err) => {
-                            tx.send(Err(err)).unwrap();
-                            return;
-                        }
-                    };
+                debug!("instantiating instnace");
+                let i = match linker
+                    .instantiate(&mut store, &m.1)
+                    .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))
+                {
+                    Ok(i) => i,
+                    Err(err) => {
+                        tx.send(Err(err)).unwrap();
+                        return;
+                    }
+                };
 
-                    debug!("getting interupt handle");
-                    match store.interrupt_handle().map_err(|err| {
-                        Error::Others(format!("could not get interupt handle: {}", err))
-                    }) {
-                        Ok(h) => {
-                            let mut lock = interupt.write().unwrap();
-                            *lock = Some(h);
-                            drop(lock);
-                        }
-                        Err(err) => {
-                            tx.send(Err(err)).unwrap();
-                            return;
-                        }
-                    };
+                debug!("getting interupt handle");
+                match store
+                    .interrupt_handle()
+                    .map_err(|err| Error::Others(format!("could not get interupt handle: {}", err)))
+                {
+                    Ok(h) => {
+                        let mut lock = interupt.write().unwrap();
+                        *lock = Some(h);
+                        drop(lock);
+                    }
+                    Err(err) => {
+                        tx.send(Err(err)).unwrap();
+                        return;
+                    }
+                };
 
-                    debug!("getting start function");
-                    let f = match i
-                        .get_func(&mut store, "_start")
-                        .ok_or(Error::InvalidArgument(
-                            "module does not have a wasi start function".to_string(),
-                        )) {
-                        Ok(f) => f,
-                        Err(err) => {
-                            tx.send(Err(err)).unwrap();
-                            return;
-                        }
-                    };
+                debug!("getting start function");
+                let f = match i.get_func(&mut store, "_start").ok_or_else(|| {
+                    Error::InvalidArgument("module does not have a wasi start function".to_string())
+                }) {
+                    Ok(f) => f,
+                    Err(err) => {
+                        tx.send(Err(err)).unwrap();
+                        return;
+                    }
+                };
 
-                    debug!("notifying main thread we are about to start");
-                    tx.send(Ok(())).unwrap();
+                debug!("notifying main thread we are about to start");
+                tx.send(Ok(())).unwrap();
 
-                    debug!("starting wasi instance");
+                debug!("starting wasi instance");
 
-                    // TODO: How to get exit code?
-                    // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                    let (lock, cvar) = &*exit_code;
-                    match f.call(&mut store, &mut [], &mut []) {
-                        Ok(_) => {
-                            debug!("exit code: {}", 0);
-                            let mut ec = lock.lock().unwrap();
-                            *ec = Some((0, Utc::now()));
-                        }
-                        Err(_) => {
-                            error!("exit code: {}", 137);
-                            let mut ec = lock.lock().unwrap();
-                            *ec = Some((137, Utc::now()));
-                        }
-                    };
+                // TODO: How to get exit code?
+                // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
+                let (lock, cvar) = &*exit_code;
+                match f.call(&mut store, &[], &mut []) {
+                    Ok(_) => {
+                        debug!("exit code: {}", 0);
+                        let mut ec = lock.lock().unwrap();
+                        *ec = Some((0, Utc::now()));
+                    }
+                    Err(_) => {
+                        error!("exit code: {}", 137);
+                        let mut ec = lock.lock().unwrap();
+                        *ec = Some((137, Utc::now()));
+                    }
+                };
 
-                    cvar.notify_all();
-                })?;
+                cvar.notify_all();
+            })?;
 
         debug!("Waiting for start notification");
         match rx.recv().unwrap() {
@@ -278,9 +278,9 @@ impl Instance for Wasi {
         }
 
         let interupt = self.interupt.read().unwrap();
-        let i = interupt.as_ref().ok_or(Error::FailedPrecondition(
-            "module is not running".to_string(),
-        ))?;
+        let i = interupt
+            .as_ref()
+            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
 
         i.interrupt();
         Ok(())
@@ -359,7 +359,7 @@ mod wasitest {
     #[test]
     fn test_wasi() -> Result<(), Error> {
         let dir = tempdir()?;
-        create_dir(&dir.path().join("rootfs"))?;
+        create_dir(dir.path().join("rootfs"))?;
 
         let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
         f.write_all(WASI_HELLO_WAT)?;
