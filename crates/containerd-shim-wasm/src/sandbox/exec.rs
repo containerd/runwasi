@@ -123,7 +123,7 @@ pub fn has_cap_sys_admin() -> bool {
 // Code that runs in the child must not do things like access locks or other shared state.
 //
 // Optionally you can pass in a reference to a file descriptor which will be populated with the pidfd (see pidfd_open(2)).
-pub unsafe fn fork(cgroup: Option<&Box<dyn Cgroup>>) -> Result<Context, Error> {
+pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
     let mut builder = Clone3::default();
 
     let mut fd: RawFD = -1;
@@ -197,7 +197,7 @@ mod tests {
         // Use pipes to signal from the child to the parent
         let (r, w) = pipe2(OFlag::O_CLOEXEC).unwrap();
 
-        let ret = unsafe { fork(Some(&cg)) };
+        let ret = unsafe { fork(Some(cg.as_ref())) };
 
         match ret {
             Ok(Context::Parent(tid, pidfd)) => {

@@ -184,9 +184,9 @@ impl Instance for Wasi {
 
         let cg = oci::get_cgroup(&spec)?;
 
-        oci::setup_cgroup(&cg, &spec)?;
+        oci::setup_cgroup(cg.as_ref(), &spec)?;
 
-        let res = unsafe { exec::fork(Some(&cg)) }?;
+        let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
         match res {
             exec::Context::Parent(tid, pidfd) => {
                 let mut lr = self.pidfd.lock().unwrap();

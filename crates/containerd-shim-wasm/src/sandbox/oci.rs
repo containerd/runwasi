@@ -69,7 +69,7 @@ pub fn get_cgroup(spec: &Spec) -> Result<Box<dyn cgroups::Cgroup>> {
     cgroups::new(p.as_ref().unwrap().to_str().unwrap().to_string())
 }
 
-pub fn setup_cgroup(cg: &Box<dyn cgroups::Cgroup>, spec: &Spec) -> Result<()> {
+pub fn setup_cgroup(cg: &dyn cgroups::Cgroup, spec: &Spec) -> Result<()> {
     if let Some(linux) = spec.linux() {
         if let Some(res) = linux.resources() {
             cg.apply(Some(res.clone()))?;
