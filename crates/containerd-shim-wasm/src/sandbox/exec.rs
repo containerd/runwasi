@@ -121,8 +121,7 @@ pub fn has_cap_sys_admin() -> bool {
 // If this is the child, the result will be Ok(Context::Child).
 //
 // Code that runs in the child must not do things like access locks or other shared state.
-//
-// Optionally you can pass in a reference to a file descriptor which will be populated with the pidfd (see pidfd_open(2)).
+// The child should not depend on other threads in the parent process since the new process becomes single threaded.
 pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
     let mut builder = Clone3::default();
 
@@ -145,7 +144,7 @@ pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
         debug!("no CAP_SYS_ADMIN, not creating new namespaces");
     }
 
-    let res = { builder.call() };
+    let res = builder.call();
     if cgfd > -1 {
         match close(cgfd) {
             Ok(_) => {}
