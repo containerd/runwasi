@@ -55,8 +55,8 @@ fn wait(fd: RawFD, no_hang: bool) -> Result<Status, Error> {
         WaitPidFlag::empty()
     };
 
-    let info = waitid(WaitID::PIDFd(fd), no_hang | WaitPidFlag::WEXITED)
-        .map_err(|e| std::io::Error::from(e))?;
+    let info =
+        waitid(WaitID::PIDFd(fd), no_hang | WaitPidFlag::WEXITED).map_err(std::io::Error::from)?;
 
     match info {
         WaitStatus::Exited(pid, status) => Ok(Status::Exited(ExitStatus {

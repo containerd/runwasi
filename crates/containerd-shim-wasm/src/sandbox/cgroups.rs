@@ -15,16 +15,12 @@ pub enum Version {
 
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string().as_str())
-    }
-}
+        let v = match self {
+            Version::V1 => "v1",
+            Version::V2 => "v2",
+        };
 
-impl Version {
-    pub fn to_string(&self) -> String {
-        match self {
-            Version::V1 => "v1".to_string(),
-            Version::V2 => "v2".to_string(),
-        }
+        write!(f, "{}", v)
     }
 }
 
@@ -77,13 +73,10 @@ impl Cgroup for CgroupV1 {
     fn add_task(&self, pid: u32) -> Result<()> {
         // cpuset is special, we can't add a process to it unless values are already initialized
         let cpuset = self.get_controller("cpuset")?;
-        match std::fs::read_to_string(cpuset.join("cpuset.cpus")) {
-            Ok(v) => {
-                if v.trim().len() > 0 {
-                    ensure_write_file(cpuset.join("cgroup.procs"), &format!("{}", pid))?;
-                }
+        if let Ok(v) = std::fs::read_to_string(cpuset.join("cpuset.cpus")) {
+            if !v.trim().is_empty() {
+                ensure_write_file(cpuset.join("cgroup.procs"), &format!("{}", pid))?;
             }
-            Err(_) => {}
         }
 
         vec!["cpu", "memory", "pids"]
@@ -161,10 +154,7 @@ impl Cgroup for CgroupV1 {
                 // If memory is unlimited and swap is not explicitly set, set swap to unlimited
                 // See https://github.com/opencontainers/runc/blob/eddf35e5462e2a9f24d8279874a84cfc8b8453c2/libcontainer/cgroups/fs/memory.go#L70-L71
                 if mem_unlimited {
-                    ensure_write_file(
-                        controller_path.join("memory.memsw.limit_in_bytes"),
-                        &"-1".to_string(),
-                    )?;
+                    ensure_write_file(controller_path.join("memory.memsw.limit_in_bytes"), "-1")?;
                 }
             }
             if let Some(reservation) = memory.reservation() {
@@ -280,10 +270,7 @@ impl Cgroup for CgroupV1 {
 
 impl CgroupV1 {
     pub fn new(base: PathBuf, path: PathBuf) -> Self {
-        CgroupV1 {
-            path: path,
-            base: base,
-        }
+        CgroupV1 { path, base }
     }
 
     fn get_controller(&self, controller: &str) -> Result<PathBuf> {
@@ -311,10 +298,7 @@ pub struct CgroupV2 {
 
 impl CgroupV2 {
     pub fn new(base: PathBuf, path: PathBuf) -> Self {
-        CgroupV2 {
-            base: base,
-            path: path,
-        }
+        CgroupV2 { base, path }
     }
 
     fn get_file(&self, name: &str) -> PathBuf {
@@ -443,13 +427,13 @@ impl Cgroup for CgroupV2 {
             if let Some(weight) = blkio.weight() {
                 ensure_write_file(
                     self.get_file("io.weight"),
-                    &format!("{}", (weight - 10) * 9999 / 990),
+                    &format!("{}", 1 + (weight - 10) * 9999 / 990),
                 )?;
             }
 
             if let Some(throttle_write_bps_device) = blkio.throttle_read_bps_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file(&format!("io.max"));
+                    let path = self.get_file("io.max");
                     ensure_write_file(
                         path,
                         &format!(
@@ -464,7 +448,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_write_bps_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file(&format!("io.max"));
+                    let path = self.get_file("io.max");
                     ensure_write_file(
                         path,
                         &format!(
@@ -479,7 +463,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_read_iops_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file(&format!("io.max"));
+                    let path = self.get_file("io.max");
                     ensure_write_file(
                         path,
                         &format!(
@@ -494,7 +478,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_write_iops_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file(&format!("io.max"));
+                    let path = self.get_file("io.max");
                     ensure_write_file(
                         path,
                         &format!(
@@ -523,13 +507,12 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
     let v1 = PathBuf::from("/sys/fs/cgroup");
     let v2 = PathBuf::from("/sys/fs/cgroup/unified");
     if v1.join("cpu").exists() {
-        let stat = statfs(v1.join("cpu").as_path()).map_err(|e| std::io::Error::from(e))?;
+        let stat = statfs(v1.join("cpu").as_path()).map_err(std::io::Error::from)?;
         let is_v1 = stat.filesystem_type() == nix::sys::statfs::CGROUP_SUPER_MAGIC;
         if is_v1 {
             if v2.exists() {
                 // Check if we are running in a hybrid cgroup setup
-                let data = std::fs::read(v2.join("cgroup.controllers"))
-                    .map_err(|e| std::io::Error::from(e))?;
+                let data = std::fs::read(v2.join("cgroup.controllers"))?;
 
                 let trimmed = std::str::from_utf8(&data)
                     .map_err(|e| {
@@ -540,7 +523,7 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
                     })?
                     .trim();
 
-                if trimmed.len() > 0 {
+                if !trimmed.is_empty() {
                     return Err(Error::FailedPrecondition(
                         "hybyrid cgroup is not supported".to_string(),
                     ));
@@ -560,7 +543,7 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
     }
 
     if v1.exists() {
-        let stat = nix::sys::statfs::statfs(v1.as_path()).map_err(|e| std::io::Error::from(e))?;
+        let stat = nix::sys::statfs::statfs(v1.as_path()).map_err(std::io::Error::from)?;
         if stat.filesystem_type() == nix::sys::statfs::CGROUP2_SUPER_MAGIC {
             // cgroup2 is mounted directly on /sys/fs/cgroup
             return Ok(Box::new(CgroupV2::new(v1, PathBuf::from(name))));
@@ -594,10 +577,10 @@ pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
     }
 
     if v1_found && v2_found {
-        let p = PathBuf::from(base.clone()).join("cgroup.controllers");
-        if std::fs::read(p).map_err(|e| std::io::Error::from(e))?.len() > 0 {
+        let p = base.clone().join("cgroup.controllers");
+        if !std::fs::read(p)?.is_empty() {
             return Ok(Box::new(CgroupV1 {
-                base: base,
+                base,
                 path: PathBuf::from(name),
             }));
         }
