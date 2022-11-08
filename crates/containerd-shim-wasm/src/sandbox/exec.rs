@@ -19,7 +19,7 @@ pub struct PidFD {
 
 impl Drop for PidFD {
     fn drop(&mut self) {
-        let _ = self.wait_no_hang(); // don't leave zombies
+        let _ = wait(self.fd, true); // don't leave zombies
         let _ = unsafe { libc::close(self.fd) };
     }
 }
@@ -55,8 +55,7 @@ fn wait(fd: RawFD, no_hang: bool) -> Result<Status, Error> {
         WaitPidFlag::empty()
     };
 
-    let info =
-        waitid(WaitID::PIDFd(fd), no_hang | WaitPidFlag::WEXITED).map_err(std::io::Error::from)?;
+    let info = waitid(WaitID::PIDFd(fd), no_hang | WaitPidFlag::WEXITED)?;
 
     match info {
         WaitStatus::Exited(pid, status) => Ok(Status::Exited(ExitStatus {
@@ -84,8 +83,13 @@ impl PidFD {
         Ok(ws.into())
     }
 
-    pub fn wait_no_hang(&self) -> Result<Status, Error> {
-        wait(self.fd, true)
+    pub fn is_running(&self) -> Result<bool, Error> {
+        match wait(self.fd, true) {
+            Ok(Status::Running) => Ok(true),
+            Ok(Status::Exited(_)) => Ok(false),
+            Err(Error::Errno(nix::errno::Errno::ECHILD)) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
     // Send the specified signal to the process referred to by the pidfd.
@@ -191,6 +195,7 @@ mod tests {
     #[test]
     fn test_fork() -> Result<(), Error> {
         let test_exit_code = 42;
+
         let cg = cgroups::new("test_fork".to_string())?;
 
         // Use pipes to signal from the child to the parent
@@ -206,10 +211,7 @@ mod tests {
                 res.unwrap();
 
                 // check that the pid is running
-                match pidfd.wait_no_hang()? {
-                    Status::Running => {}
-                    _ => panic!("expected running"),
-                }
+                assert!(pidfd.is_running()?);
 
                 pidfd.kill(TESTSIG)?;
 
@@ -217,6 +219,8 @@ mod tests {
                 let status = pidfd
                     .wait()
                     .map_err(|e| Error::Others(format!("error waiting for pidfd: {}", e)));
+
+                assert!(!pidfd.is_running()?);
 
                 if has_cap_sys_admin() {
                     cg.delete()
