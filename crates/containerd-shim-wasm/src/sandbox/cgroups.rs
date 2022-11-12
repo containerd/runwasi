@@ -1,9 +1,10 @@
 use super::{Error, Result};
-use nix::sys::statfs::statfs;
+use nix::sys::statfs;
 pub use oci_spec::runtime::LinuxResources as Resources;
 use proc_mounts::MountIter;
-use std::fs::{create_dir_all, OpenOptions};
+use std::fs;
 use std::io::prelude::Write;
+use std::io::BufRead;
 use std::os::raw::c_int as RawFD;
 use std::path::PathBuf;
 
@@ -64,7 +65,7 @@ impl Cgroup for CgroupV1 {
             .try_for_each(|subsys| {
                 let path = self.base.join(subsys).join(&self.path);
                 if path.exists() {
-                    std::fs::remove_dir(path)?;
+                    fs::remove_dir(path)?;
                 }
                 Ok(())
             })
@@ -73,7 +74,7 @@ impl Cgroup for CgroupV1 {
     fn add_task(&self, pid: u32) -> Result<()> {
         // cpuset is special, we can't add a process to it unless values are already initialized
         let cpuset = self.get_controller("cpuset")?;
-        if let Ok(v) = std::fs::read_to_string(cpuset.join("cpuset.cpus")) {
+        if let Ok(v) = fs::read_to_string(cpuset.join("cpuset.cpus")) {
             if !v.trim().is_empty() {
                 ensure_write_file(cpuset.join("cgroup.procs"), &format!("{}", pid))?;
             }
@@ -82,7 +83,7 @@ impl Cgroup for CgroupV1 {
         vec!["cpu", "memory", "pids"]
             .iter()
             .map(|subsys| {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(self.get_controller(subsys)?.join("cgroup.procs"))?;
                 file.write_all(pid.to_string().as_bytes())?;
@@ -133,8 +134,9 @@ impl Cgroup for CgroupV1 {
                 ensure_write_file(cpuset_path.join("cpuset.mems"), mems)?;
             }
         }
-        let mut mem_unlimited = false;
+
         if let Some(memory) = res.memory() {
+            let mut mem_unlimited = false;
             let controller_path = self.get_controller("memory")?;
             if let Some(limit) = memory.limit() {
                 if limit == -1 {
@@ -208,7 +210,7 @@ impl Cgroup for CgroupV1 {
                 ensure_write_file(controller_path.join("blkio.weight"), &weight.to_string())?;
             }
             if let Some(weight_device) = blkio.weight_device() {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(controller_path.join("blkio.weight_device"))?;
                 for device in weight_device {
@@ -220,7 +222,7 @@ impl Cgroup for CgroupV1 {
                 }
             }
             if let Some(throttle_read_bps_device) = blkio.throttle_read_bps_device() {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(controller_path.join("blkio.throttle.read_bps_device"))?;
                 for device in throttle_read_bps_device {
@@ -231,7 +233,7 @@ impl Cgroup for CgroupV1 {
                 }
             }
             if let Some(throttle_write_bps_device) = blkio.throttle_write_bps_device() {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(controller_path.join("blkio.throttle.write_bps_device"))?;
                 for device in throttle_write_bps_device {
@@ -242,7 +244,7 @@ impl Cgroup for CgroupV1 {
                 }
             }
             if let Some(throttle_read_iops_device) = blkio.throttle_read_iops_device() {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(controller_path.join("blkio.throttle.read_iops_device"))?;
                 for device in throttle_read_iops_device {
@@ -253,7 +255,7 @@ impl Cgroup for CgroupV1 {
                 }
             }
             if let Some(throttle_write_iops_device) = blkio.throttle_write_iops_device() {
-                let mut file = OpenOptions::new()
+                let mut file = fs::OpenOptions::new()
                     .write(true)
                     .open(controller_path.join("blkio.throttle.write_iops_device"))?;
                 for device in throttle_write_iops_device {
@@ -285,7 +287,7 @@ impl CgroupV1 {
 
         let p = controller_path.join(&self.path);
         if !p.exists() {
-            std::fs::create_dir_all(&p)?;
+            fs::create_dir_all(&p)?;
         }
         Ok(p)
     }
@@ -306,10 +308,16 @@ impl CgroupV2 {
     }
 }
 
+pub struct CgroupOptions<T: std::io::BufRead> {
+    pub mounts: fn() -> Result<MountIter<T>>,
+    pub name: String,
+    pub root: Option<PathBuf>,
+}
+
 fn ensure_write_file(path: std::path::PathBuf, content: &str) -> Result<()> {
     let parent = path.parent().unwrap();
     if !parent.exists() {
-        create_dir_all(parent).map_err(|e| {
+        fs::create_dir_all(parent).map_err(|e| {
             Error::Others(format!(
                 "could not create parent cgroup dir {}: {}",
                 parent.to_str().unwrap(),
@@ -317,13 +325,16 @@ fn ensure_write_file(path: std::path::PathBuf, content: &str) -> Result<()> {
             ))
         })?;
     }
-    let mut file = OpenOptions::new().write(true).open(&path).map_err(|e| {
-        Error::Others(format!(
-            "could not open cgroup file {}: {}",
-            path.to_str().unwrap(),
-            e
-        ))
-    })?;
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .map_err(|e| {
+            Error::Others(format!(
+                "could not open cgroup file {}: {}",
+                path.to_str().unwrap(),
+                e
+            ))
+        })?;
     file.write_all(content.as_bytes())?;
     Ok(())
 }
@@ -335,7 +346,7 @@ impl Cgroup for CgroupV2 {
 
     fn open(&self) -> Result<RawFD> {
         let path = self.base.join(&self.path);
-        create_dir_all(&path)?;
+        fs::create_dir_all(&path)?;
         nix::fcntl::open(
             path.as_path(),
             nix::fcntl::OFlag::O_DIRECTORY
@@ -349,7 +360,7 @@ impl Cgroup for CgroupV2 {
     fn delete(&self) -> Result<()> {
         let path = self.base.join(&self.path);
         if path.exists() {
-            std::fs::remove_dir(path)?;
+            fs::remove_dir(path)?;
         }
         Ok(())
     }
@@ -503,103 +514,40 @@ impl Cgroup for CgroupV2 {
 }
 
 pub fn new(name: String) -> Result<Box<dyn Cgroup>> {
-    // fast path
-    let v1 = PathBuf::from("/sys/fs/cgroup");
-    let v2 = PathBuf::from("/sys/fs/cgroup/unified");
-    if v1.join("cpu").exists() {
-        let stat = statfs(v1.join("cpu").as_path()).map_err(std::io::Error::from)?;
-        let is_v1 = stat.filesystem_type() == nix::sys::statfs::CGROUP_SUPER_MAGIC;
-        if is_v1 {
-            if v2.exists() {
-                // Check if we are running in a hybrid cgroup setup
-                let data = std::fs::read(v2.join("cgroup.controllers"))?;
+    name.as_str().try_into()
+}
 
-                let trimmed = std::str::from_utf8(&data)
-                    .map_err(|e| {
-                        Error::Others(format!(
-                            "could not convert cgroup.controllers to string: {}",
-                            e
-                        ))
-                    })?
-                    .trim();
+struct CgroupMounts {
+    v1: Option<PathBuf>,
+    v2: Option<PathBuf>,
+}
 
-                if !trimmed.is_empty() {
-                    return Err(Error::FailedPrecondition(
-                        "hybyrid cgroup is not supported".to_string(),
-                    ));
-                }
+fn find_cgroup_mounts<T: BufRead>(iter: MountIter<T>) -> Result<CgroupMounts> {
+    let mut v1 = None;
+    let mut v2 = None;
 
-                return Ok(Box::new(CgroupV1 {
-                    base: v1,
-                    path: PathBuf::from(name),
-                }));
-            }
-            return Ok(Box::new(CgroupV1::new(v1, PathBuf::from(name))));
-        }
-    }
-
-    if v2.exists() {
-        return Ok(Box::new(CgroupV2::new(v2, PathBuf::from(name))));
-    }
-
-    if v1.exists() {
-        let stat = nix::sys::statfs::statfs(v1.as_path()).map_err(std::io::Error::from)?;
-        if stat.filesystem_type() == nix::sys::statfs::CGROUP2_SUPER_MAGIC {
-            // cgroup2 is mounted directly on /sys/fs/cgroup
-            return Ok(Box::new(CgroupV2::new(v1, PathBuf::from(name))));
-        }
-    }
-
-    // slow path
-
-    let mut v1_found = false;
-    let mut v2_found = false;
-    let mut base = PathBuf::from("/");
-
-    // It's possible for V1 controllers to be mounted all over the place... this code does not support that.
-    // It is expected that all v1 controllers are mounted under the same path
-    for mount in MountIter::new()? {
+    for mount in iter {
         let mount = mount?;
         match mount.fstype.as_str() {
             "cgroup" => {
-                base = mount.dest.parent().unwrap().to_path_buf();
-                v1_found = true;
+                v1 = Some(mount.dest.parent().unwrap().to_path_buf());
             }
             "cgroup2" => {
-                base = mount.dest;
-                v2_found = true;
+                v2 = Some(mount.dest);
             }
             _ => {}
         }
-        if v1_found && v2_found {
+
+        // Iterating the whole mount table can be expensive
+        // For now we only support v1 mounts which are underneath a common root path (e.g. /ys/fs/cgroup/<controller>)
+        // Technically these controllers could be scattered all over the fs, but that's not normal.
+        // So we can stop iterating once we find even a single v1 mount and the v2 mount
+        if !v1.is_some() && v2.is_some() {
             break;
         }
     }
 
-    if v1_found && v2_found {
-        let p = base.clone().join("cgroup.controllers");
-        if !std::fs::read(p)?.is_empty() {
-            return Ok(Box::new(CgroupV1 {
-                base,
-                path: PathBuf::from(name),
-            }));
-        }
-        return Err(Error::FailedPrecondition(
-            "hybyrid cgroup is not supported".to_string(),
-        ));
-    }
-
-    if v1_found {
-        return Ok(Box::new(CgroupV1::new(base, PathBuf::from(name))));
-    }
-
-    if v2_found {
-        return Ok(Box::new(CgroupV2::new(base, PathBuf::from(name))));
-    }
-
-    Err(Error::FailedPrecondition(
-        "could not detect cgroup version".to_string(),
-    ))
+    Ok(CgroupMounts { v1, v2 })
 }
 
 #[cfg(test)]
@@ -653,5 +601,209 @@ mod tests {
         }
         cg.delete()?;
         res
+    }
+}
+
+type FileMountIter = std::io::BufReader<fs::File>;
+
+fn new_mount_iter() -> Result<MountIter<FileMountIter>> {
+    Ok(MountIter::new()?)
+}
+
+impl TryFrom<&str> for CgroupV1 {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<Self> {
+        let opts: CgroupOptions<std::io::BufReader<fs::File>> = CgroupOptions {
+            name: s.to_string(),
+            root: None,
+            mounts: new_mount_iter,
+        };
+        Self::try_from(&opts)
+    }
+}
+
+impl<T: std::io::BufRead> TryFrom<CgroupOptions<T>> for CgroupV1 {
+    type Error = Error;
+    fn try_from(opts: CgroupOptions<T>) -> Result<Self> {
+        Self::try_from(&opts)
+    }
+}
+
+impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV1 {
+    type Error = Error;
+
+    fn try_from(opts: &CgroupOptions<T>) -> Result<Self> {
+        if let Some(root) = &opts.root {
+            let stat = statfs::statfs(&root.join("cpu"))?;
+            if stat.filesystem_type() != statfs::CGROUP_SUPER_MAGIC {
+                return Err(Error::InvalidArgument(format!(
+                    "not a cgroup mount point: {}",
+                    root.to_str().unwrap(),
+                )));
+            }
+            // Make sure there isn't a cgroup2 mount as well
+            // Fast path: check <root>/unified as this is a common path
+            // Slow path: iterate the mount table
+
+            return Ok(CgroupV1::new(
+                root.clone(),
+                PathBuf::from(opts.name.clone()),
+            ));
+        } else {
+            let root = PathBuf::from("/sys/fs/cgroup");
+            if let Ok(stat) = statfs::statfs(&root.join("cpu")) {
+                if stat.filesystem_type() == statfs::CGROUP_SUPER_MAGIC {
+                    return Ok(CgroupV1::new(root, PathBuf::from(opts.name.clone())));
+                }
+            }
+        }
+
+        let mounts = (opts.mounts)()?;
+        for mount in mounts {
+            let m = mount.unwrap();
+            if m.fstype == "cgroup" {
+                return Ok(CgroupV1 {
+                    base: PathBuf::from(m.dest),
+                    path: PathBuf::from(opts.name.clone()),
+                });
+            }
+        }
+
+        Err(Error::FailedPrecondition(
+            "cgroup v1 mount not found".to_string(),
+        ))
+    }
+}
+
+impl<T: std::io::BufRead> TryFrom<CgroupOptions<T>> for CgroupV2 {
+    type Error = Error;
+
+    fn try_from(opts: CgroupOptions<T>) -> Result<Self> {
+        Self::try_from(&opts)
+    }
+}
+
+impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV2 {
+    type Error = Error;
+
+    fn try_from(opts: &CgroupOptions<T>) -> Result<Self> {
+        if let Some(root) = &opts.root {
+            let stat = statfs::statfs(root)?;
+            if stat.filesystem_type() != statfs::CGROUP2_SUPER_MAGIC {
+                return Err(Error::InvalidArgument(format!(
+                    "not a cgroup2 mount point: {}",
+                    root.to_str().unwrap(),
+                )));
+            }
+            return Ok(CgroupV2::new(
+                PathBuf::from(root),
+                PathBuf::from(&opts.name.clone()),
+            ));
+        }
+
+        let mounts = find_cgroup_mounts((&opts.mounts)()?)?;
+
+        if let Some(mount) = mounts.v2 {
+            if mounts.v1.is_some() {
+                return Err(Error::FailedPrecondition(
+                    "cgroup v2 mount found but cgroup v1 mount also found: hybrid cgroup mode is not supported".to_string(),
+                ));
+            }
+            return Ok(CgroupV2::new(
+                PathBuf::from(mount),
+                PathBuf::from(&opts.name.clone()),
+            ));
+        }
+
+        Err(Error::FailedPrecondition(
+            "cgroup2 mount not found".to_string(),
+        ))
+    }
+}
+
+impl TryFrom<&str> for Box<dyn Cgroup> {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<Self> {
+        CgroupOptions {
+            name: s.to_string(),
+            root: None,
+            mounts: new_mount_iter,
+        }
+        .try_into()
+    }
+}
+
+impl<T: std::io::BufRead> TryFrom<CgroupOptions<T>> for Box<dyn Cgroup> {
+    type Error = Error;
+
+    fn try_from(opts: CgroupOptions<T>) -> Result<Self> {
+        // Read mounts up front so we don't have to do it again (potentially twice) later.
+        let mounts = find_cgroup_mounts((opts.mounts)()?)?;
+
+        if mounts.v1.is_some() && mounts.v2.is_some() {
+            if !fs::read_to_string(mounts.v2.as_ref().unwrap().join("cgroup.controllers"))?
+                .trim()
+                .is_empty()
+            {
+                return Err(Error::FailedPrecondition(
+                    "cgroup v1 and v2 mounts found: hybrid cgroup mode is not supported"
+                        .to_string(),
+                ));
+            }
+        }
+
+        // Here the caller passed in a root dir so we'll try to use that with v1/v2 directly
+        if let Some(root) = &opts.root {
+            let stat = statfs::statfs(root)?;
+            if stat.filesystem_type() == statfs::CGROUP2_SUPER_MAGIC {
+                if let Ok(cg) = CgroupV2::try_from(&opts) {
+                    return Ok(Box::new(cg));
+                }
+            }
+
+            // root path is not cgroup2 so it should be cgroup1
+            if let Ok(cg) = CgroupV1::try_from(&opts) {
+                return Ok(Box::new(cg));
+            }
+        }
+
+        // Here we have already found the root dir for one or the other so we'll
+        // use that and prevent having to iterate the mount table again.
+        if mounts.v1.is_some() {
+            let opts = CgroupOptions {
+                root: mounts.v1,
+                mounts: opts.mounts,
+                name: opts.name,
+            };
+            let cg = CgroupV1::try_from(&opts)?;
+            return Ok(Box::new(cg));
+        }
+        if mounts.v2.is_some() {
+            let opts = CgroupOptions {
+                root: mounts.v2,
+                mounts: opts.mounts,
+                name: opts.name,
+            };
+            let cg = CgroupV2::try_from(&opts)?;
+            return Ok(Box::new(cg));
+        }
+
+        Err(Error::FailedPrecondition(
+            "cgroup mount not found".to_string(),
+        ))
+    }
+}
+
+impl TryFrom<&str> for CgroupV2 {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<Self> {
+        CgroupOptions {
+            name: s.to_string(),
+            root: None,
+            mounts: new_mount_iter,
+        }
+        .try_into()
     }
 }
