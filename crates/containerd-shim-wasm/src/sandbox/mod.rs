@@ -13,3 +13,6 @@ pub use manager::{Sandbox as SandboxService, Service as ManagerService};
 pub use shim::{Cli as ShimCli, Local};
 
 pub mod oci;
+
+#[cfg(test)]
+mod testutil;

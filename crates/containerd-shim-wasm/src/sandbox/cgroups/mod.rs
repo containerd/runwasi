@@ -289,8 +289,12 @@ mod tests {
     #[test]
     fn test_cgroup() -> Result<()> {
         if !super::super::exec::has_cap_sys_admin() {
-            println!("skipping cgroup test because we don't have CAP_SYS_ADMIN");
-            return Ok(());
+            println!(
+                "running test with sudo: {}::{}",
+                module_path!(),
+                "tetst_cgroup"
+            );
+            return run_test_with_sudo(function!());
         }
         let cg = new("containerd-wasm-shim-test_cgroup".to_string())?;
         let res = cgroup_test(Box::new(&*cg));

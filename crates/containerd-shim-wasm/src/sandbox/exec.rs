@@ -180,7 +180,10 @@ pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
 
 #[cfg(test)]
 mod tests {
+    use crate::sandbox::testutil::run_test_with_sudo;
+
     use super::super::cgroups;
+    use super::super::testutil::function;
     use super::*;
     use nix::unistd::close;
     use nix::{
@@ -251,5 +254,13 @@ mod tests {
                 return Err(e);
             }
         }
+    }
+
+    #[test]
+    fn test_fork_sudo() -> Result<(), Error> {
+        if has_cap_sys_admin() {
+            return test_fork();
+        }
+        run_test_with_sudo(function!())
     }
 }
