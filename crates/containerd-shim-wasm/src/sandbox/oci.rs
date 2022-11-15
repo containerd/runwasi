@@ -61,18 +61,22 @@ pub fn get_cgroup(spec: &Spec) -> Result<Box<dyn cgroups::Cgroup>> {
         return Ok(Box::new(NopCgroup {}));
     }
 
-    let p = linux.as_ref().unwrap().cgroups_path();
-    if p.is_none() {
-        return Ok(Box::new(NopCgroup {}));
+    match linux.as_ref().unwrap().cgroups_path() {
+        None => Ok(Box::new(NopCgroup {})),
+        Some(p) => cgroups::new(p.clone().as_path().to_str().unwrap().to_string()),
     }
-
-    cgroups::new(p.as_ref().unwrap().to_str().unwrap().to_string())
 }
 
 pub fn setup_cgroup(cg: &dyn cgroups::Cgroup, spec: &Spec) -> Result<()> {
     if let Some(linux) = spec.linux() {
         if let Some(res) = linux.resources() {
-            cg.apply(Some(res.clone()))?;
+            cg.apply(Some(res.clone())).map_err(|e| {
+                super::Error::Others(format!(
+                    "error applying cgroup settings from oci spec: cgroup version {}: {}",
+                    cg.version(),
+                    e
+                ))
+            })?;
         }
     }
     Ok(())

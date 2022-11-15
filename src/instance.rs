@@ -184,7 +184,8 @@ impl Instance for Wasi {
 
         let cg = oci::get_cgroup(&spec)?;
 
-        oci::setup_cgroup(cg.as_ref(), &spec)?;
+        oci::setup_cgroup(cg.as_ref(), &spec)
+            .map_err(|e| Error::Others(format!("error setting up cgroups: {}", e)))?;
 
         let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
         match res {
