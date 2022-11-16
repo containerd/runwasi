@@ -289,11 +289,7 @@ mod tests {
     #[test]
     fn test_cgroup() -> Result<()> {
         if !super::super::exec::has_cap_sys_admin() {
-            println!(
-                "running test with sudo: {}::{}",
-                module_path!(),
-                "tetst_cgroup"
-            );
+            println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
         }
         let cg = new("containerd-wasm-shim-test_cgroup".to_string())?;

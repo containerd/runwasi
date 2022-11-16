@@ -30,7 +30,7 @@ macro_rules! function {
         }
         let name = type_name_of(f);
         let name = &name[..name.len() - 3][env!("CARGO_PKG_NAME").len() + 2..];
-        &name
+        name
     }};
 }
 
