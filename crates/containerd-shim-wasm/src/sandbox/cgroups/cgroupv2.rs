@@ -25,6 +25,25 @@ impl CgroupV2 {
     }
 }
 
+mod files {
+    pub const CGROUP_PROCS: &str = "cgroup.procs";
+
+    pub const CPU_WEIGHT: &str = "cpu.weight";
+    pub const CPU_MAX: &str = "cpu.max";
+
+    pub const MEMORY_HARD_LIMIT: &str = "memory.max";
+    pub const MEMORY_SOFT_LIMIT: &str = "memory.low";
+    pub const MEMORY_SWAP_LIMIT: &str = "memory.swap.max";
+    pub const MEMORY_OOM_GROUP: &str = "memory.oom.group";
+
+    pub const PIDS_MAX: &str = "pids.max";
+
+    pub const IO_WEIGHT: &str = "io.weight";
+    pub const IO_MAX: &str = "io.max";
+}
+
+use files::*;
+
 impl Cgroup for CgroupV2 {
     fn version(&self) -> Version {
         Version::V2
@@ -52,7 +71,7 @@ impl Cgroup for CgroupV2 {
     }
 
     fn add_task(&self, pid: u32) -> Result<()> {
-        ensure_write_file(self.get_file("cgroup.procs")?, &format!("{}", pid))?;
+        ensure_write_file(self.get_file(CGROUP_PROCS)?, &format!("{}", pid))?;
         Ok(())
     }
 
@@ -68,49 +87,52 @@ impl Cgroup for CgroupV2 {
         if let Some(cpu) = res.cpu() {
             if let Some(shares) = cpu.shares() {
                 let s = 1 + ((shares - 2) * 9999) / 262142;
-                ensure_write_file(self.get_file("cpu.weight")?, &format!("{}", s))?;
+                ensure_write_file(self.get_file(CPU_WEIGHT)?, &format!("{}", s))?;
             }
             let mut max = "max".to_string();
             if let Some(quota) = cpu.quota() {
                 max = format!("{}", quota);
             }
             if let Some(period) = cpu.period() {
-                ensure_write_file(self.get_file("cpu.max")?, &format!("{} {}", max, period))?;
+                ensure_write_file(self.get_file(CPU_MAX)?, &format!("{} {}", max, period))?;
             } else {
-                ensure_write_file(self.get_file("cpu.max")?, max.as_str())?;
+                ensure_write_file(self.get_file(CPU_MAX)?, max.as_str())?;
             }
 
-            // no realtime support
+            // cgroupv2 does not support cpu.rt_* ("realtime") settings, so these settings are ignored.
         }
 
         if let Some(mem) = res.memory() {
             if let Some(limit) = mem.limit() {
-                ensure_write_file(self.get_file("memory.max")?, &format!("{}", limit))?;
+                ensure_write_file(self.get_file(MEMORY_HARD_LIMIT)?, &format!("{}", limit))?;
 
                 if let Some(swap) = mem.swap() {
                     // OCI spec expects swap to be memory+swap (because that's how cgroup v1 does things)
                     // V2 expects just the swap limit, so we need to subtract the swap limit (again, memory+swap) from the memory limit to get the swap total.
                     ensure_write_file(
-                        self.get_file("memory.swap.max")?,
+                        self.get_file(MEMORY_SWAP_LIMIT)?,
                         &format!("{}", limit - swap),
                     )?;
                 }
             }
 
             if let Some(reservation) = mem.reservation() {
-                ensure_write_file(self.get_file("memory.low")?, &format!("{}", reservation))?;
+                ensure_write_file(
+                    self.get_file(MEMORY_SOFT_LIMIT)?,
+                    &format!("{}", reservation),
+                )?;
             }
 
             if let Some(oom_kill_disable) = mem.disable_oom_killer() {
                 ensure_write_file(
-                    self.get_file("memory.oom.group")?,
+                    self.get_file(MEMORY_OOM_GROUP)?,
                     if oom_kill_disable { "1" } else { "0" },
                 )?;
             }
         }
 
         if let Some(pids) = res.pids() {
-            ensure_write_file(self.get_file("pids.max")?, &format!("{}", pids.limit()))?;
+            ensure_write_file(self.get_file(PIDS_MAX)?, &format!("{}", pids.limit()))?;
         }
 
         if let Some(hugepage) = res.hugepage_limits() {
@@ -123,14 +145,14 @@ impl Cgroup for CgroupV2 {
         if let Some(blkio) = res.block_io() {
             if let Some(weight) = blkio.weight() {
                 ensure_write_file(
-                    self.get_file("io.weight")?,
+                    self.get_file(IO_WEIGHT)?,
                     &format!("{}", 1 + (weight - 10) * 9999 / 990),
                 )?;
             }
 
             if let Some(throttle_write_bps_device) = blkio.throttle_read_bps_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file("io.max")?;
+                    let path = self.get_file(IO_MAX)?;
                     ensure_write_file(
                         path,
                         &format!(
@@ -145,7 +167,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_write_bps_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file("io.max")?;
+                    let path = self.get_file(IO_MAX)?;
                     ensure_write_file(
                         path,
                         &format!(
@@ -160,7 +182,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_read_iops_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file("io.max")?;
+                    let path = self.get_file(IO_MAX)?;
                     ensure_write_file(
                         path,
                         &format!(
@@ -175,7 +197,7 @@ impl Cgroup for CgroupV2 {
 
             if let Some(throttle_write_bps_device) = blkio.throttle_write_iops_device() {
                 for device in throttle_write_bps_device {
-                    let path = self.get_file("io.max")?;
+                    let path = self.get_file(IO_MAX)?;
                     ensure_write_file(
                         path,
                         &format!(
