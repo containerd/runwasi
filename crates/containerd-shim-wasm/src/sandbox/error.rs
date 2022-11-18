@@ -1,14 +1,13 @@
 use anyhow::Error as AnyError;
 use containerd_shim::Error as ShimError;
+use oci_spec::OciSpecError;
 use thiserror::Error;
 use ttrpc;
-
-use super::oci;
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("{0}")]
-    Oci(#[from] oci::Error),
+    Oci(#[from] OciSpecError),
     #[error("{0}")]
     Stdio(#[from] std::io::Error),
     #[error("{0}")]
@@ -25,7 +24,13 @@ pub enum Error {
     Any(#[from] AnyError),
     #[error("{0}")]
     FailedPrecondition(String),
+    #[error("{0}")]
+    Json(#[from] serde_json::Error),
+    #[error("{0}")]
+    Errno(#[from] nix::errno::Errno),
 }
+
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 impl From<Error> for ttrpc::Error {
     fn from(e: Error) -> Self {
@@ -52,9 +57,6 @@ impl From<Error> for ttrpc::Error {
                 ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::FAILED_PRECONDITION, s))
             }
             Error::Oci(ref s) => match s {
-                oci::Error::InvalidArgument(s) => {
-                    ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::INVALID_ARGUMENT, s))
-                }
                 _ => {
                     ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::UNKNOWN, e.to_string()))
                 }
@@ -117,16 +119,6 @@ mod tests {
             ttrpc::Error::RpcStatus(s) => {
                 assert_eq!(s.code, ttrpc::Code::FAILED_PRECONDITION);
                 assert_eq!(s.message, "failed precondition");
-            }
-            _ => panic!("unexpected error"),
-        }
-
-        let e = Error::Oci(oci::Error::InvalidArgument("invalid argument".to_string()));
-        let t: ttrpc::Error = e.into();
-        match t {
-            ttrpc::Error::RpcStatus(s) => {
-                assert_eq!(s.code, ttrpc::Code::INVALID_ARGUMENT);
-                assert_eq!(s.message, "invalid argument");
             }
             _ => panic!("unexpected error"),
         }
