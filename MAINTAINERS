@@ -1,0 +1,14 @@
+# runwasi maintainers
+#
+# As a containerd sub-project, containerd maintainers are also included from https://github.com/containerd/project/blob/main/MAINTAINERS.
+# See https://github.com/containerd/project/blob/main/GOVERNANCE.md for description of maintainer role
+#
+# COMMITTERS
+# GitHub ID, Name, Email address
+"cpuguy","Brian Goff","cpuguy83@gmail.com"
+"mossaka","Jiaxiao Zhou","jiazho@microsoft.com"
+"danbugs","Dan Chiarlone","danilochiarlone@gmail.com"
+"devigned","David Justice","david@justice.dev"
+
+# REVIEWERS
+# GitHub ID, Name, Email address
