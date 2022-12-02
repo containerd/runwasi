@@ -2,13 +2,13 @@ name: release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.*'
+      - "v[0-9]+.[0-9]+.*"
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -66,4 +66,3 @@ jobs:
           tag: ${{ github.ref }}
           body: |
             Release of containerd-shim-wasmtime-v1:${{ env.RELEASE_VERSION }} for amd64
-
