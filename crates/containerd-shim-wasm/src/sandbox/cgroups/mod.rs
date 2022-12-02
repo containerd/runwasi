@@ -178,6 +178,7 @@ fn ensure_write_file(path: std::path::PathBuf, content: &str) -> Result<()> {
     }
     let mut file = fs::OpenOptions::new()
         .write(true)
+        .create(true)
         .open(&path)
         .map_err(|e| {
             Error::Others(format!(
@@ -249,6 +250,7 @@ fn find_cgroup_mounts<T: BufRead>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use log::debug;
     use oci_spec::runtime::Spec;
     use serde_json as json;
     use std::io::{Cursor, Write};
@@ -286,13 +288,35 @@ mod tests {
         .map_err(|e| Error::Others(format!("failed to apply cgroup: {}", e)))
     }
 
+    struct CgWrapper {
+        cg: Box<dyn Cgroup>,
+    }
+
+    impl CgWrapper {
+        fn new(p: &str) -> Self {
+            Self {
+                cg: p.try_into().unwrap(),
+            }
+        }
+    }
+
+    impl Drop for CgWrapper {
+        fn drop(&mut self) {
+            self.cg.delete().unwrap();
+        }
+    }
+
     #[test]
     fn test_cgroup() -> Result<()> {
         if !super::super::exec::has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
         }
+
         let cg = new("containerd-wasm-shim-test_cgroup".to_string())?;
+
+        debug!("cgroup: {}", cg.version());
+
         let res = cgroup_test(Box::new(&*cg));
         if cg.version() == Version::V2 {
             match cg.open() {
@@ -305,6 +329,10 @@ mod tests {
         }
         cg.delete()?;
         res?;
+
+        // make sure each nesting is cleaned up at the end of the test
+        let _tmpcg1 = CgWrapper::new("relative");
+        let _tmpcg2 = CgWrapper::new("relative/nested");
 
         let cg = new("relative/nested/containerd-wasm-shim-test_cgroup".to_string())?;
         let res = cgroup_test(Box::new(&*cg));
@@ -319,6 +347,10 @@ mod tests {
         }
         cg.delete()?;
         res?;
+
+        // again, make sure each nesting is cleaned up at the end of the test
+        let _tmpcg3 = CgWrapper::new("/absolute");
+        let _tmpcg3 = CgWrapper::new("/absolute/nested");
 
         let cg = new("/absolute/nested/containerd-wasm-shim-test_cgroup".to_string())?;
         let res = cgroup_test(Box::new(&*cg));

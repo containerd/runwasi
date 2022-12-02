@@ -23,9 +23,51 @@ impl CgroupV2 {
     fn get_file(&self, name: &str) -> Result<PathBuf> {
         safe_join(self.base.clone(), self.path.join(name))
     }
+
+    // Make sure the cgroup parents exist and that cgroup controllers are delegated from the parent cgroup.
+    fn ensure_parents(&self) -> Result<()> {
+        let mut full = safe_join(PathBuf::from("/"), self.base.clone())?;
+
+        for d in self.path.clone().iter() {
+            full = safe_join(full.clone(), PathBuf::from(d))?;
+
+            if full.exists() {
+                // This is a pre-existing cgroup, so we won't touch subtree control.
+                continue;
+            }
+
+            fs::create_dir_all(&full)?;
+
+            // For every enabled controller, add it to the subtree control so the child cgroup can use it.
+            let controllers = fs::read_to_string(full.join(CGROUP_CONTROLLERS))
+                .map_err(|e| {
+                    Error::Others(format!(
+                        "could not read cgroup.controllers at path {}: {}",
+                        full.display(),
+                        e
+                    ))
+                })?
+                .replace(" ", " +");
+
+            let c = "+".to_string() + &controllers.to_string();
+
+            fs::write(full.join(CGROUP_SUBTREE_CONTROL), &c).map_err(|e| {
+                Error::Others(format!(
+                    "could not write cgroup.subtree_controll at path {}: controllers: {}: {}",
+                    full.display(),
+                    c,
+                    e
+                ))
+            })?;
+        }
+
+        Ok(())
+    }
 }
 
 mod files {
+    pub const CGROUP_CONTROLLERS: &str = "cgroup.controllers";
+    pub const CGROUP_SUBTREE_CONTROL: &str = "cgroup.subtree_control";
     pub const CGROUP_PROCS: &str = "cgroup.procs";
 
     pub const CPU_WEIGHT: &str = "cpu.weight";
@@ -83,6 +125,8 @@ impl Cgroup for CgroupV2 {
             return Ok(());
         }
         let res = res.unwrap();
+
+        self.ensure_parents()?;
 
         if let Some(cpu) = res.cpu() {
             if let Some(shares) = cpu.shares() {
