@@ -22,7 +22,13 @@ install:
 # TODO: build this manually instead of requiring buildx
 test/out/img.tar: test/image/Dockerfile test/image/src/main.rs test/image/Cargo.toml test/image/Cargo.lock
 	mkdir -p $(@D)
+	docker buildx rm wasmbuilder || true
+	docker buildx create --name wasmbuilder --use
 	docker buildx build --platform=wasi/wasm -o type=docker,dest=$@ -t $(TEST_IMG_NAME) ./test/image
 
 load: test/out/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import $<
+
+clean:
+	rm -rf target/$(TARGET)
+	rm test/out/img.tar
