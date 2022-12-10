@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
+use containerd_shim_wasm::sandbox::EngineGetter;
 use containerd_shim_wasm::sandbox::{Local, ManagerService};
 use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
 use log::info;
-use runwasmtime::instance::Wasi as WasiInstance;
+use runwasmedge::instance::Wasi as WasiInstance;
 use ttrpc::{self, Server};
-use wasmtime::Engine;
 
 fn main() {
     info!("starting up!");
-    let engine = Engine::default();
-    let s: ManagerService<_, Local<WasiInstance, _>> = ManagerService::new(engine);
+    let s: ManagerService<_, Local<WasiInstance, _>> =
+        ManagerService::new(WasiInstance::new_engine().unwrap());
     let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
     let service = create_manager(s);
 

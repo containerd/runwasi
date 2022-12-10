@@ -4,6 +4,7 @@ members = [
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
     "crates/thirdparty",
+    "crates/wasmedge",
     "crates/wasmtime",
 ]
 

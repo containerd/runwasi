@@ -1,5 +1,6 @@
 bin/
 test/out/img.tar
 **/target/
-!src/bin/
+!crates/wasmedge/src/bin/
+!crates/wasmtime/src/bin/
 test/k8s/_out

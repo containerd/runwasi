@@ -1,0 +1,37 @@
+[package]
+name = "runwasmedge"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+containerd-shim = "0.3.0"
+containerd-shim-wasm = { path = "../containerd-shim-wasm" }
+log = "0.4"
+ttrpc = "0.6"
+wasmedge-sdk = { version = "0.7.1", features = ["async"] }
+chrono = "0.4"
+anyhow = "1.0"
+cap-std = "0.26"
+oci-spec = { version = "0.5", features = ["runtime"] }
+thiserror = "1.0"
+serde_json = "1.0"
+libc = "0.2.138"
+
+[dev-dependencies]
+tempfile = "3.0"
+pretty_assertions = "1"
+
+[features]
+wasi_nn = ["wasmedge-sdk/wasi_nn"]
+
+[[bin]]
+name = "containerd-shim-wasmedge-v1"
+path = "src/bin/containerd-shim-wasmedge-v1/main.rs"
+
+[[bin]]
+name = "containerd-shim-wasmedged-v1"
+path = "src/bin/containerd-shim-wasmedged-v1/main.rs"
+
+[[bin]]
+name = "containerd-wasmedged"
+path = "src/bin/containerd-wasmedged/main.rs"
