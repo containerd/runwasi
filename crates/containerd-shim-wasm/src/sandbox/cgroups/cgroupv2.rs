@@ -4,6 +4,7 @@ use super::{
     ensure_write_file, find_cgroup_mounts, list_cgroup_controllers, new_mount_iter, safe_join,
     Cgroup, CgroupOptions, Version,
 };
+use log::debug;
 use nix::sys::statfs;
 pub use oci_spec::runtime::LinuxResources as Resources;
 use std::fs;
@@ -24,18 +25,41 @@ impl CgroupV2 {
         safe_join(self.base.clone(), self.path.join(name))
     }
 
+    fn full_path(&self) -> Result<PathBuf> {
+        safe_join(self.base.clone(), self.path.clone())
+    }
+
     // Make sure the cgroup parents exist and that cgroup controllers are delegated from the parent cgroup.
     fn ensure_parents(&self) -> Result<()> {
+        debug!("ensuring cgroup parents exist: {}", self.path.display());
         let mut full = safe_join(PathBuf::from("/"), self.base.clone())?;
 
-        for d in self.path.clone().iter() {
+        let p = self.path.clone();
+        for d in p.iter() {
             full = safe_join(full.clone(), PathBuf::from(d))?;
 
             if full.exists() {
+                debug!("skipping creation of existing cgroup: {}", full.display());
                 // This is a pre-existing cgroup, so we won't touch subtree control.
                 continue;
             }
 
+            if full.to_str() == self.full_path()?.to_str() {
+                // This is the last element in the path, so we don't need to create it.
+                // The cgroup will get created later when we try to write to a file in it.
+                //
+                // This is also neccessary because we do not want to set subtree control on this cgroup.
+                // Otherwise we will not be able to put any processes into this cgroup.
+                // A cgroup can either delegate controllers to its children or it can have processes in it, but not both.
+                // https://docs.kernel.org/admin-guide/cgroup-v2.html#no-internal-process-constraint
+                debug!(
+                    "skipping creation of last element in cgroup path: {}",
+                    full.to_str().unwrap()
+                );
+                break;
+            }
+
+            debug!("creating cgroup directory: {}", full.display());
             fs::create_dir_all(&full)?;
 
             // For every enabled controller, add it to the subtree control so the child cgroup can use it.

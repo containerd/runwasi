@@ -145,7 +145,7 @@ pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
             }
         }
     } else {
-        debug!("no CAP_SYS_ADMIN, not creating new namespaces");
+        debug!("no CAP_SYS_ADMIN, not setting cgroup");
     }
 
     let res = builder.call();
@@ -191,6 +191,7 @@ mod tests {
         unistd::pipe2,
         unistd::{read, write},
     };
+    use oci_spec::runtime::LinuxResources as Resources;
     use signal_hook::consts::SIGUSR2 as TESTSIG;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
@@ -200,6 +201,8 @@ mod tests {
         let test_exit_code = 42;
 
         let cg = cgroups::new("test_fork".to_string())?;
+        let res = Resources::default();
+        cg.apply(Some(res))?;
 
         // Use pipes to signal from the child to the parent
         let (r, w) = pipe2(OFlag::O_CLOEXEC).unwrap();
