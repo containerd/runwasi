@@ -182,16 +182,31 @@ impl Cgroup for CgroupV1 {
                 }
                 ensure_write_file(controller_path.join(MEMORY_HARD_LIMIT), &limit.to_string())?;
             }
+
+            let mut memsw: Option<i64> = None;
             match memory.swap() {
                 Some(limit) => {
-                    ensure_write_file(controller_path.join(MEMORY_SWAP_LIMIT), &limit.to_string())?;
+                    memsw = Some(limit);
                 }
                 None => {
                     // If memory is unlimited and swap is not explicitly set, set swap to unlimited
                     // See https://github.com/opencontainers/runc/blob/eddf35e5462e2a9f24d8279874a84cfc8b8453c2/libcontainer/cgroups/fs/memory.go#L70-L71
                     if mem_unlimited {
-                        ensure_write_file(controller_path.join(MEMORY_SWAP_LIMIT), "-1")?;
+                        memsw = Some(-1);
                     }
+                }
+            }
+
+            if let Some(memsw) = memsw {
+                let p = controller_path.join(MEMORY_SWAP_LIMIT);
+                match p.metadata() {
+                    Ok(_) => {
+                        ensure_write_file(
+                            controller_path.join(MEMORY_SWAP_LIMIT),
+                            &memsw.to_string(),
+                        )?;
+                    }
+                    Err(e) => warn!("memory swap limit not enabled on this system: {}", e),
                 }
             }
 
