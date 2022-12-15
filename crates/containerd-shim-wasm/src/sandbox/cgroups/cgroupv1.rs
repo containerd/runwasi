@@ -3,6 +3,7 @@ use super::{
     ensure_write_file, find_cgroup_mounts, list_cgroup_controllers, new_mount_iter, safe_join,
     Cgroup, CgroupOptions, Version,
 };
+use log::{debug, warn};
 pub use oci_spec::runtime::{LinuxDeviceCgroup, LinuxDeviceType, LinuxResources as Resources};
 use std::collections::HashMap;
 use std::fs;
@@ -108,6 +109,38 @@ impl Cgroup for CgroupV1 {
             }
             Ok(())
         })
+    }
+
+    fn delete_all(&self) -> Result<()> {
+        let mut paths = vec![];
+
+        (&self.controllers).into_iter().for_each(|(_, cntrl)| {
+            let mut full = PathBuf::from(cntrl);
+            for p in self.path.iter() {
+                if p.to_str().unwrap() == "/" {
+                    continue;
+                }
+                if let Ok(joined) = safe_join(full.clone(), p.into()) {
+                    full = joined.clone();
+                    paths.push(joined);
+                }
+            }
+        });
+
+        for p in paths.iter().rev() {
+            debug!("Removing cgroup directory: {}", p.display());
+            match fs::remove_dir(&p) {
+                Ok(_) => continue,
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        warn!("could not remove cgroup directory {}: {}", p.display(), e);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn add_task(&self, pid: u32) -> Result<()> {

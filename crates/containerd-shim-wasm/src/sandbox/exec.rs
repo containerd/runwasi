@@ -200,14 +200,16 @@ mod tests {
     fn test_fork() -> Result<(), Error> {
         let test_exit_code = 42;
 
-        let cg = cgroups::new("test_fork".to_string())?;
+        // Make sure the cgroup is deleted after the test
+        let cg = cgroups::tests::CgroupWithDrop::from(cgroups::tests::generate_random("test_fork"));
+
         let res = Resources::default();
-        cg.apply(Some(res))?;
+        cg.apply(Some(res)).unwrap();
 
         // Use pipes to signal from the child to the parent
         let (r, w) = pipe2(OFlag::O_CLOEXEC).unwrap();
 
-        let ret = unsafe { fork(Some(cg.as_ref())) };
+        let ret = unsafe { fork(Some(&cg)) };
 
         match ret {
             Ok(Context::Parent(tid, pidfd)) => {

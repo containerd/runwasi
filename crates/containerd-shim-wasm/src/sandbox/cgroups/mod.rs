@@ -62,6 +62,22 @@ pub trait Cgroup {
     fn add_task(&self, pid: u32) -> Result<()>;
 
     fn delete(&self) -> Result<()>;
+
+    fn delete_all(&self) -> Result<()> {
+        self.delete()
+    }
+}
+
+impl From<CgroupV2> for Box<dyn Cgroup> {
+    fn from(cg: CgroupV2) -> Self {
+        Box::new(cg)
+    }
+}
+
+impl From<CgroupV1> for Box<dyn Cgroup> {
+    fn from(cg: CgroupV1) -> Self {
+        Box::new(cg)
+    }
 }
 
 impl TryFrom<&str> for Box<dyn Cgroup> {
@@ -248,7 +264,7 @@ fn find_cgroup_mounts<T: BufRead>(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use log::debug;
     use oci_spec::runtime::Spec;
@@ -256,6 +272,61 @@ mod tests {
     use std::io::{Cursor, Write};
 
     use super::super::testutil::*;
+
+    // Wrapper for cgroups that includes a drop implementation to delete the cgroup
+    pub struct CgroupWithDrop {
+        pub cg: Box<dyn super::super::cgroups::Cgroup>,
+    }
+
+    impl CgroupWithDrop {
+        pub fn new(p: &str) -> Self {
+            Self {
+                cg: p.try_into().unwrap(),
+            }
+        }
+    }
+
+    impl From<String> for CgroupWithDrop {
+        fn from(p: String) -> Self {
+            Self::new(&p)
+        }
+    }
+
+    impl Drop for CgroupWithDrop {
+        fn drop(&mut self) {
+            self.cg.delete_all().unwrap();
+        }
+    }
+
+    impl Cgroup for CgroupWithDrop {
+        fn version(&self) -> Version {
+            self.cg.version()
+        }
+
+        fn open(&self) -> Result<RawFD> {
+            self.cg.open()
+        }
+
+        fn apply(&self, res: Option<Resources>) -> Result<()> {
+            self.cg.apply(res)
+        }
+
+        fn add_task(&self, pid: u32) -> Result<()> {
+            self.cg.add_task(pid)
+        }
+
+        fn delete(&self) -> Result<()> {
+            self.cg.delete()
+        }
+
+        fn delete_all(&self) -> Result<()> {
+            self.cg.delete_all()
+        }
+    }
+
+    pub fn generate_random(prefix: &str) -> String {
+        format!("{}{}", prefix, rand::random::<u32>())
+    }
 
     fn cgroup_test(cg: Box<&dyn Cgroup>) -> Result<()> {
         let s: Spec = json::from_str(
@@ -288,83 +359,47 @@ mod tests {
         .map_err(|e| Error::Others(format!("failed to apply cgroup: {}", e)))
     }
 
-    struct CgWrapper {
-        cg: Box<dyn Cgroup>,
-    }
-
-    impl CgWrapper {
-        fn new(p: &str) -> Self {
-            Self {
-                cg: p.try_into().unwrap(),
-            }
-        }
-    }
-
-    impl Drop for CgWrapper {
-        fn drop(&mut self) {
-            self.cg.delete().unwrap();
-        }
-    }
-
     #[test]
     fn test_cgroup() -> Result<()> {
         if !super::super::exec::has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
         }
-
-        let cg = new("containerd-wasm-shim-test_cgroup".to_string())?;
+        env_logger::init();
+        let cg = CgroupWithDrop::from(generate_random("containerd-wasm-shim-test_cgroup"));
 
         debug!("cgroup: {}", cg.version());
 
-        let res = cgroup_test(Box::new(&*cg));
+        cgroup_test(Box::new(&cg)).unwrap();
         if cg.version() == Version::V2 {
-            match cg.open() {
-                Ok(_) => {}
-                Err(e) => {
-                    cg.delete()?;
-                    return Err(e);
-                }
-            }
+            let fd = cg.open()?;
+            nix::unistd::close(fd)?;
         }
         cg.delete()?;
-        res?;
 
-        // make sure each nesting is cleaned up at the end of the test
-        let _tmpcg1 = CgWrapper::new("relative");
-        let _tmpcg2 = CgWrapper::new("relative/nested");
+        let cg = CgroupWithDrop::from(
+            generate_random("relative") + "/nested/containerd-wasm-shim-test_cgroup",
+        );
+        cg.delete_all()?;
 
-        let cg = new("relative/nested/containerd-wasm-shim-test_cgroup".to_string())?;
-        let res = cgroup_test(Box::new(&*cg));
+        cgroup_test(Box::new(&cg)).unwrap();
         if cg.version() == Version::V2 {
-            match cg.open() {
-                Ok(_) => {}
-                Err(e) => {
-                    cg.delete()?;
-                    return Err(e);
-                }
-            }
+            let fd = cg.open()?;
+            nix::unistd::close(fd)?;
         }
         cg.delete()?;
-        res?;
 
-        // again, make sure each nesting is cleaned up at the end of the test
-        let _tmpcg3 = CgWrapper::new("/absolute");
-        let _tmpcg3 = CgWrapper::new("/absolute/nested");
-
-        let cg = new("/absolute/nested/containerd-wasm-shim-test_cgroup".to_string())?;
-        let res = cgroup_test(Box::new(&*cg));
+        let cg = CgroupWithDrop::from(
+            generate_random("/absolute") + "/nested/containerd-wasm-shim-test_cgroup",
+        );
+        cg.delete_all()?;
+        cgroup_test(Box::new(&cg)).unwrap();
         if cg.version() == Version::V2 {
-            match cg.open() {
-                Ok(_) => {}
-                Err(e) => {
-                    cg.delete()?;
-                    return Err(e);
-                }
-            }
+            let fd = cg.open()?;
+            nix::unistd::close(fd)?;
         }
         cg.delete()?;
-        res
+        Ok(())
     }
 
     fn new_test_mount_iter(data: &[u8]) -> MountIter<std::io::BufReader<std::io::Cursor<Vec<u8>>>> {
