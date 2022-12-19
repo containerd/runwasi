@@ -3,6 +3,7 @@ use super::{
     ensure_write_file, find_cgroup_mounts, list_cgroup_controllers, new_mount_iter, safe_join,
     Cgroup, CgroupOptions, Version,
 };
+use log::{debug, warn};
 pub use oci_spec::runtime::{LinuxDeviceCgroup, LinuxDeviceType, LinuxResources as Resources};
 use std::collections::HashMap;
 use std::fs;
@@ -110,6 +111,38 @@ impl Cgroup for CgroupV1 {
         })
     }
 
+    fn delete_all(&self) -> Result<()> {
+        let mut paths = vec![];
+
+        (&self.controllers).into_iter().for_each(|(_, cntrl)| {
+            let mut full = PathBuf::from(cntrl);
+            for p in self.path.iter() {
+                if p.to_str().unwrap() == "/" {
+                    continue;
+                }
+                if let Ok(joined) = safe_join(full.clone(), p.into()) {
+                    full = joined.clone();
+                    paths.push(joined);
+                }
+            }
+        });
+
+        for p in paths.iter().rev() {
+            debug!("Removing cgroup directory: {}", p.display());
+            match fs::remove_dir(&p) {
+                Ok(_) => continue,
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        warn!("could not remove cgroup directory {}: {}", p.display(), e);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn add_task(&self, pid: u32) -> Result<()> {
         // cpuset is special, we can't add a process to it unless values are already initialized
         let cpuset = self.get_controller("cpuset")?;
@@ -182,16 +215,31 @@ impl Cgroup for CgroupV1 {
                 }
                 ensure_write_file(controller_path.join(MEMORY_HARD_LIMIT), &limit.to_string())?;
             }
+
+            let mut memsw: Option<i64> = None;
             match memory.swap() {
                 Some(limit) => {
-                    ensure_write_file(controller_path.join(MEMORY_SWAP_LIMIT), &limit.to_string())?;
+                    memsw = Some(limit);
                 }
                 None => {
                     // If memory is unlimited and swap is not explicitly set, set swap to unlimited
                     // See https://github.com/opencontainers/runc/blob/eddf35e5462e2a9f24d8279874a84cfc8b8453c2/libcontainer/cgroups/fs/memory.go#L70-L71
                     if mem_unlimited {
-                        ensure_write_file(controller_path.join(MEMORY_SWAP_LIMIT), "-1")?;
+                        memsw = Some(-1);
                     }
+                }
+            }
+
+            if let Some(memsw) = memsw {
+                let p = controller_path.join(MEMORY_SWAP_LIMIT);
+                match p.metadata() {
+                    Ok(_) => {
+                        ensure_write_file(
+                            controller_path.join(MEMORY_SWAP_LIMIT),
+                            &memsw.to_string(),
+                        )?;
+                    }
+                    Err(e) => warn!("memory swap limit not enabled on this system: {}", e),
                 }
             }
 

@@ -136,6 +136,38 @@ impl Cgroup for CgroupV2 {
         Ok(())
     }
 
+    fn delete_all(&self) -> Result<()> {
+        let mut paths = vec![];
+
+        let mut base = self.base.clone();
+        for p in self.path.iter() {
+            if p.to_str().unwrap() == "/" {
+                continue;
+            }
+            let joined = safe_join(base.clone(), p.into())?;
+            base = joined.clone();
+            paths.push(joined);
+        }
+
+        for p in paths.iter().rev() {
+            debug!("Removing cgroup directory: {}", p.display());
+            match fs::remove_dir(&p) {
+                Ok(_) => continue,
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        return Err(Error::Others(format!(
+                            "could not remove cgroup directory {}: {}",
+                            p.display(),
+                            e
+                        )));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn add_task(&self, pid: u32) -> Result<()> {
         ensure_write_file(self.get_file(CGROUP_PROCS)?, &format!("{}", pid))?;
         Ok(())
