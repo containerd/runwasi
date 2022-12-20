@@ -1,23 +1,25 @@
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use anyhow::Context;
+use anyhow::{Context, Error as AnyError};
 use chrono::{DateTime, Utc};
+use containerd_shim_wasm::content::{Metadata, Store as ContentStore};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
+use sha256::try_digest;
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
-use super::error::WasmtimeError;
 use super::oci_wasmtime;
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
+
 pub struct Wasi {
     exit_code: Arc<ExitCode>,
     engine: wasmtime::Engine,
@@ -28,6 +30,8 @@ pub struct Wasi {
     bundle: String,
 
     pidfd: Arc<Mutex<Option<exec::PidFD>>>,
+
+    store: Arc<RwLock<containerd_shim_wasm::content::Store>>,
 }
 
 #[cfg(test)]
@@ -82,11 +86,12 @@ fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
 
 pub fn prepare_module(
     engine: wasmtime::Engine,
+    store: Arc<RwLock<containerd_shim_wasm::content::Store>>,
     spec: &oci::Spec,
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
-) -> Result<(WasiCtx, Module), WasmtimeError> {
+) -> Result<(WasiCtx, Module), AnyError> {
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(&spec)?;
     let args = oci::get_args(&spec);
@@ -129,9 +134,34 @@ pub fn prepare_module(
     let mod_path = oci::get_root(&spec).join(cmd);
 
     debug!("loading module from file");
-    let module = Module::from_file(&engine, mod_path)
-        .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
+    let mut s = store.write().unwrap();
+    let mod_dgst = try_digest(mod_path.as_path()).context("digest")?;
+    let dgst = ("sha256:".to_owned() + &mod_dgst).try_into()?;
 
+    let p = match s.metadata(&dgst) {
+        Ok(m) => s.path(&m.digest),
+        Err(_) => {
+            let data = std::fs::read(mod_path).context("could not open module file")?;
+            let compiled = engine.precompile_module(&data)?;
+            let mut w = s
+                .writer(dgst.to_string())
+                .context("could not open content store writer")?;
+
+            w.write(&compiled)?;
+            let compiled_digest = w.commit(None)?;
+            drop(w);
+
+            s.write_metadata(
+                &dgst,
+                &Metadata {
+                    digest: compiled_digest.clone(),
+                },
+            )?;
+            s.path(&compiled_digest)
+        }
+    };
+
+    let module = unsafe { Module::deserialize_file(&engine, &p) }?;
     Ok((wctx, module))
 }
 
@@ -147,6 +177,9 @@ impl Instance for Wasi {
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle: cfg.get_bundle().unwrap_or_default(),
             pidfd: Arc::new(Mutex::new(None)),
+            store: Arc::new(RwLock::new(ContentStore::new(
+                "/run/io.containerd.wasmtime.v1/content",
+            ))),
         }
     }
     fn start(&self) -> Result<u32, Error> {
@@ -163,8 +196,15 @@ impl Instance for Wasi {
 
         debug!("preparing module");
         let spec = load_spec(self.bundle.clone())?;
-        let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
-            .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
+        let m = prepare_module(
+            engine.clone(),
+            self.store.clone(),
+            &spec,
+            stdin,
+            stdout,
+            stderr,
+        )
+        .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
 
         let mut store = Store::new(&engine, m.0);
 

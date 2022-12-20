@@ -353,6 +353,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "sha256",
  "signal-hook",
  "tempfile",
  "thiserror",
@@ -889,6 +890,12 @@ checksum = "1ab7905ea95c6d9af62940f9d7dd9596d54c334ae2c15300c482051292d5637f"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "humantime"
@@ -1584,6 +1591,7 @@ dependencies = [
  "oci-spec",
  "pretty_assertions",
  "serde_json",
+ "sha256",
  "tempfile",
  "thiserror",
  "ttrpc 0.6.0",
@@ -1698,6 +1706,16 @@ dependencies = [
  "cpufeatures",
  "digest",
  "opaque-debug",
+]
+
+[[package]]
+name = "sha256"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e334db67871c14c18fc066ad14af13f9fdf5f9a91c61af432d1e3a39c8c6a141"
+dependencies = [
+ "hex",
+ "sha2",
 ]
 
 [[package]]
