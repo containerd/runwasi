@@ -19,10 +19,13 @@ install:
 	$(INSTALL) target/$(TARGET)/containerd-shim-wasmtimed-v1 $(PREFIX)/bin
 	$(INSTALL) target/$(TARGET)/containerd-wasmtimed $(PREFIX)/bin
 
-# TODO: build this manually instead of requiring buildx
-test/out/img.tar: test/image/Dockerfile test/image/src/main.rs test/image/Cargo.toml test/image/Cargo.lock
-	mkdir -p $(@D)
-	docker buildx build --platform=wasi/wasm -o type=docker,dest=$@ -t $(TEST_IMG_NAME) ./test/image
+.PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
+target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
+	cd crates/wasi-demo-app && cargo build
 
-load: test/out/img.tar
-	sudo ctr -n $(CONTAINERD_NAMESPACE) image import $<
+.PHONY: target/wasm32-wasi/$(TARGET)/img.tar
+target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
+	cd crates/wasi-demo-app && cargo build --features oci-v1-tar
+
+load: target/wasm32-wasi/$(TARGET)/img.tar
+	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<

@@ -25,7 +25,7 @@ libc = "0.2"
 pretty_assertions = "1"
 
 [workspace]
-members = ["crates/containerd-shim-wasm"]
+members = ["crates/containerd-shim-wasm", "crates/wasi-demo-app", "crates/oci-tar-builder"]
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"
