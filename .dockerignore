@@ -1,0 +1,11 @@
+target
+test/k8s/Dockerfile
+test/k8s/_out/*
+.github
+out
+*.md
+LICENSE
+.gitignore
+.dockerignore
+docs
+bin/
