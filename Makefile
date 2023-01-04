@@ -43,10 +43,9 @@ test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -typ
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
 
 .PHONY: test/k8s/cluster
-test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img
-	kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
-	# Load the image into the cluster. We can't use `kind load image-archive` because it doesn't support non-native arch images. \
-	docker exec -i $(KIND_CLUSTER_NAME)-control-plane ctr -n k8s.io image import --all-platforms - < $(<)
+test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind
+	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
+	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
 .PHONY: test/k8s/deploy
 test/k8s/deploy: test/k8s/cluster

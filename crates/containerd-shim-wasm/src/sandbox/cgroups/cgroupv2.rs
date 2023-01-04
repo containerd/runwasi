@@ -38,12 +38,6 @@ impl CgroupV2 {
         for d in p.iter() {
             full = safe_join(full.clone(), PathBuf::from(d))?;
 
-            if full.exists() {
-                debug!("skipping creation of existing cgroup: {}", full.display());
-                // This is a pre-existing cgroup, so we won't touch subtree control.
-                continue;
-            }
-
             if full.to_str() == self.full_path()?.to_str() {
                 // This is the last element in the path, so we don't need to create it.
                 // The cgroup will get created later when we try to write to a file in it.
