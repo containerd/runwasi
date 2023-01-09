@@ -2,3 +2,4 @@ bin/
 test/out/img.tar
 **/target/
 !src/bin/
+test/k8s/_out
