@@ -1,0 +1,10 @@
+[package]
+name = "thirdparty"
+version = "0.1.0"
+description = "Collections from thirdparty code"
+license-file = "../../LICENSE"
+edition = "2021"
+
+[dependencies]
+oci-spec = "0.5"
+nix = "0.25"
