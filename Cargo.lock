@@ -1888,7 +1888,6 @@ dependencies = [
  "containerd-shim-wasm",
  "libc",
  "log",
- "nix 0.23.2",
  "oci-spec",
  "pretty_assertions",
  "serde_json",

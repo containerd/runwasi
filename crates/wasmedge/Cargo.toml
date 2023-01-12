@@ -16,7 +16,6 @@ oci-spec = { version = "0.5", features = ["runtime"] }
 thiserror = "1.0"
 serde_json = "1.0"
 libc = "0.2.138"
-nix = "0.23"
 
 [dev-dependencies]
 tempfile = "3.0"
