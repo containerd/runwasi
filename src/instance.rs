@@ -279,6 +279,7 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use oci_spec::runtime::{ProcessBuilder, Root, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
     use super::*;
@@ -333,23 +334,17 @@ mod wasitest {
         let stdout = File::create(dir.path().join("stdout"))?;
         drop(stdout);
 
-        write(
-            dir.path().join("config.json"),
-            "{
-                \"root\": {
-                    \"path\": \"rootfs\"
-                },
-                \"process\":{
-                    \"cwd\": \"/\",
-                    \"args\": [\"hello.wat\"],
-                    \"user\": {
-                        \"uid\": 0,
-                        \"gid\": 0
-                    }
-                }
-            }"
-            .as_bytes(),
-        )?;
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec!["hello.wat".to_string()])
+                    .build()?,
+            )
+            .build()?;
+
+        spec.save(dir.path().join("config.json"))?;
 
         let mut cfg = InstanceConfig::new(Engine::default());
         let cfg = cfg
