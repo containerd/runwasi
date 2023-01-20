@@ -1,43 +1,12 @@
-[package]
-name = "runwasi"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-containerd-shim = "0.3.0"
-containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
-log = "0.4"
-ttrpc = "0.6"
-wasmtime = "2.0"
-wasmtime-wasi = "2.0"
-wasi-common = "2.0"
-chrono = "0.4"
-anyhow = "1.0"
-cap-std = "0.26"
-oci-spec = { version = "0.5", features = ["runtime"] }
-thiserror = "1.0"
-serde_json = "1.0"
-nix = "0.25"
-
-[dev-dependencies]
-tempfile = "3.0"
-libc = "0.2"
-pretty_assertions = "1"
-
 [workspace]
-members = ["crates/containerd-shim-wasm", "crates/wasi-demo-app", "crates/oci-tar-builder"]
-
-[[bin]]
-name = "containerd-shim-wasmtime-v1"
-path = "src/bin/containerd-shim-wasmtime-v1/main.rs"
-
-[[bin]]
-name = "containerd-shim-wasmtimed-v1"
-path = "src/bin/containerd-shim-wasmtimed-v1/main.rs"
-
-[[bin]]
-name = "containerd-wasmtimed"
-path = "src/bin/containerd-wasmtimed/main.rs"
+members = [
+    "crates/containerd-shim-wasm",
+    "crates/wasi-demo-app",
+    "crates/oci-tar-builder",
+    "crates/thirdparty",
+    "crates/wasmedge",
+    "crates/wasmtime",
+]
 
 [profile.release]
 panic = "abort"

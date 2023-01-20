@@ -1,0 +1,13 @@
+Docker | Containerd
+Copyright 2022 Docker, Inc.
+
+This product includes software developed at Deis Labs (https://github.com/deislabs)
+but ownership transitioned from deislabs to the containerd org since 2022.
+
+This product includes software developed at
+The Containerd (https://github.com/containerd/runwasi).
+
+The Initial Developer of some parts of the file
+crates/containerd-shim-wasm/src/sandbox/shim.rs, which are copied from,
+derived from, or inspired by Youki (https://github.com/containers/youki)
+Copyright 2021 - 2022 Youki. All Rights Reserved.

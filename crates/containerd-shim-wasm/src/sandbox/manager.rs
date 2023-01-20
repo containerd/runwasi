@@ -204,7 +204,7 @@ impl shim::Shim for Shim {
             .unwrap_or(&opts.id)
             .to_string();
 
-        let client = Client::connect("unix:///run/io.containerd.wasmtime.v1/manager.sock")?;
+        let client = Client::connect("unix:///run/io.containerd.wasmwasi.v1/manager.sock")?;
         let mc = ManagerClient::new(client);
 
         let addr = match mc.create(
@@ -260,7 +260,7 @@ impl shim::Shim for Shim {
             return Ok(api::DeleteResponse::default());
         }
 
-        let client = Client::connect("unix:///run/io.containerd.wasmtime.v1/manager.sock")?;
+        let client = Client::connect("unix:///run/io.containerd.wasmwasi.v1/manager.sock")?;
         let mc = ManagerClient::new(client);
         mc.delete(
             context::Context::default(),

@@ -1,6 +1,7 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
+RUNTIMES ?= wasmedge wasmtime
 export CONTAINERD_NAMESPACE ?= default
 
 TARGET ?= debug
@@ -20,9 +21,11 @@ build:
 .PHONY: install
 install:
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) target/$(TARGET)/containerd-shim-wasmtime-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-shim-wasmtimed-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-wasmtimed $(PREFIX)/bin/
+	$(foreach runtime,$(RUNTIMES), \
+		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)-v1 $(PREFIX)/bin/; \
+		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)d-v1 $(PREFIX)/bin/; \
+		$(INSTALL) target/$(TARGET)/containerd-$(runtime)d $(PREFIX)/bin/; \
+	)
 
 .PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:

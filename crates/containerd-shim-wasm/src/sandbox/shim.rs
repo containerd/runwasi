@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{self, File};
+use std::fs::{canonicalize, create_dir_all, OpenOptions};
 use std::ops::Not;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -8,6 +9,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
+use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
+use super::{oci, Error, SandboxService};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
     self as shim, api,
@@ -30,10 +33,8 @@ use nix::sched::{setns, unshare, CloneFlags};
 use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
+use thirdparty::parse_mount;
 use ttrpc::context::Context;
-
-use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
-use super::{oci, Error, SandboxService};
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
@@ -1009,9 +1010,11 @@ where
 
                 let timestamp = new_timestamp().unwrap();
                 let event = TaskExit {
-                    container_id: id,
+                    container_id: id.clone(),
                     exit_status: ec.0,
                     exited_at: SingularPtrField::some(timestamp),
+                    pid,
+                    id,
                     ..Default::default()
                 };
 
@@ -1355,6 +1358,48 @@ where
             None,
         )
         .map_err(|err| shim::Error::Other(format!("failed to remount rootfs as slave: {}", err)))?;
+
+        if let Some(mounts) = spec.mounts() {
+            for m in mounts {
+                if m.typ().as_ref().unwrap() != "bind" {
+                    continue;
+                }
+
+                let dest = m.destination();
+                let source = m.source().as_ref().unwrap();
+                let src = canonicalize(source).unwrap();
+
+                let dir = if src.is_file() {
+                    Path::new(&dest).parent().unwrap()
+                } else {
+                    Path::new(&dest)
+                };
+
+                create_dir_all(dir).unwrap();
+
+                if src.is_file() {
+                    OpenOptions::new()
+                        .create(true)
+                        .write(true)
+                        .open(&dest)
+                        .unwrap();
+                }
+
+                mount::<str, Path, str, str>(
+                    Some(&src.to_string_lossy()),
+                    dest,
+                    None,
+                    parse_mount(m),
+                    None,
+                )
+                .map_err(|err| {
+                    shim::Error::Other(format!(
+                        "failed to mount targets that list in spec.mount: {}",
+                        err
+                    ))
+                })?;
+            }
+        }
 
         let (_child, address) = shim::spawn(opts, &grouping, envs)?;
 

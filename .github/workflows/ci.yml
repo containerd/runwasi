@@ -29,6 +29,10 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Setup WasmEdge build env
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2
+          echo "LD_LIBRARY_PATH=$HOME/.wasmedge/lib" >> $GITHUB_ENV
       - name: Build
         uses: actions-rs/cargo@v1
         with:

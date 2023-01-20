@@ -1,26 +1,37 @@
-use std::fs::OpenOptions;
-use std::path::Path;
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use libc::{dup, dup2, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
-use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
+use std::fs::OpenOptions;
+use std::io::ErrorKind;
+use std::os::unix::io::{IntoRawFd, RawFd};
+use std::path::Path;
+use std::sync::{
+    mpsc::Sender,
+    {Arc, Condvar, Mutex},
+};
+use std::thread;
 
-use super::error::WasmtimeError;
-use super::oci_wasmtime;
+use wasmedge_sdk::{
+    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
+    params, PluginManager, Vm,
+};
+
+use super::error::WasmRuntimeError;
+use super::oci_utils;
+
+static mut STDIN_FD: Option<RawFd> = None;
+static mut STDOUT_FD: Option<RawFd> = None;
+static mut STDERR_FD: Option<RawFd> = None;
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
     exit_code: Arc<ExitCode>,
-    engine: wasmtime::Engine,
+    engine: Vm,
 
     stdin: String,
     stdout: String,
@@ -60,14 +71,14 @@ mod tests {
 /// containerd can send an empty path or a non-existant path
 /// In both these cases we should just assume that the stdio stream was not setup (intentionally)
 /// Any other error is a real error.
-pub fn maybe_open_stdio(path: &str) -> Result<Option<WasiFile>, Error> {
+pub fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
     if path.is_empty() {
         return Ok(None);
     }
-    match oci_wasmtime::wasi_file(path, OpenOptions::new().read(true).write(true)) {
-        Ok(f) => Ok(Some(f)),
+    match OpenOptions::new().read(true).write(true).open(path) {
+        Ok(f) => Ok(Some(f.into_raw_fd())),
         Err(err) => match err.kind() {
-            std::io::ErrorKind::NotFound => Ok(None),
+            ErrorKind::NotFound => Ok(None),
             _ => Err(err.into()),
         },
     }
@@ -80,45 +91,73 @@ fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
     Ok(spec)
 }
 
+pub fn reset_stdio() {
+    unsafe {
+        if STDIN_FD.is_some() {
+            dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+        }
+        if STDOUT_FD.is_some() {
+            dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+        }
+        if STDERR_FD.is_some() {
+            dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+        }
+    }
+}
+
 pub fn prepare_module(
-    engine: wasmtime::Engine,
+    mut vm: Vm,
     spec: &oci::Spec,
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
-) -> Result<(WasiCtx, Module), WasmtimeError> {
+) -> Result<Vm, WasmRuntimeError> {
     debug!("opening rootfs");
-    let rootfs = oci_wasmtime::get_rootfs(&spec)?;
+    let rootfs_path = oci::get_root(&spec).to_str().unwrap();
+    let root = format!("/:{}", rootfs_path);
+    let mut preopens = vec![root.as_str()];
+
+    debug!("opening mounts");
+    let mut mounts = oci_utils::get_wasm_mounts(&spec);
+    preopens.append(&mut mounts);
+
     let args = oci::get_args(&spec);
-    let env = oci_wasmtime::env_to_wasi(&spec);
+    let envs = oci_utils::env_to_wasi(&spec);
 
     debug!("setting up wasi");
-    let mut wasi_builder = WasiCtxBuilder::new()
-        .args(args)?
-        .envs(env.as_slice())?
-        .preopened_dir(rootfs, "/")?;
+    let mut wasi_instance = vm.wasi_module()?;
+    wasi_instance.initialize(
+        Some(args.iter().map(|s| s as &str).collect()),
+        Some(envs.iter().map(|s| s as &str).collect()),
+        Some(preopens),
+    );
 
     debug!("opening stdin");
     let stdin = maybe_open_stdio(&stdin_path).context("could not open stdin")?;
-    if let Some(sin) = stdin {
-        wasi_builder = wasi_builder.stdin(Box::new(sin));
+    if stdin.is_some() {
+        unsafe {
+            STDIN_FD = Some(dup(STDIN_FILENO));
+            dup2(stdin.unwrap(), STDIN_FILENO);
+        }
     }
 
     debug!("opening stdout");
     let stdout = maybe_open_stdio(&stdout_path).context("could not open stdout")?;
-    if let Some(sout) = stdout {
-        wasi_builder = wasi_builder.stdout(Box::new(sout));
+    if stdout.is_some() {
+        unsafe {
+            STDOUT_FD = Some(dup(STDOUT_FILENO));
+            dup2(stdout.unwrap(), STDOUT_FILENO);
+        }
     }
 
     debug!("opening stderr");
     let stderr = maybe_open_stdio(&stderr_path).context("could not open stderr")?;
-    if let Some(serr) = stderr {
-        wasi_builder = wasi_builder.stderr(Box::new(serr));
+    if stderr.is_some() {
+        unsafe {
+            STDERR_FD = Some(dup(STDERR_FILENO));
+            dup2(stderr.unwrap(), STDERR_FILENO);
+        }
     }
-
-    debug!("building wasi context");
-    let wctx = wasi_builder.build();
-    debug!("wasi context ready");
 
     let mut cmd = args[0].clone();
     let stripped = args[0].strip_prefix(std::path::MAIN_SEPARATOR);
@@ -128,15 +167,14 @@ pub fn prepare_module(
 
     let mod_path = oci::get_root(&spec).join(cmd);
 
-    debug!("loading module from file");
-    let module = Module::from_file(&engine, mod_path)
-        .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
+    debug!("register module from file");
+    let vm = vm.register_module_from_file("main", mod_path)?;
 
-    Ok((wctx, module))
+    Ok(vm)
 }
 
 impl Instance for Wasi {
-    type E = wasmtime::Engine;
+    type E = Vm;
     fn new(_id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         Wasi {
@@ -155,38 +193,19 @@ impl Instance for Wasi {
         let stdout = self.stdout.clone();
         let stderr = self.stderr.clone();
 
-        debug!("starting instance");
-        let mut linker = Linker::new(&engine);
-
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s)
-            .map_err(|err| Error::Others(format!("error adding to linker: {}", err)))?;
-
         debug!("preparing module");
         let spec = load_spec(self.bundle.clone())?;
-        let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
+
+        debug!("call prehook before the start");
+        oci::setup_prestart_hooks(&spec.hooks())?;
+
+        let vm = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
-
-        let mut store = Store::new(&engine, m.0);
-
-        debug!("instantiating instnace");
-        let i = linker
-            .instantiate(&mut store, &m.1)
-            .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
-
-        debug!("getting start function");
-        let f = i
-            .get_func(&mut store, "_start")
-            .ok_or(Error::InvalidArgument(
-                "module does not have a wasi start function".to_string(),
-            ))?;
-
-        debug!("starting wasi instance");
 
         let cg = oci::get_cgroup(&spec)?;
 
         oci::setup_cgroup(cg.as_ref(), &spec)
             .map_err(|e| Error::Others(format!("error setting up cgroups: {}", e)))?;
-
         let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
         match res {
             exec::Context::Parent(tid, pidfd) => {
@@ -221,7 +240,7 @@ impl Instance for Wasi {
 
                 // TODO: How to get exit code?
                 // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                let _ret = match f.call(&mut store, &mut [], &mut []) {
+                let _ret = match vm.run_func(Some("main"), "_start", params!()) {
                     Ok(_) => std::process::exit(0),
                     Err(_) => std::process::exit(137),
                 };
@@ -230,9 +249,10 @@ impl Instance for Wasi {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal != 9 {
+        if signal != 9 && signal != 2 {
+            println!("{:?}", signal);
             return Err(Error::InvalidArgument(
-                "only SIGKILL is supported".to_string(),
+                "only SIGKILL and SIGINT is supported".to_string(),
             ));
         }
 
@@ -240,7 +260,7 @@ impl Instance for Wasi {
         let fd = lr.as_ref().ok_or(Error::FailedPrecondition(
             "module is not running".to_string(),
         ))?;
-        fd.kill(signal as i32)
+        fd.kill(SIGKILL as i32)
     }
 
     fn delete(&self) -> Result<(), Error> {
@@ -274,22 +294,27 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::fs::{create_dir, read_to_string, write, File};
+    use std::fs::{create_dir, read_to_string, File};
     use std::io::prelude::*;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
-    use oci_spec::runtime::{ProcessBuilder, Root, RootBuilder, SpecBuilder};
+    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
     use super::*;
+
+    use wasmedge_sdk::{
+        config::{CommonConfigOptions, ConfigBuilder},
+        wat2wasm, Vm,
+    };
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module
         ;; Import the required fd_write WASI function which will write the given io vectors to stdout
         ;; The function signature for fd_write is:
         ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
-        (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
 
         (memory 1)
         (export "memory" (memory 0))
@@ -316,10 +341,11 @@ mod wasitest {
 
     #[test]
     fn test_delete_after_create() {
-        let i = Wasi::new(
-            "".to_string(),
-            Some(&InstanceConfig::new(Engine::default())),
-        );
+        let config = ConfigBuilder::new(CommonConfigOptions::default())
+            .build()
+            .unwrap();
+        let vm = Vm::new(Some(config)).unwrap();
+        let i = Wasi::new("".to_string(), Some(&InstanceConfig::new(vm)));
         i.delete().unwrap();
     }
 
@@ -328,8 +354,9 @@ mod wasitest {
         let dir = tempdir()?;
         create_dir(dir.path().join("rootfs"))?;
 
-        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
-        f.write_all(WASI_HELLO_WAT)?;
+        let wasmbytes = wat2wasm(WASI_HELLO_WAT).unwrap();
+        let mut f = File::create(dir.path().join("rootfs/hello.wasm"))?;
+        f.write_all(&wasmbytes)?;
 
         let stdout = File::create(dir.path().join("stdout"))?;
         drop(stdout);
@@ -339,14 +366,14 @@ mod wasitest {
             .process(
                 ProcessBuilder::default()
                     .cwd("/")
-                    .args(vec!["hello.wat".to_string()])
+                    .args(vec!["hello.wasm".to_string()])
                     .build()?,
             )
             .build()?;
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(Engine::default());
+        let mut cfg = InstanceConfig::new(Wasi::new_engine()?);
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -376,14 +403,26 @@ mod wasitest {
         let output = read_to_string(dir.path().join("stdout"))?;
         assert_eq!(output, "hello world\n");
 
+        reset_stdio();
         Ok(())
     }
 }
 
 impl EngineGetter for Wasi {
-    type E = wasmtime::Engine;
-    fn new_engine() -> Result<Engine, Error> {
-        let engine = Engine::default();
-        Ok(engine)
+    type E = Vm;
+    fn new_engine() -> Result<Vm, Error> {
+        PluginManager::load_from_default_paths();
+        let mut host_options = HostRegistrationConfigOptions::default();
+        host_options = host_options.wasi(true);
+        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
+        {
+            host_options = host_options.wasi_nn(true);
+        }
+        let config = ConfigBuilder::new(CommonConfigOptions::default())
+            .with_host_registration_config(host_options)
+            .build()
+            .map_err(anyhow::Error::msg)?;
+        let vm = Vm::new(Some(config)).map_err(anyhow::Error::msg)?;
+        Ok(vm)
     }
 }
