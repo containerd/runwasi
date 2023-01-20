@@ -180,7 +180,7 @@ impl Cgroup for CgroupV2 {
 
         if let Some(cpu) = res.cpu() {
             if let Some(shares) = cpu.shares() {
-                let s = 1 + ((shares - 2) * 9999) / 262142;
+                let s = 1 + ((shares.saturating_sub(2)) * 9999) / 262142;
                 ensure_write_file(self.get_file(CPU_WEIGHT)?, &format!("{}", s))?;
             }
             let mut max = "max".to_string();
@@ -240,7 +240,7 @@ impl Cgroup for CgroupV2 {
             if let Some(weight) = blkio.weight() {
                 ensure_write_file(
                     self.get_file(IO_WEIGHT)?,
-                    &format!("{}", 1 + (weight - 10) * 9999 / 990),
+                    &format!("{}", 1 + (weight.saturating_sub(10)) * 9999 / 990),
                 )?;
             }
 
