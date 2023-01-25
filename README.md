@@ -20,7 +20,7 @@ In either case you need to implement the `Instance` trait:
 ```rust
 pub trait Instance {
     // Create a new instance
-    fn new(id: String, cfg: &InstanceConfig) -> Self;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
     // Start the instance and return the pid
     fn start(&self) -> Result<u32, Error>;
     // Send the specified signal to the instance
