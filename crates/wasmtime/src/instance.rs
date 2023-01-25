@@ -279,12 +279,12 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::fs::{create_dir, read_to_string, write, File};
+    use std::fs::{create_dir, read_to_string, File};
     use std::io::prelude::*;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
-    use oci_spec::runtime::{ProcessBuilder, Root, RootBuilder, SpecBuilder};
+    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
     use super::*;
