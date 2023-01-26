@@ -48,14 +48,14 @@ pub trait Cgroup {
     fn open(&self) -> Result<RawFD> {
         Err(Error::Others(format!(
             "open not implemented for cgroup version: {}",
-            self.version().to_string()
+            self.version()
         )))
     }
 
     fn apply(&self, _res: Option<Resources>) -> Result<()> {
         Err(Error::Others(format!(
             "cgroup {} is not supported",
-            self.version().to_string(),
+            self.version(),
         )))
     }
 
