@@ -363,10 +363,7 @@ impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV2 {
                     "cgroup v2 mount found but cgroup v1 mount also found: hybrid cgroup mode is not supported".to_string(),
                 ));
             }
-            return Ok(CgroupV2::new(
-                PathBuf::from(mount),
-                PathBuf::from(&opts.name.clone()),
-            ));
+            return Ok(CgroupV2::new(mount, PathBuf::from(&opts.name.clone())));
         }
 
         Err(Error::FailedPrecondition(
