@@ -102,17 +102,16 @@ impl<T: std::io::BufRead> TryFrom<CgroupOptions<T>> for Box<dyn Cgroup> {
         let f = fs::File::open("/proc/cgroups")?;
         let mounts = find_cgroup_mounts((opts.mounts)()?, &list_cgroup_controllers(f)?)?;
 
-        if mounts.v1.is_empty().not() && mounts.v2.is_some() {
-            if fs::read_to_string(mounts.v2.as_ref().unwrap().join("cgroup.controllers"))?
+        if mounts.v1.is_empty().not()
+            && mounts.v2.is_some()
+            && fs::read_to_string(mounts.v2.as_ref().unwrap().join("cgroup.controllers"))?
                 .trim()
                 .is_empty()
                 .not()
-            {
-                return Err(Error::FailedPrecondition(
-                    "cgroup v1 and v2 mounts found: hybrid cgroup mode is not supported"
-                        .to_string(),
-                ));
-            }
+        {
+            return Err(Error::FailedPrecondition(
+                "cgroup v1 and v2 mounts found: hybrid cgroup mode is not supported".to_string(),
+            ));
         }
 
         // Here the caller passed in a root dir so we'll try to use that with v1/v2 directly
