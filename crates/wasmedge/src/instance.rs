@@ -230,7 +230,7 @@ impl Instance for Wasi {
                     debug!("wasi instance exited with status {}", status.status);
                     let mut ec = lock.lock().unwrap();
                     *ec = Some((status.status, Utc::now()));
-                    drop(lock);
+                    drop(ec);
                     cvar.notify_all();
                 });
                 Ok(tid)
