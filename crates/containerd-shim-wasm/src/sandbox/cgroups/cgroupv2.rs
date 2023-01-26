@@ -145,7 +145,7 @@ impl Cgroup for CgroupV2 {
 
         for p in paths.iter().rev() {
             debug!("Removing cgroup directory: {}", p.display());
-            match fs::remove_dir(&p) {
+            match fs::remove_dir(p) {
                 Ok(_) => continue,
                 Err(e) => {
                     if e.kind() != std::io::ErrorKind::NotFound {
@@ -355,7 +355,7 @@ impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV2 {
         }
 
         let f = fs::File::open("/proc/cgroups")?;
-        let mounts = find_cgroup_mounts((&opts.mounts)()?, &list_cgroup_controllers(f)?)?;
+        let mounts = find_cgroup_mounts((opts.mounts)()?, &list_cgroup_controllers(f)?)?;
 
         if let Some(mount) = mounts.v2 {
             if mounts.v1.is_empty().not() {

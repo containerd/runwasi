@@ -100,7 +100,7 @@ impl Cgroup for CgroupV1 {
     }
 
     fn delete(&self) -> Result<()> {
-        (&self.controllers).iter().try_for_each(|(kind, _)| {
+        self.controllers.iter().try_for_each(|(kind, _)| {
             let dir = self.get_controller(kind)?;
             if dir.exists() {
                 return fs::remove_dir(&dir).map_err(|e| {
@@ -114,7 +114,7 @@ impl Cgroup for CgroupV1 {
     fn delete_all(&self) -> Result<()> {
         let mut paths = vec![];
 
-        (&self.controllers).iter().for_each(|(_, cntrl)| {
+        self.controllers.iter().for_each(|(_, cntrl)| {
             let mut full = PathBuf::from(cntrl);
             for p in self.path.iter() {
                 if p.to_str().unwrap() == "/" {
@@ -129,7 +129,7 @@ impl Cgroup for CgroupV1 {
 
         for p in paths.iter().rev() {
             debug!("Removing cgroup directory: {}", p.display());
-            match fs::remove_dir(&p) {
+            match fs::remove_dir(p) {
                 Ok(_) => continue,
                 Err(e) => {
                     if e.kind() != std::io::ErrorKind::NotFound {

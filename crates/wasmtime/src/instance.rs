@@ -88,9 +88,9 @@ pub fn prepare_module(
     stderr_path: String,
 ) -> Result<(WasiCtx, Module), WasmtimeError> {
     debug!("opening rootfs");
-    let rootfs = oci_wasmtime::get_rootfs(&spec)?;
-    let args = oci::get_args(&spec);
-    let env = oci_wasmtime::env_to_wasi(&spec);
+    let rootfs = oci_wasmtime::get_rootfs(spec)?;
+    let args = oci::get_args(spec);
+    let env = oci_wasmtime::env_to_wasi(spec);
 
     debug!("setting up wasi");
     let mut wasi_builder = WasiCtxBuilder::new()
@@ -126,7 +126,7 @@ pub fn prepare_module(
         cmd = strpd.to_string();
     }
 
-    let mod_path = oci::get_root(&spec).join(cmd);
+    let mod_path = oci::get_root(spec).join(cmd);
 
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
@@ -165,7 +165,7 @@ impl Instance for Wasi {
         let spec = load_spec(self.bundle.clone())?;
 
         debug!("call prehook before the start");
-        oci::setup_prestart_hooks(&spec.hooks())?;
+        oci::setup_prestart_hooks(spec.hooks())?;
 
         let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
