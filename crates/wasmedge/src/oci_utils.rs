@@ -27,5 +27,5 @@ pub fn get_wasm_mounts(spec: &Spec) -> Vec<&str> {
             .collect(),
         _ => vec![],
     };
-    return mounts;
+    mounts
 }

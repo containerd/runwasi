@@ -44,12 +44,12 @@ struct DockerManifest {
 impl Builder {
     pub fn add_config(&mut self, config: ImageConfiguration, name: String) -> &mut Self {
         self.configs.push((config, name));
-        return self;
+        self
     }
 
     pub fn add_layer(&mut self, layer: &PathBuf) -> &mut Self {
         self.layers.push(layer.to_owned());
-        return self;
+        self
     }
 
     pub fn build<W: Write>(&mut self, w: W) -> Result<(), Error> {
