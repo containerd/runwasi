@@ -117,7 +117,9 @@ impl Builder {
             let mut layers = Vec::new();
             for id in config.0.rootfs().diff_ids().iter() {
                 debug!("id: {}", id);
-                layer_digests.get(id).map(|d| layers.push(d.clone()));
+                if let Some(d) = layer_digests.get(id) {
+                    layers.push(d.clone())
+                }
             }
 
             let mut annotations = HashMap::new();
