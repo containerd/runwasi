@@ -56,11 +56,9 @@ impl From<Error> for ttrpc::Error {
             Error::FailedPrecondition(ref s) => {
                 ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::FAILED_PRECONDITION, s))
             }
-            Error::Oci(ref s) => match s {
-                _ => {
-                    ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::UNKNOWN, e.to_string()))
-                }
-            },
+            Error::Oci(ref _s) => {
+                ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::UNKNOWN, e.to_string()))
+            }
             Error::Any(ref s) => {
                 ttrpc::Error::RpcStatus(ttrpc::get_status(ttrpc::Code::UNKNOWN, s))
             }
