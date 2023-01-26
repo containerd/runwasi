@@ -178,11 +178,9 @@ impl Instance for Wasi {
             .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
 
         debug!("getting start function");
-        let f = i
-            .get_func(&mut store, "_start")
-            .ok_or(Error::InvalidArgument(
-                "module does not have a wasi start function".to_string(),
-            ))?;
+        let f = i.get_func(&mut store, "_start").ok_or_else(|| {
+            Error::InvalidArgument("module does not have a wasi start function".to_string())
+        })?;
 
         debug!("starting wasi instance");
 
@@ -241,9 +239,9 @@ impl Instance for Wasi {
         }
 
         let lr = self.pidfd.lock().unwrap();
-        let fd = lr.as_ref().ok_or(Error::FailedPrecondition(
-            "module is not running".to_string(),
-        ))?;
+        let fd = lr
+            .as_ref()
+            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
         fd.kill(signal as i32)
     }
 

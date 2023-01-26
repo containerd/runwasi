@@ -257,9 +257,9 @@ impl Instance for Wasi {
         }
 
         let lr = self.pidfd.lock().unwrap();
-        let fd = lr.as_ref().ok_or(Error::FailedPrecondition(
-            "module is not running".to_string(),
-        ))?;
+        let fd = lr
+            .as_ref()
+            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
         fd.kill(SIGKILL as i32)
     }
 
