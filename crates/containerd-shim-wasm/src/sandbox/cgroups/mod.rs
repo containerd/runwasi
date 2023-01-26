@@ -217,7 +217,7 @@ fn list_cgroup_controllers<R: Read>(r: R) -> Result<HashSet<String>> {
     for line in std::io::BufReader::new(r).lines() {
         let line = line?;
         let line = line.trim();
-        if line.starts_with("#") {
+        if line.starts_with('#') {
             continue;
         }
         let mut parts = line.split_whitespace();

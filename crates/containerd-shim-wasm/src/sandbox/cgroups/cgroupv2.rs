@@ -65,7 +65,7 @@ impl CgroupV2 {
                         e
                     ))
                 })?
-                .replace(" ", " +");
+                .replace(' ', " +");
 
             let c = "+".to_string() + &controllers.to_string();
 

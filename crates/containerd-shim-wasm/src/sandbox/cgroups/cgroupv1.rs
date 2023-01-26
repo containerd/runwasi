@@ -413,7 +413,7 @@ fn format_device(device: &LinuxDeviceCgroup) -> String {
 
     match device.minor() {
         Some(minor) => s.push_str(&minor.to_string()),
-        None => s.push_str("*"),
+        None => s.push('*'),
     }
     s.push(' ');
 

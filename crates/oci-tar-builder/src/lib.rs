@@ -123,8 +123,8 @@ impl Builder {
             }
 
             let mut annotations = HashMap::new();
-            if config.1.contains(":") {
-                let split = config.1.split(":").collect::<Vec<&str>>()[1];
+            if config.1.contains(':') {
+                let split = config.1.split(':').collect::<Vec<&str>>()[1];
                 annotations.insert(
                     "org.opencontainers.image.ref.name".to_string(),
                     split.to_string(),
