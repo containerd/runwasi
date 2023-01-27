@@ -6,6 +6,11 @@ This is a project to facilitate running wasm workloads managed by containerd eit
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
 Included in the repository is a PoC for running a plain wasi host (ie. no extra host functions except to support wasi system calls).
 
+### Community
+
+Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V)
+on the CNCF slack.
+
 ### Usage
 
 runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation.
