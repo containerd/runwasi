@@ -199,7 +199,7 @@ impl Instance for Wasi {
         debug!("call prehook before the start");
         oci::setup_prestart_hooks(spec.hooks())?;
 
-        let vm = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
+        let vm = prepare_module(engine, &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
 
         let cg = oci::get_cgroup(&spec)?;
