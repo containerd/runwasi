@@ -62,8 +62,6 @@ mod tests {
         drop(temp);
         let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
         assert!(f.is_some());
-        drop(f);
-
         Ok(())
     }
 }
@@ -230,7 +228,7 @@ impl Instance for Wasi {
                     debug!("wasi instance exited with status {}", status.status);
                     let mut ec = lock.lock().unwrap();
                     *ec = Some((status.status, Utc::now()));
-                    drop(lock);
+                    drop(ec);
                     cvar.notify_all();
                 });
                 Ok(tid)
