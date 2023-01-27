@@ -62,8 +62,6 @@ mod tests {
         drop(temp);
         let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
         assert!(f.is_some());
-        drop(f);
-
         Ok(())
     }
 }
