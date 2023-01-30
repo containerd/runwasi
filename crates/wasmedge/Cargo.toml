@@ -20,6 +20,7 @@ libc = "0.2.138"
 [dev-dependencies]
 tempfile = "3.0"
 pretty_assertions = "1"
+serial_test = "*"
 
 [features]
 wasi_nn = ["wasmedge-sdk/wasi_nn"]
