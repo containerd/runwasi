@@ -99,6 +99,7 @@ mod files {
     pub const PIDS_MAX: &str = "pids.max";
 
     pub const IO_WEIGHT: &str = "io.weight";
+    pub const IO_BFQ_WEIGHT: &str = "io.bfq.weight";
     pub const IO_MAX: &str = "io.max";
 }
 
@@ -238,10 +239,18 @@ impl Cgroup for CgroupV2 {
 
         if let Some(blkio) = res.block_io() {
             if let Some(weight) = blkio.weight() {
-                ensure_write_file(
-                    self.get_file(IO_WEIGHT)?,
-                    &format!("{}", 1 + (weight.saturating_sub(10)) * 9999 / 990),
-                )?;
+                if weight != 0 {
+                    // Use BFQ
+                    if let Err(_) =
+                        ensure_write_file(self.get_file(IO_BFQ_WEIGHT)?, &format!("{}", weight))
+                    {
+                        // Fallback to io.weight with a conversion scheme
+                        ensure_write_file(
+                            self.get_file(IO_WEIGHT)?,
+                            &format!("{}", 1 + (weight.saturating_sub(10)) * 9999 / 990),
+                        )?;
+                    }
+                }
             }
 
             if let Some(throttle_write_bps_device) = blkio.throttle_read_bps_device() {
