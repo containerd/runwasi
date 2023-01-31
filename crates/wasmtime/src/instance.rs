@@ -11,6 +11,7 @@ use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
+use nix::sys::signal::SIGKILL;
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
 
@@ -234,7 +235,7 @@ impl Instance for Wasi {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal != 9 {
+        if signal != SIGKILL as u32 {
             return Err(Error::InvalidArgument(
                 "only SIGKILL is supported".to_string(),
             ));
@@ -278,12 +279,12 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::fs::{create_dir, read_to_string, write, File};
+    use std::fs::{create_dir, read_to_string, File};
     use std::io::prelude::*;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
-    use oci_spec::runtime::{ProcessBuilder, Root, RootBuilder, SpecBuilder};
+    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
     use super::*;
@@ -368,7 +369,7 @@ mod wasitest {
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
             Err(e) => {
-                wasi.kill(9).unwrap();
+                wasi.kill(SIGKILL as u32).unwrap();
                 return Err(Error::Others(format!(
                     "error waiting for module to finish: {0}",
                     e

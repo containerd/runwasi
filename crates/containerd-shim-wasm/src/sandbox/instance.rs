@@ -2,6 +2,8 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
+use libc::{SIGINT, SIGKILL, SIGTERM};
+
 use chrono::{DateTime, Utc};
 
 use super::error::Error;
@@ -103,9 +105,9 @@ impl Instance for Nop {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        let code = match signal {
-            9 => 137,
-            2 | 15 => 0,
+        let code = match signal as i32 {
+            SIGKILL => 137,
+            SIGINT | SIGTERM => 0,
             s => {
                 return Err(Error::InvalidArgument(format!("unsupported signal: {}", s)));
             }
@@ -144,6 +146,8 @@ mod noptests {
     use std::sync::Arc;
     use std::time::Duration;
 
+    use libc::{SIGHUP};
+
     use super::*;
 
     #[test]
@@ -157,7 +161,7 @@ mod noptests {
             n.wait(tx).unwrap();
         });
 
-        nop.kill(9)?;
+        nop.kill(SIGKILL as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 137);
         Ok(())
@@ -174,7 +178,7 @@ mod noptests {
             n.wait(tx).unwrap();
         });
 
-        nop.kill(15)?;
+        nop.kill(SIGTERM as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
         Ok(())
@@ -191,7 +195,7 @@ mod noptests {
             n.wait(tx).unwrap();
         });
 
-        nop.kill(2)?;
+        nop.kill(SIGINT as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
         Ok(())
@@ -201,7 +205,7 @@ mod noptests {
     fn test_op_kill_other() -> Result<(), Error> {
         let nop = Nop::new("".to_string(), None);
 
-        let err = nop.kill(1).unwrap_err();
+        let err = nop.kill(SIGHUP as u32).unwrap_err();
         match err {
             Error::InvalidArgument(_) => {}
             _ => panic!("unexpected error: {}", err),

@@ -4,7 +4,7 @@ use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{dup, dup2, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{dup, dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use std::fs::OpenOptions;
 use std::io::ErrorKind;
@@ -247,10 +247,10 @@ impl Instance for Wasi {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal != 9 && signal != 2 {
+        if signal as i32 != SIGKILL && signal as i32 != SIGINT {
             println!("{:?}", signal);
             return Err(Error::InvalidArgument(
-                "only SIGKILL and SIGINT is supported".to_string(),
+                "only SIGKILL and SIGINT are supported".to_string(),
             ));
         }
 
@@ -389,7 +389,7 @@ mod wasitest {
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
             Err(e) => {
-                wasi.kill(9).unwrap();
+                wasi.kill(SIGKILL as u32).unwrap();
                 return Err(Error::Others(format!(
                     "error waiting for module to finish: {0}",
                     e
