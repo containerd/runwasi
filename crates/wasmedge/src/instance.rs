@@ -111,16 +111,16 @@ pub fn prepare_module(
     stderr_path: String,
 ) -> Result<Vm, WasmRuntimeError> {
     debug!("opening rootfs");
-    let rootfs_path = oci::get_root(&spec).to_str().unwrap();
+    let rootfs_path = oci::get_root(spec).to_str().unwrap();
     let root = format!("/:{}", rootfs_path);
     let mut preopens = vec![root.as_str()];
 
     debug!("opening mounts");
-    let mut mounts = oci_utils::get_wasm_mounts(&spec);
+    let mut mounts = oci_utils::get_wasm_mounts(spec);
     preopens.append(&mut mounts);
 
-    let args = oci::get_args(&spec);
-    let envs = oci_utils::env_to_wasi(&spec);
+    let args = oci::get_args(spec);
+    let envs = oci_utils::env_to_wasi(spec);
 
     debug!("setting up wasi");
     let mut wasi_instance = vm.wasi_module()?;
@@ -163,7 +163,7 @@ pub fn prepare_module(
         cmd = strpd.to_string();
     }
 
-    let mod_path = oci::get_root(&spec).join(cmd);
+    let mod_path = oci::get_root(spec).join(cmd);
 
     debug!("register module from file");
     let vm = vm.register_module_from_file("main", mod_path)?;
@@ -195,9 +195,9 @@ impl Instance for Wasi {
         let spec = load_spec(self.bundle.clone())?;
 
         debug!("call prehook before the start");
-        oci::setup_prestart_hooks(&spec.hooks())?;
+        oci::setup_prestart_hooks(spec.hooks())?;
 
-        let vm = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
+        let vm = prepare_module(engine, &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
 
         let cg = oci::get_cgroup(&spec)?;
@@ -255,9 +255,9 @@ impl Instance for Wasi {
         }
 
         let lr = self.pidfd.lock().unwrap();
-        let fd = lr.as_ref().ok_or(Error::FailedPrecondition(
-            "module is not running".to_string(),
-        ))?;
+        let fd = lr
+            .as_ref()
+            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
         fd.kill(SIGKILL as i32)
     }
 

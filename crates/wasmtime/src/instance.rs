@@ -89,9 +89,9 @@ pub fn prepare_module(
     stderr_path: String,
 ) -> Result<(WasiCtx, Module), WasmtimeError> {
     debug!("opening rootfs");
-    let rootfs = oci_wasmtime::get_rootfs(&spec)?;
-    let args = oci::get_args(&spec);
-    let env = oci_wasmtime::env_to_wasi(&spec);
+    let rootfs = oci_wasmtime::get_rootfs(spec)?;
+    let args = oci::get_args(spec);
+    let env = oci_wasmtime::env_to_wasi(spec);
 
     debug!("setting up wasi");
     let mut wasi_builder = WasiCtxBuilder::new()
@@ -127,7 +127,7 @@ pub fn prepare_module(
         cmd = strpd.to_string();
     }
 
-    let mod_path = oci::get_root(&spec).join(cmd);
+    let mod_path = oci::get_root(spec).join(cmd);
 
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
@@ -166,7 +166,7 @@ impl Instance for Wasi {
         let spec = load_spec(self.bundle.clone())?;
 
         debug!("call prehook before the start");
-        oci::setup_prestart_hooks(&spec.hooks())?;
+        oci::setup_prestart_hooks(spec.hooks())?;
 
         let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
@@ -179,11 +179,9 @@ impl Instance for Wasi {
             .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
 
         debug!("getting start function");
-        let f = i
-            .get_func(&mut store, "_start")
-            .ok_or(Error::InvalidArgument(
-                "module does not have a wasi start function".to_string(),
-            ))?;
+        let f = i.get_func(&mut store, "_start").ok_or_else(|| {
+            Error::InvalidArgument("module does not have a wasi start function".to_string())
+        })?;
 
         debug!("starting wasi instance");
 
@@ -226,7 +224,7 @@ impl Instance for Wasi {
 
                 // TODO: How to get exit code?
                 // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                let _ret = match f.call(&mut store, &mut [], &mut []) {
+                let _ret = match f.call(&mut store, &[], &mut []) {
                     Ok(_) => std::process::exit(0),
                     Err(_) => std::process::exit(137),
                 };
@@ -242,9 +240,9 @@ impl Instance for Wasi {
         }
 
         let lr = self.pidfd.lock().unwrap();
-        let fd = lr.as_ref().ok_or(Error::FailedPrecondition(
-            "module is not running".to_string(),
-        ))?;
+        let fd = lr
+            .as_ref()
+            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
         fd.kill(signal as i32)
     }
 

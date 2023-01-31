@@ -13,7 +13,7 @@ fn main() {
         "exit" => process::exit(args[2].parse::<i32>().unwrap()),
         "write" => {
             let mut file = File::create(&args[2]).unwrap();
-            file.write_all(&args[3..].join(" ").as_bytes()).unwrap();
+            file.write_all(args[3..].join(" ").as_bytes()).unwrap();
         }
         "daemon" => loop {
             println!("This is a song that never ends.\nYes, it goes on and on my friends.\nSome people started singing it not knowing what it was,\nSo they'll continue singing it forever just because...\n");

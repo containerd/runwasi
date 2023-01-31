@@ -1381,7 +1381,7 @@ where
                     OpenOptions::new()
                         .create(true)
                         .write(true)
-                        .open(&dest)
+                        .open(dest)
                         .unwrap();
                 }
 

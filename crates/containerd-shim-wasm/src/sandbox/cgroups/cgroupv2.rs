@@ -65,7 +65,7 @@ impl CgroupV2 {
                         e
                     ))
                 })?
-                .replace(" ", " +");
+                .replace(' ', " +");
 
             let c = "+".to_string() + &controllers.to_string();
 
@@ -146,7 +146,7 @@ impl Cgroup for CgroupV2 {
 
         for p in paths.iter().rev() {
             debug!("Removing cgroup directory: {}", p.display());
-            match fs::remove_dir(&p) {
+            match fs::remove_dir(p) {
                 Ok(_) => continue,
                 Err(e) => {
                     if e.kind() != std::io::ErrorKind::NotFound {
@@ -364,7 +364,7 @@ impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV2 {
         }
 
         let f = fs::File::open("/proc/cgroups")?;
-        let mounts = find_cgroup_mounts((&opts.mounts)()?, &list_cgroup_controllers(f)?)?;
+        let mounts = find_cgroup_mounts((opts.mounts)()?, &list_cgroup_controllers(f)?)?;
 
         if let Some(mount) = mounts.v2 {
             if mounts.v1.is_empty().not() {
@@ -372,10 +372,7 @@ impl<T: std::io::BufRead> TryFrom<&CgroupOptions<T>> for CgroupV2 {
                     "cgroup v2 mount found but cgroup v1 mount also found: hybrid cgroup mode is not supported".to_string(),
                 ));
             }
-            return Ok(CgroupV2::new(
-                PathBuf::from(mount),
-                PathBuf::from(&opts.name.clone()),
-            ));
+            return Ok(CgroupV2::new(mount, PathBuf::from(&opts.name.clone())));
         }
 
         Err(Error::FailedPrecondition(

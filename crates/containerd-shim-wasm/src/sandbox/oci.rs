@@ -107,7 +107,7 @@ pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<
         let prestart_hooks = hooks.prestart().as_ref().unwrap();
 
         for hook in prestart_hooks {
-            let mut hook_command = process::Command::new(&hook.path());
+            let mut hook_command = process::Command::new(hook.path());
             // Based on OCI spec, the first argument of the args vector is the
             // arg0, which can be different from the path.  For example, path
             // may be "/usr/bin/true" and arg0 is set to "true". However, rust

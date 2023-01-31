@@ -44,12 +44,12 @@ struct DockerManifest {
 impl Builder {
     pub fn add_config(&mut self, config: ImageConfiguration, name: String) -> &mut Self {
         self.configs.push((config, name));
-        return self;
+        self
     }
 
     pub fn add_layer(&mut self, layer: &PathBuf) -> &mut Self {
         self.layers.push(layer.to_owned());
-        return self;
+        self
     }
 
     pub fn build<W: Write>(&mut self, w: W) -> Result<(), Error> {
@@ -117,12 +117,14 @@ impl Builder {
             let mut layers = Vec::new();
             for id in config.0.rootfs().diff_ids().iter() {
                 debug!("id: {}", id);
-                layer_digests.get(id).map(|d| layers.push(d.clone()));
+                if let Some(d) = layer_digests.get(id) {
+                    layers.push(d.clone())
+                }
             }
 
             let mut annotations = HashMap::new();
-            if config.1.contains(":") {
-                let split = config.1.split(":").collect::<Vec<&str>>()[1];
+            if config.1.contains(':') {
+                let split = config.1.split(':').collect::<Vec<&str>>()[1];
                 annotations.insert(
                     "org.opencontainers.image.ref.name".to_string(),
                     split.to_string(),

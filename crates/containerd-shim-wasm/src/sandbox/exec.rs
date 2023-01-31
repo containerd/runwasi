@@ -242,7 +242,7 @@ mod tests {
                         test_exit_code, status
                     )));
                 }
-                return Ok(());
+                Ok(())
             }
             Ok(Context::Child) => {
                 let term = Arc::new(AtomicBool::new(false));
@@ -255,9 +255,7 @@ mod tests {
 
                 std::process::exit(test_exit_code.try_into().unwrap());
             }
-            Err(e) => {
-                return Err(e);
-            }
+            Err(e) => Err(e),
         }
     }
 
