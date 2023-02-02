@@ -958,6 +958,10 @@ where
 
         debug!("create done");
 
+        // Per the spec, the prestart hook must be called as part of the create operation
+        debug!("call prehook before the start");
+        oci::setup_prestart_hooks(&spec.hooks())?;
+
         Ok(api::CreateTaskResponse {
             pid: std::process::id(),
             ..Default::default()
