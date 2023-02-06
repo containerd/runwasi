@@ -1365,28 +1365,55 @@ where
 
         if let Some(mounts) = spec.mounts() {
             for m in mounts {
-                if m.typ().as_ref().unwrap() != "bind" {
-                    continue;
+                match m.typ().as_ref() {
+                    None => return Err(shim::Error::Other("No mount type specified".to_string())),
+                    Some(mount_type) => {
+                        if mount_type != "bind" {
+                            continue;
+                        }
+                    }
                 }
 
                 let dest = m.destination();
-                let source = m.source().as_ref().unwrap();
-                let src = canonicalize(source).unwrap();
+                let source = m
+                    .source()
+                    .as_ref()
+                    .ok_or_else(|| shim::Error::Other("No source mount path".to_string()))?;
+
+                let src = canonicalize(source).map_err(|err| {
+                    shim::Error::Other(format!(
+                        "Failed to canonicalize the source file path: {}",
+                        err
+                    ))
+                })?;
 
                 let dir = if src.is_file() {
-                    Path::new(&dest).parent().unwrap()
+                    Path::new(&dest).parent().ok_or_else(|| {
+                        shim::Error::Other("Invalid destination file path".to_string())
+                    })?
                 } else {
                     Path::new(&dest)
                 };
 
-                create_dir_all(dir).unwrap();
+                create_dir_all(dir).map_err(|err| {
+                    shim::Error::Other(format!(
+                        "Failed to create destination directory structure: {}",
+                        err
+                    ))
+                })?;
 
+                // Create target file for bind mount
                 if src.is_file() {
                     OpenOptions::new()
                         .create(true)
                         .write(true)
                         .open(dest)
-                        .unwrap();
+                        .map_err(|err| {
+                            shim::Error::Other(format!(
+                                "failed to create bind mount destination file: {}",
+                                err
+                            ))
+                        })?;
                 }
 
                 mount::<str, Path, str, str>(
