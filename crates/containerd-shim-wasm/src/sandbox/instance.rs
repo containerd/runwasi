@@ -146,7 +146,7 @@ mod noptests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use libc::{SIGHUP};
+    use libc::SIGHUP;
 
     use super::*;
 

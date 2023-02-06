@@ -8,5 +8,26 @@ members = [
     "crates/wasmtime",
 ]
 
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1.0"
+serde = "1.0"
+serde_json = "1.0"
+env_logger = "0.10"
+log = "0.4"
+tar = "0.4"
+containerd-shim = "0.3.0"
+ttrpc = "0.6"
+chrono = "0.4"
+nix = "0.25"
+cap-std = "0.26"
+thiserror = "1.0"
+libc = "0.2.138"
+oci-spec = "0.5"
+sha256 = "1.1"
+
 [profile.release]
 panic = "abort"

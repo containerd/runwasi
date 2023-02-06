@@ -1,10 +1,10 @@
 [package]
 name = "thirdparty"
-version = "0.1.0"
+version.workspace = true
 description = "Collections from thirdparty code"
 license-file = "../../LICENSE"
-edition = "2021"
+edition.workspace = true
 
 [dependencies]
-oci-spec = "0.5"
+oci-spec = { workspace = true }
 nix = "0.25"

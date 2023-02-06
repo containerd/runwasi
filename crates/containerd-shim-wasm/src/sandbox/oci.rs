@@ -1,10 +1,9 @@
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::cgroups;
 use super::error::Result;
 use anyhow::Context;
-use cap_std::path::PathBuf;
 use nix::{sys::signal, unistd::Pid};
 pub use oci_spec::runtime::Spec;
 use serde_json as json;
