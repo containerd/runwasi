@@ -1,28 +1,27 @@
 [package]
 name = "containerd-shim-wasm"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 doctest = false
 
 [dependencies]
-containerd-shim = "0.3"
+containerd-shim = { workspace = true }
 containerd-shim-protos = "0.1"
-anyhow = "1.0"
-serde_json = "1.0"
-oci-spec = "0.5"
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+oci-spec = { workspace = true }
 command-fds = "0.2"
-serde = "1.0"
-thiserror = "1.0"
+serde = { workspace = true }
+thiserror = { workspace = true }
 protobuf = "2.23"
-ttrpc = "0.6"
-nix = "0.25"
-cap-std = "0.24"
-chrono = "0.4"
-log = "0.4"
+ttrpc = { workspace = true }
+nix = { workspace = true }
+chrono = { workspace = true }
+log = { workspace = true }
 clone3 = "0.2"
-libc = "0.2"
+libc = { workspace = true }
 caps = "0.1"
 proc-mounts = "0.3"
 thirdparty = { path = "../thirdparty" }
@@ -34,7 +33,7 @@ ttrpc-codegen = { version = "0.3", optional = true }
 tempfile = "3"
 pretty_assertions = "1"
 signal-hook = "0.3"
-env_logger = "0.10"
+env_logger = { workspace = true }
 rand = "0.8"
 
 [features]

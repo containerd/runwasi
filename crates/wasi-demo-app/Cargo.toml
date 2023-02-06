@@ -1,16 +1,16 @@
 [package]
 name = "wasi-demo-app"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [build-dependencies]
-tar = { version = "0.4", optional = true }
-sha256 = { version = "1.1", optional = true }
-log = { version = "0.4", optional = true }
-env_logger = { version = "0.10", optional = true }
-oci-spec = { version = "0.5", optional = true }
+tar = { workspace = true, optional = true }
+sha256 = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
+oci-spec = { workspace = true, optional = true }
 oci-tar-builder = { optional = true, path = "../oci-tar-builder" }
-anyhow = { version = "1.0", optional = true }
+anyhow = { workspace = true, optional = true }
 
 
 
