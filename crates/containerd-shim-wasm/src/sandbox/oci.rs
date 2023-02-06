@@ -5,12 +5,16 @@ use super::cgroups;
 use super::error::Result;
 use anyhow::Context;
 use nix::{sys::signal, unistd::Pid};
+use oci_spec::runtime::LinuxDevice;
 pub use oci_spec::runtime::Spec;
 use serde_json as json;
 use std::collections::HashMap;
 use std::io::{ErrorKind, Write};
 use std::os::unix::process::CommandExt;
 use std::process;
+
+use libcontainer::rootfs::device::Device;
+use libcontainer::rootfs::utils::default_devices;
 
 pub fn load(path: &str) -> Result<Spec> {
     let spec = Spec::load(path)?;
@@ -87,6 +91,37 @@ pub fn setup_cgroup(cg: &dyn cgroups::Cgroup, spec: &Spec) -> Result<()> {
     Ok(())
 }
 
+pub fn get_devices(spec: &Spec) -> Result<Vec<LinuxDevice>> {
+    let devices = match spec.linux() {
+        None => Err(super::Error::Others(
+            "No Linux configuration in spec".to_string(),
+        )),
+        Some(linux) => Ok(linux.devices()),
+    }?;
+
+    match devices {
+        None => Ok(Vec::<LinuxDevice>::new()),
+        Some(v) => Ok(v.clone()),
+    }
+}
+
+pub fn setup_devices(spec: &Spec) -> Result<()> {
+    let device = Device::new();
+    let mut devices = get_devices(spec)?;
+
+    // TODO: filter duplicates?
+    devices.append(&mut default_devices());
+
+    let rootfs_path = spec
+        .root()
+        .as_ref()
+        .ok_or_else(|| super::Error::Others("error: rootfs path is required".to_string()))?;
+
+    device
+        .create_devices(rootfs_path.path(), &devices, false)
+        .map_err(|err| super::Error::Others(format!("error creating devices: {}", err)))
+}
+
 fn parse_env(envs: &[String]) -> HashMap<String, String> {
     // make NAME=VALUE to HashMap<NAME, VALUE>.
     envs.iter()
@@ -157,4 +192,42 @@ pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod wasitest {
+    use super::*;
+    use oci_spec::runtime::{LinuxBuilder, LinuxDeviceBuilder, RootBuilder, SpecBuilder};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_device_setup() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path();
+
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path(path).build()?)
+            .build()?;
+
+        let no_devices = get_devices(&spec)?;
+        assert!(no_devices.is_empty());
+
+        let spec2 = SpecBuilder::default()
+            .root(RootBuilder::default().path(path).build()?)
+            .linux(
+                LinuxBuilder::default()
+                    .devices(vec![LinuxDeviceBuilder::default()
+                        .path(PathBuf::from("/dev/null"))
+                        .major(1)
+                        .major(3)
+                        .build()?])
+                    .build()?,
+            )
+            .build()?;
+        let devices = get_devices(&spec2)?;
+        let devices_size = devices.len();
+        assert_eq!(devices_size, 1);
+
+        Ok(())
+    }
 }

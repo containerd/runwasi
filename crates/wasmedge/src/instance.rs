@@ -201,6 +201,18 @@ impl Instance for Wasi {
 
         oci::setup_cgroup(cg.as_ref(), &spec)
             .map_err(|e| Error::Others(format!("error setting up cgroups: {}", e)))?;
+
+        // TODO: The problem is that setting up devices requires more permissions
+        // than we have when running tests, so skip setting up devices when testing.
+        // A better solution would be mocking the system calls in libcontainer
+        // (maybe we can have a dev-dependency to libcontainer with a "test-mode"
+        // feature set).
+        if !cfg!(test) {
+            // Set up both the default devices required by the OCI runtime spec and
+            // the configured devices.
+            oci::setup_devices(&spec)?;
+        }
+
         let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
         match res {
             exec::Context::Parent(tid, pidfd) => {

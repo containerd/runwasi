@@ -170,7 +170,7 @@ impl Instance for Wasi {
 
         let mut store = Store::new(&engine, m.0);
 
-        debug!("instantiating instnace");
+        debug!("instantiating instance");
         let i = linker
             .instantiate(&mut store, &m.1)
             .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
@@ -186,6 +186,12 @@ impl Instance for Wasi {
 
         oci::setup_cgroup(cg.as_ref(), &spec)
             .map_err(|e| Error::Others(format!("error setting up cgroups: {}", e)))?;
+
+        if !cfg!(test) {
+            // Set up both the default devices required by the OCI runtime spec and
+            // the configured devices.
+            oci::setup_devices(&spec)?;
+        }
 
         let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
         match res {

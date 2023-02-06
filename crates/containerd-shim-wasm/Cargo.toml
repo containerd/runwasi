@@ -25,6 +25,7 @@ libc = { workspace = true }
 caps = "0.1"
 proc-mounts = "0.3"
 thirdparty = { path = "../thirdparty" }
+libcontainer = "0.0.4"
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.3", optional = true }
