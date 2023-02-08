@@ -58,3 +58,33 @@ test/k8s/deploy: test/k8s/cluster
 .PHONY: test/k8s/clean
 test/k8s/clean:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
+
+.PHONY: bin/wasmedge
+bin/wasmedge:
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -p $(PWD)/bin/wasmedge
+
+.PHONY: bin/wasmedge/clean
+bin/wasmedge/clean:
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q
+
+.PHONY: bin/k3s
+bin/k3s:
+	mkdir -p bin
+	curl -sfL https://get.k3s.io | INSTALL_K3S_BIN_DIR=$(PWD)/bin INSTALL_K3S_SYMLINK=skip INSTALL_K3S_NAME=runwasi sh - && \
+	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '  runtime_type = "io.containerd.wasmedge.v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm.options]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '    BinaryName = "$(PWD)/bin/wasmedge/bin/wasmedge"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
+	sudo systemctl restart k3s-runwasi
+
+.PHONY: bin/k3s/clean
+bin/k3s/clean:
+	bin/k3s-runwasi-uninstall.sh
+
+.PHONY: test/k3s
+test/k3s: bin/k3s bin/wasmedge target/wasm32-wasi/$(TARGET)/img.tar
+	sudo bin/k3s ctr image import --all-platforms $<
+	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s
