@@ -62,13 +62,12 @@ test/k8s/clean:
 .PHONY: bin/wasmedge
 bin/wasmedge:
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -p $(PWD)/bin/wasmedge && \
-	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && \
-	sudo ldconfig
+	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
 
 .PHONY: bin/wasmedge/clean
 bin/wasmedge/clean:
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q && \
-	sudo rm /etc/ld.so.conf.d/libwasmedge.conf
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q
+	sudo rm /etc/ld.so.conf.d/libwasmedge.conf && sudo ldconfig
 
 .PHONY: bin/k3s
 bin/k3s:
@@ -79,7 +78,9 @@ bin/k3s:
 	echo '  runtime_type = "io.containerd.wasmedge.v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm.options]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '    BinaryName = "$(PWD)/bin/wasmedge/bin/wasmedge"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
 	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
+	sudo systemctl daemon-reload && \
 	sudo systemctl restart k3s-runwasi
 
 .PHONY: bin/k3s/clean
