@@ -63,12 +63,12 @@ test/k8s/clean:
 bin/wasmedge:
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -p $(PWD)/bin/wasmedge && \
 	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && \
-	sudo ldconfig && \
+	sudo ldconfig
 
 .PHONY: bin/wasmedge/clean
 bin/wasmedge/clean:
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q && \
-	sudo rm /etc/ld.so.conf.d/libwasmedge.conf && \
+	sudo rm /etc/ld.so.conf.d/libwasmedge.conf
 
 .PHONY: bin/k3s
 bin/k3s:
