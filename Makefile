@@ -62,14 +62,11 @@ test/k8s/clean:
 .PHONY: bin/wasmedge
 bin/wasmedge:
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -p $(PWD)/bin/wasmedge && \
-	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig && \
-	export WASMEDGE_INCLUDE_DIR=$(PWD)/bin/wasmedge/include && \
-	export WASMEDGE_LIB_DIR=$(PWD)/bin/wasmedge/lib
+	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
 
 .PHONY: bin/wasmedge/clean
 bin/wasmedge/clean:
 	sudo rm /etc/ld.so.conf.d/libwasmedge.conf && sudo ldconfig
-	unset WASMEDGE_INCLUDE_DIR WASMEDGE_LIB_DIR
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q
 
 .PHONY: bin/k3s
@@ -83,6 +80,8 @@ bin/k3s/clean:
 
 .PHONY: test/k3s
 test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
+	export WASMEDGE_INCLUDE_DIR=$(PWD)/bin/wasmedge/include && \
+	export WASMEDGE_LIB_DIR=$(PWD)/bin/wasmedge/lib && \
 	cargo build $(RELEASE_FLAG) && \
 	cp target/$(TARGET)/containerd-shim-wasmedge-v1 $(PWD)/bin/ && \
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
@@ -103,3 +102,4 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
 test/k3s/clean: bin/wasmedge/clean bin/k3s/clean
 	rm $(PWD)/bin/containerd-shim-wasmedge-v1
 	cargo clean
+	unset WASMEDGE_INCLUDE_DIR WASMEDGE_LIB_DIR
