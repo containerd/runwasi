@@ -100,6 +100,6 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
 
 .PHONY: test/k3s/clean
 test/k3s/clean: bin/wasmedge/clean bin/k3s/clean
-	rm $(PWD)/bin/containerd-shim-wasmedge-v1
 	cargo clean
 	unset WASMEDGE_INCLUDE_DIR WASMEDGE_LIB_DIR
+	rm $(PWD)/bin/containerd-shim-wasmedge-v1
