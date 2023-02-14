@@ -289,13 +289,16 @@ impl Instance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
+    use std::borrow::Cow;
     use std::fs::{create_dir, read_to_string, File};
     use std::io::prelude::*;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-    use tempfile::tempdir;
+    use tempfile::{tempdir, TempDir};
+
+    use serial_test::serial;
 
     use super::*;
 
@@ -334,22 +337,17 @@ mod wasitest {
     )
     "#.as_bytes();
 
-    #[test]
-    fn test_delete_after_create() {
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .build()
-            .unwrap();
-        let vm = Vm::new(Some(config)).unwrap();
-        let i = Wasi::new("".to_string(), Some(&InstanceConfig::new(vm)));
-        i.delete().unwrap();
-    }
+    const WASI_RETURN_ERROR: &[u8] = r#"(module
+        (func $main (export "_start")
+            (unreachable)
+        )
+    )
+    "#
+    .as_bytes();
 
-    #[test]
-    fn test_wasi() -> Result<(), Error> {
-        let dir = tempdir()?;
+    fn run_wasi_test(dir: &TempDir, wasmbytes: Cow<[u8]>) -> Result<(u32, DateTime<Utc>), Error> {
         create_dir(dir.path().join("rootfs"))?;
 
-        let wasmbytes = wat2wasm(WASI_HELLO_WAT).unwrap();
         let mut f = File::create(dir.path().join("rootfs/hello.wasm"))?;
         f.write_all(&wasmbytes)?;
 
@@ -384,7 +382,7 @@ mod wasitest {
         });
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(res) => res,
+            Ok(res) => Ok(res),
             Err(e) => {
                 wasi.kill(SIGKILL as u32).unwrap();
                 return Err(Error::Others(format!(
@@ -393,10 +391,47 @@ mod wasitest {
                 )));
             }
         };
+        return res;
+    }
+
+    #[test]
+    fn test_delete_after_create() {
+        let config = ConfigBuilder::new(CommonConfigOptions::default())
+            .build()
+            .unwrap();
+        let vm = Vm::new(Some(config)).unwrap();
+        let i = Wasi::new("".to_string(), Some(&InstanceConfig::new(vm)));
+        i.delete().unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_wasi() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let path = dir.path();
+        let wasmbytes = wat2wasm(WASI_HELLO_WAT).unwrap();
+
+        let res = run_wasi_test(&dir, wasmbytes)?;
+
         assert_eq!(res.0, 0);
 
-        let output = read_to_string(dir.path().join("stdout"))?;
+        let output = read_to_string(path.join("stdout"))?;
         assert_eq!(output, "hello world\n");
+
+        reset_stdio();
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_wasi_error() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let wasmbytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
+
+        let res = run_wasi_test(&dir, wasmbytes)?;
+
+        // Expect error code from the run.
+        assert_eq!(res.0, 137);
 
         reset_stdio();
         Ok(())
