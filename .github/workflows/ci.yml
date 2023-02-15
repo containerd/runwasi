@@ -29,6 +29,9 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install libcontainer dependencies
+        run: |
+          sudo apt install libseccomp-dev
       - name: Setup WasmEdge build env
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2

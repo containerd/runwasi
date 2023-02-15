@@ -25,7 +25,7 @@ libc = { workspace = true }
 caps = "0.1"
 proc-mounts = "0.3"
 thirdparty = { path = "../thirdparty" }
-libcontainer = "0.0.4"
+libcontainer = { git = "https://github.com/ipuustin/youki", branch = "public-device-functions", default-features = false, features = ["v1", "v2"] }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.3", optional = true }
