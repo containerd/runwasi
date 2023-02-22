@@ -7,4 +7,4 @@ edition.workspace = true
 
 [dependencies]
 oci-spec = { workspace = true }
-nix = "0.25"
+nix = { workspace = true }

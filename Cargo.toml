@@ -22,11 +22,11 @@ tar = "0.4"
 containerd-shim = "0.3.0"
 ttrpc = "0.6"
 chrono = "0.4"
-nix = "0.25"
+nix = "0.26"
 cap-std = "0.26"
 thiserror = "1.0"
 libc = "0.2.138"
-oci-spec = "0.5"
+oci-spec = "0.6"
 sha256 = "1.1"
 
 [profile.release]
