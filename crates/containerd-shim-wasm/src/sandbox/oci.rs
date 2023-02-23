@@ -68,7 +68,7 @@ pub fn get_cgroup(spec: &Spec) -> Result<Box<dyn cgroups::Cgroup>> {
 
     match linux.as_ref().unwrap().cgroups_path() {
         None => Ok(Box::new(NopCgroup {})),
-        Some(p) => cgroups::new(p.clone().as_path().to_str().unwrap().to_string()),
+        Some(p) => cgroups::new(p.display().to_string()),
     }
 }
 
