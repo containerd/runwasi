@@ -3,7 +3,6 @@ members = [
     "crates/containerd-shim-wasm",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
-    "crates/thirdparty",
     "crates/wasmedge",
     "crates/wasmtime",
 ]

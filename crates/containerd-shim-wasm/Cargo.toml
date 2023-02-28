@@ -23,7 +23,6 @@ clone3 = "0.2"
 libc = { workspace = true }
 caps = "0.5"
 proc-mounts = "0.3"
-thirdparty = { path = "../thirdparty" }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.3", optional = true }
