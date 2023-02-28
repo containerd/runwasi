@@ -10,6 +10,11 @@ members = [
 [workspace.package]
 edition = "2021"
 version = "0.1.0"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/containerd/runwasi"
+homepage = "https://github.com/containerd/runwasi"
+
 
 [workspace.dependencies]
 anyhow = "1.0"

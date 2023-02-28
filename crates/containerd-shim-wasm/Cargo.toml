@@ -1,7 +1,13 @@
 [package]
 name = "containerd-shim-wasm"
+description = "Library for building containerd shim for wasm"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
 
 [lib]
 doctest = false
