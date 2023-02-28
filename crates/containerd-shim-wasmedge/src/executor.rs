@@ -70,11 +70,17 @@ impl Executor for WasmEdgeExecutor {
         }
 
         let ins = vm.named_module("main")?;
-        ins.func("_start")
-            .expect("Not found '_start' func in the 'main' module instance")
-            .call(&mut vm, params!())?;
 
-        Ok(())
+        // TODO: How to get exit code?
+        // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
+        match ins
+            .func("_start")
+            .expect("Not found '_start' func in the 'main' module instance")
+            .call(&mut vm, params!())
+        {
+            Ok(_) => std::process::exit(0),
+            Err(_) => std::process::exit(137),
+        };
     }
 
     fn can_handle(&self, _spec: &Spec) -> Result<bool> {

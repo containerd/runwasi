@@ -101,7 +101,7 @@ where
 pub trait Instance {
     type E: Send + Sync + Clone;
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    fn new(id: String, rootdir: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
@@ -127,7 +127,7 @@ pub struct Nop {
 
 impl Instance for Nop {
     type E = ();
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(_id: String, _rootdir: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
         }
@@ -184,7 +184,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Arc::new(Nop::new("".to_string(), "".into(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -201,7 +201,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigterm() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Arc::new(Nop::new("".to_string(), "".into(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -218,7 +218,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigint() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Arc::new(Nop::new("".to_string(), "".into(), None));
         let (tx, rx) = channel();
 
         let n = nop.clone();
@@ -235,7 +235,7 @@ mod noptests {
 
     #[test]
     fn test_op_kill_other() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
+        let nop = Arc::new(Nop::new("".to_string(), "".into(), None));
 
         let err = nop.kill(SIGHUP as u32).unwrap_err();
         match err {
@@ -248,7 +248,7 @@ mod noptests {
 
     #[test]
     fn test_nop_delete_after_create() {
-        let nop = Nop::new("".to_string(), None);
+        let nop = Arc::new(Nop::new("".to_string(), "".into(), None));
         nop.delete().unwrap();
     }
 }

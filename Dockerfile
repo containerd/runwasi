@@ -16,6 +16,7 @@ ENV WASMEDGE_INCLUDE_DIR=/root/.wasmedge/include
 ENV WASMEDGE_LIB_DIR=/root/.wasmedge/lib
 ENV LD_LIBRARY_PATH=/root/.wasmedge/lib
 RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g
+RUN xx-apt-get install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
 RUN rustup target add $(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
 RUN <<EOT
     set -ex

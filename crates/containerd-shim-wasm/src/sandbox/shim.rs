@@ -39,6 +39,8 @@ use nix::unistd::mkdir;
 use oci_spec::runtime;
 use ttrpc::context::Context;
 
+static CONTAINER_ROOT_DIR: &str = "/var/run/runwasi";
+
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
 struct InstanceData<T: Instance<E = E>, E>
@@ -736,7 +738,7 @@ where
         let cfg = InstanceConfig::new(self.engine.clone());
         InstanceData {
             instance: None,
-            base: Some(Nop::new(id, None)),
+            base: Some(Nop::new(id, CONTAINER_ROOT_DIR.into(), None)),
             cfg,
             pid: RwLock::new(None),
             status: Arc::new((Mutex::new(None), Condvar::new())),
@@ -933,7 +935,11 @@ where
         self.instances.write().unwrap().insert(
             req.get_id().to_string(),
             Arc::new(InstanceData {
-                instance: Some(T::new(req.get_id().to_string(), Some(&builder))),
+                instance: Some(T::new(
+                    req.get_id().to_string(),
+                    CONTAINER_ROOT_DIR.into(),
+                    Some(&builder),
+                )),
                 base: None,
                 cfg: builder,
                 pid: RwLock::new(None),

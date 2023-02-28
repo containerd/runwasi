@@ -12,7 +12,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup install stable
 WORKDIR /shim
 COPY . .
-RUN apt-get update && apt-get install --no-install-recommends -y build-essential git clang
+RUN apt-get update && apt-get install --no-install-recommends -y build-essential git clang pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
 RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2
 RUN \
     --mount=type=cache,target=/usr/local/cargo/registry \

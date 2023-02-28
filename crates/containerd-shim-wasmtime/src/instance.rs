@@ -138,7 +138,7 @@ pub fn prepare_module(
 
 impl Instance for Wasi {
     type E = wasmtime::Engine;
-    fn new(_id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(_id: String, _rootdir: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         Wasi {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
@@ -318,6 +318,7 @@ mod wasitest {
     fn test_delete_after_create() {
         let i = Wasi::new(
             "".to_string(),
+            "".to_string(),
             Some(&InstanceConfig::new(Engine::default())),
         );
         i.delete().unwrap();
@@ -351,7 +352,7 @@ mod wasitest {
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
 
-        let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
+        let wasi = Arc::new(Wasi::new("test".to_string(), "".into(), Some(cfg)));
 
         wasi.start()?;
 
