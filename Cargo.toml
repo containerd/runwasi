@@ -23,8 +23,8 @@ serde_json = "1.0"
 env_logger = "0.10"
 log = "0.4"
 tar = "0.4"
-containerd-shim = "0.3.0"
-ttrpc = "0.6"
+containerd-shim = {git = "https://github.com/containerd/rust-extensions", rev = "27a92fc606c10f848c72b6131278d392f677efc6" }
+ttrpc = "0.7.1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 nix = "0.26"
 cap-std = "1.0"
