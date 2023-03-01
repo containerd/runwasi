@@ -1270,6 +1270,43 @@ where
     }
 }
 
+#[cfg(target_os = "linux")]
+fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
+    let namespaces = spec
+        .linux()
+        .as_ref()
+        .unwrap()
+        .namespaces()
+        .as_ref()
+        .unwrap();
+    for ns in namespaces {
+        if ns.typ() == runtime::LinuxNamespaceType::Network {
+            if let Some(p) = ns.path() {
+                let f = File::open(&p).map_err(|err| {
+                    ShimError::Other(format!(
+                        "could not open network namespace {}: {}",
+                        p.display(),
+                        err
+                    ))
+                })?;
+                setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
+                    ShimError::Other(format!("could not set network namespace: {0}", err))
+                })?;
+            } else {
+                unshare(CloneFlags::CLONE_NEWNET).map_err(|err| {
+                    ShimError::Other(format!("could not unshare network namespace: {0}", err))
+                })?;
+            }
+        }
+    }
+
+    // Keep all mounts changes (such as for the rootfs) private to the shim
+    // This way mounts will automatically be cleaned up when the shim exits.
+    unshare(CloneFlags::CLONE_NEWNS)
+        .map_err(|err| shim::Error::Other(format!("failed to unshare mount namespace: {}", err)))?;
+    Ok(())
+}
+
 // Cli implements the containerd-shim cli interface using Local<T> as the task service.
 pub struct Cli<T, E>
 where
@@ -1316,42 +1353,10 @@ where
             .unwrap_or(&id)
             .to_string();
 
+        setup_namespaces(&spec)
+            .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
+
         let envs = vec![] as Vec<(&str, &str)>;
-
-        let namespaces = spec
-            .linux()
-            .as_ref()
-            .unwrap()
-            .namespaces()
-            .as_ref()
-            .unwrap();
-        for ns in namespaces {
-            if ns.typ() == runtime::LinuxNamespaceType::Network {
-                if ns.path().is_some() {
-                    let p = ns.path().clone().unwrap();
-                    let f = File::open(p).map_err(|err| {
-                        ShimError::Other(format!(
-                            "could not open network namespace {}: {}",
-                            ns.path().clone().unwrap().to_str().unwrap(),
-                            err
-                        ))
-                    })?;
-                    setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
-                        ShimError::Other(format!("could not set network namespace: {0}", err))
-                    })?;
-                    break;
-                }
-                unshare(CloneFlags::CLONE_NEWNET).map_err(|err| {
-                    ShimError::Other(format!("could not unshare network namespace: {0}", err))
-                })?;
-            }
-        }
-
-        // Keep all mounts changes (such as for the rootfs) private to the shim
-        // This way mounts will automatically be cleaned up when the shim exits.
-        unshare(CloneFlags::CLONE_NEWNS).map_err(|err| {
-            shim::Error::Other(format!("failed to unshare mount namespace: {}", err))
-        })?;
 
         mount::<str, Path, str, str>(
             None,
