@@ -16,6 +16,7 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: Swatinem/rust-cache@v2
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3

@@ -4,3 +4,4 @@ test/out/img.tar
 !crates/wasmedge/src/bin/
 !crates/wasmtime/src/bin/
 test/k8s/_out
+release/
