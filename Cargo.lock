@@ -387,6 +387,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "containerd-shim-wasmedge"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cap-std",
+ "chrono",
+ "containerd-shim",
+ "containerd-shim-wasm",
+ "libc",
+ "log",
+ "oci-spec 0.6.0",
+ "pretty_assertions",
+ "serde_json",
+ "serial_test",
+ "tempfile",
+ "thiserror",
+ "ttrpc",
+ "wasmedge-sdk",
+]
+
+[[package]]
+name = "containerd-shim-wasmtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cap-std",
+ "chrono",
+ "containerd-shim",
+ "containerd-shim-wasm",
+ "libc",
+ "log",
+ "nix 0.26.2",
+ "oci-spec 0.6.0",
+ "pretty_assertions",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "ttrpc",
+ "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1904,50 +1948,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "runwasmedge"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cap-std",
- "chrono",
- "containerd-shim",
- "containerd-shim-wasm",
- "libc",
- "log",
- "oci-spec 0.6.0",
- "pretty_assertions",
- "serde_json",
- "serial_test",
- "tempfile",
- "thiserror",
- "ttrpc",
- "wasmedge-sdk",
-]
-
-[[package]]
-name = "runwasmtime"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cap-std",
- "chrono",
- "containerd-shim",
- "containerd-shim-wasm",
- "libc",
- "log",
- "nix 0.26.2",
- "oci-spec 0.6.0",
- "pretty_assertions",
- "serde_json",
- "tempfile",
- "thiserror",
- "ttrpc",
- "wasi-common",
- "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]

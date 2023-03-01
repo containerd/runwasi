@@ -1,37 +1,38 @@
 [package]
-name = "runwasmtime"
+name = "containerd-shim-wasmedge"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-containerd-shim = { workspace = true }
+containerd-shim ={ workspace = true }
 containerd-shim-wasm = { path = "../containerd-shim-wasm" }
 log = { workspace = true }
 ttrpc = { workspace = true }
-wasmtime = "2.0"
-wasmtime-wasi = "2.0"
-wasi-common = "2.0"
+wasmedge-sdk = { version = "0.7.1", features = ["async"] }
 chrono = { workspace = true }
 anyhow = { workspace = true }
 cap-std = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
-nix = { workspace = true }
+libc = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.0"
-libc = { workspace = true }
 pretty_assertions = "1"
+serial_test = "*"
+
+[features]
+wasi_nn = ["wasmedge-sdk/wasi_nn"]
 
 [[bin]]
-name = "containerd-shim-wasmtime-v1"
-path = "src/bin/containerd-shim-wasmtime-v1/main.rs"
+name = "containerd-shim-wasmedge-v1"
+path = "src/bin/containerd-shim-wasmedge-v1/main.rs"
 
 [[bin]]
-name = "containerd-shim-wasmtimed-v1"
-path = "src/bin/containerd-shim-wasmtimed-v1/main.rs"
+name = "containerd-shim-wasmedged-v1"
+path = "src/bin/containerd-shim-wasmedged-v1/main.rs"
 
 [[bin]]
-name = "containerd-wasmtimed"
-path = "src/bin/containerd-wasmtimed/main.rs"
+name = "containerd-wasmedged"
+path = "src/bin/containerd-wasmedged/main.rs"
