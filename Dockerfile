@@ -24,12 +24,15 @@ RUN <<EOT
 EOT
 
 WORKDIR /build/src
-COPY . .
+COPY --link crates ./crates
+COPY --link Cargo.toml ./
+COPY --link Cargo.lock ./
 ARG CRATE=""
+ARG TARGETOS TARGETARCH TARGETVARIANT
 RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache <<EOT
+    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
     set -e
     export "CARGO_NET_GIT_FETCH_WITH_CLI=true"
     export "CARGO_TARGET_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)_LINKER=$(xx-info)-gcc"
@@ -39,10 +42,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     fi
     cargo build --release --target=$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc) ${package}
 EOT
+COPY scripts ./scripts
 RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache <<EOT
+    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
     set -e
     mkdir /build/bin
     bins="$(scripts/bins.sh ${CRATE} | jq -r 'join(" ")')"
