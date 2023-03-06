@@ -20,10 +20,35 @@ jobs:
       crate: ${{ steps.parse-ref.outputs.crate }}
       version: ${{ steps.parse-ref.outputs.version }}
     steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
       - id: parse-ref
+        name: Parse ref
         run: |
-          echo "CRATE=$(cut -d/ -f1 <<<"${GITHUB_REF#refs/*/}")" >> $GITHUB_OUTPUT
-          echo "VERSION=$(cut -d/ -f2 <<<"${GITHUB_REF#refs/*/}")" >> $GITHUB_OUTPUT
+          set -e
+
+          CRATE="$(cut -d/ -f1 <<<"${GITHUB_REF#refs/*/}")"
+          VERSION="$(cut -d/ -f2 <<<"${GITHUB_REF#refs/*/}")"
+
+          if [ -z "${CRATE}" ]; then
+            echo "::error::Could not determine crate name from ref '${GITHUB_REF}'"
+            exit 1
+          fi
+
+          if [ -z "${VERSION}" ]; then
+            echo "::error::Could not determine version from ref '${GITHUB_REF}'"
+            exit 1
+          fi
+
+          echo "CRATE=${CRATE}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+          setVersion="$(./scripts/version.sh "${CRATE}")"
+          if [ ! "${VERSION#v}" = "${setVersion}" ]; then
+            echo "::error::Version mismatch: tag version ${VERSION#v} != crate version ${setVersion}"
+            exit 1
+          fi
 
   build:
     needs:
@@ -34,6 +59,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ needs.generate.outputs.crate }}
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
@@ -64,7 +91,7 @@ jobs:
       - name: Setup buildx
         run: docker buildx create --use
       - name: build binaries
-        run: docker buildx bake --set *.cache-from=type=gha --set *.cache-to=type=gha release-tars
+        run: docker buildx bake --set *.cache-from=type=gha,scope=buildkit-release-${CRATE} --set *.cache-to=type=gha,scope=buildkit-release-${CRATE} release-tars
         env:
           CRATE: ${{ needs.generate.outputs.crate }}
       - name: upload binary as GitHub artifact
@@ -81,3 +108,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
+      - name: Cargo publish
+        run: cargo publish --package ${{ needs.generate.outputs.crate }} --verbose --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+      - name: Check crates.io ownership
+        run: |
+          cargo owner --list ${{ needs.generate.outputs.crate }} | grep github:containerd:runwasi-committers
+          if [ $? -ne 0 ]; then
+            cargo owner --add ${{ github.actor }} ${{ needs.generate.outputs.crate }}
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
