@@ -43,7 +43,7 @@ jobs:
           toolchain="$(grep "ARG RUST_VERSION" Dockerfile | cut -d = -f2)"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${toolchain:-stable}
       - name: Setup WasmEdge build env
-        if: ${{ contains('wasmedge', needs.generate.outputs.crate ) }}
+        if: ${{ contains(needs.generate.outputs.crate, 'wasmedge' ) }}
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2
           echo "LD_LIBRARY_PATH=$HOME/.wasmedge/lib" >> $GITHUB_ENV
