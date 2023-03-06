@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
-ARG RUST_VERSION=1.63
+ARG RUST_VERSION=1.64
 ARG XX_VERSION=1.1.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION} AS base
 COPY --from=xx / /
-RUN apt-get update -y && apt-get install --no-install-recommends -y clang
+RUN apt-get update -y && apt-get install --no-install-recommends -y clang jq
 
 FROM base AS build
 SHELL ["/bin/bash", "-c"]
@@ -23,22 +23,47 @@ RUN <<EOT
     curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2 --platform=${os^} --machine=$(xx-info march)
 EOT
 
-COPY . .
-WORKDIR /
-
+WORKDIR /build/src
+COPY --link crates ./crates
+COPY --link Cargo.toml ./
+COPY --link Cargo.lock ./
+ARG CRATE=""
+ARG TARGETOS TARGETARCH TARGETVARIANT
 RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
-    --mount=type=cache,target=/usr/local/cargo/registry/index <<EOT
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
     set -e
     export "CARGO_NET_GIT_FETCH_WITH_CLI=true"
     export "CARGO_TARGET_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)_LINKER=$(xx-info)-gcc"
     export "CC_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)=$(xx-info)-gcc"
-    cargo build --release --target=$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
-    cp target/$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)/release/containerd-shim-wasmedge-v1 /containerd-shim-wasmedge-v1
-    cp target/$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)/release/containerd-shim-wasmtime-v1 /containerd-shim-wasmtime-v1
+    if [ -n "${CRATE}" ]; then
+        package="--package=${CRATE}"
+    fi
+    cargo build --release --target=$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc) ${package}
+EOT
+COPY scripts ./scripts
+RUN --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/cache \
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
+    set -e
+    mkdir /build/bin
+    bins="$(scripts/bins.sh ${CRATE} | jq -r 'join(" ")')"
+    echo "Copying binaries: ${bins}"
+    for bin in ${bins}; do
+        cp target/$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)/release/${bin} /build/bin/${bin}
+    done
 EOT
 
+FROM build AS build-tar
+WORKDIR /build/release
+ARG CRATE
+ARG TARGETOS TARGETARCH TARGETVARIANT
+RUN tar -C /build/bin -czf /build/release/${CRATE}-${TARGETOS}-${TARGETARCH}${TARGETVARIANT}.tar.gz .
+
+FROM scratch AS release-tar
+COPY --link --from=build-tar /build/release/* /
+
 FROM scratch AS release
-COPY --link --from=build /containerd-shim-wasmedge-v1 /containerd-shim-wasmedge-v1
-COPY --link --from=build /root/.wasmedge/lib/libwasmedge.so.0.0.1 /libwasmedge.so.0.0.1
-COPY --link --from=build /containerd-shim-wasmtime-v1 /containerd-shim-wasmtime-v1
+COPY --link --from=build /build/bin/* /

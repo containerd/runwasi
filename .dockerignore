@@ -9,3 +9,6 @@ LICENSE
 .dockerignore
 docs
 bin/
+Dockerfile
+docker-bake.hcl
+release/

@@ -3,8 +3,8 @@ members = [
     "crates/containerd-shim-wasm",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
-    "crates/wasmedge",
-    "crates/wasmtime",
+    "crates/containerd-shim-wasmedge",
+    "crates/containerd-shim-wasmtime",
 ]
 
 [workspace.package]
