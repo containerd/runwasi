@@ -1,3 +1,6 @@
+//! Error types used by shims
+//! This handles converting to the appropriate ttrpc error codes
+
 use anyhow::Error as AnyError;
 use containerd_shim::Error as ShimError;
 use oci_spec::OciSpecError;
@@ -6,26 +9,36 @@ use ttrpc;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    /// An error occurred while parsing the OCI spec
     #[error("{0}")]
     Oci(#[from] OciSpecError),
+    /// An error that can occur while setting up the environment for the container
     #[error("{0}")]
     Stdio(#[from] std::io::Error),
     #[error("{0}")]
     Others(String),
+    /// Errors to/from the containerd shim library.
     #[error("{0}")]
     Shim(#[from] ShimError),
+    /// Requested item is not found
     #[error("not found: {0}")]
     NotFound(String),
+    /// Requested item already exists
     #[error("already exists: {0}")]
     AlreadyExists(String),
+    /// Supplied arguments/options/config is invalid
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
+    /// Any other error
     #[error("{0}")]
     Any(#[from] AnyError),
+    /// The operation was rejected because the system is not in a state required for the operation's
     #[error("{0}")]
     FailedPrecondition(String),
+    /// Error while parsing JSON
     #[error("{0}")]
     Json(#[from] serde_json::Error),
+    /// Error from the system
     #[error("{0}")]
     Errno(#[from] nix::errno::Errno),
 }

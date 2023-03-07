@@ -1,3 +1,7 @@
+//! This experimental module implements a manager service which can be used to
+//! manage multiple instances of a sandbox in-process.
+//! The idea behind this module is to only need a single shim process for the entire node rather than one per pod/container.
+
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::File;
@@ -27,6 +31,7 @@ use super::oci;
 use super::sandbox;
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
 
+/// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.
 pub trait Sandbox<E>: Task + Send + Sync
 where
     E: Send + Sync + Clone,
@@ -36,6 +41,7 @@ where
     fn new(namespace: String, id: String, engine: E, publisher: RemotePublisher) -> Self;
 }
 
+/// Service is a manager service which can be used to manage multiple instances of a sandbox in-process.
 pub struct Service<E, T>
 where
     E: Send + Sync + Clone,

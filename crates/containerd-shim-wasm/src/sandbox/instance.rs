@@ -1,3 +1,5 @@
+//! Abstractions for running/managing a wasm/wasi instance.
+
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -10,15 +12,23 @@ use super::error::Error;
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
+/// Generic options builder for creating a wasm instance.
+/// This is passed to the `Instance::new` method.
 #[derive(Clone)]
 pub struct InstanceConfig<E>
 where
     E: Send + Sync + Clone,
 {
+    /// The wasm engine to use.
+    /// This should be cheap to clone.
     engine: E,
+    /// Optional stdin named pipe path.
     stdin: Option<String>,
+    /// Optional stdout named pipe path.
     stdout: Option<String>,
+    /// Optional stderr named pipe path.
     stderr: Option<String>,
+    /// Path to the OCI bundle directory.
     bundle: Option<String>,
 }
 
@@ -36,60 +46,82 @@ where
         }
     }
 
+    /// set the stdin path for the instance
     pub fn set_stdin(&mut self, stdin: String) -> &mut Self {
         self.stdin = Some(stdin);
         self
     }
 
+    /// get the stdin path for the instance
     pub fn get_stdin(&self) -> Option<String> {
         self.stdin.clone()
     }
 
+    /// set the stdout path for the instance
     pub fn set_stdout(&mut self, stdout: String) -> &mut Self {
         self.stdout = Some(stdout);
         self
     }
 
+    /// get the stdout path for the instance
     pub fn get_stdout(&self) -> Option<String> {
         self.stdout.clone()
     }
 
+    /// set the stderr path for the instance
     pub fn set_stderr(&mut self, stderr: String) -> &mut Self {
         self.stderr = Some(stderr);
         self
     }
 
+    /// get the stderr path for the instance
     pub fn get_stderr(&self) -> Option<String> {
         self.stderr.clone()
     }
 
+    /// set the OCI bundle path for the instance
     pub fn set_bundle(&mut self, bundle: String) -> &mut Self {
         self.bundle = Some(bundle);
         self
     }
 
+    /// get the OCI bundle path for the instance
     pub fn get_bundle(&self) -> Option<String> {
         self.bundle.clone()
     }
 
+    /// get the wasm engine for the instance
     pub fn get_engine(&self) -> E {
         self.engine.clone()
     }
 }
 
+/// Represents a wasi module(s).
+/// Instance is a trait that gets implemented by consumers of this library.
 pub trait Instance {
     type E: Send + Sync + Clone;
+    /// Create a new instance
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    /// Start the instance
+    /// The returned value should be a unique ID (such as a PID) for the instance.
+    /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, Error>;
+    /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
+    /// delete any reference to the instance
+    /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
+    /// wait for the instance to exit
+    /// The sender is used to send the exit code and time back to the caller
+    /// Ideally this would just be a blocking call with a normal result, however
+    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
     fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
 }
 
-// This is used for the "pause" container with cri.
+/// This is used for the "pause" container with cri and is a no-op instance implementation.
 pub struct Nop {
-    // Since we are faking the container, we need to keep track of the "exit" code/time
-    // We'll just mark it as exited when kill is called.
+    /// Since we are faking the container, we need to keep track of the "exit" code/time
+    /// We'll just mark it as exited when kill is called.
     exit_code: Arc<ExitCode>,
 }
 
@@ -221,6 +253,8 @@ mod noptests {
     }
 }
 
+/// Abstraction that allows for different wasi engines to be used.
+/// The containerd shim setup by this library will use this trait to get an engine and pass that along to instances.
 pub trait EngineGetter {
     type E: Send + Sync + Clone;
     fn new_engine() -> Result<Self::E, Error>;

@@ -1,3 +1,6 @@
+//! Handles the execution context of a process.
+//! Applies cgroups, forking semantics, and other sandboxing features.
+
 use super::cgroups::{Cgroup, Version as CgroupVersion};
 use super::error::Error;
 use caps::{CapSet, Capability};
@@ -12,6 +15,8 @@ use std::os::raw::c_int as RawFD;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 
+/// Represents a linux pidfd which can be used to wait on a process or send signals to it.
+/// [man pidfd_open](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 #[derive(Clone)]
 pub struct PidFD {
     fd: RawFD,
@@ -33,6 +38,7 @@ impl AsRawFd for PidFD {
     }
 }
 
+/// Represents the status of a process.
 #[derive(Debug)]
 pub enum Status {
     Exited(ExitStatus),
@@ -75,14 +81,15 @@ fn wait(fd: RawFD, no_hang: bool) -> Result<Status, Error> {
 }
 
 impl PidFD {
-    // wait for the process referred to by the pidfd to exit
-    //
-    // If you want more control over waiting you can use `as_raw_fd()` and call `waitid` yourself.
+    /// wait for the process referred to by the pidfd to exit
+    ///
+    /// If you want more control over waiting you can use `as_raw_fd()` and call `waitid` yourself.
     pub fn wait(&self) -> Result<ExitStatus, Error> {
         let ws = wait(self.fd, false)?;
         Ok(ws.into())
     }
 
+    /// Determine if the process referred to by the pidfd is still running.
     pub fn is_running(&self) -> Result<bool, Error> {
         match wait(self.fd, true) {
             Ok(Status::Running) => Ok(true),
@@ -92,7 +99,7 @@ impl PidFD {
         }
     }
 
-    // Send the specified signal to the process referred to by the pidfd.
+    /// Send the specified signal to the process referred to by the pidfd.
     pub fn kill(&self, sig: i32) -> Result<(), Error> {
         let ret = unsafe { pidfd_send_signal(self.fd, sig, ptr::null_mut(), 0) };
         if ret == -1 {
@@ -102,30 +109,41 @@ impl PidFD {
     }
 }
 
+/// Represents the exit status of a process.
 #[derive(Debug)]
 pub struct ExitStatus {
+    /// The pid of the process
     pub pid: u32,
+    /// The exit code of the process
     pub status: u32,
 }
 
+/// Represents the execution context returned by `fork`.
+/// Once a `fork` occurrs the parent and child processes are running in parallel and start from the same point in the code.
+/// The parent process will receive a `Context::Parent` and the child process will receive a `Context::Child`.
 pub enum Context {
-    // Parent stores the pid of the child process and the pidfd that can be used to, for instance, wait on the child.
+    /// Parent stores the pid of the child process and the pidfd that can be used to, for instance, wait on the child.
     Parent(u32, PidFD),
+    /// When this variant is returned by fork, the current process is the child process.
+    /// It is important to note that the child process is single threaded and should not depend on other threads or state in the parent process.
     Child,
 }
 
+/// Determines if the current process has the CAP_SYS_ADMIN capability in its effective set.
 pub fn has_cap_sys_admin() -> bool {
     let caps = caps::read(None, CapSet::Effective).unwrap();
     caps.contains(&Capability::CAP_SYS_ADMIN)
 }
 
-// This is is a wrapper around clone3 which allows us to pass a pidfd
-// This works otherwise just like normal forking semantics:
-// If this is the parent, the result will be Ok(Context::Parent(pid, pidfd)), where the pid is the pid of the new process.
-// If this is the child, the result will be Ok(Context::Child).
+/// This is is a wrapper around clone3 which allows us to pass a pidfd
+/// This works otherwise just like normal forking semantics:
+/// If this is the parent, the result will be Ok(Context::Parent(pid, pidfd)), where the pid is the pid of the new process.
+/// If this is the child, the result will be Ok(Context::Child).
 //
-// Code that runs in the child must not do things like access locks or other shared state.
-// The child should not depend on other threads in the parent process since the new process becomes single threaded.
+/// Code that runs in the child must not do things like access locks or other shared state.
+/// The child should not depend on other threads in the parent process since the new process becomes single threaded.
+///
+/// This is marked as unsafe because this can effect things like mutex locks or other previously shared state which is no longer shared (with the child process) after the fork.
 pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
     let mut builder = Clone3::default();
 

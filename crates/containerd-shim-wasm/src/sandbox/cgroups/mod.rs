@@ -1,3 +1,6 @@
+//! This module provides a unified interface for interacting with cgroup v1 and v2.
+//! cgroup version can be automatically detected, or can be specified by the caller by using the specific cgroup submodules.
+
 use super::{Error, Result};
 use nix::sys::statfs;
 pub use oci_spec::runtime::LinuxResources as Resources;
@@ -40,6 +43,7 @@ fn new_mount_iter() -> Result<MountIter<FileMountIter>> {
     Ok(MountIter::new()?)
 }
 
+/// Abstracts cgroup operations so we can support both cgroups v1 and v2.
 pub trait Cgroup {
     fn version(&self) -> Version;
 
