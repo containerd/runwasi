@@ -1,3 +1,7 @@
+//! The shim is the entrypoint for the containerd shim API. It is responsible
+//! for commmuincating with the containerd daemon and managing the lifecycle of
+//! the container/sandbox.
+
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{self, File};
@@ -1307,7 +1311,7 @@ fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
     Ok(())
 }
 
-// Cli implements the containerd-shim cli interface using Local<T> as the task service.
+/// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
 pub struct Cli<T, E>
 where
     T: Instance<E = E> + Sync + Send,

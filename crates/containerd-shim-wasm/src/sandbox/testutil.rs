@@ -1,6 +1,11 @@
+//! Testing utilities used across different modules
+
 use super::{Error, Result};
 use std::process::{Command, Stdio};
 
+/// Re-execs the current process with sudo and runs the given test.
+/// Unless this is run in a CI environment, this may prompt the user for a password.
+/// This is significantly faster than expecting the user to run the tests with sudo due to build and crate caching.
 pub fn run_test_with_sudo(test: &str) -> Result<()> {
     // This uses piped stdout/stderr.
     // This makes it so cargo doesn't mess up the caller's TTY.

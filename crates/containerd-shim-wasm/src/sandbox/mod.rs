@@ -1,3 +1,5 @@
+//! Abstracts the sandboxing environment and execution context for a container.
+
 use crate::services::sandbox;
 
 pub mod cgroups;

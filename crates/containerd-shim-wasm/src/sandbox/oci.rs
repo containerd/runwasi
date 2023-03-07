@@ -1,3 +1,5 @@
+//! Generic helpers for working with OCI specs that can be consumed by any runtime.
+
 use std::fs::File;
 use std::path::{Path, PathBuf};
 

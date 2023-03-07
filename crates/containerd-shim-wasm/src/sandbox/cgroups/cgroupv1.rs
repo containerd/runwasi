@@ -1,3 +1,5 @@
+//! Module for interacting with and applying OCI specs for cgroups v1.
+
 use super::super::{Error, Result};
 use super::{
     ensure_write_file, find_cgroup_mounts, list_cgroup_controllers, new_mount_iter, safe_join,
@@ -11,6 +13,7 @@ use std::io::prelude::Write;
 use std::ops::Not;
 use std::path::PathBuf;
 
+// Manager for a cgroup v1 hierarchy.
 pub struct CgroupV1 {
     path: PathBuf,
     controllers: HashMap<String, PathBuf>,

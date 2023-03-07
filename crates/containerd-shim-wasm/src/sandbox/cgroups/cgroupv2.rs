@@ -1,3 +1,5 @@
+//! Module for interacting with and applying OCI specs for cgroups v2.
+
 use super::super::{Error, Result};
 use super::RawFD;
 use super::{
@@ -11,6 +13,7 @@ use std::fs;
 use std::ops::Not;
 use std::path::PathBuf;
 
+/// Manages a cgroup v2 heirarchy.
 pub struct CgroupV2 {
     base: PathBuf,
     path: PathBuf,
