@@ -60,7 +60,11 @@ FROM build AS build-tar
 WORKDIR /build/release
 ARG CRATE
 ARG TARGETOS TARGETARCH TARGETVARIANT
-RUN tar -C /build/bin -czf /build/release/${CRATE}-${TARGETOS}-${TARGETARCH}${TARGETVARIANT}.tar.gz .
+RUN <<EOF
+if [ -n "$(find /build/bin -type f -exec echo {} \;)" ]; then
+    tar -C /build/bin -czf "/build/release/${CRATE}-${TARGETOS}-${TARGETARCH}${TARGETVARIANT}.tar.gz" .
+fi
+EOF
 
 FROM scratch AS release-tar
 COPY --link --from=build-tar /build/release/* /
