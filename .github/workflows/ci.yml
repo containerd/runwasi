@@ -32,6 +32,8 @@ jobs:
         with:
           command: build
           args: --all --verbose
+      - name: Validate docs
+        run: ./scripts/validate-docs.sh
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
