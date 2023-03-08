@@ -8,9 +8,24 @@ containerd-shim = { workspace = true }
 containerd-shim-wasm = { path = "../containerd-shim-wasm" }
 log = { workspace = true }
 ttrpc = { workspace = true }
-wasmtime = "2.0"
-wasmtime-wasi = "2.0"
-wasi-common = "2.0"
+
+# We are not including the `async` feature here:
+# 1. Because we don't even use it
+# 2. Because it pulls in a lot of dependencies that we don't need
+# 3. Because that dependency (wasmtime-fiber) links to native code
+# 4. The wasmedge shim also uses wasmtime-fiber... which means those transative dependencies need to be the same or compilation fails
+wasmtime = { version = "6.0", default-features = false, features = [
+    'cache',
+    'wat',
+    'jitdump',
+    'parallel-compilation',
+    'cranelift',
+    'pooling-allocator',
+    'vtune',
+]}
+
+wasmtime-wasi = "6.0"
+wasi-common = "6.0"
 chrono = { workspace = true }
 anyhow = { workspace = true }
 cap-std = { workspace = true }

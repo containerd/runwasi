@@ -1,3 +1,4 @@
+use anyhow;
 use containerd_shim_wasm::sandbox::error;
 use thiserror::Error;
 
@@ -9,4 +10,6 @@ pub enum WasmtimeError {
     Wasi(#[from] wasmtime_wasi::Error),
     #[error("{0}")]
     WasiCommonStringArray(#[from] wasi_common::StringArrayError),
+    #[error("{0}")]
+    Other(#[from] anyhow::Error),
 }
