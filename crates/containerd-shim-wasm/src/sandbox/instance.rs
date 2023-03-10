@@ -116,14 +116,50 @@ pub trait Instance {
     fn start(&self) -> Result<u32, Error>;
     /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
-    /// delete any reference to the instance
+    /// Delete any reference to the instance
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
-    /// wait for the instance to exit
-    /// The sender is used to send the exit code and time back to the caller
-    /// Ideally this would just be a blocking call with a normal result, however
-    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
+    /// Set up waiting for the instance to exit
+    /// The Wait struct is used to send the exit code and time back to the
+    /// caller. The recipient is expected to call function
+    /// set_up_exit_code_wait() implemented by Wait to set up exit code
+    /// processing. Note that the "wait" function doesn't block, but
+    /// it sets up the waiting channel.
+    fn wait(&self, waiter: &Wait) -> Result<(), Error>;
+}
+
+/// This is used for waiting for the container process to exit and deliver the exit code to the caller.
+/// Since the shim needs to provide the caller the process exit code, this struct wraps the required
+/// thread setup to make the shims simpler.
+pub struct Wait {
+    tx: Sender<(u32, DateTime<Utc>)>,
+}
+
+impl Wait {
+    /// Create a new Wait struct with the provided sending endpoint of a channel.
+    pub fn new(sender: Sender<(u32, DateTime<Utc>)>) -> Self {
+        Wait { tx: sender }
+    }
+
+    /// This is called by the shim to create the thread to wait for the exit
+    /// code. When the child process exits, the shim will use the ExitCode
+    /// to signal the exit status to the caller. This function returns so that
+    /// the wait() function in the shim implementation API would not block.
+    pub fn set_up_exit_code_wait(&self, exit_code: Arc<ExitCode>) -> Result<(), Error> {
+        let sender = self.tx.clone();
+        let code = Arc::clone(&exit_code);
+        thread::spawn(move || {
+            let (lock, cvar) = &*code;
+            let mut exit = lock.lock().unwrap();
+            while (*exit).is_none() {
+                exit = cvar.wait(exit).unwrap();
+            }
+            let ec = (*exit).unwrap();
+            sender.send(ec).unwrap();
+        });
+
+        Ok(())
+    }
 }
 
 /// This is used for the "pause" container with cri and is a no-op instance implementation.
@@ -164,19 +200,8 @@ impl Instance for Nop {
     fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
-
-    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
-        let code = self.exit_code.clone();
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            channel.send(ec).unwrap();
-        });
-        Ok(())
+    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
+        waiter.set_up_exit_code_wait(self.exit_code.clone())
     }
 }
 
@@ -196,10 +221,9 @@ mod noptests {
         let (tx, rx) = channel();
 
         let n = nop.clone();
+        let waiter = Wait::new(tx);
 
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
+        n.wait(&waiter).unwrap();
 
         nop.kill(SIGKILL as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
@@ -213,10 +237,9 @@ mod noptests {
         let (tx, rx) = channel();
 
         let n = nop.clone();
+        let waiter = Wait::new(tx);
 
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
+        n.wait(&waiter).unwrap();
 
         nop.kill(SIGTERM as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
@@ -230,10 +253,9 @@ mod noptests {
         let (tx, rx) = channel();
 
         let n = nop.clone();
+        let waiter = Wait::new(tx);
 
-        thread::spawn(move || {
-            n.wait(tx).unwrap();
-        });
+        n.wait(&waiter).unwrap();
 
         nop.kill(SIGINT as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
