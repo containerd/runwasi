@@ -1,4 +1,0 @@
-[submodule "youki"]
-	path = youki
-	url = git@github.com:utam0k/youki.git
-    branch = runwasi

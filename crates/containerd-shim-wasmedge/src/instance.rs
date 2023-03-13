@@ -1,7 +1,6 @@
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
@@ -16,7 +15,6 @@ use std::sync::{
 use std::thread;
 
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
-// use nix::sys::wait::{waitpid, WaitStatus};
 
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
@@ -44,15 +42,12 @@ pub struct Wasi {
     id: String,
 
     exit_code: Arc<ExitCode>,
-    engine: Vm,
 
     stdin: String,
     stdout: String,
     stderr: String,
     bundle: String,
     rootdir: String,
-
-    pidfd: Arc<Mutex<Option<exec::PidFD>>>,
 }
 
 fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
@@ -144,12 +139,10 @@ impl Instance for Wasi {
             id,
             rootdir,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            engine: cfg.get_engine(),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle: cfg.get_bundle().unwrap_or_default(),
-            pidfd: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -157,19 +150,16 @@ impl Instance for Wasi {
         debug!("preparing module");
 
         let syscall = create_syscall();
-        let mut container = ContainerBuilder::new(
-            self.id.clone(),
-            syscall.as_ref(),
-            vec![Box::new(WasmEdgeExecutor {
+        let mut container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
+            .with_executor(vec![Box::new(WasmEdgeExecutor {
                 stdin: maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?,
                 stdout: maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?,
                 stderr: maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?,
-            })],
-        )
-        .with_root_path(self.rootdir.as_str())?
-        .as_init(&self.bundle)
-        .with_systemd(false)
-        .build()?;
+            })])?
+            .with_root_path(self.rootdir.as_str())?
+            .as_init(&self.bundle)
+            .with_systemd(false)
+            .build()?;
 
         let code = self.exit_code.clone();
         let pid = container.pid().unwrap();
@@ -397,9 +387,9 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_wasi() -> Result<(), Error> {
-        if env::var("GITHUB_ACTIONS").is_ok() {
-            return Ok(());
-        }
+        // if env::var("GITHUB_ACTIONS").is_ok() {
+        //     return Ok(());
+        // }
 
         let dir = tempdir()?;
         let path = dir.path();
@@ -419,10 +409,6 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_wasi_error() -> Result<(), Error> {
-        if env::var("GITHUB_ACTIONS").is_ok() {
-            return Ok(());
-        }
-
         let dir = tempdir()?;
         let wasmbytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 

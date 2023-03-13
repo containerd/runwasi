@@ -20,8 +20,6 @@ jobs:
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
-        with:
-          submodules: true
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -55,8 +53,6 @@ jobs:
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
-        with:
-          submodules: true
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
       - name: run
