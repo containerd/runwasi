@@ -250,13 +250,15 @@ impl Instance for Wasi {
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
-    use std::env;
     use std::fs::{create_dir, read_to_string, File};
     use std::io::prelude::*;
     use std::os::unix::fs::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use containerd_shim_wasm::function;
+    use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
+    use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
 
@@ -349,11 +351,8 @@ mod wasitest {
 
         wasi.start()?;
 
-        // let w = wasi.clone();
         let (tx, rx) = channel();
-        // thread::spawn(move || {
         wasi.wait(tx).unwrap();
-        // });
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => Ok(res),
@@ -387,9 +386,10 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_wasi() -> Result<(), Error> {
-        // if env::var("GITHUB_ACTIONS").is_ok() {
-        //     return Ok(());
-        // }
+        if !has_cap_sys_admin() {
+            println!("running test with sudo: {}", function!());
+            return run_test_with_sudo(function!());
+        }
 
         let dir = tempdir()?;
         let path = dir.path();
@@ -409,6 +409,11 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_wasi_error() -> Result<(), Error> {
+        if !has_cap_sys_admin() {
+            println!("running test with sudo: {}", function!());
+            return run_test_with_sudo(function!());
+        }
+
         let dir = tempdir()?;
         let wasmbytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 

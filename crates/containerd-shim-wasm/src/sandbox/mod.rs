@@ -16,5 +16,4 @@ pub use shim::{Cli as ShimCli, Local};
 
 pub mod oci;
 
-#[cfg(test)]
-mod testutil;
+pub mod testutil;

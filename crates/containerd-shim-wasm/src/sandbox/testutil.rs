@@ -41,6 +41,7 @@ pub fn run_test_with_sudo(test: &str) -> Result<()> {
         .map_err(Error::from)
 }
 
+#[macro_export]
 macro_rules! function {
     () => {{
         fn f() {}
@@ -53,4 +54,4 @@ macro_rules! function {
     }};
 }
 
-pub(crate) use function;
+pub use function;

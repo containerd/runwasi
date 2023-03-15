@@ -27,15 +27,21 @@ In either case you need to implement the `Instance` trait:
 
 ```rust
 pub trait Instance {
-    // Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
-    // Start the instance and return the pid
+    /// Create a new instance
+    fn new(id: String, rootdir: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    /// Start the instance
+    /// The returned value should be a unique ID (such as a PID) for the instance.
+    /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, Error>;
-    // Send the specified signal to the instance
+    /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
-    // Delete the instance
+    /// delete any reference to the instance
+    /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
-    // wait for the instance to exit and send the exit code and exit timestamp to the provided sender.
+    /// wait for the instance to exit
+    /// The sender is used to send the exit code and time back to the caller
+    /// Ideally this would just be a blocking call with a normal result, however
+    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
     fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
 }
 ```
