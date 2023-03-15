@@ -3,6 +3,9 @@ members = [
     "crates/containerd-shim-wasm",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
+]
+
+exclude = [
     "crates/containerd-shim-wasmedge",
     "crates/containerd-shim-wasmtime",
 ]

@@ -17,6 +17,9 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 .PHONY: build
 build:
 	cargo build $(RELEASE_FLAG)
+	$(foreach runtime,$(RUNTIMES), \
+		cargo build  $(RELEASE_FLAG) --manifest-path=crates/containerd-shim-$(runtime)/Cargo.toml --target-dir=target; \
+	)
 
 .PHONY: install
 install:

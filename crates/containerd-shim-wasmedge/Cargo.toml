@@ -1,21 +1,21 @@
 [package]
 name = "containerd-shim-wasmedge"
-version.workspace = true
-edition.workspace = true
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-containerd-shim ={ workspace = true }
+containerd-shim = "0.3.0"
 containerd-shim-wasm = { path = "../containerd-shim-wasm" }
-log = { workspace = true }
-ttrpc = { workspace = true }
+log = "0.4"
+ttrpc = "0.6"
 wasmedge-sdk = { version = "0.7.1", features = ["async"] }
-chrono = { workspace = true }
-anyhow = { workspace = true }
-cap-std = { workspace = true }
-oci-spec = { workspace = true, features = ["runtime"] }
-thiserror = { workspace = true }
-serde_json = { workspace = true }
-libc = { workspace = true }
+chrono = "0.4"
+anyhow = "1.0"
+cap-std = "1.0"
+oci-spec = { version = "0.6", features = ["runtime"] }
+thiserror = "1.0"
+serde_json = "1.0"
+libc = "0.2.138"
 
 [dev-dependencies]
 tempfile = "3.0"
