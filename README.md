@@ -1,4 +1,5 @@
-![runwasi logo](./art/logo/runwasi_logo_icon.svg)
+![runwasi logo light mode](./art/logo/runwasi_icon1.svg#gh-light-mode-only)
+![runwasi logo dark mode](./art/logo/runwasi_icon3.svg#gh-dark-mode-only)
 
 ## runwasi
 
