@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use oci_spec::runtime::Spec;
 
 use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
@@ -26,6 +26,10 @@ impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<()> {
         // parse wasi parameters
         let args = get_args(spec);
+        if args.is_empty() {
+            bail!("args should not be empty")
+        }
+
         let mut cmd = args[0].clone();
         if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
             cmd = stripped.to_string();
