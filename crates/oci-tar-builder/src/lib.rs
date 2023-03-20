@@ -83,7 +83,7 @@ impl Builder {
 
             let mut th = tar::Header::new_gnu();
             th.set_mode(0o444);
-            th.set_size(meta.len() as u64);
+            th.set_size(meta.len());
             let p = "blobs/sha256/".to_owned() + &dgst;
             th.set_path(&p).context("could not set path for layer")?;
             th.set_cksum();
