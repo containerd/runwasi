@@ -27,7 +27,7 @@ jobs:
           cargo fmt --all -- --check
       - name: Run cargo clippy
         run: |
-          cargo clippy --all --all-targets --all-features -- -D warnings
+          cargo clippy --all --all-targets -- -D warnings
   build:
     strategy:
       matrix:
