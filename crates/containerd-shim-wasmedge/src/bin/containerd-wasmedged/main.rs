@@ -3,8 +3,8 @@ use std::sync::Arc;
 use containerd_shim_wasm::sandbox::EngineGetter;
 use containerd_shim_wasm::sandbox::{Local, ManagerService};
 use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
-use log::info;
 use containerd_shim_wasmedge::instance::Wasi as WasiInstance;
+use log::info;
 use ttrpc::{self, Server};
 
 fn main() {
