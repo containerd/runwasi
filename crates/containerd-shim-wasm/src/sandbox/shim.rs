@@ -963,7 +963,7 @@ where
 
         // Per the spec, the prestart hook must be called as part of the create operation
         debug!("call prehook before the start");
-        oci::setup_prestart_hooks(&spec.hooks())?;
+        oci::setup_prestart_hooks(spec.hooks())?;
 
         Ok(api::CreateTaskResponse {
             pid: std::process::id(),
@@ -1286,7 +1286,7 @@ fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
     for ns in namespaces {
         if ns.typ() == runtime::LinuxNamespaceType::Network {
             if let Some(p) = ns.path() {
-                let f = File::open(&p).map_err(|err| {
+                let f = File::open(p).map_err(|err| {
                     ShimError::Other(format!(
                         "could not open network namespace {}: {}",
                         p.display(),
