@@ -131,29 +131,29 @@ pub fn prepare_module(
     );
 
     debug!("opening stdin");
-    let stdin = maybe_open_stdio(&stdin_path).context("could not open stdin")?;
-    if stdin.is_some() {
+    let maybe_stdin = maybe_open_stdio(&stdin_path).context("could not open stdin")?;
+    if let Some(stdin) = maybe_stdin {
         unsafe {
             STDIN_FD = Some(dup(STDIN_FILENO));
-            dup2(stdin.unwrap(), STDIN_FILENO);
+            dup2(stdin, STDIN_FILENO);
         }
     }
 
     debug!("opening stdout");
-    let stdout = maybe_open_stdio(&stdout_path).context("could not open stdout")?;
-    if stdout.is_some() {
+    let maybe_stdout = maybe_open_stdio(&stdout_path).context("could not open stdout")?;
+    if let Some(stdout) = maybe_stdout {
         unsafe {
             STDOUT_FD = Some(dup(STDOUT_FILENO));
-            dup2(stdout.unwrap(), STDOUT_FILENO);
+            dup2(stdout, STDOUT_FILENO);
         }
     }
 
     debug!("opening stderr");
-    let stderr = maybe_open_stdio(&stderr_path).context("could not open stderr")?;
-    if stderr.is_some() {
+    let maybe_stderr = maybe_open_stdio(&stderr_path).context("could not open stderr")?;
+    if let Some(stderr) = maybe_stderr {
         unsafe {
             STDERR_FD = Some(dup(STDERR_FILENO));
-            dup2(stderr.unwrap(), STDERR_FILENO);
+            dup2(stderr, STDERR_FILENO);
         }
     }
 
@@ -235,7 +235,7 @@ impl Instance for Wasi {
 
                 // TODO: How to get exit code?
                 // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                let _ret = match vm.run_func(Some("main"), "_start", params!()) {
+                match vm.run_func(Some("main"), "_start", params!()) {
                     Ok(_) => std::process::exit(0),
                     Err(_) => std::process::exit(137),
                 };
@@ -255,7 +255,7 @@ impl Instance for Wasi {
         let fd = lr
             .as_ref()
             .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
-        fd.kill(SIGKILL as i32)
+        fd.kill(SIGKILL)
     }
 
     fn delete(&self) -> Result<(), Error> {
