@@ -1,11 +1,5 @@
-use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Utc};
-use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use log::{debug, error};
-use nix::errno::Errno;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
+use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::unix::io::{IntoRawFd, RawFd};
 use std::sync::{
@@ -14,8 +8,15 @@ use std::sync::{
 };
 use std::thread;
 
+use anyhow::{bail, Context, Result};
+use chrono::{DateTime, Utc};
+use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use log::{debug, error};
+use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
-
+use serde::{Deserialize, Serialize};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     PluginManager, Vm,
@@ -37,6 +38,8 @@ static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
 static mut STDERR_FD: Option<RawFd> = None;
 
+static DEFAULT_CONTAINER_ROOT_DIR: &str = "/var/run/runwasi";
+
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
     id: String,
@@ -47,7 +50,7 @@ pub struct Wasi {
     stdout: String,
     stderr: String,
     bundle: String,
-    rootdir: String,
+    rootdir: PathBuf,
 }
 
 fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
@@ -131,18 +134,73 @@ pub fn reset_stdio() {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct Options {
+    root: Option<PathBuf>,
+}
+
+fn determine_rootdir<P: AsRef<Path>>(bundle: P) -> Result<PathBuf, Error> {
+    let mut file = match File::open(bundle.as_ref().join("options.json")) {
+        Ok(f) => f,
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => return Ok(DEFAULT_CONTAINER_ROOT_DIR.into()),
+            _ => return Err(err.into()),
+        },
+    };
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+    let options: Options = serde_json::from_str(&data)?;
+    Ok(options
+        .root
+        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR)))
+}
+
+#[cfg(test)]
+mod rootdirtest {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let rootdir = dir.path().join("runwasi");
+        let opts = Options {
+            root: Some(rootdir.clone()),
+        };
+        let opts_file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(dir.path().join("options.json"))?;
+        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+        let root = determine_rootdir(dir.path())?;
+        assert_eq!(root, rootdir);
+        return Ok(());
+    }
+
+    #[test]
+    fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let root = determine_rootdir(dir.path())?;
+        assert_eq!(root, PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR));
+        return Ok(());
+    }
+}
+
 impl Instance for Wasi {
     type E = Vm;
-    fn new(id: String, rootdir: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
+        let bundle = cfg.get_bundle().unwrap_or_default();
         Wasi {
             id,
-            rootdir,
+            rootdir: determine_rootdir(bundle.as_str()).unwrap(),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
-            bundle: cfg.get_bundle().unwrap_or_default(),
+            bundle,
         }
     }
 
@@ -156,7 +214,7 @@ impl Instance for Wasi {
                 stdout: maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?,
                 stderr: maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?,
             })])?
-            .with_root_path(self.rootdir.as_str())?
+            .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
             .with_systemd(false)
             .build()?;
@@ -196,7 +254,7 @@ impl Instance for Wasi {
             ));
         }
 
-        let mut container = load_container(self.rootdir.as_str(), self.id.as_str())?;
+        let mut container = load_container(&self.rootdir, self.id.as_str())?;
         match container.kill(Signal::try_from(signal as i32)?, true) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -209,7 +267,7 @@ impl Instance for Wasi {
     }
 
     fn delete(&self) -> Result<(), Error> {
-        match container_exists(self.rootdir.as_str(), self.id.as_str()) {
+        match container_exists(&self.rootdir, self.id.as_str()) {
             Ok(exists) => {
                 if !exists {
                     return Ok(());
@@ -220,7 +278,7 @@ impl Instance for Wasi {
                 return Ok(());
             }
         }
-        match load_container(self.rootdir.as_str(), self.id.as_str()) {
+        match load_container(&self.rootdir, self.id.as_str()) {
             Ok(mut container) => container.delete(true)?,
             Err(err) => {
                 error!("could not find the container, skipping cleanup: {}", err);
@@ -313,6 +371,16 @@ mod wasitest {
         create_dir(dir.path().join("rootfs"))?;
         let rootdir = dir.path().join("runwasi");
         create_dir(&rootdir)?;
+        let opts = Options {
+            root: Some(rootdir),
+        };
+        let opts_file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(dir.path().join("options.json"))?;
+        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
 
         let wasm_path = dir.path().join("rootfs/hello.wasm");
         let mut f = OpenOptions::new()
@@ -343,11 +411,7 @@ mod wasitest {
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
 
-        let wasi = Arc::new(Wasi::new(
-            "test".to_string(),
-            rootdir.into_os_string().into_string().unwrap(),
-            Some(cfg),
-        ));
+        let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
 
         wasi.start()?;
 
@@ -375,11 +439,7 @@ mod wasitest {
             .build()
             .unwrap();
         let vm = Vm::new(Some(config)).unwrap();
-        let i = Wasi::new(
-            "".to_string(),
-            "".to_string(),
-            Some(&InstanceConfig::new(vm)),
-        );
+        let i = Wasi::new("".to_string(), Some(&InstanceConfig::new(vm)));
         i.delete().unwrap();
     }
 

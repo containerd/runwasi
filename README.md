@@ -28,7 +28,7 @@ In either case you need to implement the `Instance` trait:
 ```rust
 pub trait Instance {
     /// Create a new instance
-    fn new(id: String, rootdir: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
