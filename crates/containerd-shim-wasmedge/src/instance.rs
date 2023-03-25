@@ -38,7 +38,7 @@ static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
 static mut STDERR_FD: Option<RawFd> = None;
 
-static DEFAULT_CONTAINER_ROOT_DIR: &str = "/var/run/runwasi";
+static DEFAULT_CONTAINER_ROOT_DIR: &str = " /run/containerd/wasmedge";
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
@@ -50,6 +50,7 @@ pub struct Wasi {
     stdout: String,
     stderr: String,
     bundle: String,
+
     rootdir: PathBuf,
 }
 
@@ -139,11 +140,13 @@ struct Options {
     root: Option<PathBuf>,
 }
 
-fn determine_rootdir<P: AsRef<Path>>(bundle: P) -> Result<PathBuf, Error> {
+fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<PathBuf, Error> {
     let mut file = match File::open(bundle.as_ref().join("options.json")) {
         Ok(f) => f,
         Err(err) => match err.kind() {
-            ErrorKind::NotFound => return Ok(DEFAULT_CONTAINER_ROOT_DIR.into()),
+            ErrorKind::NotFound => {
+                return Ok(<&str as Into<PathBuf>>::into(DEFAULT_CONTAINER_ROOT_DIR).join(namespace))
+            }
             _ => return Err(err.into()),
         },
     };
@@ -152,7 +155,8 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P) -> Result<PathBuf, Error> {
     let options: Options = serde_json::from_str(&data)?;
     Ok(options
         .root
-        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR)))
+        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR))
+        .join(namespace))
 }
 
 #[cfg(test)]
@@ -162,6 +166,7 @@ mod rootdirtest {
 
     #[test]
     fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
+        let namespace = "test_namespace";
         let dir = tempdir()?;
         let rootdir = dir.path().join("runwasi");
         let opts = Options {
@@ -174,16 +179,20 @@ mod rootdirtest {
             .write(true)
             .open(dir.path().join("options.json"))?;
         write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
-        let root = determine_rootdir(dir.path())?;
-        assert_eq!(root, rootdir);
+        let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert_eq!(root, rootdir.join(namespace));
         return Ok(());
     }
 
     #[test]
     fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
         let dir = tempdir()?;
-        let root = determine_rootdir(dir.path())?;
-        assert_eq!(root, PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR));
+        let namespace = "test_namespace";
+        let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert_eq!(
+            root,
+            PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
+        );
         return Ok(());
     }
 }
@@ -193,9 +202,10 @@ impl Instance for Wasi {
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
+        let namespace = cfg.get_namespace();
         Wasi {
             id,
-            rootdir: determine_rootdir(bundle.as_str()).unwrap(),
+            rootdir: determine_rootdir(bundle.as_str(), namespace).unwrap(),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
@@ -208,6 +218,9 @@ impl Instance for Wasi {
         debug!("preparing module");
 
         let syscall = create_syscall();
+
+        fs::create_dir_all(&self.rootdir)?;
+
         let mut container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![Box::new(WasmEdgeExecutor {
                 stdin: maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?,
@@ -406,7 +419,7 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(Wasi::new_engine()?);
+        let mut cfg = InstanceConfig::new(Wasi::new_engine()?, "test_namespace".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -439,7 +452,10 @@ mod wasitest {
             .build()
             .unwrap();
         let vm = Vm::new(Some(config)).unwrap();
-        let i = Wasi::new("".to_string(), Some(&InstanceConfig::new(vm)));
+        let i = Wasi::new(
+            "".to_string(),
+            Some(&InstanceConfig::new(vm, "test_namespace".into())),
+        );
         i.delete().unwrap();
     }
 

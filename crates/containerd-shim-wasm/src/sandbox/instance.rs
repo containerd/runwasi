@@ -30,15 +30,18 @@ where
     stderr: Option<String>,
     /// Path to the OCI bundle directory.
     bundle: Option<String>,
+    /// Namespace for containerd
+    namespace: String,
 }
 
 impl<E> InstanceConfig<E>
 where
     E: Send + Sync + Clone,
 {
-    pub fn new(engine: E) -> Self {
+    pub fn new(engine: E, namespace: String) -> Self {
         Self {
             engine,
+            namespace,
             stdin: None,
             stdout: None,
             stderr: None,
@@ -93,6 +96,11 @@ where
     /// get the wasm engine for the instance
     pub fn get_engine(&self) -> E {
         self.engine.clone()
+    }
+
+    /// get the namespace for the instance
+    pub fn get_namespace(&self) -> String {
+        self.namespace.clone()
     }
 }
 

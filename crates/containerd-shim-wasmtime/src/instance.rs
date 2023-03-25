@@ -318,7 +318,10 @@ mod wasitest {
     fn test_delete_after_create() {
         let i = Wasi::new(
             "".to_string(),
-            Some(&InstanceConfig::new(Engine::default())),
+            Some(&InstanceConfig::new(
+                Engine::default(),
+                "test_namespace".into(),
+            )),
         );
         i.delete().unwrap();
     }
@@ -346,7 +349,7 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(Engine::default());
+        let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
