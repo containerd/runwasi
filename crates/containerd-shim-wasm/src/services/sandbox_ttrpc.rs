@@ -27,6 +27,7 @@ pub struct ManagerClient {
 }
 
 impl ManagerClient {
+    #[allow(clippy::redundant_field_names)]
     pub fn new(client: ::ttrpc::Client) -> Self {
         ManagerClient {
             client: client,
