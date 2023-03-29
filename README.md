@@ -209,4 +209,4 @@ So they'll continue singing it forever just because...
 (...)
 ```
 
-To kill the process from the case 2. demo, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. And the test binary supports full commands, check [test/image/src/main.rs](test/image/src/main.rs) to play around more.
+To kill the process from the case 2. demo, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. And the test binary supports full commands, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to play around more.
