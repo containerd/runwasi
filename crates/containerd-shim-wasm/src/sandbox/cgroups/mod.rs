@@ -331,7 +331,7 @@ pub mod tests {
         format!("{}{}", prefix, rand::random::<u32>())
     }
 
-    fn cgroup_test(cg: Box<&dyn Cgroup>) -> Result<()> {
+    fn cgroup_test(cg: &dyn Cgroup) -> Result<()> {
         let s: Spec = json::from_str(
             r#"
         {
@@ -373,7 +373,7 @@ pub mod tests {
 
         debug!("cgroup: {}", cg.version());
 
-        cgroup_test(Box::new(&cg)).unwrap();
+        cgroup_test(&cg).unwrap();
         if cg.version() == Version::V2 {
             let fd = cg.open()?;
             nix::unistd::close(fd)?;
@@ -385,7 +385,7 @@ pub mod tests {
         );
         cg.delete_all()?;
 
-        cgroup_test(Box::new(&cg)).unwrap();
+        cgroup_test(&cg).unwrap();
         if cg.version() == Version::V2 {
             let fd = cg.open()?;
             nix::unistd::close(fd)?;
@@ -396,7 +396,7 @@ pub mod tests {
             generate_random("/absolute") + "/nested/containerd-wasm-shim-test_cgroup",
         );
         cg.delete_all()?;
-        cgroup_test(Box::new(&cg)).unwrap();
+        cgroup_test(&cg).unwrap();
         if cg.version() == Version::V2 {
             let fd = cg.open()?;
             nix::unistd::close(fd)?;
