@@ -257,7 +257,7 @@ impl Instance for Wasi {
             cvar.notify_all();
         });
 
-        Ok(0)
+        Ok(pid.as_raw() as u32)
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
