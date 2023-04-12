@@ -150,7 +150,7 @@ Instead of enabling docker-desktop official released feature `use containerd for
 
 ```terminal
 $ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
-$ sudo -E sh -c 'echo "$HOME/.wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf'
+$ echo "$HOME/.wasmedge/lib" | sudo tee /etc/ld.so.conf.d/libwasmedge.conf
 $ sudo ldconfig
 ```
 
