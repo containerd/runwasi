@@ -87,7 +87,7 @@ pub fn prepare_module(
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
-) -> Result<(WasiCtx, Module), WasmtimeError> {
+) -> Result<(WasiCtx, Module, String), WasmtimeError> {
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(spec)?;
     let args = oci::get_args(spec);
@@ -121,19 +121,25 @@ pub fn prepare_module(
     let wctx = wasi_builder.build();
     debug!("wasi context ready");
 
-    let mut cmd = args[0].clone();
-    let stripped = args[0].strip_prefix(std::path::MAIN_SEPARATOR);
+    let start = args[0].clone();
+    let mut iterator = start.split('#');
+    let mut cmd = iterator.next().unwrap().to_string();
+
+    let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
     if let Some(strpd) = stripped {
         cmd = strpd.to_string();
     }
+    let method = match iterator.next() {
+        Some(f) => f,
+        None => "_start",
+    };
 
     let mod_path = oci::get_root(spec).join(cmd);
-
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
         .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
 
-    Ok((wctx, module))
+    Ok((wctx, module, method.to_string()))
 }
 
 impl Instance for Wasi {
@@ -168,15 +174,15 @@ impl Instance for Wasi {
         let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
 
-        let mut store = Store::new(&engine, m.0);
+        let mut store = Store::new(&engine, m.0);    
 
-        debug!("instantiating instnace");
+        debug!("instantiating instance");
         let i = linker
             .instantiate(&mut store, &m.1)
             .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
 
         debug!("getting start function");
-        let f = i.get_func(&mut store, "_start").ok_or_else(|| {
+        let f = i.get_func(&mut store, &m.2).ok_or_else(|| {
             Error::InvalidArgument("module does not have a wasi start function".to_string())
         })?;
 
