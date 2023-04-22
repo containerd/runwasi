@@ -338,6 +338,7 @@ where
     instances: LocalInstances<T, E>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
+    namespace: String,
 }
 
 #[cfg(test)]
@@ -422,6 +423,7 @@ mod localtests {
             (),
             tx,
             Arc::new(ExitSignal::default()),
+            "test_namespace".into(),
         ));
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -447,7 +449,12 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
+        let local = Arc::new(Local::<Nop, _>::new(
+            (),
+            etx,
+            exit_signal,
+            "test_namespace".into(),
+        ));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -610,7 +617,12 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new((), etx, exit_signal));
+        let local = Arc::new(Local::<Nop, _>::new(
+            (),
+            etx,
+            exit_signal,
+            "test_namespace".into(),
+        ));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -718,7 +730,12 @@ where
     E: Send + Sync + Clone,
 {
     /// Creates a new local task service.
-    pub fn new(engine: E, tx: Sender<(String, Box<dyn Message>)>, exit: Arc<ExitSignal>) -> Self
+    pub fn new(
+        engine: E,
+        tx: Sender<(String, Box<dyn Message>)>,
+        exit: Arc<ExitSignal>,
+        namespace: String,
+    ) -> Self
     where
         T: Instance<E = E> + Sync + Send,
         E: Send + Sync + Clone,
@@ -729,11 +746,12 @@ where
             instances: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(Mutex::new(tx)),
             exit,
+            namespace,
         }
     }
 
     fn new_base(&self, id: String) -> InstanceData<T, E> {
-        let cfg = InstanceConfig::new(self.engine.clone());
+        let cfg = InstanceConfig::new(self.engine.clone(), self.namespace.clone());
         InstanceData {
             instance: None,
             base: Some(Nop::new(id, None)),
@@ -924,7 +942,7 @@ where
         }
 
         let engine = self.engine.clone();
-        let mut builder = InstanceConfig::new(engine);
+        let mut builder = InstanceConfig::new(engine, self.namespace.clone());
         builder
             .set_stdin(req.get_stdin().into())
             .set_stdout(req.get_stdout().into())
@@ -1182,8 +1200,13 @@ where
     type Instance = T;
     fn new(namespace: String, _id: String, engine: E, publisher: RemotePublisher) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(namespace, publisher, rx);
-        Local::<T, E>::new(engine, tx.clone(), Arc::new(ExitSignal::default()))
+        forward_events(namespace.clone(), publisher, rx);
+        Local::<T, E>::new(
+            engine,
+            tx.clone(),
+            Arc::new(ExitSignal::default()),
+            namespace,
+        )
     }
 }
 
@@ -1453,8 +1476,13 @@ where
 
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(self.namespace.to_string(), publisher, rx);
-        Local::<I, E>::new(self.engine.clone(), tx.clone(), self.exit.clone())
+        forward_events(self.namespace.to_string().clone(), publisher, rx);
+        Local::<I, E>::new(
+            self.engine.clone(),
+            tx.clone(),
+            self.exit.clone(),
+            self.namespace.clone(),
+        )
     }
 
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
