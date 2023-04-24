@@ -3,7 +3,6 @@ use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::unix::io::{IntoRawFd, RawFd};
 use std::sync::{
-    mpsc::Sender,
     {Arc, Condvar, Mutex},
 };
 use std::thread;
@@ -11,6 +10,7 @@ use std::thread;
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
@@ -302,19 +302,9 @@ impl Instance for Wasi {
         Ok(())
     }
 
-    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
         let code = self.exit_code.clone();
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            channel.send(ec).unwrap();
-        });
-
-        Ok(())
+        waiter.set_up_exit_code_wait(code)
     }
 }
 
@@ -429,7 +419,8 @@ mod wasitest {
         wasi.start()?;
 
         let (tx, rx) = channel();
-        wasi.wait(tx).unwrap();
+        let waiter = Wait::new(tx);
+        wasi.wait(&waiter).unwrap();
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => Ok(res),

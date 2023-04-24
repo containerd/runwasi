@@ -37,14 +37,14 @@ pub trait Instance {
     fn start(&self) -> Result<u32, Error>;
     /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
-    /// delete any reference to the instance
+    /// Delete any reference to the instance
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
-    /// wait for the instance to exit
-    /// The sender is used to send the exit code and time back to the caller
+    /// Wait for the instance to exit
+    /// The waiter is used to send the exit code and time back to the caller
     /// Ideally this would just be a blocking call with a normal result, however
     /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
+    fn wait(&self, waiter: &Wait) -> Result<(), Error>;
 }
 ```
 

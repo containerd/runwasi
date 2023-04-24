@@ -13,7 +13,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use super::instance::{EngineGetter, Instance, InstanceConfig, Nop};
+use super::instance::{EngineGetter, Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
@@ -147,11 +147,11 @@ where
         })
     }
 
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<()> {
+    fn wait(&self, waiter: &Wait) -> Result<()> {
         if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().wait(send);
+            return self.instance.as_ref().unwrap().wait(waiter);
         }
-        self.base.as_ref().unwrap().wait(send)
+        self.base.as_ref().unwrap().wait(waiter)
     }
 }
 
@@ -1008,7 +1008,8 @@ where
         });
 
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        i.wait(tx)?;
+        let waiter = Wait::new(tx);
+        i.wait(&waiter)?;
 
         let status = i.status.clone();
 
@@ -1130,7 +1131,8 @@ where
         }
 
         let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        i.wait(tx)?;
+        let waiter = Wait::new(tx);
+        i.wait(&waiter)?;
 
         let code = rx.recv().unwrap();
         debug!("wait done: {:?}", req);

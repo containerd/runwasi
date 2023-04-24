@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
@@ -8,6 +7,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::exec;
+use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
@@ -174,7 +174,7 @@ impl Instance for Wasi {
         let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
             .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
 
-        let mut store = Store::new(&engine, m.0);    
+        let mut store = Store::new(&engine, m.0);
 
         debug!("instantiating instance");
         let i = linker
@@ -262,19 +262,9 @@ impl Instance for Wasi {
         Ok(())
     }
 
-    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
         let code = self.exit_code.clone();
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            channel.send(ec).unwrap();
-        });
-
-        Ok(())
+        waiter.set_up_exit_code_wait(code)
     }
 }
 
@@ -285,6 +275,7 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use containerd_shim_wasm::sandbox::instance::Wait;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
@@ -366,9 +357,8 @@ mod wasitest {
 
         let w = wasi.clone();
         let (tx, rx) = channel();
-        thread::spawn(move || {
-            w.wait(tx).unwrap();
-        });
+        let waiter = Wait::new(tx);
+        w.wait(&waiter).unwrap();
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
