@@ -391,7 +391,7 @@ mod wasitest {
                 )));
             }
         };
-        return res;
+        res
     }
 
     #[test]

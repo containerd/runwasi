@@ -233,7 +233,7 @@ mod tests {
         match ret {
             Ok(Context::Parent(tid, pidfd)) => {
                 // Make sure the child has setup signal handlers
-                let res = read(r, &mut vec![0]);
+                let res = read(r, &mut [0]);
                 _ = close(r);
                 res.unwrap();
 
