@@ -129,10 +129,7 @@ pub fn prepare_module(
     if let Some(strpd) = stripped {
         cmd = strpd.to_string();
     }
-    let method = match iterator.next() {
-        Some(f) => f,
-        None => "_start",
-    };
+    let method = iterator.next().unwrap_or("_start");
 
     let mod_path = oci::get_root(spec).join(cmd);
     debug!("loading module from file");
