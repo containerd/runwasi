@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
@@ -8,6 +7,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::exec;
+use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::oci;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use log::{debug, error};
@@ -87,7 +87,7 @@ pub fn prepare_module(
     stdin_path: String,
     stdout_path: String,
     stderr_path: String,
-) -> Result<(WasiCtx, Module), WasmtimeError> {
+) -> Result<(WasiCtx, Module, String), WasmtimeError> {
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(spec)?;
     let args = oci::get_args(spec);
@@ -121,19 +121,25 @@ pub fn prepare_module(
     let wctx = wasi_builder.build();
     debug!("wasi context ready");
 
-    let mut cmd = args[0].clone();
-    let stripped = args[0].strip_prefix(std::path::MAIN_SEPARATOR);
+    let start = args[0].clone();
+    let mut iterator = start.split('#');
+    let mut cmd = iterator.next().unwrap().to_string();
+
+    let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
     if let Some(strpd) = stripped {
         cmd = strpd.to_string();
     }
+    let method = match iterator.next() {
+        Some(f) => f,
+        None => "_start",
+    };
 
     let mod_path = oci::get_root(spec).join(cmd);
-
     debug!("loading module from file");
     let module = Module::from_file(&engine, mod_path)
         .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
 
-    Ok((wctx, module))
+    Ok((wctx, module, method.to_string()))
 }
 
 impl Instance for Wasi {
@@ -170,13 +176,13 @@ impl Instance for Wasi {
 
         let mut store = Store::new(&engine, m.0);
 
-        debug!("instantiating instnace");
+        debug!("instantiating instance");
         let i = linker
             .instantiate(&mut store, &m.1)
             .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
 
         debug!("getting start function");
-        let f = i.get_func(&mut store, "_start").ok_or_else(|| {
+        let f = i.get_func(&mut store, &m.2).ok_or_else(|| {
             Error::InvalidArgument("module does not have a wasi start function".to_string())
         })?;
 
@@ -256,19 +262,9 @@ impl Instance for Wasi {
         Ok(())
     }
 
-    fn wait(&self, channel: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error> {
+    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
         let code = self.exit_code.clone();
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            channel.send(ec).unwrap();
-        });
-
-        Ok(())
+        waiter.set_up_exit_code_wait(code)
     }
 }
 
@@ -279,6 +275,7 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use containerd_shim_wasm::sandbox::instance::Wait;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::tempdir;
 
@@ -318,7 +315,10 @@ mod wasitest {
     fn test_delete_after_create() {
         let i = Wasi::new(
             "".to_string(),
-            Some(&InstanceConfig::new(Engine::default())),
+            Some(&InstanceConfig::new(
+                Engine::default(),
+                "test_namespace".into(),
+            )),
         );
         i.delete().unwrap();
     }
@@ -346,7 +346,7 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(Engine::default());
+        let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -357,9 +357,8 @@ mod wasitest {
 
         let w = wasi.clone();
         let (tx, rx) = channel();
-        thread::spawn(move || {
-            w.wait(tx).unwrap();
-        });
+        let waiter = Wait::new(tx);
+        w.wait(&waiter).unwrap();
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,

@@ -29,11 +29,11 @@ install:
 
 .PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
-	cd crates/wasi-demo-app && cargo build
+	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
 
 .PHONY: target/wasm32-wasi/$(TARGET)/img.tar
 target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
-	cd crates/wasi-demo-app && cargo build --features oci-v1-tar
+	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
 
 load: target/wasm32-wasi/$(TARGET)/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<

@@ -11,8 +11,10 @@ Included in the repository is a PoC for running a plain wasi host (ie. no extra 
 
 ### Community
 
-Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V)
+- If you haven't joined the CNCF slack yet, you can do so [here](https://slack.cncf.io/).
+- Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V)
 on the CNCF slack.
+- Public Community Call on Tuesdays at 9:00 AM PT: [Zoom](https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09), [Meeting Notes](https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing)
 
 ### Usage
 
@@ -27,16 +29,22 @@ In either case you need to implement the `Instance` trait:
 
 ```rust
 pub trait Instance {
-    // Create a new instance
+    /// Create a new instance
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
-    // Start the instance and return the pid
+    /// Start the instance
+    /// The returned value should be a unique ID (such as a PID) for the instance.
+    /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, Error>;
-    // Send the specified signal to the instance
+    /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
-    // Delete the instance
+    /// Delete any reference to the instance
+    /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
-    // wait for the instance to exit and send the exit code and exit timestamp to the provided sender.
-    fn wait(&self, send: Sender<(u32, DateTime<Utc>)>) -> Result<(), Error>;
+    /// Wait for the instance to exit
+    /// The waiter is used to send the exit code and time back to the caller
+    /// Ideally this would just be a blocking call with a normal result, however
+    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
+    fn wait(&self, waiter: &Wait) -> Result<(), Error>;
 }
 ```
 
@@ -207,4 +215,4 @@ So they'll continue singing it forever just because...
 (...)
 ```
 
-To kill the process from the case 2. demo, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. And the test binary supports full commands, check [test/image/src/main.rs](test/image/src/main.rs) to play around more.
+To kill the process from the case 2. demo, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. And the test binary supports full commands, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to play around more.

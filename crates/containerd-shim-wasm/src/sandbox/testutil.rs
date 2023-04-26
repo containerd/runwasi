@@ -3,17 +3,28 @@
 use super::{Error, Result};
 use std::process::{Command, Stdio};
 
+fn normalize_test_name(test: &str) -> Result<&str> {
+    let closure_removed = test.trim_end_matches("::{{closure}}");
+
+    // More tests and validation here if needed.
+
+    Ok(closure_removed)
+}
+
 /// Re-execs the current process with sudo and runs the given test.
 /// Unless this is run in a CI environment, this may prompt the user for a password.
 /// This is significantly faster than expecting the user to run the tests with sudo due to build and crate caching.
 pub fn run_test_with_sudo(test: &str) -> Result<()> {
     // This uses piped stdout/stderr.
     // This makes it so cargo doesn't mess up the caller's TTY.
+
+    let normalized_test = normalize_test_name(test)?;
+
     let mut cmd = Command::new("sudo")
         .arg("-E")
         .arg(std::fs::read_link("/proc/self/exe")?)
         .arg("--")
-        .arg(test)
+        .arg(normalized_test)
         .arg("--exact")
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
@@ -41,6 +52,7 @@ pub fn run_test_with_sudo(test: &str) -> Result<()> {
         .map_err(Error::from)
 }
 
+#[macro_export]
 macro_rules! function {
     () => {{
         fn f() {}
@@ -53,4 +65,4 @@ macro_rules! function {
     }};
 }
 
-pub(crate) use function;
+pub use function;

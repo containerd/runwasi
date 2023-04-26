@@ -41,6 +41,10 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: Setup OCI runtime build env
+        run: |
+          sudo apt -y update
+          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
       - name: Setup WasmEdge build env
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2
@@ -53,10 +57,8 @@ jobs:
       - name: Validate docs
         run: ./scripts/validate-docs.sh
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all --verbose
+        run: |
+          sudo -E LD_LIBRARY_PATH=/home/runner/.wasmedge/lib /home/runner/.cargo/bin/cargo test --all --verbose
 
   e2e:
     needs: [build]
