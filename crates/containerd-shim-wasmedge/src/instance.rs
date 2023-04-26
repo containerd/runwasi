@@ -2,9 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::unix::io::{IntoRawFd, RawFd};
-use std::sync::{
-    {Arc, Condvar, Mutex},
-};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
 use anyhow::{bail, Context, Result};
