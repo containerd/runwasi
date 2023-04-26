@@ -179,7 +179,7 @@ mod rootdirtest {
         write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
         let root = determine_rootdir(dir.path(), namespace.into())?;
         assert_eq!(root, rootdir.join(namespace));
-        return Ok(());
+        Ok(())
     }
 
     #[test]
@@ -191,7 +191,7 @@ mod rootdirtest {
             root,
             PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
         );
-        return Ok(());
+        Ok(())
     }
 }
 
