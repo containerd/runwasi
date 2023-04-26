@@ -156,8 +156,8 @@ impl Cgroup for CgroupV1 {
         }
 
         self.controllers
-            .iter()
-            .map(|(kind, _subsys)| {
+            .keys()
+            .map(|kind| {
                 if kind == "cpuset" {
                     return Ok(());
                 }

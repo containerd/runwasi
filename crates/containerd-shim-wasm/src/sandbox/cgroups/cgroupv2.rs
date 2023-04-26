@@ -244,8 +244,8 @@ impl Cgroup for CgroupV2 {
             if let Some(weight) = blkio.weight() {
                 if weight != 0 {
                     // Use BFQ
-                    if let Err(_) =
-                        ensure_write_file(self.get_file(IO_BFQ_WEIGHT)?, &format!("{}", weight))
+                    if ensure_write_file(self.get_file(IO_BFQ_WEIGHT)?, &format!("{}", weight))
+                        .is_err()
                     {
                         // Fallback to io.weight with a conversion scheme
                         ensure_write_file(

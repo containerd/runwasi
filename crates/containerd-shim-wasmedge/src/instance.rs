@@ -2,9 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::unix::io::{IntoRawFd, RawFd};
-use std::sync::{
-    {Arc, Condvar, Mutex},
-};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
 use anyhow::{bail, Context, Result};
@@ -181,7 +179,7 @@ mod rootdirtest {
         write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
         let root = determine_rootdir(dir.path(), namespace.into())?;
         assert_eq!(root, rootdir.join(namespace));
-        return Ok(());
+        Ok(())
     }
 
     #[test]
@@ -193,7 +191,7 @@ mod rootdirtest {
             root,
             PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
         );
-        return Ok(());
+        Ok(())
     }
 }
 

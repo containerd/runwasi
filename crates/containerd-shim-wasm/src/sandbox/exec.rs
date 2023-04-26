@@ -143,6 +143,7 @@ pub fn has_cap_sys_admin() -> bool {
 /// Code that runs in the child must not do things like access locks or other shared state.
 /// The child should not depend on other threads in the parent process since the new process becomes single threaded.
 ///
+/// # Safety
 /// This is marked as unsafe because this can effect things like mutex locks or other previously shared state which is no longer shared (with the child process) after the fork.
 pub unsafe fn fork(cgroup: Option<&dyn Cgroup>) -> Result<Context, Error> {
     let mut builder = Clone3::default();
@@ -232,7 +233,7 @@ mod tests {
         match ret {
             Ok(Context::Parent(tid, pidfd)) => {
                 // Make sure the child has setup signal handlers
-                let res = read(r, &mut vec![0]);
+                let res = read(r, &mut [0]);
                 _ = close(r);
                 res.unwrap();
 

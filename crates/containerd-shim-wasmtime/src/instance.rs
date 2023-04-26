@@ -129,10 +129,7 @@ pub fn prepare_module(
     if let Some(strpd) = stripped {
         cmd = strpd.to_string();
     }
-    let method = match iterator.next() {
-        Some(f) => f,
-        None => "_start",
-    };
+    let method = iterator.next().unwrap_or("_start");
 
     let mod_path = oci::get_root(spec).join(cmd);
     debug!("loading module from file");
@@ -227,7 +224,7 @@ impl Instance for Wasi {
 
                 // TODO: How to get exit code?
                 // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                let _ret = match f.call(&mut store, &[], &mut []) {
+                match f.call(&mut store, &[], &mut []) {
                     Ok(_) => std::process::exit(0),
                     Err(_) => std::process::exit(137),
                 };

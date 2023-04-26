@@ -10,6 +10,29 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  fmt:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.69.0
+          components: rustfmt, clippy
+      - name: Setup OCI runtime build env
+        run: |
+          sudo apt -y update
+          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+      - name: Setup WasmEdge build env
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2
+          echo "LD_LIBRARY_PATH=$HOME/.wasmedge/lib" >> $GITHUB_ENV
+      - name: Run cargo fmt
+        run: |
+          cargo fmt --all -- --check
+      - name: Run cargo clippy
+        run: |
+          cargo clippy --all --all-targets -- -D warnings
   build:
     strategy:
       matrix:
@@ -22,7 +45,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.69.0
       - name: Setup OCI runtime build env
         run: |
           sudo apt -y update

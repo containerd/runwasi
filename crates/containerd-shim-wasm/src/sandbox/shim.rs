@@ -1478,7 +1478,7 @@ where
 
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn Message>)>();
-        forward_events(self.namespace.to_string().clone(), publisher, rx);
+        forward_events(self.namespace.to_string(), publisher, rx);
         Local::<I, E>::new(
             self.engine.clone(),
             tx.clone(),
