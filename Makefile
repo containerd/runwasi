@@ -61,7 +61,7 @@ test/k8s/clean:
 
 .PHONY: bin/wasmedge
 bin/wasmedge:
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -p $(PWD)/bin/wasmedge && \
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.12.1 -p $(PWD)/bin/wasmedge && \
 	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
 
 .PHONY: bin/wasmedge/clean

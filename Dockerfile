@@ -21,7 +21,7 @@ RUN rustup target add $(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
 RUN <<EOT
     set -ex
     os=$(xx-info os)
-    curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.11.2 --platform=${os^} --machine=$(xx-info march)
+    curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.12.1 --platform=${os^} --machine=$(xx-info march)
 EOT
 
 WORKDIR /build/src

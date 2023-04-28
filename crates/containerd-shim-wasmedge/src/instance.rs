@@ -17,7 +17,8 @@ use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use serde::{Deserialize, Serialize};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    PluginManager, Vm,
+    plugin::PluginManager,
+    Vm, VmBuilder,
 };
 
 use std::{
@@ -327,7 +328,7 @@ mod wasitest {
 
     use wasmedge_sdk::{
         config::{CommonConfigOptions, ConfigBuilder},
-        wat2wasm, Vm,
+        wat2wasm,
     };
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
@@ -440,7 +441,7 @@ mod wasitest {
         let config = ConfigBuilder::new(CommonConfigOptions::default())
             .build()
             .unwrap();
-        let vm = Vm::new(Some(config)).unwrap();
+        let vm = VmBuilder::new().with_config(config).build().unwrap();
         let i = Wasi::new(
             "".to_string(),
             Some(&InstanceConfig::new(vm, "test_namespace".into())),
@@ -495,7 +496,7 @@ mod wasitest {
 impl EngineGetter for Wasi {
     type E = Vm;
     fn new_engine() -> Result<Vm, Error> {
-        PluginManager::load_from_default_paths();
+        PluginManager::load(None).unwrap();
         let mut host_options = HostRegistrationConfigOptions::default();
         host_options = host_options.wasi(true);
         #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
@@ -506,7 +507,10 @@ impl EngineGetter for Wasi {
             .with_host_registration_config(host_options)
             .build()
             .map_err(anyhow::Error::msg)?;
-        let vm = Vm::new(Some(config)).map_err(anyhow::Error::msg)?;
+        let vm = VmBuilder::new()
+            .with_config(config)
+            .build()
+            .map_err(anyhow::Error::msg)?;
         Ok(vm)
     }
 }

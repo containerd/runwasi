@@ -7,7 +7,7 @@ use std::os::unix::io::RawFd;
 
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    params, Vm,
+    params, VmBuilder,
 };
 
 static mut STDIN_FD: Option<RawFd> = None;
@@ -42,17 +42,19 @@ impl Executor for WasmEdgeExecutor {
             .build()?;
 
         // create a vm with the config settings
-        let mut vm = Vm::new(Some(config))?;
+        let mut vm = VmBuilder::new().with_config(config).build()?;
 
         // initialize the wasi module with the parsed parameters
-        let mut wasi_instance = vm.wasi_module()?;
-        wasi_instance.initialize(
+        let wasi_module = vm
+            .wasi_module_mut()
+            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))?;
+        wasi_module.initialize(
             Some(args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
 
-        let mut vm = vm.register_module_from_file("main", cmd)?;
+        let vm = vm.register_module_from_file("main", cmd)?;
 
         if let Some(stdin) = self.stdin {
             unsafe {
@@ -73,15 +75,9 @@ impl Executor for WasmEdgeExecutor {
             }
         }
 
-        let ins = vm.named_module("main")?;
-
         // TODO: How to get exit code?
         // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
-        match ins
-            .func("_start")
-            .expect("Not found '_start' func in the 'main' module instance")
-            .call(&mut vm, params!())
-        {
+        match vm.run_func(Some("main"), "_start", params!()) {
             Ok(_) => std::process::exit(0),
             Err(_) => std::process::exit(137),
         };
