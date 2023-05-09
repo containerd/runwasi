@@ -369,7 +369,7 @@ dependencies = [
  "oci-spec 0.6.0",
  "pretty_assertions",
  "proc-mounts",
- "protobuf 2.28.0",
+ "protobuf 3.2.0",
  "rand",
  "serde",
  "serde_json",

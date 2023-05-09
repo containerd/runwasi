@@ -19,7 +19,7 @@ oci-spec = { workspace = true }
 command-fds = "0.2"
 serde = { workspace = true }
 thiserror = { workspace = true }
-protobuf = "2.28"
+protobuf = "3.2"
 ttrpc = { workspace = true }
 nix = { workspace = true }
 chrono = { workspace = true }
