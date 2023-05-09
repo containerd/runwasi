@@ -30,7 +30,7 @@ caps = "0.5"
 proc-mounts = "0.3"
 
 [build-dependencies]
-ttrpc-codegen = { version = "0.3", optional = true }
+ttrpc-codegen = { version = "0.4", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
