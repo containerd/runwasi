@@ -8,7 +8,7 @@ containerd-shim ={ workspace = true }
 containerd-shim-wasm = { path = "../containerd-shim-wasm" }
 log = { workspace = true }
 ttrpc = { workspace = true }
-wasmedge-sdk = { version = "0.7.1", features = ["async"] }
+wasmedge-sdk = { version = "0.8.0", features = ["async"] }
 chrono = { workspace = true }
 anyhow = { workspace = true }
 cap-std = { workspace = true }
