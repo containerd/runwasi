@@ -14,6 +14,7 @@ use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
+use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
@@ -220,11 +221,14 @@ impl Instance for Wasi {
 
         fs::create_dir_all(&self.rootdir)?;
 
+        let stdin = maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?;
+        let stdout = maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?;
+        let stderr = maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?;
         let mut container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![Box::new(WasmEdgeExecutor {
-                stdin: maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?,
-                stdout: maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?,
-                stderr: maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?,
+                stdin,
+                stdout,
+                stderr,
             })])?
             .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
@@ -233,6 +237,13 @@ impl Instance for Wasi {
 
         let code = self.exit_code.clone();
         let pid = container.pid().unwrap();
+
+        // Close the fds now that they have been passed to the container process
+        // so that we don't leak them.
+        stdin.map(close);
+        stdout.map(close);
+        stderr.map(close);
+
         container.start()?;
 
         thread::spawn(move || {
