@@ -14,7 +14,7 @@ ttrpc = { workspace = true }
 # 2. Because it pulls in a lot of dependencies that we don't need
 # 3. Because that dependency (wasmtime-fiber) links to native code
 # 4. The wasmedge shim also uses wasmtime-fiber... which means those transative dependencies need to be the same or compilation fails
-wasmtime = { version = "8.0", default-features = false, features = [
+wasmtime = { version = "9.0", default-features = false, features = [
     'cache',
     'wat',
     'jitdump',
