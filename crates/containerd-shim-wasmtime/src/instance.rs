@@ -352,10 +352,9 @@ mod wasitest {
 
         wasi.start()?;
 
-        let w = wasi.clone();
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
-        w.wait(&waiter).unwrap();
+        wasi.wait(&waiter).unwrap();
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
@@ -371,6 +370,8 @@ mod wasitest {
 
         let output = read_to_string(dir.path().join("stdout"))?;
         assert_eq!(output, "hello world\n");
+
+        wasi.delete()?;
 
         Ok(())
     }
