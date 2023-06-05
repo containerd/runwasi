@@ -28,7 +28,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 nix = "0.26"
 cap-std = "1.0"
 thiserror = "1.0"
-libc = "0.2.141"
+libc = "0.2.145"
 oci-spec = { version = "0.6.0", features = ["runtime"] }
 sha256 = "1.1"
 # TODO: Wait for the release and use the crates.io one.
