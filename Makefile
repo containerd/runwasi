@@ -21,7 +21,12 @@ build:
 .PHONY: check
 check:
 	cargo fmt --all -- --check
-	cargo clippy --all --all-targets -- -D warnings
+	cargo clippy --all --all-targets -- -D warnings 
+
+.PHONY: fix
+fix:
+	cargo fmt --all
+	cargo clippy --fix --all --all-targets -- -D warnings 
 
 .PHONY: test
 test:
@@ -38,7 +43,11 @@ install:
 
 .PHONY: test-image
 test-image: target/wasm32-wasi/$(TARGET)/img.tar
-	
+
+.PHONY: test-image
+test-image/clean:
+	rm -rf target/wasm32-wasi/$(TARGET)/
+
 .PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
 	rustup target add wasm32-wasi

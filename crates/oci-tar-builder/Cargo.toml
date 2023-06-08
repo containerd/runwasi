@@ -12,3 +12,11 @@ oci-spec =  { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+clap = { version = "4.3.2", features = ["derive"] }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "oci-tar-builder"
+path = "src/bin.rs"
