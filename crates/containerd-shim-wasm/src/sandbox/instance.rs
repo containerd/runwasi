@@ -219,12 +219,9 @@ mod noptests {
     fn test_nop_kill_sigkill() -> Result<(), Error> {
         let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGKILL as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 137);
@@ -235,12 +232,9 @@ mod noptests {
     fn test_nop_kill_sigterm() -> Result<(), Error> {
         let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGTERM as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
@@ -251,12 +245,9 @@ mod noptests {
     fn test_nop_kill_sigint() -> Result<(), Error> {
         let nop = Arc::new(Nop::new("".to_string(), None));
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGINT as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
