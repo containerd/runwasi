@@ -348,7 +348,7 @@ mod wasitest {
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
 
-        let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
+        let wasi = Wasi::new("test".to_string(), Some(cfg));
 
         wasi.start()?;
 
