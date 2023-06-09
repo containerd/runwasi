@@ -1,8 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use oci_spec::runtime::Spec;
 
 use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use libcontainer::workload::Executor;
+use libcontainer::workload::{Executor, ExecutorError};
 use std::os::unix::io::RawFd;
 
 use wasmedge_sdk::{
@@ -23,11 +23,11 @@ pub struct WasmEdgeExecutor {
 }
 
 impl Executor for WasmEdgeExecutor {
-    fn exec(&self, spec: &Spec) -> Result<()> {
+    fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         // parse wasi parameters
         let args = get_args(spec);
         if args.is_empty() {
-            bail!("args should not be empty")
+            return Err(ExecutorError::InvalidArg);
         }
 
         let mut cmd = args[0].clone();
@@ -39,22 +39,30 @@ impl Executor for WasmEdgeExecutor {
         // create configuration with `wasi` option enabled
         let config = ConfigBuilder::new(CommonConfigOptions::default())
             .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
-            .build()?;
+            .build()
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         // create a vm with the config settings
-        let mut vm = VmBuilder::new().with_config(config).build()?;
+        let mut vm = VmBuilder::new()
+            .with_config(config)
+            .build()
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         // initialize the wasi module with the parsed parameters
         let wasi_module = vm
             .wasi_module_mut()
-            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))?;
+            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
+            .map_err(|err| ExecutorError::Execution(err.into()))?;
+
         wasi_module.initialize(
             Some(args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
 
-        let vm = vm.register_module_from_file("main", cmd)?;
+        let vm = vm
+            .register_module_from_file("main", cmd)
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         if let Some(stdin) = self.stdin {
             unsafe {
@@ -83,8 +91,8 @@ impl Executor for WasmEdgeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> Result<bool> {
-        Ok(true)
+    fn can_handle(&self, _spec: &Spec) -> bool {
+        true
     }
 
     fn name(&self) -> &'static str {

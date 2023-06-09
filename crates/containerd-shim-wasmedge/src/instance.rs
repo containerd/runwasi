@@ -13,6 +13,7 @@ use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
+use nix::sys::signal::Signal as NixSignal;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
@@ -229,11 +230,14 @@ impl Instance for Wasi {
                 stdin,
                 stdout,
                 stderr,
-            })])?
-            .with_root_path(self.rootdir.clone())?
+            })])
+            .map_err(|err| Error::Any(err.into()))?
+            .with_root_path(self.rootdir.clone())
+            .map_err(|err| Error::Any(err.into()))?
             .as_init(&self.bundle)
             .with_systemd(false)
-            .build()?;
+            .build()
+            .map_err(|err| Error::Any(err.into()))?;
 
         let code = self.exit_code.clone();
         let pid = container.pid().unwrap();
@@ -244,7 +248,7 @@ impl Instance for Wasi {
         stdout.map(close);
         stderr.map(close);
 
-        container.start()?;
+        container.start().map_err(|err| Error::Any(err.into()))?;
 
         thread::spawn(move || {
             let (lock, cvar) = &*code;
@@ -271,14 +275,16 @@ impl Instance for Wasi {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal as i32 != SIGKILL && signal as i32 != SIGINT {
-            return Err(Error::InvalidArgument(
+        let signal: Signal = match signal as i32 {
+            SIGKILL => NixSignal::SIGKILL.into(),
+            SIGINT => NixSignal::SIGINT.into(),
+            _ => Err(Error::InvalidArgument(
                 "only SIGKILL and SIGINT are supported".to_string(),
-            ));
-        }
+            ))?,
+        };
 
         let mut container = load_container(&self.rootdir, self.id.as_str())?;
-        match container.kill(Signal::try_from(signal as i32)?, true) {
+        match container.kill(signal, true) {
             Ok(_) => Ok(()),
             Err(e) => {
                 if container.status() == ContainerStatus::Stopped {
@@ -302,7 +308,9 @@ impl Instance for Wasi {
             }
         }
         match load_container(&self.rootdir, self.id.as_str()) {
-            Ok(mut container) => container.delete(true)?,
+            Ok(mut container) => container
+                .delete(true)
+                .map_err(|err| Error::Any(err.into()))?,
             Err(err) => {
                 error!("could not find the container, skipping cleanup: {}", err);
                 return Ok(());
