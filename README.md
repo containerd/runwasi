@@ -142,29 +142,44 @@ The Wasmedge / Wasmtime engine is shared between all sandboxes in the service.
 To use this shim, specify `io.containerd.[ wasmedge | wasmtime ]d.v1` as the runtime to use.
 You will need to make sure the `containerd-[ wasmedge | wasmtime ]d` daemon has already been started.
 
-#### Test and demo with containerd
+### Contributing
 
-**Attention**
+#### Building
 
-Instead of enabling docker-desktop official released feature `use containerd for pulling and storing images`, you can build a local image and interact with the container locally.
-
-- **Install WasmEdge first (If you choose Wasmedge as your wasm runtime)**
-
-    - Install WasmEdge
-    - Make sure the library is in the search path.
-
+1. Install Wasm Edge dependencies
 
 ```terminal
-$ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.12.1
-$ sudo -E sh -c 'echo "$HOME/.wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf'
-$ sudo ldconfig
+make bin/wasmedge/clean
+make bin/wasmedge
 ```
 
-- **Run unit test**
+2. Install [youki dependencies](https://github.com/containers/youki#dependencies)
+
+```
+sudo apt-get install    \
+      pkg-config          \
+      libsystemd-dev      \
+      libdbus-glib-1-dev  \
+      build-essential     \
+      libelf-dev          \
+      libseccomp-dev      \
+      libclang-dev        \
+      libssl-dev
+```
+
+3. Build
+
+```
+make build
+make check
+```
+
+### Running unit tests
 
 ```terminal
-$ cargo test -- --nocapture
+make test
 ```
+
 You should see some output like:
 ```terminal
 running 3 tests
@@ -173,34 +188,62 @@ test instance::wasitest::test_delete_after_create ... ok
 test instance::wasitest::test_wasi ... ok
 ```
 
-- **Build and install shim components**
+### Building the test image
 
-```terminal
-$ make build
-$ sudo make install
+This builds a [wasm application](crates/wasi-demo-app/) and packages it in an OCI format:
+
+```
+make test-image
 ```
 
-- **Demo**
+### Running integration tests with k3s
 
-Now you can use the test image provided in this repo to have test with, use `make load` to load it into containerd.
+```
+make test/k3s
+```
 
-- Case 1.
+### Running integration tests with kind
+
+```
+make test/k8s
+```
+
+## Demo
+
+### Installing the shims for use with Containerd
+
+Make sure you have [installed dependencies](#Building) and install the shims:
+
+```terminal
+make build
+sudo make install
+```
+
+Build the test image and load it into contianerd:
+
+```
+make test-image
+make load
+```
+
+#### Demo 1 using wasmedge
 
 Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'`. You should see some output repeated like:
+
 ```terminal
-$ sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
+sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
 
 hello
 exiting
 ```
 
-- Case 2.
+#### Demo 2 using wasmtime
 
-Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime ].v1 docker.io/library/wasmtest:latest testwasm`.
+Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
 You should see some output repeated like:
 
 ```terminal
-$ sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 docker.io/library/wasmtest:latest testwasm
+sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
 
 This is a song that never ends.
 Yes, it goes on and on my friends.
@@ -215,4 +258,6 @@ So they'll continue singing it forever just because...
 (...)
 ```
 
-To kill the process from the case 2. demo, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. And the test binary supports full commands, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to play around more.
+To kill the process from demo 2, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. 
+
+The test binary supports commands for different type of functionality, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to try it out.

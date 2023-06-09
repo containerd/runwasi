@@ -18,6 +18,15 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 build:
 	cargo build $(RELEASE_FLAG)
 
+.PHONY: check
+check:
+	cargo fmt --all -- --check
+	cargo clippy --all --all-targets -- -D warnings
+
+.PHONY: test
+test:
+	cargo test --all --verbose
+
 .PHONY: install
 install:
 	mkdir -p $(PREFIX)/bin
@@ -27,8 +36,12 @@ install:
 		$(INSTALL) target/$(TARGET)/containerd-$(runtime)d $(PREFIX)/bin/; \
 	)
 
+.PHONY: test-image
+test-image: target/wasm32-wasi/$(TARGET)/img.tar
+	
 .PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
+	rustup target add wasm32-wasi
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
 
 .PHONY: target/wasm32-wasi/$(TARGET)/img.tar
@@ -50,8 +63,8 @@ test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/im
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
-.PHONY: test/k8s/deploy
-test/k8s/deploy: test/k8s/cluster
+.PHONY: test/k8s
+test/k8s: test/k8s/cluster
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 
@@ -61,6 +74,7 @@ test/k8s/clean:
 
 .PHONY: bin/wasmedge
 bin/wasmedge:
+	mkdir -p ${CURDIR}/bin
 	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.12.1 -p $(PWD)/bin/wasmedge && \
 	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
 
