@@ -179,7 +179,6 @@ impl Instance for Nop {
     fn start(&self) -> Result<u32, Error> {
         Ok(std::process::id())
     }
-
     fn kill(&self, signal: u32) -> Result<(), Error> {
         let code = match signal as i32 {
             SIGKILL => 137,
@@ -208,7 +207,6 @@ impl Instance for Nop {
 #[cfg(test)]
 mod noptests {
     use std::sync::mpsc::channel;
-    use std::sync::Arc;
     use std::time::Duration;
 
     use libc::SIGHUP;
@@ -217,14 +215,11 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Nop::new("".to_string(), None);
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGKILL as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 137);
@@ -233,14 +228,11 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigterm() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Nop::new("".to_string(), None);
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGTERM as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
@@ -249,14 +241,11 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigint() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Nop::new("".to_string(), None);
         let (tx, rx) = channel();
-
-        let n = nop.clone();
         let waiter = Wait::new(tx);
 
-        n.wait(&waiter).unwrap();
-
+        nop.wait(&waiter).unwrap();
         nop.kill(SIGINT as u32)?;
         let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
@@ -265,7 +254,7 @@ mod noptests {
 
     #[test]
     fn test_op_kill_other() -> Result<(), Error> {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Nop::new("".to_string(), None);
 
         let err = nop.kill(SIGHUP as u32).unwrap_err();
         match err {
@@ -278,7 +267,7 @@ mod noptests {
 
     #[test]
     fn test_nop_delete_after_create() {
-        let nop = Arc::new(Nop::new("".to_string(), None));
+        let nop = Nop::new("".to_string(), None);
         nop.delete().unwrap();
     }
 }

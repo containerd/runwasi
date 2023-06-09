@@ -348,14 +348,13 @@ mod wasitest {
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
 
-        let wasi = Arc::new(Wasi::new("test".to_string(), Some(cfg)));
+        let wasi = Wasi::new("test".to_string(), Some(cfg));
 
         wasi.start()?;
 
-        let w = wasi.clone();
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
-        w.wait(&waiter).unwrap();
+        wasi.wait(&waiter).unwrap();
 
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
@@ -371,6 +370,8 @@ mod wasitest {
 
         let output = read_to_string(dir.path().join("stdout"))?;
         assert_eq!(output, "hello world\n");
+
+        wasi.delete()?;
 
         Ok(())
     }
