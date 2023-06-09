@@ -63,7 +63,6 @@ load: target/wasm32-wasi/$(TARGET)/img.tar
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
 
-
 test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -type f -name '*.rs')
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
 
@@ -116,6 +115,7 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
 	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
 	sudo systemctl daemon-reload && \
 	sudo systemctl restart k3s-runwasi && \
+	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
 	sudo bin/k3s ctr image import --all-platforms target/wasm32-wasi/$(TARGET)/img.tar && \
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s && \
