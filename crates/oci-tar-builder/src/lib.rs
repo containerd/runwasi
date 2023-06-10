@@ -1,5 +1,5 @@
 use anyhow::{Context, Error, Result};
-use log::debug;
+use log::{debug, warn};
 use oci_spec::image::{
     DescriptorBuilder, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder, MediaType,
     PlatformBuilder, SCHEMA_VERSION,
@@ -14,7 +14,7 @@ use std::path::PathBuf;
 #[derive(Debug, Default)]
 pub struct Builder {
     configs: Vec<(ImageConfiguration, String)>,
-    layers: Vec<PathBuf>,
+    layers: Vec<(PathBuf, String)>,
 }
 
 #[derive(Serialize, Debug)]
@@ -48,7 +48,12 @@ impl Builder {
     }
 
     pub fn add_layer(&mut self, layer: &PathBuf) -> &mut Self {
-        self.layers.push(layer.to_owned());
+        self.layers.push((layer.to_owned(), "".to_string()));
+        self
+    }
+
+    pub fn add_layer_with_media_type(&mut self, layer: &PathBuf, media_type: String) -> &mut Self {
+        self.layers.push((layer.to_owned(), media_type));
         self
     }
 
@@ -68,13 +73,17 @@ impl Builder {
         };
 
         for layer in self.layers.iter() {
-            let dgst = try_digest(layer.as_path()).context("failed to digest layer")?;
-            let meta = metadata(layer).context("could not get layer metadata")?;
+            let dgst = try_digest(layer.0.as_path()).context("failed to digest layer")?;
+            let meta = metadata(layer.0.clone()).context("could not get layer metadata")?;
             let oci_digest = "sha256:".to_owned() + &dgst;
 
+            let mut media_type = MediaType::ImageLayer;
+            if !layer.1.is_empty() {
+                media_type = MediaType::Other(layer.1.clone());
+            }
             let desc = DescriptorBuilder::default()
                 // TODO: check file headers to determine mediatype? Could also just require it to be passed in on add_layer
-                .media_type(MediaType::ImageLayer)
+                .media_type(media_type)
                 .digest(&oci_digest)
                 .size(meta.len() as i64)
                 .build()
@@ -87,7 +96,7 @@ impl Builder {
             let p = "blobs/sha256/".to_owned() + &dgst;
             th.set_path(&p).context("could not set path for layer")?;
             th.set_cksum();
-            let f = std::fs::File::open(layer).context("could not open layer")?;
+            let f = std::fs::File::open(layer.0.clone()).context("could not open layer")?;
             tb.append(&th, f)?;
 
             mfst.layers.push(p.to_string());
@@ -114,11 +123,16 @@ impl Builder {
                 .build()
                 .context("failed to build descriptor")?;
 
+            // add all layer_digests including any OCI artifacts types that are may not be in the rootfs
             let mut layers = Vec::new();
+            for (_k, v) in layer_digests.iter() {
+                layers.push(v.clone());
+            }
+
             for id in config.0.rootfs().diff_ids().iter() {
                 debug!("id: {}", id);
-                if let Some(d) = layer_digests.get(id) {
-                    layers.push(d.clone())
+                if layer_digests.get(id).is_none() {
+                    warn!("rootfs diff with id {} not found in layers", id);
                 }
             }
 
