@@ -333,11 +333,8 @@ checksum = "ec837a71355b28f6556dbd569b37b3f363091c0bd4b2e735674521b4c5fd9bc5"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
- "js-sys",
  "num-traits",
  "serde",
- "time 0.1.45",
- "wasm-bindgen",
  "winapi",
 ]
 
@@ -476,7 +473,7 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "thiserror",
- "time 0.3.22",
+ "time",
  "uuid 0.8.2",
 ]
 
@@ -491,7 +488,7 @@ dependencies = [
  "containerd-shim-wasmtime",
  "criterion",
  "libc",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "serde",
  "serde_json",
  "tempfile",
@@ -521,7 +518,7 @@ dependencies = [
  "libc",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "pretty_assertions",
  "proc-mounts",
  "protobuf 2.28.0",
@@ -548,7 +545,7 @@ dependencies = [
  "libcontainer",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -571,7 +568,7 @@ dependencies = [
  "libc",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "pretty_assertions",
  "serde_json",
  "tempfile",
@@ -1076,6 +1073,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
+
+[[package]]
 name = "fd-lock"
 version = "3.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1286,7 +1289,7 @@ checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
 ]
 
 [[package]]
@@ -1568,45 +1571,44 @@ checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
 [[package]]
 name = "libcgroups"
 version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=edd63c84f903aa09510ef758ea6f617e0cb8b7e1#edd63c84f903aa09510ef758ea6f617e0cb8b7e1"
+source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
 dependencies = [
- "anyhow",
  "dbus",
  "fixedbitset 0.4.2",
- "log",
  "nix 0.26.2",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "procfs",
  "serde",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
 name = "libcontainer"
 version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=edd63c84f903aa09510ef758ea6f617e0cb8b7e1#edd63c84f903aa09510ef758ea6f617e0cb8b7e1"
+source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
 dependencies = [
- "anyhow",
  "bitflags 2.3.1",
  "caps",
  "chrono",
  "clone3",
- "crossbeam-channel",
- "fastrand",
+ "fastrand 2.0.0",
  "futures",
  "libc",
  "libcgroups",
  "libseccomp",
- "log",
- "mio",
  "nix 0.26.2",
- "oci-spec 0.6.0",
- "path-clean",
+ "oci-spec 0.6.1",
+ "once_cell",
  "prctl",
  "procfs",
+ "regex",
  "rust-criu",
+ "safe-path",
  "serde",
  "serde_json",
- "syscalls",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -1747,18 +1749,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mio"
-version = "0.8.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927a765cd3fc26206e66b296465fa9d3e5ab003e651c1b3c060e7956d96b19d2"
-dependencies = [
- "libc",
- "log",
- "wasi 0.11.0+wasi-snapshot-preview1",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1871,9 +1861,9 @@ dependencies = [
 
 [[package]]
 name = "oci-spec"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214b837f7dde5026f2028ead5ae720073277c19f82ff85623b142c39d4b843e7"
+checksum = "cf77d2eace1f4909b081d231d1ad3570ba3448ae95290ab701314faaee1b611a"
 dependencies = [
  "derive_builder 0.12.0",
  "getset",
@@ -1890,7 +1880,7 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "serde",
  "serde_json",
  "sha256",
@@ -1955,12 +1945,6 @@ name = "paste"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
-
-[[package]]
-name = "path-clean"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 
 [[package]]
 name = "peeking_take_while"
@@ -2451,6 +2435,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
 
 [[package]]
+name = "safe-path"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "980abdd3220aa19b67ca3ea07b173ca36383f18ae48cde696d90c8af39447ffb"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2494,17 +2487,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_repr"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.18",
 ]
 
 [[package]]
@@ -2649,17 +2631,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "syscalls"
-version = "0.6.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41a292bad4a4fdbab06bb5399d2d578e4afed89e6701b47a75cf952d510c1473"
-dependencies = [
- "cc",
- "serde",
- "serde_repr",
-]
-
-[[package]]
 name = "system-interface"
 version = "0.25.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2700,7 +2671,7 @@ checksum = "31c0432476357e58790aaa47a8efb0c5138f137343f3b5f23bd36a27e3b0a6d6"
 dependencies = [
  "autocfg",
  "cfg-if 1.0.0",
- "fastrand",
+ "fastrand 1.9.0",
  "redox_syscall 0.3.5",
  "rustix 0.37.19",
  "windows-sys 0.48.0",
@@ -2733,17 +2704,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.18",
-]
-
-[[package]]
-name = "time"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
 ]
 
 [[package]]
@@ -2996,12 +2956,6 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
-name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
@@ -3057,7 +3011,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
- "oci-spec 0.6.0",
+ "oci-spec 0.6.1",
  "oci-tar-builder",
  "sha256",
  "tar",
