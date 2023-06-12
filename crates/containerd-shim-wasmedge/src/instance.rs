@@ -38,7 +38,7 @@ static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
 static mut STDERR_FD: Option<RawFd> = None;
 
-static DEFAULT_CONTAINER_ROOT_DIR: &str = " /run/containerd/wasmedge";
+static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmedge";
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
