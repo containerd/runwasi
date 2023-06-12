@@ -189,6 +189,7 @@ mod rootdirtest {
         let dir = tempdir()?;
         let namespace = "test_namespace";
         let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert!(root.is_absolute());
         assert_eq!(
             root,
             PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
