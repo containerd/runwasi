@@ -1,0 +1,3 @@
+[submodule "webassembly-benchmarks"]
+	path = benches/webassembly-benchmarks
+	url = https://github.com/jedisct1/webassembly-benchmarks
