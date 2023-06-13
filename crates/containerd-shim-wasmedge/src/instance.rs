@@ -39,7 +39,7 @@ static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
 static mut STDERR_FD: Option<RawFd> = None;
 
-static DEFAULT_CONTAINER_ROOT_DIR: &str = " /run/containerd/wasmedge";
+static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmedge";
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
@@ -190,6 +190,7 @@ mod rootdirtest {
         let dir = tempdir()?;
         let namespace = "test_namespace";
         let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert!(root.is_absolute());
         assert_eq!(
             root,
             PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
