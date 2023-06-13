@@ -1,7 +1,7 @@
 ## OCI Tar Builder
 
 This is a library that can be used to build OCI tar archives. It is used by the `wasi-demo-app` crate to build the OCI tar archive that is used to run the demo app.
-The currently implementation is to support encapsulating the `wasi-demo-app` wasm module as an OCI tar.
+The current implementation is to support encapsulating the `wasi-demo-app` wasm module as an OCI tar.
 
 ### Contributing
 
@@ -25,7 +25,7 @@ There is an experimental executable that uses the library and can package a wasm
 To generate the package and import to a registry using a tool such as [regctl](https://github.com/regclient/regclient/blob/main/docs/regctl.md#image-commands): 
 
 ```
-cargo run --bin oci-tar-builder -- --name wasi-demo-app --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o ./bin
+cargo run --bin oci-tar-builder -- --name wasi-demo-app --repo localhost:5000 --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o ./bin
 regctl image import localhost:5000/wasi-demo-oci:module ./bin/wasi-demo-app.tar        
 ```
 
