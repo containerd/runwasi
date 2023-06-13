@@ -1,26 +1,34 @@
-use std::fs::OpenOptions;
-use std::path::Path;
+use anyhow::{bail, Result};
+use libcontainer::container::builder::ContainerBuilder;
+use libcontainer::container::{Container, ContainerStatus};
+use nix::errno::Errno;
+use nix::sys::wait::waitid;
+use std::fs::{self, OpenOptions};
+use std::io::ErrorKind;
+use std::os::fd::{IntoRawFd, RawFd};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::exec;
 use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::oci;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use log::{debug, error};
-use nix::sys::signal::SIGKILL;
-use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::{sync::file::File as WasiFile, WasiCtx, WasiCtxBuilder};
+use containerd_shim_wasm::sandbox::{oci, EngineGetter, Instance, InstanceConfig};
+use libc::{SIGINT, SIGKILL};
+use libcontainer::syscall::syscall::create_syscall;
+use log::error;
+use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
+use serde::{Deserialize, Serialize};
+use wasmtime::Engine;
 
-use super::error::WasmtimeError;
-use super::oci_wasmtime;
+use crate::executor::WasmtimeExecutor;
+use libcontainer::signal::Signal;
 
-type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
+type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
+
 pub struct Wasi {
-    exit_code: Arc<ExitCode>,
+    exit_code: ExitCode,
     engine: wasmtime::Engine,
 
     stdin: String,
@@ -28,50 +36,40 @@ pub struct Wasi {
     stderr: String,
     bundle: String,
 
-    pidfd: Arc<Mutex<Option<exec::PidFD>>>,
+    rootdir: PathBuf,
+
+    id: String,
 }
 
-#[cfg(test)]
-mod tests {
-    use std::fs::File;
-
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn test_maybe_open_stdio() -> Result<(), Error> {
-        let f = maybe_open_stdio("")?;
-        assert!(f.is_none());
-
-        let f = maybe_open_stdio("/some/nonexistent/path")?;
-        assert!(f.is_none());
-
-        let dir = tempdir()?;
-        let temp = File::create(dir.path().join("testfile"))?;
-        drop(temp);
-        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
-        assert!(f.is_some());
-        drop(f);
-
-        Ok(())
-    }
+fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
+    let root_path = fs::canonicalize(&root_path).with_context(|| {
+        format!(
+            "failed to canonicalize {} for container {}",
+            root_path.as_ref().display(),
+            container_id
+        )
+    })?;
+    Ok(root_path.join(container_id))
 }
 
-/// containerd can send an empty path or a non-existant path
-/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
-/// Any other error is a real error.
-pub fn maybe_open_stdio(path: &str) -> Result<Option<WasiFile>, Error> {
-    if path.is_empty() {
-        return Ok(None);
+fn load_container<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<Container> {
+    let container_root = construct_container_root(root_path, container_id)?;
+    if !container_root.exists() {
+        bail!("container {} does not exist.", container_id)
     }
-    match oci_wasmtime::wasi_file(path, OpenOptions::new().read(true).write(true)) {
-        Ok(f) => Ok(Some(f)),
-        Err(err) => match err.kind() {
-            std::io::ErrorKind::NotFound => Ok(None),
-            _ => Err(err.into()),
-        },
-    }
+
+    Container::load(container_root)
+        .with_context(|| format!("could not load state for container {container_id}"))
+}
+
+fn container_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
+    let container_root = construct_container_root(root_path, container_id)?;
+    Ok(container_root.exists())
+}
+
+#[derive(Serialize, Deserialize)]
+struct Options {
+    root: Option<PathBuf>,
 }
 
 fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
@@ -81,187 +79,168 @@ fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
     Ok(spec)
 }
 
-pub fn prepare_module(
-    engine: wasmtime::Engine,
-    spec: &oci::Spec,
-    stdin_path: String,
-    stdout_path: String,
-    stderr_path: String,
-) -> Result<(WasiCtx, Module, String), WasmtimeError> {
-    debug!("opening rootfs");
-    let rootfs = oci_wasmtime::get_rootfs(spec)?;
-    let args = oci::get_args(spec);
-    let env = oci_wasmtime::env_to_wasi(spec);
-
-    debug!("setting up wasi");
-    let mut wasi_builder = WasiCtxBuilder::new()
-        .args(args)?
-        .envs(env.as_slice())?
-        .preopened_dir(rootfs, "/")?;
-
-    debug!("opening stdin");
-    let stdin = maybe_open_stdio(&stdin_path).context("could not open stdin")?;
-    if let Some(sin) = stdin {
-        wasi_builder = wasi_builder.stdin(Box::new(sin));
+/// containerd can send an empty path or a non-existant path
+/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
+/// Any other error is a real error.
+fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
+    if path.is_empty() {
+        return Ok(None);
     }
-
-    debug!("opening stdout");
-    let stdout = maybe_open_stdio(&stdout_path).context("could not open stdout")?;
-    if let Some(sout) = stdout {
-        wasi_builder = wasi_builder.stdout(Box::new(sout));
+    match OpenOptions::new().read(true).write(true).open(path) {
+        Ok(f) => Ok(Some(f.into_raw_fd())),
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => Ok(None),
+            _ => Err(err.into()),
+        },
     }
-
-    debug!("opening stderr");
-    let stderr = maybe_open_stdio(&stderr_path).context("could not open stderr")?;
-    if let Some(serr) = stderr {
-        wasi_builder = wasi_builder.stderr(Box::new(serr));
-    }
-
-    debug!("building wasi context");
-    let wctx = wasi_builder.build();
-    debug!("wasi context ready");
-
-    let start = args[0].clone();
-    let mut iterator = start.split('#');
-    let mut cmd = iterator.next().unwrap().to_string();
-
-    let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
-    if let Some(strpd) = stripped {
-        cmd = strpd.to_string();
-    }
-    let method = iterator.next().unwrap_or("_start");
-
-    let mod_path = oci::get_root(spec).join(cmd);
-    debug!("loading module from file");
-    let module = Module::from_file(&engine, mod_path)
-        .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
-
-    Ok((wctx, module, method.to_string()))
 }
 
 impl Instance for Wasi {
     type E = wasmtime::Engine;
-    fn new(_id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
-        let cfg = cfg.unwrap(); // TODO: handle error
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        log::info!("creating new instance: {}", id);
+        let cfg = cfg.unwrap();
+        let bundle = cfg.get_bundle().unwrap_or_default();
+        let spec = load_spec(bundle.clone()).unwrap();
+        let rootdir = oci::get_root(&spec);
         Wasi {
+            id,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
             engine: cfg.get_engine(),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
-            bundle: cfg.get_bundle().unwrap_or_default(),
-            pidfd: Arc::new(Mutex::new(None)),
+            bundle: bundle.clone(),
+            rootdir: rootdir.clone(),
         }
     }
     fn start(&self) -> Result<u32, Error> {
+        log::info!("starting instance: {}", self.id);
         let engine = self.engine.clone();
-        let stdin = self.stdin.clone();
-        let stdout = self.stdout.clone();
-        let stderr = self.stderr.clone();
 
-        debug!("starting instance");
-        let mut linker = Linker::new(&engine);
+        let mut container = self.build_container(
+            self.stdin.as_str(),
+            self.stdout.as_str(),
+            self.stderr.as_str(),
+            engine,
+        )?;
 
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s)
-            .map_err(|err| Error::Others(format!("error adding to linker: {}", err)))?;
+        log::info!("created container: {}", self.id);
+        let code = self.exit_code.clone();
+        let pid = container.pid().unwrap();
 
-        debug!("preparing module");
-        let spec = load_spec(self.bundle.clone())?;
+        container
+            .start()
+            .map_err(|err| Error::Any(anyhow::anyhow!("failed to start container: {}", err)))?;
 
-        let m = prepare_module(engine.clone(), &spec, stdin, stdout, stderr)
-            .map_err(|e| Error::Others(format!("error setting up module: {}", e)))?;
+        thread::spawn(move || {
+            let (lock, cvar) = &*code;
 
-        let mut store = Store::new(&engine, m.0);
+            let status = match waitid(WaitID::Pid(pid), WaitPidFlag::WEXITED) {
+                Ok(WaitStatus::Exited(_, status)) => status,
+                Ok(WaitStatus::Signaled(_, sig, _)) => sig as i32,
+                Ok(_) => 0,
+                Err(e) => {
+                    if e == Errno::ECHILD {
+                        0
+                    } else {
+                        panic!("waitpid failed: {}", e);
+                    }
+                }
+            } as u32;
+            let mut ec = lock.lock().unwrap();
+            *ec = Some((status, Utc::now()));
+            drop(ec);
+            cvar.notify_all();
+        });
 
-        debug!("instantiating instance");
-        let i = linker
-            .instantiate(&mut store, &m.1)
-            .map_err(|err| Error::Others(format!("error instantiating module: {}", err)))?;
-
-        debug!("getting start function");
-        let f = i.get_func(&mut store, &m.2).ok_or_else(|| {
-            Error::InvalidArgument("module does not have a wasi start function".to_string())
-        })?;
-
-        debug!("starting wasi instance");
-
-        let cg = oci::get_cgroup(&spec)?;
-
-        oci::setup_cgroup(cg.as_ref(), &spec)
-            .map_err(|e| Error::Others(format!("error setting up cgroups: {}", e)))?;
-
-        let res = unsafe { exec::fork(Some(cg.as_ref())) }?;
-        match res {
-            exec::Context::Parent(tid, pidfd) => {
-                let mut lr = self.pidfd.lock().unwrap();
-                *lr = Some(pidfd.clone());
-
-                debug!("started wasi instance with tid {}", tid);
-
-                let code = self.exit_code.clone();
-
-                let _ = thread::spawn(move || {
-                    let (lock, cvar) = &*code;
-                    let status = match pidfd.wait() {
-                        Ok(status) => status,
-                        Err(e) => {
-                            error!("error waiting for pid {}: {}", tid, e);
-                            cvar.notify_all();
-                            return;
-                        }
-                    };
-
-                    debug!("wasi instance exited with status {}", status.status);
-                    let mut ec = lock.lock().unwrap();
-                    *ec = Some((status.status, Utc::now()));
-                    drop(ec);
-                    cvar.notify_all();
-                });
-                Ok(tid)
-            }
-            exec::Context::Child => {
-                // child process
-
-                // TODO: How to get exit code?
-                // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust.
-                match f.call(&mut store, &[], &mut []) {
-                    Ok(_) => std::process::exit(0),
-                    Err(_) => std::process::exit(137),
-                };
-            }
-        }
+        Ok(pid.as_raw() as u32)
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal != SIGKILL as u32 {
+        log::info!("killing instance: {}", self.id);
+        if signal as i32 != SIGKILL && signal as i32 != SIGINT {
             return Err(Error::InvalidArgument(
-                "only SIGKILL is supported".to_string(),
+                "only SIGKILL and SIGINT are supported".to_string(),
             ));
         }
 
-        let lr = self.pidfd.lock().unwrap();
-        let fd = lr
-            .as_ref()
-            .ok_or_else(|| Error::FailedPrecondition("module is not running".to_string()))?;
-        fd.kill(signal as i32)
+        let mut container = load_container(&self.rootdir, self.id.as_str())?;
+        let signal = Signal::try_from(signal as i32)
+            .map_err(|err| Error::InvalidArgument(format!("invalid signal number: {}", err)))?;
+        match container.kill(signal, true) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if container.status() == ContainerStatus::Stopped {
+                    return Err(Error::Others("container not running".into()));
+                }
+                Err(Error::Others(e.to_string()))
+            }
+        }
     }
 
     fn delete(&self) -> Result<(), Error> {
-        let spec = match load_spec(self.bundle.clone()) {
-            Ok(spec) => spec,
+        log::info!("deleting instance: {}", self.id);
+        match container_exists(&self.rootdir, self.id.as_str()) {
+            Ok(exists) => {
+                if !exists {
+                    return Ok(());
+                }
+            }
             Err(err) => {
-                error!("Could not load spec, skipping cgroup cleanup: {}", err);
+                error!("could not find the container, skipping cleanup: {}", err);
                 return Ok(());
             }
-        };
-        let cg = oci::get_cgroup(&spec)?;
-        cg.delete()?;
+        }
+        match load_container(&self.rootdir, self.id.as_str()) {
+            Ok(mut container) => container.delete(true).map_err(|err| {
+                Error::Any(anyhow::anyhow!(
+                    "failed to delete container {}: {}",
+                    self.id,
+                    err
+                ))
+            })?,
+            Err(err) => {
+                error!("could not find the container, skipping cleanup: {}", err);
+                return Ok(());
+            }
+        }
+
         Ok(())
     }
 
     fn wait(&self, waiter: &Wait) -> Result<(), Error> {
+        log::info!("waiting for instance: {}", self.id);
         let code = self.exit_code.clone();
         waiter.set_up_exit_code_wait(code)
+    }
+}
+
+impl Wasi {
+    fn build_container(
+        &self,
+        stdin: &str,
+        stdout: &str,
+        stderr: &str,
+        engine: Engine,
+    ) -> anyhow::Result<Container> {
+        let syscall = create_syscall();
+        let stdin = maybe_open_stdio(stdin).context("could not open stdin")?;
+        let stdout = maybe_open_stdio(stdout).context("could not open stdout")?;
+        let stderr = maybe_open_stdio(stderr).context("could not open stderr")?;
+
+        let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
+            .with_executor(vec![Box::new(WasmtimeExecutor {
+                stdin,
+                stdout,
+                stderr,
+                engine,
+            })])?
+            .with_root_path(self.rootdir.clone())?
+            .as_init(&self.bundle)
+            .with_systemd(false)
+            .build()?;
+        Ok(container)
     }
 }
 
@@ -382,5 +361,32 @@ impl EngineGetter for Wasi {
     fn new_engine() -> Result<Engine, Error> {
         let engine = Engine::default();
         Ok(engine)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[test]
+    fn test_maybe_open_stdio() -> Result<(), Error> {
+        let f = maybe_open_stdio("")?;
+        assert!(f.is_none());
+
+        let f = maybe_open_stdio("/some/nonexistent/path")?;
+        assert!(f.is_none());
+
+        let dir = tempdir()?;
+        let temp = File::create(dir.path().join("testfile"))?;
+        drop(temp);
+        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
+        assert!(f.is_some());
+        drop(f);
+
+        Ok(())
     }
 }

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use containerd_shim_wasm::sandbox::oci;
 use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
@@ -22,7 +23,7 @@ pub struct WasmEdgeExecutor {
 impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         // parse wasi parameters
-        let args = get_args(spec);
+        let args = oci::get_args(spec);
         if args.is_empty() {
             return Err(ExecutorError::InvalidArg);
         }
@@ -88,18 +89,6 @@ impl Executor for WasmEdgeExecutor {
 
     fn name(&self) -> &'static str {
         EXECUTOR_NAME
-    }
-}
-
-fn get_args(spec: &Spec) -> &[String] {
-    let p = match spec.process() {
-        None => return &[],
-        Some(p) => p,
-    };
-
-    match p.args() {
-        None => &[],
-        Some(args) => args.as_slice(),
     }
 }
 
