@@ -38,10 +38,10 @@ pub fn main() {
                         "application/vnd.wasm.component.v1+wasm".to_string(),
                     );
                 }
-                "yml" => {
+                "yml" | "yaml" => {
                     builder.add_layer_with_media_type(
                         &path,
-                        "application/vnd.wasm.component.config.v1+json".to_string(),
+                        "application/vnd.wasm.component.config.v1+yaml".to_string(),
                     );
                 }
                 _ => println!(
@@ -53,10 +53,7 @@ pub fn main() {
         }
     }
 
-    let config = spec::ConfigBuilder::default()
-        .entrypoint(vec!["".to_owned()])
-        .build()
-        .unwrap();
+    let config = spec::ConfigBuilder::default().build().unwrap();
 
     let img = spec::ImageConfigurationBuilder::default()
         .config(config)
@@ -72,15 +69,19 @@ pub fn main() {
         .context("failed to build image configuration")
         .unwrap();
 
-    let full_image_name = args.repo.unwrap_or("localhost:5000".to_string()) + "/" + &args.name;
-    builder.add_config(img, full_image_name);
+    builder.add_config(img, args.repo + "/" + &args.name);
 
     let p = out_dir.join(args.name + ".tar");
-    let f = File::create(p).unwrap();
-    builder.build(f).unwrap();
+    let f = File::create(p.clone()).unwrap();
+    match builder.build(f) {
+        Ok(_) => println!("Successfully created oci tar file {}", p.display()),
+        Err(e) => {
+            print!("Building oci tar file {} failed: {:?}", p.display(), e);
+            fs::remove_file(p).unwrap_or(print!("Failed to remove temporary file"));
+        }
+    }
 }
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -91,7 +92,7 @@ struct Args {
     name: String,
 
     #[arg(short, long)]
-    repo: Option<String>,
+    repo: String,
 
     #[arg(short, long)]
     module: Option<String>,

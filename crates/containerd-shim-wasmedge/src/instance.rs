@@ -13,6 +13,7 @@ use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
+use nix::sys::signal::Signal as NixSignal;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
@@ -38,7 +39,7 @@ static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
 static mut STDERR_FD: Option<RawFd> = None;
 
-static DEFAULT_CONTAINER_ROOT_DIR: &str = " /run/containerd/wasmedge";
+static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmedge";
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 pub struct Wasi {
@@ -189,6 +190,7 @@ mod rootdirtest {
         let dir = tempdir()?;
         let namespace = "test_namespace";
         let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert!(root.is_absolute());
         assert_eq!(
             root,
             PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
@@ -262,15 +264,15 @@ impl Instance for Wasi {
     }
 
     fn kill(&self, signal: u32) -> Result<(), Error> {
-        if signal as i32 != SIGKILL && signal as i32 != SIGINT {
-            return Err(Error::InvalidArgument(
+        let signal: Signal = match signal as i32 {
+            SIGKILL => NixSignal::SIGKILL.into(),
+            SIGINT => NixSignal::SIGINT.into(),
+            _ => Err(Error::InvalidArgument(
                 "only SIGKILL and SIGINT are supported".to_string(),
-            ));
-        }
+            ))?,
+        };
 
         let mut container = load_container(&self.rootdir, self.id.as_str())?;
-        let signal = Signal::try_from(signal as i32)
-            .map_err(|err| Error::InvalidArgument(format!("invalid signal number: {}", err)))?;
         match container.kill(signal, true) {
             Ok(_) => Ok(()),
             Err(e) => {

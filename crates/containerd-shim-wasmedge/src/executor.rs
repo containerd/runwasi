@@ -40,50 +40,37 @@ impl Executor for WasmEdgeExecutor {
         let config = ConfigBuilder::new(CommonConfigOptions::default())
             .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
             .build()
-            .map_err(|err| {
-                ExecutorError::Other(format!("failed to create wasmedge config: {}", err))
-            })?;
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         // create a vm with the config settings
         let mut vm = VmBuilder::new()
             .with_config(config)
             .build()
-            .map_err(|err| {
-                ExecutorError::Other(format!("failed to create wasmedge vm: {}", err))
-            })?;
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         // initialize the wasi module with the parsed parameters
         let wasi_module = vm
             .wasi_module_mut()
-            .ok_or_else(|| ExecutorError::Other("Not found wasi module".into()))?;
+            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
+            .map_err(|err| ExecutorError::Execution(err.into()))?;
+
         wasi_module.initialize(
             Some(args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
 
-        let vm = vm.register_module_from_file("main", cmd).map_err(|err| {
-            ExecutorError::Other(format!(
-                "failed to register wasmedge module from the file: {}",
-                err
-            ))
-        })?;
+        let vm = vm
+            .register_module_from_file("main", cmd)
+            .map_err(|err| ExecutorError::Execution(err))?;
 
         if let Some(stdin) = self.stdin {
             unsafe {
                 STDIN_FD = Some(dup(STDIN_FILENO));
-                dup2(stdin, STDIN_FILENO);
-            }
-        }
-        if let Some(stdout) = self.stdout {
-            unsafe {
-                STDOUT_FD = Some(dup(STDOUT_FILENO));
-                dup2(stdout, STDOUT_FILENO);
             }
         }
         if let Some(stderr) = self.stderr {
             unsafe {
-                STDERR_FD = Some(dup(STDERR_FILENO));
                 dup2(stderr, STDERR_FILENO);
             }
         }
