@@ -77,8 +77,8 @@ test/k8s: test/k8s/cluster
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 
 .PHONY: test/k8s/clean
-test/k8s/clean:
-	kind delete cluster --name $(KIND_CLUSTER_NAME)
+test/k8s/clean: bin/kind
+	bin/kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 .PHONY: bin/wasmedge
 bin/wasmedge:
