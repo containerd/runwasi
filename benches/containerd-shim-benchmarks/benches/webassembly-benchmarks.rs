@@ -117,10 +117,9 @@ fn run_wasmtime_test_with_spec(
 
     wasi.start()?;
 
-    let w = wasi.clone();
     let (tx, rx) = channel();
     let waiter = Wait::new(tx);
-    w.wait(&waiter).unwrap();
+    wasi.wait(&waiter).unwrap();
 
     let res = match rx.recv_timeout(Duration::from_secs(60)) {
         Ok(res) => Ok(res),
