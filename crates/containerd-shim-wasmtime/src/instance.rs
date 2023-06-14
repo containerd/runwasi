@@ -110,7 +110,7 @@ impl Instance for Wasi {
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
-            bundle: bundle.clone(),
+            bundle,
             rootdir: rootdir.clone(),
         }
     }
@@ -385,7 +385,6 @@ mod tests {
         drop(temp);
         let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
         assert!(f.is_some());
-        drop(f);
 
         Ok(())
     }
