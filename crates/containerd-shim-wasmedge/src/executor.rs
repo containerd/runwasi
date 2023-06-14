@@ -1,7 +1,8 @@
 use anyhow::Result;
+use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
-use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use std::os::unix::io::RawFd;
 
@@ -9,10 +10,6 @@ use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     params, VmBuilder,
 };
-
-static mut STDIN_FD: Option<RawFd> = None;
-static mut STDOUT_FD: Option<RawFd> = None;
-static mut STDERR_FD: Option<RawFd> = None;
 
 const EXECUTOR_NAME: &str = "wasmedge";
 
@@ -65,22 +62,16 @@ impl Executor for WasmEdgeExecutor {
             .map_err(|err| ExecutorError::Execution(err))?;
 
         if let Some(stdin) = self.stdin {
-            unsafe {
-                STDIN_FD = Some(dup(STDIN_FILENO));
-                dup2(stdin, STDIN_FILENO);
-            }
+            let _ = dup(STDIN_FILENO);
+            let _ = dup2(stdin, STDIN_FILENO);
         }
         if let Some(stdout) = self.stdout {
-            unsafe {
-                STDOUT_FD = Some(dup(STDOUT_FILENO));
-                dup2(stdout, STDOUT_FILENO);
-            }
+            let _ = dup(STDOUT_FILENO);
+            let _ = dup2(stdout, STDOUT_FILENO);
         }
         if let Some(stderr) = self.stderr {
-            unsafe {
-                STDERR_FD = Some(dup(STDERR_FILENO));
-                dup2(stderr, STDERR_FILENO);
-            }
+            let _ = dup(STDERR_FILENO);
+            let _ = dup2(stderr, STDERR_FILENO);
         }
 
         // TODO: How to get exit code?

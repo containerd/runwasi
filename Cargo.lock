@@ -1571,7 +1571,7 @@ checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
 [[package]]
 name = "libcgroups"
 version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=66896c23ccc90ba27c182617dcd31cd5e1d5a56e#66896c23ccc90ba27c182617dcd31cd5e1d5a56e"
+source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
 dependencies = [
  "dbus",
  "fixedbitset 0.4.2",
@@ -1586,7 +1586,7 @@ dependencies = [
 [[package]]
 name = "libcontainer"
 version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=66896c23ccc90ba27c182617dcd31cd5e1d5a56e#66896c23ccc90ba27c182617dcd31cd5e1d5a56e"
+source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
 dependencies = [
  "bitflags 2.3.2",
  "caps",

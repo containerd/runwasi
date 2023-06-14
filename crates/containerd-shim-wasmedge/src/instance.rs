@@ -5,7 +5,7 @@ use std::os::unix::io::{IntoRawFd, RawFd};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
@@ -219,26 +219,12 @@ impl Instance for Wasi {
     fn start(&self) -> Result<u32, Error> {
         debug!("preparing module");
 
-        let syscall = create_syscall();
-
         fs::create_dir_all(&self.rootdir)?;
 
         let stdin = maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?;
         let stdout = maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?;
         let stderr = maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?;
-        let mut container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmEdgeExecutor {
-                stdin,
-                stdout,
-                stderr,
-            })])
-            .map_err(|err| Error::Any(err.into()))?
-            .with_root_path(self.rootdir.clone())
-            .map_err(|err| Error::Any(err.into()))?
-            .as_init(&self.bundle)
-            .with_systemd(false)
-            .build()
-            .map_err(|err| Error::Any(err.into()))?;
+        let mut container = self.build_container(stdin, stdout, stderr)?;
 
         let code = self.exit_code.clone();
         let pid = container.pid().unwrap();
@@ -249,7 +235,9 @@ impl Instance for Wasi {
         stdout.map(close);
         stderr.map(close);
 
-        container.start().map_err(|err| Error::Any(err.into()))?;
+        container
+            .start()
+            .map_err(|err| Error::Any(anyhow!("failed to start container: {}", err)))?;
 
         thread::spawn(move || {
             let (lock, cvar) = &*code;
@@ -309,9 +297,9 @@ impl Instance for Wasi {
             }
         }
         match load_container(&self.rootdir, self.id.as_str()) {
-            Ok(mut container) => container
-                .delete(true)
-                .map_err(|err| Error::Any(err.into()))?,
+            Ok(mut container) => container.delete(true).map_err(|err| {
+                Error::Any(anyhow!("failed to delete container {}: {}", self.id, err))
+            })?,
             Err(err) => {
                 error!("could not find the container, skipping cleanup: {}", err);
                 return Ok(());
@@ -324,6 +312,28 @@ impl Instance for Wasi {
     fn wait(&self, waiter: &Wait) -> Result<(), Error> {
         let code = self.exit_code.clone();
         waiter.set_up_exit_code_wait(code)
+    }
+}
+
+impl Wasi {
+    fn build_container(
+        &self,
+        stdin: Option<i32>,
+        stdout: Option<i32>,
+        stderr: Option<i32>,
+    ) -> anyhow::Result<Container> {
+        let syscall = create_syscall();
+        let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
+            .with_executor(vec![Box::new(WasmEdgeExecutor {
+                stdin,
+                stdout,
+                stderr,
+            })])?
+            .with_root_path(self.rootdir.clone())?
+            .as_init(&self.bundle)
+            .with_systemd(false)
+            .build()?;
+        Ok(container)
     }
 }
 
