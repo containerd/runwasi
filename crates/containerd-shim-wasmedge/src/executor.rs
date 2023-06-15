@@ -5,8 +5,8 @@ use oci_spec::runtime::Spec;
 
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
+use log::debug;
 use std::os::unix::io::RawFd;
-
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     params, VmBuilder,
@@ -42,9 +42,15 @@ impl Executor for WasmEdgeExecutor {
             .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
             .map_err(|err| ExecutorError::Execution(err.into()))?;
 
-        let module_args = oci::get_module_args(spec);
+        let args = oci::get_module_args(spec);
+        let mut module_args = None;
+        if !args.is_empty() {
+            module_args = Some(args.iter().map(|s| s as &str).collect())
+        }
+
+        debug!("module args: {:?}", module_args);
         wasi_module.initialize(
-            Some(module_args.iter().map(|s| s as &str).collect()),
+            module_args,
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
@@ -63,7 +69,7 @@ impl Executor for WasmEdgeExecutor {
         };
 
         let vm = vm
-            .register_module_from_file("main", module_name)
+            .register_module_from_file("main", module_name.clone())
             .map_err(|err| ExecutorError::Execution(err))?;
 
         if let Some(stdin) = self.stdin {
@@ -79,6 +85,7 @@ impl Executor for WasmEdgeExecutor {
             let _ = dup2(stderr, STDERR_FILENO);
         }
 
+        debug!("running {:?} with method {}", module_name, method);
         match vm.run_func(Some("main"), method, params!()) {
             Ok(_) => std::process::exit(0),
             Err(_) => std::process::exit(137),

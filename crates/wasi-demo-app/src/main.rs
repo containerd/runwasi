@@ -4,7 +4,11 @@ fn main() {
     let args: Vec<_> = env::args().collect();
     let mut cmd = "daemon";
     if !args.is_empty() {
-        cmd = &args[0];
+        // temporary work around for wasmedge bug
+        // https://github.com/WasmEdge/wasmedge-rust-sdk/issues/10
+        if !(args.len() == 1 && args[0].is_empty()) {
+            cmd = &args[0];
+        }
     }
 
     match cmd {
