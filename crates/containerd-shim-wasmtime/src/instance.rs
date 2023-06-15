@@ -90,7 +90,7 @@ pub fn prepare_module(
 ) -> Result<(WasiCtx, Module, String), WasmtimeError> {
     debug!("opening rootfs");
     let rootfs = oci_wasmtime::get_rootfs(spec)?;
-    let args = oci::get_args(spec);
+    let args = oci::get_module_args(spec);
     let env = oci_wasmtime::env_to_wasi(spec);
 
     debug!("setting up wasi");
@@ -121,22 +121,25 @@ pub fn prepare_module(
     let wctx = wasi_builder.build();
     debug!("wasi context ready");
 
-    let start = args[0].clone();
-    let mut iterator = start.split('#');
-    let mut cmd = iterator.next().unwrap().to_string();
+    let (module_name, method) = oci::get_module(spec);
+    let module_name = match module_name {
+        Some(m) => m,
+        None => {
+            return Err(WasmtimeError::Other(anyhow::format_err!(
+                "no module provided, cannot load module from file within container"
+            )))
+        }
+    };
 
-    let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
-    if let Some(strpd) = stripped {
-        cmd = strpd.to_string();
-    }
-    let method = iterator.next().unwrap_or("_start");
-
-    let mod_path = oci::get_root(spec).join(cmd);
-    debug!("loading module from file");
+    let mod_path = oci::get_root(spec).join(module_name.clone());
+    debug!(
+        "loading module from file {} with method {}",
+        module_name, method
+    );
     let module = Module::from_file(&engine, mod_path)
         .map_err(|err| Error::Others(format!("could not load module from file: {}", err)))?;
 
-    Ok((wctx, module, method.to_string()))
+    Ok((wctx, module, method))
 }
 
 impl Instance for Wasi {
@@ -279,34 +282,36 @@ mod wasitest {
     use super::*;
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
-    const WASI_HELLO_WAT: &[u8]= r#"(module
-        ;; Import the required fd_write WASI function which will write the given io vectors to stdout
-        ;; The function signature for fd_write is:
-        ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
-        (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
-
-        (memory 1)
-        (export "memory" (memory 0))
-
-        ;; Write 'hello world\n' to memory at an offset of 8 bytes
-        ;; Note the trailing newline which is required for the text to appear
-        (data (i32.const 8) "hello world\n")
-
-        (func $main (export "_start")
-            ;; Creating a new io vector within linear memory
-            (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
-            (i32.store (i32.const 4) (i32.const 12))  ;; iov.iov_len - The length of the 'hello world\n' string
-
-            (call $fd_write
-                (i32.const 1) ;; file_descriptor - 1 for stdout
-                (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
-                (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
-                (i32.const 20) ;; nwritten - A place in memory to store the number of bytes written
+    fn hello_world_module(startfn: String) -> Vec<u8> {
+        format!(r#"(module
+            ;; Import the required fd_write WASI function which will write the given io vectors to stdout
+            ;; The function signature for fd_write is:
+            ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
+            (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
+    
+            (memory 1)
+            (export "memory" (memory 0))
+    
+            ;; Write 'hello world\n' to memory at an offset of 8 bytes
+            ;; Note the trailing newline which is required for the text to appear
+            (data (i32.const 8) "hello world\n")
+    
+            (func $main (export "{startfn}")
+                ;; Creating a new io vector within linear memory
+                (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
+                (i32.store (i32.const 4) (i32.const 12))  ;; iov.iov_len - The length of the 'hello world\n' string
+    
+                (call $fd_write
+                    (i32.const 1) ;; file_descriptor - 1 for stdout
+                    (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
+                    (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
+                    (i32.const 20) ;; nwritten - A place in memory to store the number of bytes written
+                )
+                drop ;; Discard the number of bytes written from the top of the stack
             )
-            drop ;; Discard the number of bytes written from the top of the stack
         )
-    )
-    "#.as_bytes();
+        "#).as_bytes().to_vec()
+    }
 
     #[test]
     fn test_delete_after_create() {
@@ -322,14 +327,8 @@ mod wasitest {
 
     #[test]
     fn test_wasi() -> Result<(), Error> {
-        let dir = tempdir()?;
-        create_dir(dir.path().join("rootfs"))?;
-
-        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
-        f.write_all(WASI_HELLO_WAT)?;
-
-        let stdout = File::create(dir.path().join("stdout"))?;
-        drop(stdout);
+        let module = hello_world_module("_start".to_string());
+        let dir = create_module_dir(module)?;
 
         let spec = SpecBuilder::default()
             .root(RootBuilder::default().path("rootfs").build()?)
@@ -343,19 +342,43 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
+        run_module(dir)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_wasi_entrypoint() -> Result<(), Error> {
+        let module = hello_world_module("foo".to_string());
+        let dir = create_module_dir(module)?;
+
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec!["hello.wat#foo".to_string()])
+                    .build()?,
+            )
+            .build()?;
+
+        spec.save(dir.path().join("config.json"))?;
+
+        run_module(dir)?;
+
+        Ok(())
+    }
+
+    fn run_module(dir: tempfile::TempDir) -> Result<(), Error> {
         let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
-
         let wasi = Wasi::new("test".to_string(), Some(cfg));
-
         wasi.start()?;
-
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
         wasi.wait(&waiter).unwrap();
-
         let res = match rx.recv_timeout(Duration::from_secs(10)) {
             Ok(res) => res,
             Err(e) => {
@@ -367,13 +390,21 @@ mod wasitest {
             }
         };
         assert_eq!(res.0, 0);
-
         let output = read_to_string(dir.path().join("stdout"))?;
         assert_eq!(output, "hello world\n");
-
         wasi.delete()?;
-
         Ok(())
+    }
+
+    fn create_module_dir(module: Vec<u8>) -> Result<tempfile::TempDir, Error> {
+        let dir = tempdir()?;
+        println!("{}", dir.path().to_str().unwrap());
+        create_dir(dir.path().join("rootfs"))?;
+        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
+        f.write_all(&module)?;
+        let stdout = File::create(dir.path().join("stdout"))?;
+        drop(stdout);
+        Ok(dir)
     }
 }
 
