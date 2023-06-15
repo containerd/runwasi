@@ -1,4 +1,5 @@
 use anyhow::Result;
+use containerd_shim_wasm::sandbox::oci;
 use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
@@ -21,16 +22,6 @@ pub struct WasmEdgeExecutor {
 
 impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        // parse wasi parameters
-        let args = get_args(spec);
-        if args.is_empty() {
-            return Err(ExecutorError::InvalidArg);
-        }
-
-        let mut cmd = args[0].clone();
-        if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
-            cmd = stripped.to_string();
-        }
         let envs = env_to_wasi(spec);
 
         // create configuration with `wasi` option enabled
@@ -51,14 +42,28 @@ impl Executor for WasmEdgeExecutor {
             .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
             .map_err(|err| ExecutorError::Execution(err.into()))?;
 
+        let module_args = oci::get_module_args(spec);
         wasi_module.initialize(
-            Some(args.iter().map(|s| s as &str).collect()),
+            Some(module_args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
 
+        let (module_name, method) = oci::get_module(spec);
+        let module_name = match module_name {
+            Some(m) => m,
+            None => {
+                return Err(ExecutorError::Execution(
+                    anyhow::Error::msg(
+                        "no module provided, cannot load module from file within container",
+                    )
+                    .into(),
+                ))
+            }
+        };
+
         let vm = vm
-            .register_module_from_file("main", cmd)
+            .register_module_from_file("main", module_name)
             .map_err(|err| ExecutorError::Execution(err))?;
 
         if let Some(stdin) = self.stdin {
@@ -74,9 +79,7 @@ impl Executor for WasmEdgeExecutor {
             let _ = dup2(stderr, STDERR_FILENO);
         }
 
-        // TODO: How to get exit code?
-        // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
-        match vm.run_func(Some("main"), "_start", params!()) {
+        match vm.run_func(Some("main"), method, params!()) {
             Ok(_) => std::process::exit(0),
             Err(_) => std::process::exit(137),
         };
@@ -88,18 +91,6 @@ impl Executor for WasmEdgeExecutor {
 
     fn name(&self) -> &'static str {
         EXECUTOR_NAME
-    }
-}
-
-fn get_args(spec: &Spec) -> &[String] {
-    let p = match spec.process() {
-        None => return &[],
-        Some(p) => p,
-    };
-
-    match p.args() {
-        None => &[],
-        Some(args) => args.as_slice(),
     }
 }
 
