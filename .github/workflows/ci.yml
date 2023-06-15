@@ -109,4 +109,7 @@ jobs:
           make test/k3s
       - name: cleanup
         if: always()
-        run: make test/k3s/clean
+        run: |
+          sudo bin/k3s kubectl logs deployments/wasi-demo 
+          sudo bin/k3s kubectl get pods -o wide
+          make test/k3s/clean
