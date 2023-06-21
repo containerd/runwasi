@@ -1,0 +1,11 @@
+[package]
+name = "containerd-shim-common"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+containerd-shim-wasm = { workspace = true }
+libcontainer = { workspace = true }

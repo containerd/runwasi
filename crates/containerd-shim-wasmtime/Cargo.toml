@@ -5,7 +5,8 @@ edition.workspace = true
 
 [dependencies]
 containerd-shim = { workspace = true }
-containerd-shim-wasm = { path = "../containerd-shim-wasm" }
+containerd-shim-wasm = { workspace = true }
+containerd-shim-common = { workspace = true }
 log = { workspace = true }
 ttrpc = { workspace = true }
 

@@ -1,11 +1,9 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
+use containerd_shim_common::{container_exists, load_container, maybe_open_stdio};
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
 use nix::errno::Errno;
 use nix::sys::wait::waitid;
-use std::fs::{self, OpenOptions};
-use std::io::ErrorKind;
-use std::os::fd::{IntoRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -19,7 +17,7 @@ use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
 use log::error;
 use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
-use serde::{Deserialize, Serialize};
+
 use wasmtime::Engine;
 
 use crate::executor::WasmtimeExecutor;
@@ -41,58 +39,11 @@ pub struct Wasi {
     id: String,
 }
 
-fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
-    let root_path = fs::canonicalize(&root_path).with_context(|| {
-        format!(
-            "failed to canonicalize {} for container {}",
-            root_path.as_ref().display(),
-            container_id
-        )
-    })?;
-    Ok(root_path.join(container_id))
-}
-
-fn load_container<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<Container> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    if !container_root.exists() {
-        bail!("container {} does not exist.", container_id)
-    }
-
-    Container::load(container_root)
-        .with_context(|| format!("could not load state for container {container_id}"))
-}
-
-fn container_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    Ok(container_root.exists())
-}
-
-#[derive(Serialize, Deserialize)]
-struct Options {
-    root: Option<PathBuf>,
-}
-
 fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
     let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
     spec.canonicalize_rootfs(&bundle)
         .map_err(|e| Error::Others(format!("error canonicalizing rootfs in spec: {}", e)))?;
     Ok(spec)
-}
-
-/// containerd can send an empty path or a non-existant path
-/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
-/// Any other error is a real error.
-fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
-    if path.is_empty() {
-        return Ok(None);
-    }
-    match OpenOptions::new().read(true).write(true).open(path) {
-        Ok(f) => Ok(Some(f.into_raw_fd())),
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => Ok(None),
-            _ => Err(err.into()),
-        },
-    }
 }
 
 impl Instance for Wasi {
@@ -246,6 +197,14 @@ impl Wasi {
     }
 }
 
+impl EngineGetter for Wasi {
+    type E = wasmtime::Engine;
+    fn new_engine() -> Result<Engine, Error> {
+        let engine = Engine::default();
+        Ok(engine)
+    }
+}
+
 #[cfg(test)]
 mod wasitest {
     use std::fs::{create_dir, read_to_string, File};
@@ -364,18 +323,11 @@ mod wasitest {
     }
 }
 
-impl EngineGetter for Wasi {
-    type E = wasmtime::Engine;
-    fn new_engine() -> Result<Engine, Error> {
-        let engine = Engine::default();
-        Ok(engine)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs::File;
 
+    use containerd_shim_common::maybe_open_stdio;
     use tempfile::tempdir;
 
     use super::*;

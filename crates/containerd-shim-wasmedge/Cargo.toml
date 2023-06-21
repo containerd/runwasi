@@ -4,8 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-containerd-shim ={ workspace = true }
-containerd-shim-wasm = { path = "../containerd-shim-wasm" }
+containerd-shim = { workspace = true }
+containerd-shim-wasm = { workspace = true }
+containerd-shim-common = { workspace = true }
 log = { workspace = true }
 ttrpc = { workspace = true }
 wasmedge-sdk = "0.8.1"
