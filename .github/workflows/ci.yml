@@ -44,6 +44,10 @@ jobs:
           args: --all --verbose
       - name: Validate docs
         run: ./scripts/validate-docs.sh
+      - name: Setup rust-wasm target and compile test modules
+        run: |
+          rustup target add wasm32-wasi
+          make test/wasm-modules
       - name: Run tests
         run: |
           make test

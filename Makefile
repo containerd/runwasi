@@ -81,6 +81,9 @@ test/k8s: test/k8s/cluster
 test/k8s/clean: bin/kind
 	bin/kind delete cluster --name $(KIND_CLUSTER_NAME)
 
+test/wasm-modules:
+	cargo build -p wasi-modules-for-testing --target wasm32-wasi
+
 .PHONY: bin/k3s
 bin/k3s:
 	mkdir -p bin && \

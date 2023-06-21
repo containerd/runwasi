@@ -1,0 +1,14 @@
+[package]
+name = "wasi-modules-for-testing"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "hello-world"
+path = "src/hello_world.rs"
+
+[[bin]]
+name = "has-default-devices"
+path = "src/has_default_devices.rs"
+
+[dependencies]
