@@ -1,0 +1,31 @@
+[package]
+name = "oci-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+containerd-shim-wasm = { path = "../../crates/containerd-shim-wasm" }
+containerd-shim-wasmedge = { path = "../../crates/containerd-shim-wasmedge" }
+containerd-shim-wasmtime = { path = "../../crates/containerd-shim-wasmtime" }
+libc = { workspace = true }
+oci-spec = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3.0"
+wasmedge-sdk = { version = "0.10.1", features = [ "standalone", "static" ] }
+wasmtime = { version = "11.0", default-features = false, features = [
+    'cache',
+    'wat',
+    'jitdump',
+    'parallel-compilation',
+    'cranelift',
+    'pooling-allocator',
+    'vtune',
+]}
+
+[dev-dependencies]
+tempfile = "3.0"
+pretty_assertions = "1"
+serial_test = "*"

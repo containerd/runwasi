@@ -6,6 +6,7 @@ members = [
     "crates/containerd-shim-wasmedge",
     "crates/containerd-shim-wasmtime",
     "test/wasi-modules-for-testing",
+    "test/oci-tests",
 ]
 
 [workspace.package]

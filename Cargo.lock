@@ -1830,6 +1830,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "oci-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "containerd-shim-wasm",
+ "containerd-shim-wasmedge",
+ "containerd-shim-wasmtime",
+ "libc",
+ "oci-spec",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "tempfile",
+ "wasmedge-sdk",
+ "wasmtime",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
