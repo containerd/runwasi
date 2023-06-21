@@ -1585,8 +1585,9 @@ checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
 
 [[package]]
 name = "libcgroups"
-version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12f6fef16f505466473eeeee906244e03a437beaf41ccd85c39355b4077890c9"
 dependencies = [
  "dbus",
  "fixedbitset 0.4.2",
@@ -1600,8 +1601,9 @@ dependencies = [
 
 [[package]]
 name = "libcontainer"
-version = "0.0.5"
-source = "git+https://github.com/containers/youki?rev=1a6d1f4bd7553e971d6d787698a9732836188444#1a6d1f4bd7553e971d6d787698a9732836188444"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac48a05819bd5bd31390bd1874f5a94f711c248677fc908801de4789bdd1fbad"
 dependencies = [
  "bitflags 2.3.2",
  "caps",
