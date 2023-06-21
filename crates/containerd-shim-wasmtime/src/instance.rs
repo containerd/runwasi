@@ -98,6 +98,8 @@ fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
 impl Instance for Wasi {
     type E = wasmtime::Engine;
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
+        // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
@@ -251,9 +253,12 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use containerd_shim_wasm::function;
+    use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
     use containerd_shim_wasm::sandbox::instance::Wait;
+    use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-    use tempfile::tempdir;
+    use tempfile::{tempdir, TempDir};
 
     use super::*;
 
@@ -288,46 +293,27 @@ mod wasitest {
     "#.as_bytes();
 
     #[test]
-    fn test_delete_after_create() {
-        let i = Wasi::new(
-            "".to_string(),
-            Some(&InstanceConfig::new(
-                Engine::default(),
-                "test_namespace".into(),
-            )),
-        );
-        i.delete().unwrap();
+    fn test_delete_after_create() -> Result<()> {
+        let dir = tempdir()?;
+        create_dir(dir.path().join("rootfs"))?;
+        let cfg = prepare_cfg(&dir)?;
+
+        let i = Wasi::new("".to_string(), Some(&cfg));
+        i.delete()?;
+        Ok(())
     }
 
     #[test]
     fn test_wasi() -> Result<(), Error> {
+        if !has_cap_sys_admin() {
+            println!("running test with sudo: {}", function!());
+            return run_test_with_sudo(function!());
+        }
         let dir = tempdir()?;
         create_dir(dir.path().join("rootfs"))?;
+        let cfg = prepare_cfg(&dir)?;
 
-        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
-        f.write_all(WASI_HELLO_WAT)?;
-
-        let stdout = File::create(dir.path().join("stdout"))?;
-        drop(stdout);
-
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args(vec!["hello.wat".to_string()])
-                    .build()?,
-            )
-            .build()?;
-
-        spec.save(dir.path().join("config.json"))?;
-
-        let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
-        let cfg = cfg
-            .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
-
-        let wasi = Wasi::new("test".to_string(), Some(cfg));
+        let wasi = Wasi::new("test".to_string(), Some(&cfg));
 
         wasi.start()?;
 
@@ -353,6 +339,28 @@ mod wasitest {
         wasi.delete()?;
 
         Ok(())
+    }
+
+    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<Engine>> {
+        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
+        f.write_all(WASI_HELLO_WAT)?;
+        let stdout = File::create(dir.path().join("stdout"))?;
+        drop(stdout);
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec!["hello.wat".to_string()])
+                    .build()?,
+            )
+            .build()?;
+        spec.save(dir.path().join("config.json"))?;
+        let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
+        let cfg = cfg
+            .set_bundle(dir.path().to_str().unwrap().to_string())
+            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
+        Ok(cfg.to_owned())
     }
 }
 
