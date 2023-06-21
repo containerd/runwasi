@@ -4,6 +4,7 @@ use containerd_shim_wasm::sandbox::instance_utils::{
 };
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
+use libcontainer::workload::default::DefaultExecutor;
 use nix::errno::Errno;
 use nix::sys::wait::waitid;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
 use log::error;
@@ -243,13 +244,35 @@ impl Wasi {
         let stdout = maybe_open_stdio(stdout).context("could not open stdout")?;
         let stderr = maybe_open_stdio(stderr).context("could not open stderr")?;
 
+        let wasmtime_executor = Box::new(WasmtimeExecutor {
+            engine,
+            stdin,
+            stdout,
+            stderr,
+        });
+        let default_executor = Box::<DefaultExecutor>::default();
+
+        if let Some(stdin) = stdin {
+            unsafe {
+                STDIN_FD = Some(dup(STDIN_FILENO));
+                dup2(stdin, STDIN_FILENO);
+            }
+        }
+        if let Some(stdout) = stdout {
+            unsafe {
+                STDOUT_FD = Some(dup(STDOUT_FILENO));
+                dup2(stdout, STDOUT_FILENO);
+            }
+        }
+        if let Some(stderr) = stderr {
+            unsafe {
+                STDERR_FD = Some(dup(STDERR_FILENO));
+                dup2(stderr, STDERR_FILENO);
+            }
+        }
+
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmtimeExecutor {
-                stdin,
-                stdout,
-                stderr,
-                engine,
-            })])?
+            .with_executor(vec![wasmtime_executor, default_executor])?
             .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
             .with_systemd(false)

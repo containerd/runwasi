@@ -1,5 +1,5 @@
 use nix::unistd::{dup, dup2};
-use std::{fs::OpenOptions, os::fd::RawFd};
+use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
 
 use anyhow::{anyhow, Result, Context};
 use containerd_shim_wasm::sandbox::oci;
@@ -39,8 +39,35 @@ impl Executor for WasmtimeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
+    fn can_handle(&self, spec: &Spec) -> bool {
+        // check if the entrypoint of the spec is a wasm binary.
+        let args = oci::get_args(spec);
+        if args.is_empty() {
+            return false;
+        }
+
+        let start = args[0].clone();
+        let mut iterator = start.split('#');
+        let mut cmd = iterator.next().unwrap().to_string();
+        let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
+        if let Some(strpd) = stripped {
+            cmd = strpd.to_string();
+        }
+
+        let mut path = PathBuf::from(cmd);
+        if path.is_relative() {
+            path = std::env::current_dir().unwrap().join(path);
+        }
+
+        // TODO: do we need to validate the wasm binary?
+        // ```rust
+        //   let bytes = std::fs::read(path).unwrap();
+        //   wasmparser::validate(&bytes).is_ok()
+        // ```
+
+        path.extension()
+            .map(|ext| ext == "wasm" || ext == "wat")
+            .unwrap_or(false)
     }
 
     fn name(&self) -> &'static str {
