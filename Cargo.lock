@@ -460,7 +460,6 @@ dependencies = [
  "containerd-shim",
  "env_logger",
  "libc",
- "libcontainer",
  "log",
  "nix 0.26.2",
  "oci-spec 0.6.1",

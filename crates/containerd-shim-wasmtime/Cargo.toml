@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 containerd-shim = { workspace = true }
-containerd-shim-wasm = { workspace = true, features = ["libcontainer"] }
+containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 ttrpc = { workspace = true }
 

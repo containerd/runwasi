@@ -1,8 +1,6 @@
-//! Common utilities for the containerd shims, including wasmtime and wasmedge shim.
-
+//! Common utilities for the containerd shims.
 use crate::sandbox::error::Error;
 use anyhow::{bail, Context, Result};
-use libcontainer::container::Container;
 use std::{
     fs::{self, OpenOptions},
     io::ErrorKind,
@@ -10,21 +8,26 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Loads the container state from the given root path.
-pub fn load_container<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<Container> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    if !container_root.exists() {
-        bail!("container {} does not exist.", container_id)
+/// Return the root path for the instance.
+///
+/// The root path is the path to the directory containing the container's state.
+pub fn get_instance_root<P: AsRef<Path>>(
+    root_path: P,
+    instance_id: &str,
+) -> Result<PathBuf, anyhow::Error> {
+    let instance_root = construct_instance_root(root_path, instance_id)?;
+    if !instance_root.exists() {
+        bail!("container {} does not exist.", instance_id)
     }
-
-    Container::load(container_root)
-        .with_context(|| format!("could not load state for container {container_id}"))
+    Ok(instance_root)
 }
 
 /// Checks if the container exists.
-pub fn container_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    Ok(container_root.exists())
+///
+/// The root path is the path to the directory containing the container's state.
+pub fn instance_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
+    let instance_root = construct_instance_root(root_path, container_id)?;
+    Ok(instance_root.exists())
 }
 
 /// containerd can send an empty path or a non-existant path
@@ -43,7 +46,7 @@ pub fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
     }
 }
 
-fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
+fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
     let root_path = fs::canonicalize(&root_path).with_context(|| {
         format!(
             "failed to canonicalize {} for container {}",

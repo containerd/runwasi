@@ -10,9 +10,10 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
+use containerd_shim_wasm::sandbox::instance_utils::{
+    get_instance_root, instance_exists, maybe_open_stdio,
+};
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use containerd_shim_wasm::wasm_libcontainer::maybe_open_stdio;
-use containerd_shim_wasm::wasm_libcontainer::{container_exists, load_container};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
@@ -169,7 +170,13 @@ impl Instance for Wasi {
             ))?,
         };
 
-        let mut container = load_container(&self.rootdir, self.id.as_str())?;
+        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
+        let mut container = Container::load(container_root).with_context(|| {
+            format!(
+                "could not load state for container {id}",
+                id = self.id.as_str()
+            )
+        })?;
         match container.kill(signal, true) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -182,7 +189,7 @@ impl Instance for Wasi {
     }
 
     fn delete(&self) -> Result<(), Error> {
-        match container_exists(&self.rootdir, self.id.as_str()) {
+        match instance_exists(&self.rootdir, self.id.as_str()) {
             Ok(exists) => {
                 if !exists {
                     return Ok(());
@@ -193,7 +200,14 @@ impl Instance for Wasi {
                 return Ok(());
             }
         }
-        match load_container(&self.rootdir, self.id.as_str()) {
+        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
+        let container = Container::load(container_root).with_context(|| {
+            format!(
+                "could not load state for container {id}",
+                id = self.id.as_str()
+            )
+        });
+        match container {
             Ok(mut container) => container.delete(true).map_err(|err| {
                 Error::Any(anyhow!("failed to delete container {}: {}", self.id, err))
             })?,

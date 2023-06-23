@@ -19,7 +19,7 @@ pub struct InstanceConfig<E>
 where
     E: Send + Sync + Clone,
 {
-    /// The wasm engine to use.
+    /// The WASI engine to use.
     /// This should be cheap to clone.
     engine: E,
     /// Optional stdin named pipe path.
@@ -104,21 +104,27 @@ where
     }
 }
 
-/// Represents a wasi module(s).
+/// Represents a WASI module(s).
 /// Instance is a trait that gets implemented by consumers of this library.
 pub trait Instance {
+    /// The WASI engine type
     type E: Send + Sync + Clone;
+
     /// Create a new instance
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, Error>;
+
     /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), Error>;
+
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
+
     /// Set up waiting for the instance to exit
     /// The Wait struct is used to send the exit code and time back to the
     /// caller. The recipient is expected to call function
