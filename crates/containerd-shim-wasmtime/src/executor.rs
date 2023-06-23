@@ -52,7 +52,7 @@ impl Executor for WasmtimeExecutor {
 }
 
 impl WasmtimeExecutor {
-    fn prepare_function(
+    fn prepare(
         &self,
         spec: &Spec,
         args: &[String],
