@@ -53,3 +53,28 @@ fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) ->
     })?;
     Ok(root_path.join(container_id))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[test]
+    fn test_maybe_open_stdio() -> Result<(), Error> {
+        let f = maybe_open_stdio("")?;
+        assert!(f.is_none());
+
+        let f = maybe_open_stdio("/some/nonexistent/path")?;
+        assert!(f.is_none());
+
+        let dir = tempdir()?;
+        let temp = File::create(dir.path().join("testfile"))?;
+        drop(temp);
+        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
+        assert!(f.is_some());
+        Ok(())
+    }
+}

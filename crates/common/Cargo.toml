@@ -9,3 +9,6 @@ edition.workspace = true
 anyhow = "1"
 containerd-shim-wasm = { workspace = true }
 libcontainer = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.0"

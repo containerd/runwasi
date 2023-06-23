@@ -32,7 +32,7 @@ impl Executor for WasmtimeExecutor {
         }
 
         let (mut store, f) = self
-            .prepare_function(spec, args)
+            .prepare(spec, args)
             .map_err(|err| ExecutorError::Other(format!("failed to prepare function: {}", err)))?;
 
         log::info!("calling start function");

@@ -501,6 +501,7 @@ dependencies = [
  "anyhow",
  "containerd-shim-wasm",
  "libcontainer",
+ "tempfile",
 ]
 
 [[package]]

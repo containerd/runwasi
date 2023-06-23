@@ -322,30 +322,3 @@ mod wasitest {
         Ok(cfg.to_owned())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::fs::File;
-
-    use containerd_shim_common::maybe_open_stdio;
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn test_maybe_open_stdio() -> Result<(), Error> {
-        let f = maybe_open_stdio("")?;
-        assert!(f.is_none());
-
-        let f = maybe_open_stdio("/some/nonexistent/path")?;
-        assert!(f.is_none());
-
-        let dir = tempdir()?;
-        let temp = File::create(dir.path().join("testfile"))?;
-        drop(temp);
-        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
-        assert!(f.is_some());
-
-        Ok(())
-    }
-}
