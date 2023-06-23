@@ -1,8 +1,8 @@
-use std::{fs::OpenOptions, path::PathBuf};
+use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;
-
+use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use oci_spec::runtime::Spec;
 
