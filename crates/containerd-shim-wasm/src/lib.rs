@@ -6,3 +6,6 @@
 pub mod sandbox;
 
 pub mod services;
+
+#[cfg(feature = "libcontainer")]
+pub mod wasm_libcontainer;

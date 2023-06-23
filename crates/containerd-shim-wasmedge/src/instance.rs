@@ -8,11 +8,11 @@ use std::thread;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
-use containerd_shim_common::maybe_open_stdio;
-use containerd_shim_common::{container_exists, load_container};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::wasm_libcontainer::maybe_open_stdio;
+use containerd_shim_wasm::wasm_libcontainer::{container_exists, load_container};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
@@ -437,31 +437,6 @@ mod wasitest {
         assert_eq!(res.0, 137);
 
         reset_stdio();
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs::File;
-
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn test_maybe_open_stdio() -> Result<(), Error> {
-        let f = maybe_open_stdio("")?;
-        assert!(f.is_none());
-
-        let f = maybe_open_stdio("/some/nonexistent/path")?;
-        assert!(f.is_none());
-
-        let dir = tempdir()?;
-        let temp = File::create(dir.path().join("testfile"))?;
-        drop(temp);
-        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
-        assert!(f.is_some());
         Ok(())
     }
 }

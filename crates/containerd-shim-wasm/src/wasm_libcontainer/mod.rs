@@ -1,7 +1,7 @@
 //! Common utilities for the containerd shims, including wasmtime and wasmedge shim.
 
+use crate::sandbox::error::Error;
 use anyhow::{bail, Context, Result};
-use containerd_shim_wasm::sandbox::error::Error;
 use libcontainer::container::Container;
 use std::{
     fs::{self, OpenOptions},

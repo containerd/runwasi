@@ -1,5 +1,5 @@
 use anyhow::Result;
-use containerd_shim_common::{container_exists, load_container, maybe_open_stdio};
+use containerd_shim_wasm::wasm_libcontainer::{container_exists, load_container, maybe_open_stdio};
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
 use nix::errno::Errno;

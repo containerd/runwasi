@@ -28,6 +28,7 @@ clone3 = "0.2"
 libc = { workspace = true }
 caps = "0.5"
 proc-mounts = "0.3"
+libcontainer = { workspace = true, optional = true}
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.3", optional = true }
@@ -43,3 +44,4 @@ rand = "0.8"
 default = []
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []
+libcontainer = ["dep:libcontainer"]
