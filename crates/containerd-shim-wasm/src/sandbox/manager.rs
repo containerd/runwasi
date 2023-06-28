@@ -79,7 +79,7 @@ where
         let mut sandboxes = self.sandboxes.write().unwrap();
 
         if sandboxes.contains_key(&req.id) {
-            return Err(Error::AlreadyExists(req.get_id().to_string()).into());
+            return Err(Error::AlreadyExists(req.id).into());
         }
 
         let sock = format!("unix://{}/shim.sock", &req.working_directory);
@@ -137,7 +137,7 @@ where
     ) -> TtrpcResult<sandbox::DeleteResponse> {
         let mut sandboxes = self.sandboxes.write().unwrap();
         if !sandboxes.contains_key(&req.id) {
-            return Err(Error::NotFound(req.get_id().to_string()).into());
+            return Err(Error::NotFound(req.id).into());
         }
         let sock = sandboxes.remove(&req.id).unwrap();
         let c = Client::connect(&sock)?;
@@ -222,7 +222,7 @@ impl shim::Shim for Shim {
                 ..Default::default()
             },
         ) {
-            Ok(res) => res.get_socket_path().to_string(),
+            Ok(res) => res.socket_path,
             Err(_) => {
                 let res = mc.connect(
                     context::Context::default(),
@@ -232,7 +232,7 @@ impl shim::Shim for Shim {
                         ..Default::default()
                     },
                 )?;
-                res.get_socket_path().to_string()
+                res.socket_path
             }
         };
 

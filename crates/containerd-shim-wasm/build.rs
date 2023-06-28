@@ -41,10 +41,7 @@ fn main() {
         .inputs(&protos)
         .include("protos")
         .rust_protobuf()
-        .rust_protobuf_customize(ProtobufCustomize {
-            gen_mod_rs: Some(false),
-            ..ProtobufCustomize::default()
-        })
+        .rust_protobuf_customize(ProtobufCustomize::default().gen_mod_rs(false))
         .run()
         .expect("failed to generate code");
 }

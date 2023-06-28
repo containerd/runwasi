@@ -23,18 +23,16 @@ serde_json = "1.0"
 env_logger = "0.10"
 log = "0.4"
 tar = "0.4"
-containerd-shim = "0.3.0"
-ttrpc = "0.6"
+containerd-shim = {git = "https://github.com/containerd/rust-extensions", rev = "27a92fc606c10f848c72b6131278d392f677efc6" }
+ttrpc = "0.7.1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 nix = "0.26"
 cap-std = "1.0"
 thiserror = "1.0"
-libc = "0.2.146"
+libc = "0.2.147"
 oci-spec = { version = "0.6.1", features = ["runtime"] }
 sha256 = "1.1"
-# TODO: Wait for the release and use the crates.io one.
-# In the meantime use an up-to-date commit in the `main` branch.
-libcontainer = { git = "https://github.com/containers/youki", rev = "1a6d1f4bd7553e971d6d787698a9732836188444" }
+libcontainer = "0.1"
 
 [profile.release]
 panic = "abort"

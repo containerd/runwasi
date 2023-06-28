@@ -16,6 +16,7 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 
 .PHONY: build
 build:
+	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
 	cargo build $(RELEASE_FLAG)
 
 .PHONY: check

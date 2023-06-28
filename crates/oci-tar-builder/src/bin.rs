@@ -11,6 +11,7 @@ pub fn main() {
     let out_dir;
     if let Some(out_path) = args.out_path.as_deref() {
         out_dir = PathBuf::from(out_path);
+        fs::create_dir_all(&out_dir).unwrap();
     } else {
         out_dir = env::current_dir().unwrap();
     }
