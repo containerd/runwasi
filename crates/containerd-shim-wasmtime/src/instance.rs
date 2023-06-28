@@ -221,8 +221,9 @@ impl EngineGetter for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::fs::{create_dir, read_to_string, File};
+    use std::fs::{create_dir, read_to_string, File, OpenOptions};
     use std::io::prelude::*;
+    use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
@@ -282,6 +283,9 @@ mod wasitest {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
         }
+        // start logging
+        let _ = env_logger::try_init();
+
         let dir = tempdir()?;
         create_dir(dir.path().join("rootfs"))?;
         let cfg = prepare_cfg(&dir)?;
@@ -315,16 +319,23 @@ mod wasitest {
     }
 
     fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<Engine>> {
-        let mut f = File::create(dir.path().join("rootfs/hello.wat"))?;
+        let mut f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o755)
+            .open(dir.path().join("rootfs/hello.wat"))?;
         f.write_all(WASI_HELLO_WAT)?;
         let stdout = File::create(dir.path().join("stdout"))?;
+        let stderr = File::create(dir.path().join("stderr"))?;
         drop(stdout);
+        drop(stderr);
         let spec = SpecBuilder::default()
             .root(RootBuilder::default().path("rootfs").build()?)
             .process(
                 ProcessBuilder::default()
                     .cwd("/")
-                    .args(vec!["hello.wat".to_string()])
+                    .args(vec!["./hello.wat".to_string()])
                     .build()?,
             )
             .build()?;
@@ -332,7 +343,8 @@ mod wasitest {
         let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
+            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())
+            .set_stderr(dir.path().join("stderr").to_str().unwrap().to_string());
         Ok(cfg.to_owned())
     }
 }

@@ -509,6 +509,7 @@ dependencies = [
  "chrono",
  "containerd-shim",
  "containerd-shim-wasm",
+ "env_logger",
  "libc",
  "libcontainer",
  "log",
