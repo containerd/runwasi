@@ -17,7 +17,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{oci, EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
 use log::error;
@@ -92,7 +92,7 @@ impl Instance for Wasi {
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle,
-            rootdir: rootdir.clone(),
+            rootdir,
         }
     }
     fn start(&self) -> Result<u32, Error> {
