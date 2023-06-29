@@ -6,6 +6,9 @@ use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
 use nix::errno::Errno;
 use nix::sys::wait::waitid;
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -25,6 +28,7 @@ use wasmtime::Engine;
 use crate::executor::WasmtimeExecutor;
 use libcontainer::signal::Signal;
 
+static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 pub struct Wasi {
@@ -41,11 +45,34 @@ pub struct Wasi {
     id: String,
 }
 
-fn load_spec(bundle: String) -> Result<oci::Spec, Error> {
-    let mut spec = oci::load(Path::new(&bundle).join("config.json").to_str().unwrap())?;
-    spec.canonicalize_rootfs(&bundle)
-        .map_err(|e| Error::Others(format!("error canonicalizing rootfs in spec: {}", e)))?;
-    Ok(spec)
+#[derive(Serialize, Deserialize)]
+struct Options {
+    root: Option<PathBuf>,
+}
+
+fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<PathBuf, Error> {
+    log::info!(
+        "determining rootdir for bundle: {}",
+        bundle.as_ref().display()
+    );
+    let mut file = match File::open(bundle.as_ref().join("options.json")) {
+        Ok(f) => f,
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => {
+                return Ok(<&str as Into<PathBuf>>::into(DEFAULT_CONTAINER_ROOT_DIR).join(namespace))
+            }
+            _ => return Err(err.into()),
+        },
+    };
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+    let options: Options = serde_json::from_str(&data)?;
+    let path = options
+        .root
+        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR))
+        .join(namespace);
+    log::info!("youki root path is: {}", path.display());
+    Ok(path)
 }
 
 impl Instance for Wasi {
@@ -56,8 +83,7 @@ impl Instance for Wasi {
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
-        let spec = load_spec(bundle.clone()).unwrap();
-        let rootdir = oci::get_root(&spec);
+        let rootdir = determine_rootdir(bundle.as_str(), cfg.get_namespace()).unwrap();
         Wasi {
             id,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
@@ -269,7 +295,6 @@ mod wasitest {
     #[test]
     fn test_delete_after_create() -> Result<()> {
         let dir = tempdir()?;
-        create_dir(dir.path().join("rootfs"))?;
         let cfg = prepare_cfg(&dir)?;
 
         let i = Wasi::new("".to_string(), Some(&cfg));
@@ -287,7 +312,6 @@ mod wasitest {
         let _ = env_logger::try_init();
 
         let dir = tempdir()?;
-        create_dir(dir.path().join("rootfs"))?;
         let cfg = prepare_cfg(&dir)?;
 
         let wasi = Wasi::new("test".to_string(), Some(&cfg));
@@ -319,13 +343,28 @@ mod wasitest {
     }
 
     fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<Engine>> {
+        create_dir(dir.path().join("rootfs"))?;
+
+        let opts = Options {
+            root: Some(dir.path().join("runwasi")),
+        };
+        let opts_file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(dir.path().join("options.json"))?;
+        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+
+        let wasm_path = dir.path().join("rootfs/hello.wat");
         let mut f = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .mode(0o755)
-            .open(dir.path().join("rootfs/hello.wat"))?;
+            .open(wasm_path)?;
         f.write_all(WASI_HELLO_WAT)?;
+
         let stdout = File::create(dir.path().join("stdout"))?;
         let stderr = File::create(dir.path().join("stderr"))?;
         drop(stdout);
