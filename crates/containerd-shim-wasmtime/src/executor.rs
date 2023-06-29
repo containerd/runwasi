@@ -1,8 +1,9 @@
 use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
+use nix::unistd::{dup, dup2};
 
 use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;
-use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use oci_spec::runtime::Spec;
 
@@ -12,10 +13,6 @@ use wasmtime_wasi::WasiCtxBuilder;
 use crate::oci_wasmtime::{self, wasi_dir, wasi_file};
 
 const EXECUTOR_NAME: &str = "wasmtime";
-
-static mut STDIN_FD: Option<RawFd> = None;
-static mut STDOUT_FD: Option<RawFd> = None;
-static mut STDERR_FD: Option<RawFd> = None;
 
 pub struct WasmtimeExecutor {
     pub stdin: Option<RawFd>,
@@ -67,38 +64,32 @@ impl WasmtimeExecutor {
             .envs(env.as_slice())?
             .preopened_dir(path, "/")?;
 
-        if let Some(stdin) = self.stdin {
-            unsafe {
-                STDIN_FD = Some(dup(STDIN_FILENO));
-                dup2(stdin, STDIN_FILENO);
-            }
-        }
-        if let Some(stdout) = self.stdout {
-            unsafe {
-                STDOUT_FD = Some(dup(STDOUT_FILENO));
-                dup2(stdout, STDOUT_FILENO);
-            }
-        }
-        if let Some(stderr) = self.stderr {
-            unsafe {
-                STDERR_FD = Some(dup(STDERR_FILENO));
-                dup2(stderr, STDERR_FILENO);
-            }
-        }
-        log::info!("opening stdin");
-        let stdin_path = PathBuf::from("/dev/stdin");
-        let stdin_wasi_file = wasi_file(stdin_path, OpenOptions::new().read(true))?;
-        wasi_builder = wasi_builder.stdin(Box::new(stdin_wasi_file));
+        // if let Some(stdin) = self.stdin {
+        //     let _ = dup(STDIN_FILENO);
+        //     let _ = dup2(stdin, STDIN_FILENO);
+        // }
+        // if let Some(stdout) = self.stdout {
+        //     let _ = dup(STDOUT_FILENO);
+        //     let _ = dup2(stdout, STDOUT_FILENO);
+        // }
+        // if let Some(stderr) = self.stderr {
+        //     let _ = dup(STDERR_FILENO);
+        //     let _ = dup2(stderr, STDERR_FILENO);
+        // }
+        // log::info!("opening stdin");
+        // let stdin_path = PathBuf::from("/dev/stdin");
+        // let stdin_wasi_file = wasi_file(stdin_path, OpenOptions::new().read(true))?;
+        // wasi_builder = wasi_builder.stdin(Box::new(stdin_wasi_file));
 
-        log::info!("opening stdout");
-        let stdout_path = PathBuf::from("/dev/stdout");
-        let stdout_wasi_file = wasi_file(stdout_path, OpenOptions::new().write(true))?;
-        wasi_builder = wasi_builder.stdout(Box::new(stdout_wasi_file));
+        // log::info!("opening stdout");
+        // let stdout_path = PathBuf::from("/dev/stdout");
+        // let stdout_wasi_file = wasi_file(stdout_path, OpenOptions::new().write(true))?;
+        // wasi_builder = wasi_builder.stdout(Box::new(stdout_wasi_file));
 
-        log::info!("opening stderr");
-        let stderr_path = PathBuf::from("/dev/stderr");
-        let stderr_wasi_file = wasi_file(stderr_path, OpenOptions::new().write(true))?;
-        wasi_builder = wasi_builder.stderr(Box::new(stderr_wasi_file));
+        // log::info!("opening stderr");
+        // let stderr_path = PathBuf::from("/dev/stderr");
+        // let stderr_wasi_file = wasi_file(stderr_path, OpenOptions::new().write(true))?;
+        // wasi_builder = wasi_builder.stderr(Box::new(stderr_wasi_file));
 
         log::info!("building wasi context");
         let wctx = wasi_builder.build();
