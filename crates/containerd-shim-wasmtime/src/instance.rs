@@ -9,6 +9,7 @@ use nix::sys::wait::waitid;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
+use std::os::fd::RawFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -18,6 +19,7 @@ use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
 use log::error;
@@ -31,6 +33,10 @@ use libcontainer::signal::Signal;
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
+static mut STDIN_FD: Option<RawFd> = None;
+static mut STDOUT_FD: Option<RawFd> = None;
+static mut STDERR_FD: Option<RawFd> = None;
+
 pub struct Wasi {
     exit_code: ExitCode,
     engine: wasmtime::Engine,
@@ -43,6 +49,20 @@ pub struct Wasi {
     rootdir: PathBuf,
 
     id: String,
+}
+
+pub fn reset_stdio() {
+    unsafe {
+        if STDIN_FD.is_some() {
+            dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+        }
+        if STDOUT_FD.is_some() {
+            dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+        }
+        if STDERR_FD.is_some() {
+            dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -299,6 +319,7 @@ mod wasitest {
 
         let i = Wasi::new("".to_string(), Some(&cfg));
         i.delete()?;
+        reset_stdio();
         Ok(())
     }
 
@@ -339,6 +360,7 @@ mod wasitest {
 
         wasi.delete()?;
 
+        reset_stdio();
         Ok(())
     }
 
