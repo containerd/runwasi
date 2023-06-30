@@ -86,6 +86,12 @@ jobs:
       - name: run
         run: |
           make test/k8s
+      # only runs when the previous step fails
+      - name: inspect failed pods
+        if: failure()
+        run: |
+          kubectl get pods --all-namespaces
+          kubectl describe pods --all-namespaces
       - name: cleanup
         if: always()
         run: make test/k8s/clean
