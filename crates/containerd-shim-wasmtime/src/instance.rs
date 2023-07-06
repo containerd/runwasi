@@ -117,7 +117,7 @@ impl Instance for Wasi {
     }
     fn start(&self) -> Result<u32, Error> {
         log::info!("starting instance: {}", self.id);
-        let engine = self.engine.clone();
+        let engine: Engine = self.engine.clone();
 
         let mut container = self.build_container(
             self.stdin.as_str(),
@@ -260,8 +260,7 @@ impl Wasi {
 impl EngineGetter for Wasi {
     type E = wasmtime::Engine;
     fn new_engine() -> Result<Engine, Error> {
-        let engine = Engine::default();
-        Ok(engine)
+        Ok(Engine::default())
     }
 }
 
