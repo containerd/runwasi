@@ -66,16 +66,16 @@ impl WasmtimeExecutor {
             .preopened_dir(path, "/")?;
 
         if let Some(stdin) = self.stdin {
-            let _ = dup(STDIN_FILENO);
-            let _ = dup2(stdin, STDIN_FILENO);
+            dup(STDIN_FILENO)?;
+            dup2(stdin, STDIN_FILENO)?;
         }
         if let Some(stdout) = self.stdout {
-            let _ = dup(STDOUT_FILENO);
-            let _ = dup2(stdout, STDOUT_FILENO);
+            dup(STDOUT_FILENO)?;
+            dup2(stdout, STDOUT_FILENO)?;
         }
         if let Some(stderr) = self.stderr {
-            let _ = dup(STDERR_FILENO);
-            let _ = dup2(stderr, STDERR_FILENO);
+            dup(STDERR_FILENO)?;
+            dup2(stderr, STDERR_FILENO)?;
         }
 
         log::info!("building wasi context");
