@@ -100,12 +100,12 @@ impl WasmtimeExecutor {
         let mut store = Store::new(&self.engine, wctx);
 
         log::info!("instantiating instance");
-        let i = linker.instantiate(&mut store, &module)?;
+        let instance = linker.instantiate(&mut store, &module)?;
 
         log::info!("getting start function");
-        let f = i
+        let start_func = instance
             .get_func(&mut store, method)
-            .ok_or_else(|| anyhow!("module does not have a wasi start function".to_string()))?;
-        Ok((store, f))
+            .ok_or_else(|| anyhow!("module does not have a WASI start function".to_string()))?;
+        Ok((store, start_func))
     }
 }
