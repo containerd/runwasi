@@ -146,6 +146,7 @@ impl Instance for Wasi {
                 Ok(_) => 0,
                 Err(e) => {
                     if e == Errno::ECHILD {
+                        log::info!("no child process");
                         0
                     } else {
                         panic!("waitpid failed: {}", e);
