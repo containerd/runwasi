@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG RUST_VERSION=1.64
+ARG RUST_VERSION=1.69
 ARG XX_VERSION=1.1.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
@@ -26,6 +26,7 @@ EOT
 
 WORKDIR /build/src
 COPY --link crates ./crates
+COPY --link benches ./benches
 COPY --link Cargo.toml ./
 COPY --link Cargo.lock ./
 ARG CRATE=""

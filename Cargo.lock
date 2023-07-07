@@ -428,7 +428,7 @@ dependencies = [
 [[package]]
 name = "containerd-shim"
 version = "0.3.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=27a92fc606c10f848c72b6131278d392f677efc6#27a92fc606c10f848c72b6131278d392f677efc6"
+source = "git+https://github.com/containerd/rust-extensions?rev=8500b4c665e0d0911b9546c00bd0bd4670cf5533#8500b4c665e0d0911b9546c00bd0bd4670cf5533"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -437,8 +437,10 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
+ "mio",
  "nix 0.26.2",
- "oci-spec 0.5.8",
+ "oci-spec",
+ "os_pipe",
  "page_size",
  "prctl",
  "regex",
@@ -448,13 +450,13 @@ dependencies = [
  "signal-hook",
  "thiserror",
  "time",
- "uuid",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
 name = "containerd-shim-protos"
-version = "0.2.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=27a92fc606c10f848c72b6131278d392f677efc6#27a92fc606c10f848c72b6131278d392f677efc6"
+version = "0.3.0"
+source = "git+https://github.com/containerd/rust-extensions?rev=8500b4c665e0d0911b9546c00bd0bd4670cf5533#8500b4c665e0d0911b9546c00bd0bd4670cf5533"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
@@ -475,7 +477,7 @@ dependencies = [
  "libc",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.1",
+ "oci-spec",
  "pretty_assertions",
  "proc-mounts",
  "protobuf 3.2.0",
@@ -502,7 +504,7 @@ dependencies = [
  "libcontainer",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.1",
+ "oci-spec",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -527,7 +529,7 @@ dependencies = [
  "libcontainer",
  "log",
  "nix 0.26.2",
- "oci-spec 0.6.1",
+ "oci-spec",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -824,32 +826,11 @@ dependencies = [
 
 [[package]]
 name = "derive_builder"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d07adf7be193b71cc36b193d0f5fe60b918a3a9db4dad0449f57bcfd519704a3"
-dependencies = [
- "derive_builder_macro 0.11.2",
-]
-
-[[package]]
-name = "derive_builder"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d67778784b508018359cbc8696edb3db78160bab2c2a28ba7f56ef6932997f8"
 dependencies = [
- "derive_builder_macro 0.12.0",
-]
-
-[[package]]
-name = "derive_builder_core"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f91d4cfa921f1c05904dc3c57b4a32c38aed3340cce209f3a6fd1478babafc4"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "derive_builder_macro",
 ]
 
 [[package]]
@@ -866,21 +847,11 @@ dependencies = [
 
 [[package]]
 name = "derive_builder_macro"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f0314b72bed045f3a68671b3c86328386762c93f82d98c65c3cb5e5f573dd68"
-dependencies = [
- "derive_builder_core 0.11.2",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "derive_builder_macro"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebcda35c7a396850a55ffeac740804b40ffec779b98fffbb1738f4033f0ee79e"
 dependencies = [
- "derive_builder_core 0.12.0",
+ "derive_builder_core",
  "syn 1.0.109",
 ]
 
@@ -1510,7 +1481,7 @@ dependencies = [
  "dbus",
  "fixedbitset 0.4.2",
  "nix 0.26.2",
- "oci-spec 0.6.1",
+ "oci-spec",
  "procfs",
  "serde",
  "thiserror",
@@ -1533,7 +1504,7 @@ dependencies = [
  "libcgroups",
  "libseccomp",
  "nix 0.26.2",
- "oci-spec 0.6.1",
+ "oci-spec",
  "once_cell",
  "prctl",
  "procfs",
@@ -1693,6 +1664,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mio"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "927a765cd3fc26206e66b296465fa9d3e5ab003e651c1b3c060e7956d96b19d2"
+dependencies = [
+ "libc",
+ "log",
+ "wasi",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1703,19 +1686,6 @@ name = "nix"
 version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4916f159ed8e5de0082076562152a76b7a1f64a01fd9d1e0fea002c37624faf"
-dependencies = [
- "bitflags 1.3.2",
- "cc",
- "cfg-if 1.0.0",
- "libc",
- "memoffset 0.6.5",
-]
-
-[[package]]
-name = "nix"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f3790c00a0150112de0f4cd161e3d7fc4b2d8a5542ffc35f099a2562aecb35c"
 dependencies = [
  "bitflags 1.3.2",
  "cc",
@@ -1803,24 +1773,11 @@ dependencies = [
 
 [[package]]
 name = "oci-spec"
-version = "0.5.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98135224dd4faeb24c05a2fac911ed53ea6b09ecb09d7cada1cb79963ab2ee34"
-dependencies = [
- "derive_builder 0.11.2",
- "getset",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "oci-spec"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf77d2eace1f4909b081d231d1ad3570ba3448ae95290ab701314faaee1b611a"
 dependencies = [
- "derive_builder 0.12.0",
+ "derive_builder",
  "getset",
  "serde",
  "serde_json",
@@ -1835,7 +1792,7 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
- "oci-spec 0.6.1",
+ "oci-spec",
  "serde",
  "serde_json",
  "sha256",
@@ -1847,6 +1804,16 @@ name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
+
+[[package]]
+name = "os_pipe"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ae859aa07428ca9a929b936690f8b12dc5f11dd8c6992a18ca93919f28bc177"
+dependencies = [
+ "libc",
+ "windows-sys 0.48.0",
+]
 
 [[package]]
 name = "output_vt100"
@@ -2707,17 +2674,18 @@ dependencies = [
 
 [[package]]
 name = "ttrpc"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a35f22a2964bea14afee161665bb260b83cb48e665e0260ca06ec0e775c8b06c"
+checksum = "adb03d0f5219ec54d870cb3d58719a2dc0b8849405b75a2e0968b3590392a5b0"
 dependencies = [
  "byteorder",
  "libc",
  "log",
- "nix 0.23.2",
+ "nix 0.26.2",
  "protobuf 3.2.0",
  "protobuf-codegen 3.2.0",
  "thiserror",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -2849,9 +2817,6 @@ name = "uuid"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d023da39d1fde5a8a3fe1f3e01ca9632ada0a63e9797de55a879d6e2236277be"
-dependencies = [
- "getrandom",
-]
 
 [[package]]
 name = "version_check"
@@ -2916,7 +2881,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
- "oci-spec 0.6.1",
+ "oci-spec",
  "oci-tar-builder",
  "sha256",
  "tar",
