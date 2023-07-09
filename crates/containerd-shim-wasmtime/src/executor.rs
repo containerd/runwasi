@@ -1,7 +1,7 @@
 use nix::unistd::{dup, dup2};
 use std::{fs::OpenOptions, os::fd::RawFd};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, Context};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
@@ -24,7 +24,7 @@ pub struct WasmtimeExecutor {
 impl Executor for WasmtimeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         let args = oci::get_args(spec);
-        if args.is_empty() {
+        if args.len() != 1 {
             return Err(ExecutorError::InvalidArg);
         }
 
@@ -82,8 +82,10 @@ impl WasmtimeExecutor {
         let wctx = wasi_builder.build();
 
         log::info!("wasi context ready");
-        let start = args[0].clone();
-        let mut iterator = start.split('#');
+        let mut iterator = args
+            .first()
+            .context("args must have at least one argument.")?
+            .split('#');
         let mut cmd = iterator.next().unwrap().to_string();
         let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
         if let Some(strpd) = stripped {
