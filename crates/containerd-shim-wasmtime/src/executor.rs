@@ -1,7 +1,7 @@
 use nix::unistd::{dup, dup2};
 use std::{fs::OpenOptions, os::fd::RawFd};
 
-use anyhow::{anyhow, Result, Context};
+use anyhow::{anyhow, Context, Result};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
