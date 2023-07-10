@@ -1,14 +1,18 @@
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::ErrorKind;
-use std::os::unix::io::{IntoRawFd, RawFd};
+use std::os::unix::io::RawFd;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::Context;
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
+use containerd_shim_wasm::sandbox::instance_utils::{
+    get_instance_root, instance_exists, maybe_open_stdio,
+};
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
@@ -55,73 +59,6 @@ pub struct Wasi {
     rootdir: PathBuf,
 }
 
-fn construct_container_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
-    let root_path = fs::canonicalize(&root_path).with_context(|| {
-        format!(
-            "failed to canonicalize {} for container {}",
-            root_path.as_ref().display(),
-            container_id
-        )
-    })?;
-    Ok(root_path.join(container_id))
-}
-
-fn load_container<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<Container> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    if !container_root.exists() {
-        bail!("container {} does not exist.", container_id)
-    }
-
-    Container::load(container_root)
-        .with_context(|| format!("could not load state for container {container_id}"))
-}
-
-fn container_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
-    let container_root = construct_container_root(root_path, container_id)?;
-    Ok(container_root.exists())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs::File;
-
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn test_maybe_open_stdio() -> Result<(), Error> {
-        let f = maybe_open_stdio("")?;
-        assert!(f.is_none());
-
-        let f = maybe_open_stdio("/some/nonexistent/path")?;
-        assert!(f.is_none());
-
-        let dir = tempdir()?;
-        let temp = File::create(dir.path().join("testfile"))?;
-        drop(temp);
-        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
-        assert!(f.is_some());
-        Ok(())
-    }
-}
-
-/// containerd can send an empty path or a non-existant path
-/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
-/// Any other error is a real error.
-fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
-    if path.is_empty() {
-        return Ok(None);
-    }
-    match OpenOptions::new().read(true).write(true).open(path) {
-        Ok(f) => Ok(Some(f.into_raw_fd())),
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => Ok(None),
-            _ => Err(err.into()),
-        },
-    }
-}
-
 pub fn reset_stdio() {
     unsafe {
         if STDIN_FD.is_some() {
@@ -158,45 +95,6 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
         .root
         .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR))
         .join(namespace))
-}
-
-#[cfg(test)]
-mod rootdirtest {
-    use super::*;
-    use tempfile::tempdir;
-
-    #[test]
-    fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
-        let namespace = "test_namespace";
-        let dir = tempdir()?;
-        let rootdir = dir.path().join("runwasi");
-        let opts = Options {
-            root: Some(rootdir.clone()),
-        };
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
-        let root = determine_rootdir(dir.path(), namespace.into())?;
-        assert_eq!(root, rootdir.join(namespace));
-        Ok(())
-    }
-
-    #[test]
-    fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
-        let dir = tempdir()?;
-        let namespace = "test_namespace";
-        let root = determine_rootdir(dir.path(), namespace.into())?;
-        assert!(root.is_absolute());
-        assert_eq!(
-            root,
-            PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
-        );
-        Ok(())
-    }
 }
 
 impl Instance for Wasi {
@@ -248,6 +146,7 @@ impl Instance for Wasi {
                 Ok(_) => 0,
                 Err(e) => {
                     if e == Errno::ECHILD {
+                        log::info!("no child process");
                         0
                     } else {
                         panic!("waitpid failed: {}", e);
@@ -272,7 +171,13 @@ impl Instance for Wasi {
             ))?,
         };
 
-        let mut container = load_container(&self.rootdir, self.id.as_str())?;
+        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
+        let mut container = Container::load(container_root).with_context(|| {
+            format!(
+                "could not load state for container {id}",
+                id = self.id.as_str()
+            )
+        })?;
         match container.kill(signal, true) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -285,7 +190,7 @@ impl Instance for Wasi {
     }
 
     fn delete(&self) -> Result<(), Error> {
-        match container_exists(&self.rootdir, self.id.as_str()) {
+        match instance_exists(&self.rootdir, self.id.as_str()) {
             Ok(exists) => {
                 if !exists {
                     return Ok(());
@@ -296,7 +201,14 @@ impl Instance for Wasi {
                 return Ok(());
             }
         }
-        match load_container(&self.rootdir, self.id.as_str()) {
+        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
+        let container = Container::load(container_root).with_context(|| {
+            format!(
+                "could not load state for container {id}",
+                id = self.id.as_str()
+            )
+        });
+        match container {
             Ok(mut container) => container.delete(true).map_err(|err| {
                 Error::Any(anyhow!("failed to delete container {}: {}", self.id, err))
             })?,
@@ -337,12 +249,33 @@ impl Wasi {
     }
 }
 
+impl EngineGetter for Wasi {
+    type E = Vm;
+    fn new_engine() -> Result<Vm, Error> {
+        PluginManager::load(None).unwrap();
+        let mut host_options = HostRegistrationConfigOptions::default();
+        host_options = host_options.wasi(true);
+        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
+        {
+            host_options = host_options.wasi_nn(true);
+        }
+        let config = ConfigBuilder::new(CommonConfigOptions::default())
+            .with_host_registration_config(host_options)
+            .build()
+            .map_err(anyhow::Error::msg)?;
+        let vm = VmBuilder::new()
+            .with_config(config)
+            .build()
+            .map_err(anyhow::Error::msg)?;
+        Ok(vm)
+    }
+}
+
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
-    use std::fs::{create_dir, read_to_string, File};
-    use std::io::prelude::*;
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::fs::{create_dir, read_to_string, File, OpenOptions};
+    use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
@@ -523,24 +456,43 @@ mod wasitest {
     }
 }
 
-impl EngineGetter for Wasi {
-    type E = Vm;
-    fn new_engine() -> Result<Vm, Error> {
-        PluginManager::load(None).unwrap();
-        let mut host_options = HostRegistrationConfigOptions::default();
-        host_options = host_options.wasi(true);
-        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
-        {
-            host_options = host_options.wasi_nn(true);
-        }
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .with_host_registration_config(host_options)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-        let vm = VmBuilder::new()
-            .with_config(config)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-        Ok(vm)
+#[cfg(test)]
+mod rootdirtest {
+    use std::fs::OpenOptions;
+
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
+        let namespace = "test_namespace";
+        let dir = tempdir()?;
+        let rootdir = dir.path().join("runwasi");
+        let opts = Options {
+            root: Some(rootdir.clone()),
+        };
+        let opts_file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(dir.path().join("options.json"))?;
+        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+        let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert_eq!(root, rootdir.join(namespace));
+        Ok(())
+    }
+
+    #[test]
+    fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let namespace = "test_namespace";
+        let root = determine_rootdir(dir.path(), namespace.into())?;
+        assert!(root.is_absolute());
+        assert_eq!(
+            root,
+            PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
+        );
+        Ok(())
     }
 }

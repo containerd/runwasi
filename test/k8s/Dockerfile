@@ -33,6 +33,7 @@ FROM scratch AS kind
 COPY --from=kind-fetch /root/kind /kind
 
 FROM kind-base
+RUN apt-get update && apt-get install --no-install-recommends -y build-essential git clang pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
 RUN <<EOF
 set -e
 echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' >> /etc/containerd/config.toml

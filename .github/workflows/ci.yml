@@ -79,8 +79,19 @@ jobs:
       - uses: actions/checkout@v3
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
+      - name: Setup OCI runtime build env
+        run: |
+          sudo apt -y update
+          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
       - name: run
-        run: make test/k8s
+        run: |
+          make test/k8s
+      # only runs when the previous step fails
+      - name: inspect failed pods
+        if: failure()
+        run: |
+          kubectl get pods --all-namespaces
+          kubectl describe pods --all-namespaces
       - name: cleanup
         if: always()
         run: make test/k8s/clean

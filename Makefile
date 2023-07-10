@@ -31,7 +31,7 @@ fix:
 
 .PHONY: test
 test:
-	cargo test --all --verbose
+	RUST_LOG=trace cargo test --all --verbose -- --nocapture
 
 .PHONY: install
 install:

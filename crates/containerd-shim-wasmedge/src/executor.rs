@@ -1,4 +1,5 @@
 use anyhow::Result;
+use containerd_shim_wasm::sandbox::oci;
 use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
@@ -22,57 +23,14 @@ pub struct WasmEdgeExecutor {
 impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         // parse wasi parameters
-        let args = get_args(spec);
+        let args = oci::get_args(spec);
         if args.is_empty() {
             return Err(ExecutorError::InvalidArg);
         }
 
-        let mut cmd = args[0].clone();
-        if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
-            cmd = stripped.to_string();
-        }
-        let envs = env_to_wasi(spec);
-
-        // create configuration with `wasi` option enabled
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
-            .build()
-            .map_err(|err| ExecutorError::Execution(err))?;
-
-        // create a vm with the config settings
-        let mut vm = VmBuilder::new()
-            .with_config(config)
-            .build()
-            .map_err(|err| ExecutorError::Execution(err))?;
-
-        // initialize the wasi module with the parsed parameters
-        let wasi_module = vm
-            .wasi_module_mut()
-            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
-            .map_err(|err| ExecutorError::Execution(err.into()))?;
-
-        wasi_module.initialize(
-            Some(args.iter().map(|s| s as &str).collect()),
-            Some(envs.iter().map(|s| s as &str).collect()),
-            None,
-        );
-
-        let vm = vm
-            .register_module_from_file("main", cmd)
-            .map_err(|err| ExecutorError::Execution(err))?;
-
-        if let Some(stdin) = self.stdin {
-            let _ = dup(STDIN_FILENO);
-            let _ = dup2(stdin, STDIN_FILENO);
-        }
-        if let Some(stdout) = self.stdout {
-            let _ = dup(STDOUT_FILENO);
-            let _ = dup2(stdout, STDOUT_FILENO);
-        }
-        if let Some(stderr) = self.stderr {
-            let _ = dup(STDERR_FILENO);
-            let _ = dup2(stderr, STDERR_FILENO);
-        }
+        let vm = self
+            .prepare(args, spec)
+            .map_err(|err| ExecutorError::Other(format!("failed to prepare function: {}", err)))?;
 
         // TODO: How to get exit code?
         // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
@@ -91,15 +49,46 @@ impl Executor for WasmEdgeExecutor {
     }
 }
 
-fn get_args(spec: &Spec) -> &[String] {
-    let p = match spec.process() {
-        None => return &[],
-        Some(p) => p,
-    };
-
-    match p.args() {
-        None => &[],
-        Some(args) => args.as_slice(),
+impl WasmEdgeExecutor {
+    fn prepare(&self, args: &[String], spec: &Spec) -> anyhow::Result<wasmedge_sdk::Vm> {
+        let mut cmd = args[0].clone();
+        if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
+            cmd = stripped.to_string();
+        }
+        let envs = env_to_wasi(spec);
+        let config = ConfigBuilder::new(CommonConfigOptions::default())
+            .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
+            .build()
+            .map_err(|err| ExecutorError::Execution(err))?;
+        let mut vm = VmBuilder::new()
+            .with_config(config)
+            .build()
+            .map_err(|err| ExecutorError::Execution(err))?;
+        let wasi_module = vm
+            .wasi_module_mut()
+            .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))
+            .map_err(|err| ExecutorError::Execution(err.into()))?;
+        wasi_module.initialize(
+            Some(args.iter().map(|s| s as &str).collect()),
+            Some(envs.iter().map(|s| s as &str).collect()),
+            None,
+        );
+        let vm = vm
+            .register_module_from_file("main", cmd)
+            .map_err(|err| ExecutorError::Execution(err))?;
+        if let Some(stdin) = self.stdin {
+            dup(STDIN_FILENO)?;
+            dup2(stdin, STDIN_FILENO)?;
+        }
+        if let Some(stdout) = self.stdout {
+            dup(STDOUT_FILENO)?;
+            dup2(stdout, STDOUT_FILENO)?;
+        }
+        if let Some(stderr) = self.stderr {
+            dup(STDERR_FILENO)?;
+            dup2(stderr, STDERR_FILENO)?;
+        }
+        Ok(vm)
     }
 }
 
