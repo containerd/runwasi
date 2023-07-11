@@ -103,6 +103,7 @@ impl Instance for Wasi {
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
+        log::error!("instance bundle = {bundle:#?}");
         let rootdir = determine_rootdir(bundle.as_str(), cfg.get_namespace()).unwrap();
         Wasi {
             id,

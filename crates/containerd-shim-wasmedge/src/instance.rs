@@ -23,6 +23,7 @@ use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
+    NeverType,
     plugin::PluginManager,
     NeverType, Vm, VmBuilder,
 };

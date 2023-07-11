@@ -1,0 +1,8 @@
+[package]
+name = "build-dir-helper"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "build-dir-helper"
+path = "src/bin.rs"

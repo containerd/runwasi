@@ -1,75 +1,55 @@
 # syntax=docker/dockerfile:1
 
-ARG RUST_VERSION=1.69
-ARG XX_VERSION=1.1.0
+ARG XX_VERSION=1.2.1
+ARG RUST_VERSION=1.69.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
-
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION} AS base
 COPY --from=xx / /
-RUN apt-get update -y && apt-get install --no-install-recommends -y clang jq
+RUN apt-get update -y && apt-get install --no-install-recommends -y clang cmake protobuf-compiler pkg-config dpkg-dev
 
-FROM base AS build
+# See https://github.com/tonistiigi/xx/issues/108
+RUN sed -i -E 's/xx-clang --setup-target-triple/XX_VENDOR=\$vendor xx-clang --setup-target-triple/' $(which xx-cargo) && \
+    sed -i -E 's/\$\(xx-info\)-/\$\(XX_VENDOR=\$vendor xx-info\)-/g' $(which xx-cargo)
+
+# See https://github.com/rust-lang/cargo/issues/9167
+RUN mkdir -p /.cargo && \
+    echo '[net]' > /.cargo/config && \
+    echo 'git-fetch-with-cli = true' >> /.cargo/config
+
+FROM base as build
+ADD . /runwasi
+WORKDIR /runwasi
+
 SHELL ["/bin/bash", "-c"]
-ARG BUILD_TAGS TARGETPLATFORM
-ENV WASMEDGE_INCLUDE_DIR=/root/.wasmedge/include
-ENV WASMEDGE_LIB_DIR=/root/.wasmedge/lib
-ENV LD_LIBRARY_PATH=/root/.wasmedge/lib
-RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g
-RUN xx-apt-get install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
-RUN rustup target add $(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
-RUN <<EOT
-    set -ex
-    os=$(xx-info os)
-    curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1 --platform=${os^} --machine=$(xx-info march)
-EOT
+RUN --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/cache \
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/build/app,id=wasmedge-wasmtime-$TARGETPLATFORM \
+    cargo fetch
 
-WORKDIR /build/src
-COPY --link crates ./crates
-COPY --link benches ./benches
-COPY --link Cargo.toml ./
-COPY --link Cargo.lock ./
-ARG CRATE=""
-ARG TARGETOS TARGETARCH TARGETVARIANT
+ARG BUILD_TAGS TARGETPLATFORM
+RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g libdbus-1-dev libseccomp-dev
+RUN rustup target add wasm32-wasi
+
+RUN mkdir -p /dist
+
 RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
-    set -e
-    export "CARGO_NET_GIT_FETCH_WITH_CLI=true"
-    export "CARGO_TARGET_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)_LINKER=$(xx-info)-gcc"
-    export "CC_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)=$(xx-info)-gcc"
-    if [ -n "${CRATE}" ]; then
-        package="--package=${CRATE}"
-    fi
-    cargo build --release --target=$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc) ${package}
-EOT
-COPY scripts ./scripts
-RUN --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/cache \
-    --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
-    set -e
-    mkdir /build/bin
-    bins="$(scripts/bins.sh ${CRATE} | jq -r 'join(" ")')"
-    echo "Copying binaries: ${bins}"
-    for bin in ${bins}; do
-        cp target/$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)/release/${bin} /build/bin/${bin}
-    done
-EOT
+    --mount=type=cache,target=/build,id=containerd-wasi-shims-$TARGETPLATFORM \
+    make TARGET=release CARGO=xx-cargo build
+
+RUN --mount=type=cache,target=/build,id=containerd-wasi-shims-$TARGETPLATFORM \
+    make TARGET=release CARGO=xx-cargo PREFIX=/dist install
 
 FROM build AS build-tar
-WORKDIR /build/release
-ARG CRATE
-ARG TARGETOS TARGETARCH TARGETVARIANT
-RUN <<EOF
-if [ -n "$(find /build/bin -type f -exec echo {} \;)" ]; then
-    tar -C /build/bin -czf "/build/release/${CRATE}-${TARGETOS}-${TARGETARCH}${TARGETVARIANT}.tar.gz" .
-fi
-EOF
-
-FROM scratch AS release-tar
-COPY --link --from=build-tar /build/release/* /
+ARG TARGETPLATFORM
+RUN mkdir -p /dist/tar
+RUN tar -C /dist/bin -czf "/dist/tar/runwasi-$(xx-info os)-$(xx-info march).tar.gz" .
 
 FROM scratch AS release
-COPY --link --from=build /build/bin/* /
+COPY --link --from=build /dist/bin/* /
+
+FROM scratch AS release-tar
+COPY --link --from=build-tar /dist/tar/* /

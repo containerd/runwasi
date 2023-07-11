@@ -19,9 +19,12 @@ pub fn run_test_with_sudo(test: &str) -> Result<()> {
     // This makes it so cargo doesn't mess up the caller's TTY.
 
     let normalized_test = normalize_test_name(test)?;
+    let ld_library_path = std::env::var("LD_LIBRARY_PATH").unwrap_or("".to_string());
 
     let mut cmd = Command::new("sudo")
         .arg("-E")
+        // LD_LIBRARY_PATH is otherwise not preserved
+        .arg(format!("LD_LIBRARY_PATH={ld_library_path}"))
         .arg(std::fs::read_link("/proc/self/exe")?)
         .arg("--")
         .arg(normalized_test)

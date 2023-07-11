@@ -2,9 +2,12 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime
-export CONTAINERD_NAMESPACE ?= default
-export WASMEDGE_INCLUDE_DIR ?=$(PWD)/bin/wasmedge/include
-export WASMEDGE_LIB_DIR ?=$(PWD)/bin/wasmedge/lib
+CONTAINERD_NAMESPACE ?= default
+BINARIES ?= $(foreach runtime,$(RUNTIMES), \
+	containerd-shim-$(runtime)-v1 \
+	containerd-shim-$(runtime)d-v1 \
+	containerd-$(runtime)d \
+)
 
 TARGET ?= debug
 RELEASE_FLAG :=
@@ -16,33 +19,38 @@ DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
 
+CARGO ?= cargo
+
+BUILD_DIR := $(shell $(CARGO) run -q --bin build-dir-helper $(RELEASE_FLAG))
+
+export
+
 .PHONY: build
 build:
-	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
-	cargo build $(RELEASE_FLAG)
+	$(CARGO) build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
+	$(CARGO) build $(RELEASE_FLAG)
 
 .PHONY: check
 check:
-	cargo fmt --all -- --check
-	cargo clippy --all --all-targets -- -D warnings
+	$(CARGO) fmt --all -- --check
+	$(CARGO) clippy --all --all-targets -- -D warnings
 
 .PHONY: fix
 fix:
-	cargo fmt --all
-	cargo clippy --fix --all --all-targets -- -D warnings
+	$(CARGO) fmt --all
+	$(CARGO) clippy --fix --all --all-targets -- -D warnings
 
 .PHONY: test
 test:
-	RUST_LOG=trace cargo test --all --verbose -- --nocapture
+	RUST_LOG=trace $(CARGO) test --all --verbose -- --nocapture
 
 .PHONY: install
 install:
-	mkdir -p $(PREFIX)/bin
-	$(foreach runtime,$(RUNTIMES), \
-		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)-v1 $(PREFIX)/bin/; \
-		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)d-v1 $(PREFIX)/bin/; \
-		$(INSTALL) target/$(TARGET)/containerd-$(runtime)d $(PREFIX)/bin/; \
-	)
+	install -Dt $(PREFIX)/bin/ $(addprefix ${BUILD_DIR}/,${BINARIES} libwasmedge.so.0)
+
+.PHONY: uninstall
+uninstall:
+	rm -f $(addprefix $(PREFIX)/bin/,${BINARIES} libwasmedge.so.0)
 
 .PHONY: test-image
 test-image: target/wasm32-wasi/$(TARGET)/img.tar
@@ -54,11 +62,11 @@ test-image/clean:
 .PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
 	rustup target add wasm32-wasi
-	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
+	cd crates/wasi-demo-app && $(CARGO) build $(RELEASE_FLAG)
 
 .PHONY: target/wasm32-wasi/$(TARGET)/img.tar
 target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
-	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
+	cd crates/wasi-demo-app && $(CARGO) build $(RELEASE_FLAG) --features oci-v1-tar
 
 load: target/wasm32-wasi/$(TARGET)/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
@@ -84,15 +92,15 @@ test/k8s/clean: bin/kind
 	bin/kind delete cluster --name $(KIND_CLUSTER_NAME)
 
 .PHONY: bin/wasmedge
-bin/wasmedge:
-	mkdir -p ${CURDIR}/bin
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1 -p $(PWD)/bin/wasmedge && \
-	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
+bin/wasmedge: ${WASMEDGE_LIB_DIR}/libwasmedge.so;
+${WASMEDGE_LIB_DIR}/libwasmedge.so:
+	mkdir -p ${WASMEDGE_LIB_DIR}
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | \
+		SHELL=none bash -s -- --version=0.13.1 --path ${CURDIR}/bin/wasmedge
 
 .PHONY: bin/wasmedge/clean
 bin/wasmedge/clean:
-	sudo rm /etc/ld.so.conf.d/libwasmedge.conf && sudo ldconfig
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q
+	rm -R ${CURDIR}/bin/wasmedge
 
 .PHONY: bin/k3s
 bin/k3s:
@@ -104,11 +112,9 @@ bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
 .PHONY: test/k3s
-test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
-	export WASMEDGE_INCLUDE_DIR=$(PWD)/bin/wasmedge/include && \
-	export WASMEDGE_LIB_DIR=$(PWD)/bin/wasmedge/lib && \
-	cargo build $(RELEASE_FLAG) && \
-	cp target/$(TARGET)/containerd-shim-wasmedge-v1 $(PWD)/bin/ && \
+test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s
+	$(MAKE) build && \
+	$(MAKE) install PREFIX=$(PWD) && \
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '  runtime_type = "$(PWD)/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
@@ -125,7 +131,6 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
-test/k3s/clean: bin/wasmedge/clean bin/k3s/clean
-	cargo clean
-	unset WASMEDGE_INCLUDE_DIR WASMEDGE_LIB_DIR
-	rm $(PWD)/bin/containerd-shim-wasmedge-v1
+test/k3s/clean: bin/k3s/clean
+	$(MAKE) uninstall PREFIX=$(PWD)
+	$(CARGO) clean

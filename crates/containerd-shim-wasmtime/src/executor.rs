@@ -39,7 +39,9 @@ impl Executor for WasmtimeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
+    fn can_handle(&self, spec: &Spec) -> bool {
+        log::error!("Spec: {spec:#?}");
+        let _args = oci::get_args(spec);
         true
     }
 
