@@ -29,7 +29,7 @@ pub struct ManagerClient {
 impl ManagerClient {
     pub fn new(client: ::ttrpc::Client) -> Self {
         ManagerClient {
-            client,
+            client: client,
         }
     }
 
