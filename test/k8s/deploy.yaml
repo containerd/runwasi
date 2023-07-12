@@ -26,5 +26,5 @@ spec:
         image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
         imagePullPolicy: Never
       - name: py-demo
-        image: py-cmd-app:v1
+        image: py-flask-app:latest
         imagePullPolicy: Never
