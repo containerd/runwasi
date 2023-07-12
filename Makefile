@@ -69,7 +69,7 @@ test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -typ
 
 .PHONY: test/py-flask
 test/py-flask:
-	docker build -t py-flask-app:latest -f $@/Dockerfile $@
+	$(DOCKER_BUILD) -t py-flask-app:latest -f $@/Dockerfile $@
 	mkdir -p $@/out && docker save -o $@/out/img.tar py-flask-app:latest 
 
 .PHONY: test/k8s/cluster
