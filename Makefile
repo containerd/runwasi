@@ -3,6 +3,8 @@ INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime
 export CONTAINERD_NAMESPACE ?= default
+export WASMEDGE_INCLUDE_DIR ?=$(PWD)/bin/wasmedge/include
+export WASMEDGE_LIB_DIR ?=$(PWD)/bin/wasmedge/lib
 
 TARGET ?= debug
 RELEASE_FLAG :=
