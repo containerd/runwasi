@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     plugin::PluginManager,
-    Vm, VmBuilder,
+    NeverType, Vm, VmBuilder,
 };
 
 use std::{
@@ -98,7 +98,7 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl Instance for Wasi {
-    type E = Vm;
+    type E = Vm<NeverType>;
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
@@ -250,8 +250,8 @@ impl Wasi {
 }
 
 impl EngineGetter for Wasi {
-    type E = Vm;
-    fn new_engine() -> Result<Vm, Error> {
+    type E = Vm<NeverType>;
+    fn new_engine() -> Result<Vm<NeverType>, Error> {
         PluginManager::load(None).unwrap();
         let mut host_options = HostRegistrationConfigOptions::default();
         host_options = host_options.wasi(true);

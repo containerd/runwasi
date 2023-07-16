@@ -24,12 +24,12 @@ build:
 .PHONY: check
 check:
 	cargo fmt --all -- --check
-	cargo clippy --all --all-targets -- -D warnings 
+	cargo clippy --all --all-targets -- -D warnings
 
 .PHONY: fix
 fix:
 	cargo fmt --all
-	cargo clippy --fix --all --all-targets -- -D warnings 
+	cargo clippy --fix --all --all-targets -- -D warnings
 
 .PHONY: test
 test:
@@ -86,7 +86,7 @@ test/k8s/clean: bin/kind
 .PHONY: bin/wasmedge
 bin/wasmedge:
 	mkdir -p ${CURDIR}/bin
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.12.1 -p $(PWD)/bin/wasmedge && \
+	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1 -p $(PWD)/bin/wasmedge && \
 	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
 
 .PHONY: bin/wasmedge/clean
