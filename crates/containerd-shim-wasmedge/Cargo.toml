@@ -8,7 +8,7 @@ containerd-shim = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 ttrpc = { workspace = true }
-wasmedge-sdk = "0.8.1"
+wasmedge-sdk = "0.9.0"
 chrono = { workspace = true }
 anyhow = { workspace = true }
 cap-std = { workspace = true }
