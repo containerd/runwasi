@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.71.0
 
 jobs:
   fmt:
@@ -17,7 +18,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt, clippy
       - name: Setup OCI runtime build env
         run: |
@@ -44,7 +45,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
+          toolchain: ${{ env.RUST_VERSION }}
       - name: Setup OCI runtime build env
         run: |
           sudo apt -y update
