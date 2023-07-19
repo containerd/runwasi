@@ -65,10 +65,7 @@ jobs:
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
       - name: Install rust
-        run: |
-          set -e
-          toolchain="$(grep "ARG RUST_VERSION" Dockerfile | cut -d = -f2)"
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${toolchain:-stable}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Setup WasmEdge build env
         if: ${{ contains(needs.generate.outputs.crate, 'wasmedge' ) }}
         run: |
