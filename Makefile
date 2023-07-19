@@ -3,8 +3,6 @@ INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime
 export CONTAINERD_NAMESPACE ?= default
-export WASMEDGE_INCLUDE_DIR ?=$(PWD)/bin/wasmedge/include
-export WASMEDGE_LIB_DIR ?=$(PWD)/bin/wasmedge/lib
 
 TARGET ?= debug
 RELEASE_FLAG :=
@@ -83,17 +81,6 @@ test/k8s: test/k8s/cluster
 test/k8s/clean: bin/kind
 	bin/kind delete cluster --name $(KIND_CLUSTER_NAME)
 
-.PHONY: bin/wasmedge
-bin/wasmedge:
-	mkdir -p ${CURDIR}/bin
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1 -p $(PWD)/bin/wasmedge && \
-	sudo -E sh -c 'echo "$(PWD)/bin/wasmedge/lib" > /etc/ld.so.conf.d/libwasmedge.conf' && sudo ldconfig
-
-.PHONY: bin/wasmedge/clean
-bin/wasmedge/clean:
-	sudo rm /etc/ld.so.conf.d/libwasmedge.conf && sudo ldconfig
-	curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh | bash -s -- -p $(PWD)/bin/wasmedge -q
-
 .PHONY: bin/k3s
 bin/k3s:
 	mkdir -p bin && \
@@ -104,16 +91,12 @@ bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
 .PHONY: test/k3s
-test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
-	export WASMEDGE_INCLUDE_DIR=$(PWD)/bin/wasmedge/include && \
-	export WASMEDGE_LIB_DIR=$(PWD)/bin/wasmedge/lib && \
+test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s
 	cargo build $(RELEASE_FLAG) && \
 	cp target/$(TARGET)/containerd-shim-wasmedge-v1 $(PWD)/bin/ && \
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '  runtime_type = "$(PWD)/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm.options]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '    BinaryName = "$(PWD)/bin/wasmedge/bin/wasmedge"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
 	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
 	sudo systemctl daemon-reload && \
@@ -125,7 +108,6 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/wasmedge bin/k3s
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
-test/k3s/clean: bin/wasmedge/clean bin/k3s/clean
+test/k3s/clean: bin/k3s/clean
 	cargo clean
-	unset WASMEDGE_INCLUDE_DIR WASMEDGE_LIB_DIR
 	rm $(PWD)/bin/containerd-shim-wasmedge-v1
