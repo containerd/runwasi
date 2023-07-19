@@ -13,7 +13,6 @@ jobs:
   fmt:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -35,7 +34,6 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: Swatinem/rust-cache@v2
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
