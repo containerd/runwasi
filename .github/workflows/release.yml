@@ -66,6 +66,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup build env
+        run: make deps
       - name: Setup WasmEdge build env
         if: ${{ contains(needs.generate.outputs.crate, 'wasmedge' ) }}
         run: |

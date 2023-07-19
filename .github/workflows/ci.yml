@@ -19,9 +19,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: make deps
       - name: Setup WasmEdge build env
         run: |
           make bin/wasmedge
@@ -29,8 +27,7 @@ jobs:
           echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
           echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
       - name: Run checks
-        run: |
-          make check
+        run: make check
   build:
     strategy:
       matrix:
@@ -43,9 +40,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: make deps
       - name: Setup WasmEdge build env
         run: |
           make bin/wasmedge
@@ -77,12 +72,9 @@ jobs:
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: make deps
       - name: run
-        run: |
-          make test/k8s
+        run: make test/k8s
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
@@ -106,9 +98,7 @@ jobs:
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: make deps
       - name: run
         run: |
           echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV

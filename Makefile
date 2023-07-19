@@ -16,6 +16,11 @@ DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
 
+.PHONY: deps
+deps:
+	sudo apt -y update
+	sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+
 .PHONY: build
 build:
 	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
