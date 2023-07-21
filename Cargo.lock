@@ -453,7 +453,7 @@ dependencies = [
 [[package]]
 name = "containerd-shim"
 version = "0.3.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=8500b4c665e0d0911b9546c00bd0bd4670cf5533#8500b4c665e0d0911b9546c00bd0bd4670cf5533"
+source = "git+https://github.com/containerd/rust-extensions?rev=7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93#7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -481,7 +481,7 @@ dependencies = [
 [[package]]
 name = "containerd-shim-protos"
 version = "0.3.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=8500b4c665e0d0911b9546c00bd0bd4670cf5533#8500b4c665e0d0911b9546c00bd0bd4670cf5533"
+source = "git+https://github.com/containerd/rust-extensions?rev=7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93#7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",

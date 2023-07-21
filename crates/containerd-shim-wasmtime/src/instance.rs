@@ -40,14 +40,11 @@ static mut STDERR_FD: Option<RawFd> = None;
 pub struct Wasi {
     exit_code: ExitCode,
     engine: wasmtime::Engine,
-
     stdin: String,
     stdout: String,
     stderr: String,
     bundle: String,
-
     rootdir: PathBuf,
-
     id: String,
 }
 
@@ -401,7 +398,11 @@ mod wasitest {
             )
             .build()?;
         spec.save(dir.path().join("config.json"))?;
-        let mut cfg = InstanceConfig::new(Engine::default(), "test_namespace".into());
+        let mut cfg = InstanceConfig::new(
+            Engine::default(),
+            "test_namespace".into(),
+            "/containerd/address".into(),
+        );
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())

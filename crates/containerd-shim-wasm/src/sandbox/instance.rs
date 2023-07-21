@@ -32,13 +32,15 @@ where
     bundle: Option<String>,
     /// Namespace for containerd
     namespace: String,
+    // /// GRPC address back to main containerd
+    containerd_address: String,
 }
 
 impl<E> InstanceConfig<E>
 where
     E: Send + Sync + Clone,
 {
-    pub fn new(engine: E, namespace: String) -> Self {
+    pub fn new(engine: E, namespace: String, containerd_address: String) -> Self {
         Self {
             engine,
             namespace,
@@ -46,6 +48,7 @@ where
             stdout: None,
             stderr: None,
             bundle: None,
+            containerd_address,
         }
     }
 
@@ -101,6 +104,11 @@ where
     /// get the namespace for the instance
     pub fn get_namespace(&self) -> String {
         self.namespace.clone()
+    }
+
+    /// get the containerd address for the instance
+    pub fn get_containerd_address(&self) -> String {
+        self.containerd_address.clone()
     }
 }
 
