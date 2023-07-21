@@ -35,6 +35,25 @@ pub fn get_args(spec: &Spec) -> &[String] {
     }
 }
 
+pub fn get_module(spec: &Spec) -> (Option<String>, String) {
+    let args = get_args(spec);
+
+    if !args.is_empty() {
+        let start = args[0].clone();
+        let mut iterator = start.split('#');
+        let mut cmd = iterator.next().unwrap().to_string();
+
+        let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
+        if let Some(strpd) = stripped {
+            cmd = strpd.to_string();
+        }
+        let method = iterator.next().unwrap_or("_start");
+        return (Some(cmd), method.to_string());
+    }
+
+    (None, "_start".to_string())
+}
+
 pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec> {
     let file = File::open(path)?;
     let cfg: Spec = json::from_reader(file)?;
@@ -111,4 +130,126 @@ pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod oci_tests {
+    use super::*;
+    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+
+    #[test]
+    fn test_get_args() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec!["hello.wat".to_string()])
+                    .build()?,
+            )
+            .build()?;
+
+        let args = get_args(&spec);
+        assert_eq!(args.len(), 1);
+        assert_eq!(args[0], "hello.wat");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_args_return_empty() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").args(vec![]).build()?)
+            .build()?;
+
+        let args = get_args(&spec);
+        assert_eq!(args.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_args_returns_all() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec![
+                        "hello.wat".to_string(),
+                        "echo".to_string(),
+                        "hello".to_string(),
+                    ])
+                    .build()?,
+            )
+            .build()?;
+
+        let args = get_args(&spec);
+        assert_eq!(args.len(), 3);
+        assert_eq!(args[0], "hello.wat");
+        assert_eq!(args[1], "echo");
+        assert_eq!(args[2], "hello");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_module_returns_none_when_not_present() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").args(vec![]).build()?)
+            .build()?;
+
+        let (module, _) = get_module(&spec);
+        assert_eq!(module, None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_module_returns_function() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec![
+                        "hello.wat#foo".to_string(),
+                        "echo".to_string(),
+                        "hello".to_string(),
+                    ])
+                    .build()?,
+            )
+            .build()?;
+
+        let (module, function) = get_module(&spec);
+        assert_eq!(module, Some("hello.wat".to_string()));
+        assert_eq!(function, "foo");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_module_returns_start() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec![
+                        "hello.wat".to_string(),
+                        "echo".to_string(),
+                        "hello".to_string(),
+                    ])
+                    .build()?,
+            )
+            .build()?;
+
+        let (module, function) = get_module(&spec);
+        assert_eq!(module, Some("hello.wat".to_string()));
+        assert_eq!(function, "_start");
+
+        Ok(())
+    }
 }

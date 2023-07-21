@@ -429,9 +429,9 @@ mod wasitest {
 
         let dir = tempdir()?;
         let path = dir.path();
-        let wasmbytes = wat2wasm(WASI_HELLO_WAT).unwrap();
+        let wasm_bytes = wat2wasm(WASI_HELLO_WAT).unwrap();
 
-        let res = run_wasi_test(&dir, wasmbytes)?;
+        let res = run_wasi_test(&dir, wasm_bytes)?;
 
         assert_eq!(res.0, 0);
 
@@ -451,9 +451,9 @@ mod wasitest {
         }
 
         let dir = tempdir()?;
-        let wasmbytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
+        let wasm_bytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 
-        let res = run_wasi_test(&dir, wasmbytes)?;
+        let res = run_wasi_test(&dir, wasm_bytes)?;
 
         // Expect error code from the run.
         assert_eq!(res.0, 137);

@@ -5,6 +5,7 @@ use oci_spec::runtime::Spec;
 
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
+use log::debug;
 use std::os::unix::io::RawFd;
 
 use wasmedge_sdk::{
@@ -34,7 +35,9 @@ impl Executor for WasmEdgeExecutor {
 
         // TODO: How to get exit code?
         // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
-        match vm.run_func(Some("main"), "_start", params!()) {
+        let (module_name, method) = oci::get_module(spec);
+        debug!("running {:?} with method {}", module_name, method);
+        match vm.run_func(Some("main"), method, params!()) {
             Ok(_) => std::process::exit(0),
             Err(_) => std::process::exit(137),
         };
@@ -51,10 +54,6 @@ impl Executor for WasmEdgeExecutor {
 
 impl WasmEdgeExecutor {
     fn prepare(&self, args: &[String], spec: &Spec) -> anyhow::Result<wasmedge_sdk::Vm> {
-        let mut cmd = args[0].clone();
-        if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
-            cmd = stripped.to_string();
-        }
         let envs = env_to_wasi(spec);
         let config = ConfigBuilder::new(CommonConfigOptions::default())
             .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
@@ -73,8 +72,14 @@ impl WasmEdgeExecutor {
             Some(envs.iter().map(|s| s as &str).collect()),
             None,
         );
+
+        let (module_name, _) = oci::get_module(spec);
+        let module_name = match module_name {
+            Some(m) => m,
+            None => return Err(anyhow::Error::msg("no module provided cannot load module")),
+        };
         let vm = vm
-            .register_module_from_file("main", cmd)
+            .register_module_from_file("main", module_name)
             .map_err(|err| ExecutorError::Execution(err))?;
         if let Some(stdin) = self.stdin {
             dup(STDIN_FILENO)?;
