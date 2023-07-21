@@ -9,22 +9,14 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION} AS base
 COPY --from=xx / /
-RUN apt-get update -y && apt-get install --no-install-recommends -y clang jq
+RUN apt-get update -y && apt-get install --no-install-recommends -y clang jq wget
 
 FROM base AS build
 SHELL ["/bin/bash", "-c"]
 ARG BUILD_TAGS TARGETPLATFORM
-ENV WASMEDGE_INCLUDE_DIR=/root/.wasmedge/include
-ENV WASMEDGE_LIB_DIR=/root/.wasmedge/lib
-ENV LD_LIBRARY_PATH=/root/.wasmedge/lib
 RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g
 RUN xx-apt-get install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
 RUN rustup target add $(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
-RUN <<EOT
-    set -ex
-    os=$(xx-info os)
-    curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1 --platform=${os^} --machine=$(xx-info march)
-EOT
 
 WORKDIR /build/src
 COPY --link crates ./crates

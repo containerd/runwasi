@@ -71,11 +71,6 @@ jobs:
       - name: Setup build env
         run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
         shell: bash
-      - name: Setup WasmEdge build env
-        if: ${{ contains(needs.generate.outputs.crate, 'wasmedge' ) }}
-        run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --version=0.13.1
-          echo "LD_LIBRARY_PATH=$HOME/.wasmedge/lib" >> $GITHUB_ENV
       - name: Build
         run: cargo build --verbose --package ${{ needs.generate.outputs.crate }}
       - name: Test

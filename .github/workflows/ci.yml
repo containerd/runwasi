@@ -20,12 +20,6 @@ jobs:
       - name: Setup OCI runtime build env
         run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
         shell: bash
-      - name: Setup WasmEdge build env
-        run: |
-          make bin/wasmedge
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
       - name: Run checks
         run: make check
   build:
@@ -41,12 +35,6 @@ jobs:
       - name: Setup OCI runtime build env
         run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
         shell: bash
-      - name: Setup WasmEdge build env
-        run: |
-          make bin/wasmedge
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -102,11 +90,7 @@ jobs:
         run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
         shell: bash
       - name: run
-        run: |
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          make test/k3s
+        run: make test/k3s
       - name: cleanup
         if: always()
         run: make test/k3s/clean

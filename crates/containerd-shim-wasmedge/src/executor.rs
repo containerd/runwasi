@@ -9,7 +9,7 @@ use std::os::unix::io::RawFd;
 
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    params, NeverType, VmBuilder,
+    params, VmBuilder,
 };
 
 const EXECUTOR_NAME: &str = "wasmedge";
@@ -50,7 +50,7 @@ impl Executor for WasmEdgeExecutor {
 }
 
 impl WasmEdgeExecutor {
-    fn prepare(&self, args: &[String], spec: &Spec) -> anyhow::Result<wasmedge_sdk::Vm<NeverType>> {
+    fn prepare(&self, args: &[String], spec: &Spec) -> anyhow::Result<wasmedge_sdk::Vm> {
         let mut cmd = args[0].clone();
         if let Some(stripped) = args[0].strip_prefix(std::path::MAIN_SEPARATOR) {
             cmd = stripped.to_string();
@@ -62,7 +62,7 @@ impl WasmEdgeExecutor {
             .map_err(|err| ExecutorError::Execution(err))?;
         let mut vm = VmBuilder::new()
             .with_config(config)
-            .build::<NeverType>()
+            .build()
             .map_err(|err| ExecutorError::Execution(err))?;
         let wasi_module = vm
             .wasi_module_mut()
