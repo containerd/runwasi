@@ -4,7 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    ignore:
-      - dependency-name: "wasmtime"
-      - dependency-name: "wasi-common"
-      - dependency-name: "wasmtime-wasi"
+    groups:
+      wasmtime-deps:
+        patterns:
+          - "wasmtime"
+          - "wasmtime-common"
+          - "wasi-common"
