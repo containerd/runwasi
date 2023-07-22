@@ -3,7 +3,7 @@
 
 ## runwasi
 
-> Warning: Alpha quality software, do not use in production.
+> :construction: Warning: Alpha quality software, do not use in production.
 
 This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
