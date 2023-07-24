@@ -146,14 +146,7 @@ You will need to make sure the `containerd-[ wasmedge | wasmtime ]d` daemon has 
 
 #### Building
 
-1. Install Wasm Edge dependencies
-
-```terminal
-make bin/wasmedge/clean
-make bin/wasmedge
-```
-
-2. Install [youki dependencies](https://github.com/containers/youki#dependencies)
+1. Install [youki dependencies](https://github.com/containers/youki#dependencies)
 
 ```
 sudo apt-get install    \
@@ -167,7 +160,7 @@ sudo apt-get install    \
       libssl-dev
 ```
 
-3. Build
+2. Build
 
 ```
 make build

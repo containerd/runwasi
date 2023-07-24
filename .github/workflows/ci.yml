@@ -13,45 +13,30 @@ jobs:
   fmt:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
-      - name: Setup WasmEdge build env
-        run: |
-          make bin/wasmedge
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
+        run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
+        shell: bash
       - name: Run checks
-        run: |
-          make check
+        run: make check
   build:
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: Swatinem/rust-cache@v2
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        env:
+          RUST_CACHE_KEY_OS: ${{ matrix.os }}
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
-      - name: Setup WasmEdge build env
-        run: |
-          make bin/wasmedge
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
+        run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
+        shell: bash
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -77,12 +62,10 @@ jobs:
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
+        shell: bash
       - name: run
-        run: |
-          make test/k8s
+        run: make test/k8s
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
@@ -106,15 +89,10 @@ jobs:
       - name: setup rust-wasm target
         run: rustup target add wasm32-wasi
       - name: Setup OCI runtime build env
-        run: |
-          sudo apt -y update
-          sudo apt install -y pkg-config libsystemd-dev libdbus-glib-1-dev build-essential libelf-dev libseccomp-dev libclang-dev
+        run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
+        shell: bash
       - name: run
-        run: |
-          echo "LD_LIBRARY_PATH=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=$PWD/bin/wasmedge/include" >> $GITHUB_ENV
-          echo "WASMEDGE_LIB_DIR=$PWD/bin/wasmedge/lib" >> $GITHUB_ENV
-          make test/k3s
+        run: make test/k3s
       - name: cleanup
         if: always()
         run: make test/k3s/clean

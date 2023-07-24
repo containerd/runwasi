@@ -8,7 +8,7 @@ containerd-shim = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 ttrpc = { workspace = true }
-wasmedge-sdk = "0.9.0"
+wasmedge-sdk = { version = "0.10.0", features = [ "standalone", "static" ] }
 chrono = { workspace = true }
 anyhow = { workspace = true }
 cap-std = { workspace = true }
@@ -21,7 +21,7 @@ libc = { workspace = true }
 libcontainer = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = "3.7"
 pretty_assertions = "1"
 serial_test = "*"
 
