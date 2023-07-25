@@ -71,7 +71,7 @@ impl WasmEdgeExecutor {
         wasi_module.initialize(
             Some(args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
-            None,
+            Some(vec!["/:/"]), // map the container root filesystem to be available to the WASI module
         );
         let vm = vm
             .register_module_from_file("main", cmd)
