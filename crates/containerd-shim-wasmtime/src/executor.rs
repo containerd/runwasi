@@ -24,7 +24,7 @@ pub struct WasmtimeExecutor {
 impl Executor for WasmtimeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         let args = oci::get_args(spec);
-        if args.len() != 1 {
+        if args.is_empty() {
             return Err(ExecutorError::InvalidArg);
         }
 
