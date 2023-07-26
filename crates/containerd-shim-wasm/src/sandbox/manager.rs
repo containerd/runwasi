@@ -23,6 +23,7 @@ use containerd_shim::{
 };
 use nix::sched::{setns, unshare, CloneFlags};
 use oci_spec::runtime;
+use shim::Flags;
 use ttrpc::context;
 
 use super::error::Error;
@@ -38,7 +39,13 @@ where
 {
     type Instance: Instance<E = E>;
 
-    fn new(namespace: String, id: String, engine: E, publisher: RemotePublisher) -> Self;
+    fn new(
+        namespace: String,
+        containerd_address: String,
+        id: String,
+        engine: E,
+        publisher: RemotePublisher,
+    ) -> Self;
 }
 
 /// Service is a manager service which can be used to manage multiple instances of a sandbox in-process.
@@ -88,6 +95,7 @@ where
 
         let sb = T::new(
             req.namespace.clone(),
+            req.containerd_address.clone(),
             req.id.clone(),
             self.engine.clone(),
             publisher,
@@ -189,10 +197,10 @@ impl Task for Shim {}
 impl shim::Shim for Shim {
     type T = Self;
 
-    fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
+    fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Shim {
-            id: id.to_string(),
-            namespace: namespace.to_string(),
+            id: args.id.to_string(),
+            namespace: args.namespace.to_string(),
         }
     }
 

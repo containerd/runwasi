@@ -37,6 +37,8 @@ pub struct CreateRequest {
     pub ttrpc_address: ::std::string::String,
     // @@protoc_insertion_point(field:runwasi.services.sandbox.v1.CreateRequest.working_directory)
     pub working_directory: ::std::string::String,
+    // @@protoc_insertion_point(field:runwasi.services.sandbox.v1.CreateRequest.containerd_address)
+    pub containerd_address: ::std::string::String,
     // special fields
     // @@protoc_insertion_point(special_field:runwasi.services.sandbox.v1.CreateRequest.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -54,7 +56,7 @@ impl CreateRequest {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "namespace",
@@ -75,6 +77,11 @@ impl CreateRequest {
             "working_directory",
             |m: &CreateRequest| { &m.working_directory },
             |m: &mut CreateRequest| { &mut m.working_directory },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "containerd_address",
+            |m: &CreateRequest| { &m.containerd_address },
+            |m: &mut CreateRequest| { &mut m.containerd_address },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CreateRequest>(
             "CreateRequest",
@@ -106,6 +113,9 @@ impl ::protobuf::Message for CreateRequest {
                 34 => {
                     self.working_directory = is.read_string()?;
                 },
+                42 => {
+                    self.containerd_address = is.read_string()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -130,6 +140,9 @@ impl ::protobuf::Message for CreateRequest {
         if !self.working_directory.is_empty() {
             my_size += ::protobuf::rt::string_size(4, &self.working_directory);
         }
+        if !self.containerd_address.is_empty() {
+            my_size += ::protobuf::rt::string_size(5, &self.containerd_address);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -147,6 +160,9 @@ impl ::protobuf::Message for CreateRequest {
         }
         if !self.working_directory.is_empty() {
             os.write_string(4, &self.working_directory)?;
+        }
+        if !self.containerd_address.is_empty() {
+            os.write_string(5, &self.containerd_address)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -169,6 +185,7 @@ impl ::protobuf::Message for CreateRequest {
         self.id.clear();
         self.ttrpc_address.clear();
         self.working_directory.clear();
+        self.containerd_address.clear();
         self.special_fields.clear();
     }
 
@@ -178,6 +195,7 @@ impl ::protobuf::Message for CreateRequest {
             id: ::std::string::String::new(),
             ttrpc_address: ::std::string::String::new(),
             working_directory: ::std::string::String::new(),
+            containerd_address: ::std::string::String::new(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -847,11 +865,12 @@ impl ::protobuf::reflect::ProtobufValue for DeleteResponse {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\rsandbox.proto\x12\x1brunwasi.services.sandbox.v1\"\x8f\x01\n\rCreate\
+    \n\rsandbox.proto\x12\x1brunwasi.services.sandbox.v1\"\xbe\x01\n\rCreate\
     Request\x12\x1c\n\tnamespace\x18\x01\x20\x01(\tR\tnamespace\x12\x0e\n\
     \x02id\x18\x02\x20\x01(\tR\x02id\x12#\n\rttrpc_address\x18\x03\x20\x01(\
     \tR\x0cttrpcAddress\x12+\n\x11working_directory\x18\x04\x20\x01(\tR\x10w\
-    orkingDirectory\"1\n\x0eCreateResponse\x12\x1f\n\x0bsocket_path\x18\x01\
+    orkingDirectory\x12-\n\x12containerd_address\x18\x05\x20\x01(\tR\x11cont\
+    ainerdAddress\"1\n\x0eCreateResponse\x12\x1f\n\x0bsocket_path\x18\x01\
     \x20\x01(\tR\nsocketPath\"E\n\x0eConnectRequest\x12\x0e\n\x02id\x18\x01\
     \x20\x01(\tR\x02id\x12#\n\rttrpc_address\x18\x02\x20\x01(\tR\x0cttrpcAdd\
     ress\"2\n\x0fConnectResponse\x12\x1f\n\x0bsocket_path\x18\x01\x20\x01(\t\

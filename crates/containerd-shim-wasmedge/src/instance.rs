@@ -371,7 +371,11 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(Wasi::new_engine()?, "test_namespace".into());
+        let mut cfg = InstanceConfig::new(
+            Wasi::new_engine()?,
+            "test_namespace".into(),
+            "/containerd/address".into(),
+        );
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -407,7 +411,11 @@ mod wasitest {
         let vm = VmBuilder::new().with_config(config).build().unwrap();
         let i = Wasi::new(
             "".to_string(),
-            Some(&InstanceConfig::new(vm, "test_namespace".into())),
+            Some(&InstanceConfig::new(
+                vm,
+                "test_namespace".into(),
+                "/containerd/address".into(),
+            )),
         );
         i.delete().unwrap();
     }
