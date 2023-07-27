@@ -26,6 +26,9 @@ pretty_assertions = "1"
 serial_test = "*"
 
 [features]
+default = ["standalone", "static"]
+standalone = ["wasmedge-sdk/standalone"]
+static = ["wasmedge-sdk/static"]
 wasi_nn = ["wasmedge-sdk/wasi_nn"]
 
 [[bin]]
