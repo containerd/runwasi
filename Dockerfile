@@ -20,7 +20,6 @@ SHELL ["/bin/bash", "-c"]
 ARG BUILD_TAGS TARGETPLATFORM
 RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g
 RUN xx-apt-get install -y libsystemd-dev libdbus-1-dev libseccomp-dev
-RUN rustup target add $(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)
 
 WORKDIR /build/src
 COPY --link crates ./crates
@@ -36,8 +35,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
     set -e
     export "CARGO_NET_GIT_FETCH_WITH_CLI=true"
-    export "CARGO_TARGET_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)_LINKER=$(xx-info)-gcc"
-    export "CC_$(xx-info march | tr '[:lower:]' '[:upper:]' | tr - _)_UNKNOWN_$(xx-info os | tr '[:lower:]' '[:upper:]' | tr - _)_$(xx-info libc | tr '[:lower:]' '[:upper:]' | tr - _)=$(xx-info)-gcc"
     if [ -n "${CRATE}" ]; then
         package="--package=${CRATE}"
     fi
@@ -53,7 +50,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     bins="$(scripts/bins.sh ${CRATE} | jq -r 'join(" ")')"
     echo "Copying binaries: ${bins}"
     for bin in ${bins}; do
-        cp target/$(xx-info march)-unknown-$(xx-info os)-$(xx-info libc)/release/${bin} /build/bin/${bin}
+        cp target/$(xx-cargo --print-target-triple)/release/${bin} /build/bin/${bin}
     done
 EOT
 
