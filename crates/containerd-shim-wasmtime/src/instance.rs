@@ -52,20 +52,6 @@ pub struct Wasi {
     id: String,
 }
 
-pub fn reset_stdio() {
-    unsafe {
-        if STDIN_FD.is_some() {
-            dup2(STDIN_FD.unwrap(), STDIN_FILENO);
-        }
-        if STDOUT_FD.is_some() {
-            dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
-        }
-        if STDERR_FD.is_some() {
-            dup2(STDERR_FD.unwrap(), STDERR_FILENO);
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 struct Options {
     root: Option<PathBuf>,
@@ -431,5 +417,19 @@ mod wasitest {
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())
             .set_stderr(dir.path().join("stderr").to_str().unwrap().to_string());
         Ok(cfg.to_owned())
+    }
+
+    fn reset_stdio() {
+        unsafe {
+            if STDIN_FD.is_some() {
+                dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+            }
+            if STDOUT_FD.is_some() {
+                dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+            }
+            if STDERR_FD.is_some() {
+                dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+            }
+        }
     }
 }
