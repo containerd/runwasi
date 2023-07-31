@@ -99,9 +99,15 @@ jobs:
       - name: Create release
         run: |
           gh release create ${{ github.ref }} --generate-notes --prerelease
-          for i in release/*/*; do
-            gh release upload ${RELEASE_NAME} $i
-          done
+          # skip upload if there are no files
+          if stat release/*/* >/dev/null 2>&1; then
+            for i in release/*/*; do
+              gh release upload ${RELEASE_NAME} $i
+            done
+          else
+            echo "No files to upload"
+            exit 0
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
