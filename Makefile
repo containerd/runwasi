@@ -67,16 +67,16 @@ bin/kind: test/k8s/Dockerfile
 test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -type f -name '*.rs')
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
 
-.PHONY: test/py-flask
-test/py-flask:
-	$(DOCKER_BUILD) -t py-flask-app:latest -f $@/Dockerfile --load $@
-	mkdir -p $@/out && docker save -o $@/out/img.tar py-flask-app:latest 
+.PHONY: test/hello-world
+test/hello-world:
+	docker pull docker.io/hello-world:latest
+	mkdir -p $@/out && docker save -o $@/out/img.tar docker.io/hello-world:latest
 
 .PHONY: test/k8s/cluster
-test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind test/py-flask
+test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind test/hello-world
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
-	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) test/py-flask/out/img.tar
+	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) test/hello-world/out/img.tar
 
 .PHONY: test/k8s
 test/k8s: test/k8s/cluster

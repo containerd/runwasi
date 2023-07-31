@@ -252,6 +252,7 @@ impl Wasi {
         });
         let default_executor = Box::<DefaultExecutor>::default();
 
+        // these are used by the default container runtime to redirect stdio
         if let Some(stdin) = stdin {
             unsafe {
                 STDIN_FD = Some(dup(STDIN_FILENO));
