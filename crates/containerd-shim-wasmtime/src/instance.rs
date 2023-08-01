@@ -4,13 +4,11 @@ use containerd_shim_wasm::sandbox::instance_utils::{
 };
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
-use libcontainer::workload::default::DefaultExecutor;
 use nix::errno::Errno;
 use nix::sys::wait::waitid;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
-use std::os::fd::RawFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -20,7 +18,6 @@ use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{dup, dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
 use log::error;
@@ -28,15 +25,12 @@ use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
 
 use wasmtime::Engine;
 
+use crate::container_executor::DefaultExecutor;
 use crate::executor::WasmtimeExecutor;
 use libcontainer::signal::Signal;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
-
-static mut STDIN_FD: Option<RawFd> = None;
-static mut STDOUT_FD: Option<RawFd> = None;
-static mut STDERR_FD: Option<RawFd> = None;
 
 pub struct Wasi {
     exit_code: ExitCode,
@@ -233,33 +227,17 @@ impl Wasi {
             stdout,
             stderr,
         });
-        let default_executor = Box::<DefaultExecutor>::default();
-
-        // these are used by the default container runtime to redirect stdio
-        if let Some(stdin) = stdin {
-            unsafe {
-                STDIN_FD = Some(dup(STDIN_FILENO));
-                dup2(stdin, STDIN_FILENO);
-            }
-        }
-        if let Some(stdout) = stdout {
-            unsafe {
-                STDOUT_FD = Some(dup(STDOUT_FILENO));
-                dup2(stdout, STDOUT_FILENO);
-            }
-        }
-        if let Some(stderr) = stderr {
-            unsafe {
-                STDERR_FD = Some(dup(STDERR_FILENO));
-                dup2(stderr, STDERR_FILENO);
-            }
-        }
-
+        let default_executor = Box::new(DefaultExecutor {
+            stdin,
+            stdout,
+            stderr,
+        });
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![wasmtime_executor, default_executor])?
+            .with_executor(vec![default_executor, wasmtime_executor])?
             .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
             .with_systemd(false)
+            .with_detach(true)
             .build()?;
         Ok(container)
     }
@@ -276,6 +254,7 @@ impl EngineGetter for Wasi {
 mod wasitest {
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
     use std::io::prelude::*;
+    use std::os::fd::RawFd;
     use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
@@ -284,8 +263,14 @@ mod wasitest {
     use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
+    use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+    use nix::unistd::dup2;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
+
+    static mut STDIN_FD: Option<RawFd> = None;
+    static mut STDOUT_FD: Option<RawFd> = None;
+    static mut STDERR_FD: Option<RawFd> = None;
 
     use super::*;
 
@@ -423,13 +408,13 @@ mod wasitest {
     fn reset_stdio() {
         unsafe {
             if STDIN_FD.is_some() {
-                dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+                let _ = dup2(STDIN_FD.unwrap(), STDIN_FILENO);
             }
             if STDOUT_FD.is_some() {
-                dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+                let _ = dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
             }
             if STDERR_FD.is_some() {
-                dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+                let _ = dup2(STDERR_FD.unwrap(), STDERR_FILENO);
             }
         }
     }
