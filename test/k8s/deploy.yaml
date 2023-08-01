@@ -25,6 +25,6 @@ spec:
       - name: demo
         image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
         imagePullPolicy: Never
-      - name: hello-world
-        image: hello-world:latest
+      - name: nginx
+        image: nginx:latest
         imagePullPolicy: Never
