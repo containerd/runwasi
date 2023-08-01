@@ -273,21 +273,13 @@ impl EngineGetter for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::borrow::Cow;
-    use std::fs::{create_dir, read_to_string, File, OpenOptions};
-    use std::os::unix::prelude::OpenOptionsExt;
-    use std::sync::mpsc::channel;
-    use std::time::Duration;
-
+    use super::*;
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
-    use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
-    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-    use tempfile::{tempdir, TempDir};
-
+    use containerd_shim_wasm::sandbox::testutil::{run_test_with_sudo, run_wasi_test};
     use serial_test::serial;
-
-    use super::*;
+    use std::fs::read_to_string;
+    use tempfile::tempdir;
 
     use wasmedge_sdk::{
         config::{CommonConfigOptions, ConfigBuilder},
@@ -332,76 +324,6 @@ mod wasitest {
     "#
     .as_bytes();
 
-    fn run_wasi_test(dir: &TempDir, wasmbytes: Cow<[u8]>) -> Result<(u32, DateTime<Utc>), Error> {
-        create_dir(dir.path().join("rootfs"))?;
-        let rootdir = dir.path().join("runwasi");
-        create_dir(&rootdir)?;
-        let opts = Options {
-            root: Some(rootdir),
-        };
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
-
-        let wasm_path = dir.path().join("rootfs/hello.wasm");
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o755)
-            .open(wasm_path)?;
-        f.write_all(&wasmbytes)?;
-
-        let stdout = File::create(dir.path().join("stdout"))?;
-        drop(stdout);
-
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args(vec!["./hello.wasm".to_string()])
-                    .build()?,
-            )
-            .build()?;
-
-        spec.save(dir.path().join("config.json"))?;
-
-        let mut cfg = InstanceConfig::new(
-            Wasi::new_engine()?,
-            "test_namespace".into(),
-            "/containerd/address".into(),
-        );
-        let cfg = cfg
-            .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
-
-        let wasi = Wasi::new("test".to_string(), Some(cfg));
-
-        wasi.start()?;
-
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
-        wasi.wait(&waiter).unwrap();
-
-        let res = match rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(res) => Ok(res),
-            Err(e) => {
-                wasi.kill(SIGKILL as u32).unwrap();
-                return Err(Error::Others(format!(
-                    "error waiting for module to finish: {0}",
-                    e
-                )));
-            }
-        };
-        wasi.delete()?;
-        res
-    }
-
     #[test]
     #[serial]
     fn test_delete_after_create() {
@@ -432,7 +354,7 @@ mod wasitest {
         let path = dir.path();
         let wasmbytes = wat2wasm(WASI_HELLO_WAT).unwrap();
 
-        let res = run_wasi_test(&dir, wasmbytes)?;
+        let res = run_wasi_test::<Wasi, Vm>(&dir, wasmbytes, None)?;
 
         assert_eq!(res.0, 0);
 
@@ -454,7 +376,7 @@ mod wasitest {
         let dir = tempdir()?;
         let wasmbytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 
-        let res = run_wasi_test(&dir, wasmbytes)?;
+        let res = run_wasi_test::<Wasi, Vm>(&dir, wasmbytes, None)?;
 
         // Expect error code from the run.
         assert_eq!(res.0, 137);
