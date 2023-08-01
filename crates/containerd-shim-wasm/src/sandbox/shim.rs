@@ -17,7 +17,7 @@ use super::instance::{EngineGetter, Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
-use cgroups_rs::{Cgroup, Hierarchy, Subsystem};
+use cgroups_rs::{Cgroup, Subsystem};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
     self as shim, api,
