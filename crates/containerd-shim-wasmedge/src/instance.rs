@@ -280,8 +280,7 @@ mod wasitest {
     use std::time::Duration;
 
     use containerd_shim_wasm::function;
-    use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
-    use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
+    use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
 

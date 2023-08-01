@@ -65,4 +65,11 @@ macro_rules! function {
     }};
 }
 
+use caps::{CapSet, Capability};
 pub use function;
+
+/// Determines if the current process has the CAP_SYS_ADMIN capability in its effective set.
+pub fn has_cap_sys_admin() -> bool {
+    let caps = caps::read(None, CapSet::Effective).unwrap();
+    caps.contains(&Capability::CAP_SYS_ADMIN)
+}
