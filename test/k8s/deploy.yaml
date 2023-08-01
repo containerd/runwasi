@@ -27,4 +27,5 @@ spec:
         imagePullPolicy: Never
       - name: nginx
         image: docker.io/nginx:latest
-        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
