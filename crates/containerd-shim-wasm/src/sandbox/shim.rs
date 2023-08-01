@@ -16,7 +16,7 @@ use std::thread;
 use super::instance::{EngineGetter, Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
-use cgroups_rs::hierarchies::{self, V2};
+use cgroups_rs::hierarchies::{self};
 use cgroups_rs::{Cgroup, Hierarchy, Subsystem};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
@@ -41,8 +41,8 @@ use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
-use shim::cgroup::collect_metrics;
-use shim::protos::cgroups::metrics::{CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics};
+
+use shim::protos::cgroups::metrics::{MemoryEntry, MemoryStat, Metrics};
 use shim::util::convert_to_any;
 use shim::Flags;
 use ttrpc::context::Context;
@@ -1383,10 +1383,10 @@ where
     fn stats(
         &self,
         _ctx: &::ttrpc::TtrpcContext,
-        _req: StatsRequest,
+        req: StatsRequest,
     ) -> ::ttrpc::Result<StatsResponse> {
-        log::info!("stats: {:?}", _req);
-        let resp = self.task_stats(_req)?;
+        log::info!("stats: {:?}", req);
+        let resp = self.task_stats(req)?;
         Ok(resp)
     }
 }
