@@ -73,10 +73,9 @@ test/nginx:
 	mkdir -p $@/out && docker save -o $@/out/img.tar docker.io/nginx:latest
 
 .PHONY: test/k8s/cluster
-test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind test/nginx
+test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
-	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) test/nginx/out/img.tar
 
 .PHONY: test/k8s
 test/k8s: test/k8s/cluster

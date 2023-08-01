@@ -26,5 +26,5 @@ spec:
         image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
         imagePullPolicy: Never
       - name: nginx
-        image: nginx:latest
+        image: docker.io/nginx:latest
         imagePullPolicy: Never
