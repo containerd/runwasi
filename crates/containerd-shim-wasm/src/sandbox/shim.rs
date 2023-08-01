@@ -42,7 +42,9 @@ use nix::unistd::mkdir;
 use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
 
-use shim::protos::cgroups::metrics::{MemoryEntry, MemoryStat, Metrics};
+use shim::protos::cgroups::metrics::{
+    CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat,
+};
 use shim::util::convert_to_any;
 use shim::Flags;
 use ttrpc::context::Context;
@@ -1225,8 +1227,8 @@ where
 
         let mut metrics = Metrics::new();
         let hier = hierarchies::auto();
-        let cgroup: Cgroup;
-        if hier.v2() {
+
+        let cgroup = if hier.v2() {
             let path = format!("/proc/{}/cgroup", pid.unwrap());
             let content = fs::read_to_string(path)?;
             let content = content.strip_suffix('\n').unwrap_or_default();
@@ -1235,14 +1237,14 @@ where
             let path_parts: Vec<&str> = parts[1].split('/').collect();
             let namespace = path_parts[1];
             let cgroup_name = path_parts[2];
-            cgroup = Cgroup::load(
+            Cgroup::load(
                 hierarchies::auto(),
                 format!("/sys/fs/cgroup/{namespace}/{cgroup_name}"),
-            );
+            )
         } else {
             let path = get_cgroups_relative_paths_by_pid(pid.unwrap()).unwrap();
-            cgroup = Cgroup::load_with_relative_paths(hierarchies::auto(), Path::new("."), path);
-        }
+            Cgroup::load_with_relative_paths(hierarchies::auto(), Path::new("."), path)
+        };
 
         // from https://github.com/containerd/rust-extensions/blob/main/crates/shim/src/cgroup.rs#L97-L127
         for sub_system in Cgroup::subsystems(&cgroup) {
@@ -1255,6 +1257,34 @@ where
                     mem_stat.set_usage(mem_entry);
                     mem_stat.set_total_inactive_file(mem.stat.total_inactive_file);
                     metrics.set_memory(mem_stat);
+                }
+                Subsystem::CpuAcct(cpuacct_ctr) => {
+                    let mut cpu_usage = CPUUsage::new();
+                    cpu_usage.set_total(cpuacct_ctr.cpuacct().usage);
+                    cpu_usage.set_user(cpuacct_ctr.cpuacct().usage_user);
+                    cpu_usage.set_kernel(cpuacct_ctr.cpuacct().usage_sys);
+                    let mut cpu_stat = CPUStat::new();
+                    cpu_stat.set_usage(cpu_usage);
+                    metrics.set_cpu(cpu_stat);
+                }
+                Subsystem::Pid(pid_ctr) => {
+                    let mut pid_stats = PidsStat::new();
+                    pid_stats.set_current(pid_ctr.get_pid_current().map_err(|err| {
+                        Error::Others(format!("failed to get current pid: {}", err))
+                    })?);
+                    pid_stats.set_limit(
+                        pid_ctr
+                            .get_pid_max()
+                            .map(|val| match val {
+                                // See https://github.com/opencontainers/runc/blob/dbe8434359ca35af1c1e10df42b1f4391c1e1010/libcontainer/cgroups/fs/pids.go#L55
+                                cgroups_rs::MaxValue::Max => 0,
+                                cgroups_rs::MaxValue::Value(val) => val as u64,
+                            })
+                            .map_err(|err| {
+                                Error::Others(format!("failed to get max pid: {}", err))
+                            })?,
+                    );
+                    metrics.set_pids(pid_stats)
                 }
                 _ => {
                     // TODO: add other subsystems
