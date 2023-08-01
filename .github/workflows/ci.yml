@@ -64,13 +64,6 @@ jobs:
       - name: Setup OCI runtime build env
         run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
         shell: bash
-      -
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
       - name: run
         run: make test/k8s
       # only runs when the previous step fails
