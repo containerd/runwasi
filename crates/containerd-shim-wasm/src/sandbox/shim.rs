@@ -43,7 +43,7 @@ use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
 
 use shim::protos::cgroups::metrics::{
-    CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat,
+    CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat, Throttle,
 };
 use shim::util::convert_to_any;
 use shim::Flags;
@@ -1270,14 +1270,43 @@ where
                     mem_stat.set_total_inactive_file(mem.stat.total_inactive_file);
                     metrics.set_memory(mem_stat);
                 }
-                Subsystem::CpuAcct(cpuacct_ctr) => {
+                Subsystem::Cpu(cpu_ctr) => {
                     let mut cpu_usage = CPUUsage::new();
-                    cpu_usage.set_total(cpuacct_ctr.cpuacct().usage);
-                    cpu_usage.set_user(cpuacct_ctr.cpuacct().usage_user);
-                    cpu_usage.set_kernel(cpuacct_ctr.cpuacct().usage_sys);
-                    let mut cpu_stat = CPUStat::new();
-                    cpu_stat.set_usage(cpu_usage);
-                    metrics.set_cpu(cpu_stat);
+                    let mut throttle = Throttle::new();
+                    let stat = cpu_ctr.cpu().stat;
+                    for line in stat.lines() {
+                        let parts = line.split(' ').collect::<Vec<&str>>();
+                        if parts.len() != 2 {
+                            Err(Error::Others(format!("invalid cpu stat line: {}", line)))?;
+                        }
+
+                        // https://github.com/opencontainers/runc/blob/dbe8434359ca35af1c1e10df42b1f4391c1e1010/libcontainer/cgroups/fs2/cpu.go#L70
+                        match parts[0] {
+                            "usage_usec" => {
+                                cpu_usage.set_total(parts[1].parse::<u64>().unwrap());
+                            }
+                            "user_usec" => {
+                                cpu_usage.set_user(parts[1].parse::<u64>().unwrap());
+                            }
+                            "system_usec" => {
+                                cpu_usage.set_kernel(parts[1].parse::<u64>().unwrap());
+                            }
+                            "nr_periods" => {
+                                throttle.set_periods(parts[1].parse::<u64>().unwrap());
+                            }
+                            "nr_throttled" => {
+                                throttle.set_throttled_periods(parts[1].parse::<u64>().unwrap());
+                            }
+                            "throttled_usec" => {
+                                throttle.set_throttled_time(parts[1].parse::<u64>().unwrap());
+                            }
+                            _ => {}
+                        }
+                    }
+                    let mut cpu_stats = CPUStat::new();
+                    cpu_stats.set_throttling(throttle);
+                    cpu_stats.set_usage(cpu_usage);
+                    metrics.set_cpu(cpu_stats);
                 }
                 Subsystem::Pid(pid_ctr) => {
                     let mut pid_stats = PidsStat::new();
