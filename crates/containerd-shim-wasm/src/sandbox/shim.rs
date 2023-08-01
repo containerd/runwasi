@@ -37,6 +37,7 @@ use nix::sched::{setns, unshare, CloneFlags};
 use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
+use shim::Flags;
 use ttrpc::context::Context;
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
@@ -339,6 +340,7 @@ where
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
     namespace: String,
+    containerd_address: String,
 }
 
 #[cfg(test)]
@@ -424,6 +426,7 @@ mod localtests {
             tx,
             Arc::new(ExitSignal::default()),
             "test_namespace".into(),
+            "/test/address".into(),
         ));
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
 
@@ -454,6 +457,7 @@ mod localtests {
             etx,
             exit_signal,
             "test_namespace".into(),
+            "/test/address".into(),
         ));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
@@ -622,6 +626,7 @@ mod localtests {
             etx,
             exit_signal,
             "test_namespace".into(),
+            "/test/address".into(),
         ));
 
         let mut _wrapped = LocalWithDescrutor::new(local.clone());
@@ -735,6 +740,7 @@ where
         tx: Sender<(String, Box<dyn MessageDyn>)>,
         exit: Arc<ExitSignal>,
         namespace: String,
+        containerd_address: String,
     ) -> Self
     where
         T: Instance<E = E> + Sync + Send,
@@ -747,11 +753,16 @@ where
             events: Arc::new(Mutex::new(tx)),
             exit,
             namespace,
+            containerd_address,
         }
     }
 
     fn new_base(&self, id: String) -> InstanceData<T, E> {
-        let cfg = InstanceConfig::new(self.engine.clone(), self.namespace.clone());
+        let cfg = InstanceConfig::new(
+            self.engine.clone(),
+            self.namespace.clone(),
+            self.containerd_address.clone(),
+        );
         InstanceData {
             instance: None,
             base: Some(Nop::new(id, None)),
@@ -942,7 +953,11 @@ where
         }
 
         let engine = self.engine.clone();
-        let mut builder = InstanceConfig::new(engine, self.namespace.clone());
+        let mut builder = InstanceConfig::new(
+            engine,
+            self.namespace.clone(),
+            self.containerd_address.clone(),
+        );
         builder
             .set_stdin(req.stdin().to_string())
             .set_stdout(req.stdout().to_string())
@@ -1200,7 +1215,13 @@ where
     E: Sync + Send + Clone,
 {
     type Instance = T;
-    fn new(namespace: String, _id: String, engine: E, publisher: RemotePublisher) -> Self {
+    fn new(
+        namespace: String,
+        containerd_address: String,
+        _id: String,
+        engine: E,
+        publisher: RemotePublisher,
+    ) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn MessageDyn>)>();
         forward_events(namespace.clone(), publisher, rx);
         Local::<T, E>::new(
@@ -1208,6 +1229,7 @@ where
             tx.clone(),
             Arc::new(ExitSignal::default()),
             namespace,
+            containerd_address,
         )
     }
 }
@@ -1344,6 +1366,7 @@ where
 {
     pub engine: E,
     namespace: String,
+    containerd_address: String,
     phantom: std::marker::PhantomData<T>,
     exit: Arc<ExitSignal>,
     _id: String,
@@ -1356,13 +1379,14 @@ where
 {
     type T = Local<I, E>;
 
-    fn new(_runtime_id: &str, id: &str, namespace: &str, _config: &mut shim::Config) -> Self {
+    fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
             engine: I::new_engine().unwrap(),
             phantom: std::marker::PhantomData,
-            namespace: namespace.to_string(),
+            namespace: args.namespace.to_string(),
+            containerd_address: args.address.clone(),
             exit: Arc::new(ExitSignal::default()),
-            _id: id.to_string(),
+            _id: args.id.to_string(),
         }
     }
 
@@ -1484,6 +1508,7 @@ where
             tx.clone(),
             self.exit.clone(),
             self.namespace.clone(),
+            self.containerd_address.clone(),
         )
     }
 

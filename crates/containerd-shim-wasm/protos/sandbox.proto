@@ -14,6 +14,7 @@ message CreateRequest {
     string id = 2;
     string ttrpc_address = 3;
     string working_directory = 4;
+    string containerd_address = 5;
 }
 
 message CreateResponse {

@@ -23,7 +23,7 @@ serde_json = "1.0"
 env_logger = "0.10"
 log = "0.4"
 tar = "0.4"
-containerd-shim = {git = "https://github.com/containerd/rust-extensions", rev = "8500b4c665e0d0911b9546c00bd0bd4670cf5533" }
+containerd-shim = {git = "https://github.com/containerd/rust-extensions", rev = "7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93" }
 ttrpc = "0.8.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 nix = "0.26"
@@ -31,7 +31,7 @@ cap-std = "1.0"
 thiserror = "1.0"
 libc = "0.2.147"
 oci-spec = { version = "0.6.1", features = ["runtime"] }
-sha256 = "1.1"
+sha256 = "1.2.2"
 libcontainer = "0.1"
 
 [profile.release]

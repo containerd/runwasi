@@ -1,7 +1,7 @@
 use nix::unistd::{dup, dup2};
 use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
 
-use anyhow::{anyhow, Result, Context};
+use anyhow::{anyhow, Context, Result};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
@@ -24,7 +24,7 @@ pub struct WasmtimeExecutor {
 impl Executor for WasmtimeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         let args = oci::get_args(spec);
-        if args.len() != 1 {
+        if args.is_empty() {
             return Err(ExecutorError::InvalidArg);
         }
 
