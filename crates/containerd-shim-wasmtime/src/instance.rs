@@ -260,9 +260,8 @@ mod wasitest {
     use std::time::Duration;
 
     use containerd_shim_wasm::function;
-    use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
     use containerd_shim_wasm::sandbox::instance::Wait;
-    use containerd_shim_wasm::sandbox::testutil::run_test_with_sudo;
+    use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
     use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use nix::unistd::dup2;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
