@@ -548,6 +548,12 @@ mod localtests {
         })?;
         assert_eq!(state.status(), Status::RUNNING);
 
+        let stats = local.task_stats(api::StatsRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })?;
+        assert!(stats.has_stats());
+
         let ll = local.clone();
         let (instance_tx, instance_rx) = channel();
         std::thread::spawn(move || {
@@ -703,6 +709,12 @@ mod localtests {
         });
 
         rx.try_recv().unwrap_err();
+
+        let res = local.task_stats(api::StatsRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })?;
+        assert!(res.has_stats());
 
         local.task_kill(api::KillRequest {
             id: "test".to_string(),
