@@ -15,6 +15,9 @@ use std::thread;
 
 use super::instance::{EngineGetter, Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
+use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
+use cgroups_rs::hierarchies::{self, V2};
+use cgroups_rs::{Cgroup, Hierarchy, Subsystem};
 use chrono::{DateTime, Utc};
 use containerd_shim::{
     self as shim, api,
@@ -37,6 +40,10 @@ use nix::sched::{setns, unshare, CloneFlags};
 use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
+use shim::api::{StatsRequest, StatsResponse};
+use shim::cgroup::collect_metrics;
+use shim::protos::cgroups::metrics::{CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics};
+use shim::util::convert_to_any;
 use shim::Flags;
 use ttrpc::context::Context;
 
@@ -1207,6 +1214,59 @@ where
         }
         Ok(state)
     }
+
+    fn task_stats(&self, req: StatsRequest) -> Result<StatsResponse> {
+        let i = self.get_instance(req.id())?;
+        let pid_lock = i.pid.read().unwrap();
+        let pid = *pid_lock;
+        if pid.is_none() {
+            return Err(Error::InvalidArgument("task is not running".to_string()));
+        }
+
+        let mut metrics = Metrics::new();
+        let hier = hierarchies::auto();
+        let cgroup: Cgroup;
+        if hier.v2() {
+            let path = format!("/proc/{}/cgroup", pid.unwrap());
+            let content = fs::read_to_string(path)?;
+            let content = content.strip_suffix('\n').unwrap_or_default();
+
+            let parts: Vec<&str> = content.split("::").collect();
+            let path_parts: Vec<&str> = parts[1].split('/').collect();
+            let namespace = path_parts[1];
+            let cgroup_name = path_parts[2];
+            cgroup = Cgroup::load(
+                hierarchies::auto(),
+                format!("/sys/fs/cgroup/{namespace}/{cgroup_name}"),
+            );
+        } else {
+            let path = get_cgroups_relative_paths_by_pid(pid.unwrap()).unwrap();
+            cgroup = Cgroup::load_with_relative_paths(hierarchies::auto(), Path::new("."), path);
+        }
+
+        // from https://github.com/containerd/rust-extensions/blob/main/crates/shim/src/cgroup.rs#L97-L127
+        for sub_system in Cgroup::subsystems(&cgroup) {
+            match sub_system {
+                Subsystem::Mem(mem_ctr) => {
+                    let mem = mem_ctr.memory_stat();
+                    let mut mem_entry = MemoryEntry::new();
+                    mem_entry.set_usage(mem.usage_in_bytes);
+                    let mut mem_stat = MemoryStat::new();
+                    mem_stat.set_usage(mem_entry);
+                    mem_stat.set_total_inactive_file(mem.stat.total_inactive_file);
+                    metrics.set_memory(mem_stat);
+                }
+                _ => {
+                    // TODO: add other subsystems
+                }
+            }
+        }
+        let mut stats = StatsResponse {
+            ..Default::default()
+        };
+        stats.set_stats(convert_to_any(Box::new(metrics))?);
+        Ok(stats)
+    }
 }
 
 impl<T, E> SandboxService<E> for Local<T, E>
@@ -1318,6 +1378,16 @@ where
         self.exit.signal();
 
         Ok(api::Empty::new())
+    }
+
+    fn stats(
+        &self,
+        _ctx: &::ttrpc::TtrpcContext,
+        _req: StatsRequest,
+    ) -> ::ttrpc::Result<StatsResponse> {
+        log::info!("stats: {:?}", _req);
+        let resp = self.task_stats(_req)?;
+        Ok(resp)
     }
 }
 
