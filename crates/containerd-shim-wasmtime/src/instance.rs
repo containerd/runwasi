@@ -25,9 +25,9 @@ use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
 
 use wasmtime::Engine;
 
-use crate::container_executor::DefaultExecutor;
-use crate::executor::WasmtimeExecutor;
 use libcontainer::signal::Signal;
+
+use crate::executors::{LinuxContainerExecutor, WasmtimeExecutor};
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
@@ -227,7 +227,7 @@ impl Wasi {
             stdout,
             stderr,
         });
-        let default_executor = Box::new(DefaultExecutor {
+        let default_executor = Box::new(LinuxContainerExecutor {
             stdin,
             stdout,
             stderr,

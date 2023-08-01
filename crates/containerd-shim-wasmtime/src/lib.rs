@@ -1,5 +1,4 @@
-mod container_executor;
 pub mod error;
-pub mod executor;
+pub mod executors;
 pub mod instance;
 pub mod oci_wasmtime;

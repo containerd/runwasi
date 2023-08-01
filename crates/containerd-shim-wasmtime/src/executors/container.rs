@@ -12,13 +12,13 @@ use oci_spec::runtime::Spec;
 const EXECUTOR_NAME: &str = "default";
 
 #[derive(Default)]
-pub struct DefaultExecutor {
+pub struct LinuxContainerExecutor {
     pub stdin: Option<RawFd>,
     pub stdout: Option<RawFd>,
     pub stderr: Option<RawFd>,
 }
 
-impl Executor for DefaultExecutor {
+impl Executor for LinuxContainerExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
         log::debug!("executing workload with default handler");
         let args = spec
