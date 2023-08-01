@@ -140,12 +140,32 @@ dist: $(RUNTIMES:%=dist-%);
 dist-%:
 	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* CARGO=$(CARGO) PREFIX="$(PWD)/dist" OPT_PROFILE="$(OPT_PROFILE)"
 
+.PHONY: dist/clean
+dist/clean:
+	rm -rf dist
+
+.PHONY: install/all
+install/all: test-image/clean build install test-image load
+
+.PHONY: install/oci/all
+install/oci/all: test-image/oci/clean build install test-image/oci load/oci
+
 .PHONY: test-image
 test-image: dist/img.tar
 
-.PHONY: test-image
+.PHONY: test-image/oci
+test-image/oci: dist/img-oci.tar
+
+.PHONY: test-image/clean
 test-image/clean:
 	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/
+
+.PHONY: test-image/oci/clean
+test-image/oci/clean:
+	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+
+.PHONY: demo-app
+demo-app: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 
 .PHONY: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm:
@@ -161,8 +181,20 @@ dist/img.tar:
 	[ -f $(PWD)/dist/img.tar ] || $(MAKE) target/wasm32-wasi/$(OPT_PROFILE)/img.tar
 	[ -f $(PWD)/dist/img.tar ] || cp target/wasm32-wasi/$(OPT_PROFILE)/img.tar "$@"
 
+dist/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+	@mkdir -p "dist/"
+	cp "$<" "$@"
+
 load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+
+load/oci: dist/img-oci.tar
+	sudo ../containerd/bin/ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+
+.PHONY:
+target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
+	cargo run --bin oci-tar-builder -- --name wasi-demo-app --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
@@ -172,6 +204,9 @@ bin/kind: test/k8s/Dockerfile
 test/k8s/_out/img-%: override CARGO=cross TARGET= TARGET_DIR=
 test/k8s/_out/img-%: test/k8s/Dockerfile dist-%
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
+
+test/k8s/_out/img-oci-%: test/k8s/Dockerfile.oci dist-%
+	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile.oci --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
 
 .PHONY: test/nginx
 test/nginx:
@@ -183,8 +218,13 @@ test/k8s/cluster-%: dist/img.tar bin/kind test/k8s/_out/img-%
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img-$*)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
+.PHONY: test/k8s/cluster-oci-%
+test/k8s/cluster-oci-%: dist/img-oci.tar bin/kind test/k8s/_out/img-oci-%
+	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img-oci-$*)" && \
+	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
+
 .PHONY: test/k8s-%
-test/k8s-%: test/k8s/cluster-%
+test/k8s-%: test/k8s/clean test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 

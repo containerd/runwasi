@@ -7,7 +7,7 @@ edition.workspace = true
 tar = { workspace = true }
 sha256 = { workspace = true }
 log = { workspace = true }
-oci-spec =  { workspace = true }
+oci-spec = { workspace = true, features = ["runtime"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

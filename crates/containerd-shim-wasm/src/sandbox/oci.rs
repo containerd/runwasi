@@ -7,9 +7,19 @@ use std::os::unix::process::CommandExt;
 use std::process;
 
 use anyhow::Context;
+use oci_spec::image::Descriptor;
 pub use oci_spec::runtime::Spec;
 
 use super::error::Result;
+
+pub const COMPONENT_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.component.v1+wasm";
+pub const MODULE_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.module.v1+wasm";
+
+#[derive(Clone)]
+pub struct OciArtifact {
+    pub config: Descriptor,
+    pub layer: Vec<u8>,
+}
 
 fn parse_env(envs: &[String]) -> HashMap<String, String> {
     // make NAME=VALUE to HashMap<NAME, VALUE>.

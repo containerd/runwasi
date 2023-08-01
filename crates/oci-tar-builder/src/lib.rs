@@ -12,10 +12,17 @@ use oci_spec::image::{
 use serde::Serialize;
 use sha256::{digest, try_digest};
 
+// duplicated here to avoid pulling in all of containerd-shim-wasm
+// Module is preview1
+// Component is preview2
+const COMPONENT_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.component.v1+wasm";
+const MODULE_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.module.v1+wasm";
+
 #[derive(Debug, Default)]
 pub struct Builder {
     configs: Vec<(ImageConfiguration, String)>,
     layers: Vec<(PathBuf, String)>,
+    artifact_type: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -148,9 +155,15 @@ impl Builder {
             mfst.repo_tags.push(config.1.clone());
             annotations.insert("io.containerd.image.name".to_string(), config.1.clone());
 
-            let manifest = ImageManifestBuilder::default()
+            let mut manifest = ImageManifestBuilder::default()
                 .schema_version(SCHEMA_VERSION)
-                .media_type(MediaType::ImageManifest)
+                .media_type(MediaType::ImageManifest);
+
+            if self.artifact_type.is_some() {
+                manifest = manifest.artifact_type(self.artifact_type.clone().unwrap().as_str());
+            }
+
+            let manifest = manifest
                 .layers(layers)
                 .config(desc)
                 .annotations(annotations.clone())
@@ -230,5 +243,13 @@ impl Builder {
         tb.finish()?;
 
         Ok(())
+    }
+
+    pub fn as_module_artifact(&mut self) {
+        self.artifact_type = Some(MODULE_ARTIFACT_TYPE.to_string());
+    }
+
+    pub fn as_component_artifact(&mut self) {
+        self.artifact_type = Some(COMPONENT_ARTIFACT_TYPE.to_string());
     }
 }

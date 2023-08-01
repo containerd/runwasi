@@ -7,28 +7,43 @@ use clap::Parser;
 use oci_spec::image as spec;
 use oci_tar_builder::Builder;
 
+// Following labels and media types must match in ../containerd-shim-wasm/src/sandbox/oci.rs
+// not using it here to avoid needing to have all the deps for containerd-shim-wasm
+pub const WASM_LAYER_MEDIA_TYPE: &str =
+    "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
+
 pub fn main() {
     let args = Args::parse();
 
     let out_dir;
     if let Some(out_path) = args.out_path.as_deref() {
         out_dir = PathBuf::from(out_path);
-        fs::create_dir_all(&out_dir).unwrap();
+        fs::create_dir_all(out_dir.parent().unwrap()).unwrap();
     } else {
         out_dir = env::current_dir().unwrap();
     }
 
-    let mut builder = Builder::default();
+    let entry_point = args.name.clone() + ".wasm";
 
-    if let Some(module_path) = args.module.as_deref() {
+    let mut builder = Builder::default();
+    for module_path in args.module.iter() {
+        builder.as_module_artifact();
+
         let module_path = PathBuf::from(module_path);
-        builder.add_layer_with_media_type(
-            &module_path,
-            "application/vnd.w3c.wasm.module.v1+wasm".to_string(),
-        );
+        builder.add_layer_with_media_type(&module_path, WASM_LAYER_MEDIA_TYPE.to_string());
+    }
+
+    for layer_config in args.layer.iter() {
+        //split string on equals sign
+        let layer_options: Vec<&str> = layer_config.split('=').collect();
+
+        let layer_type = layer_options.first().unwrap();
+        let layer_path = PathBuf::from(layer_options.last().unwrap());
+        builder.add_layer_with_media_type(&layer_path, layer_type.to_string());
     }
 
     if let Some(components_path) = args.components.as_deref() {
+        builder.as_component_artifact();
         let paths = fs::read_dir(components_path).unwrap();
 
         for path in paths {
@@ -36,16 +51,7 @@ pub fn main() {
             let ext = path.extension().unwrap().to_str().unwrap();
             match ext {
                 "wasm" => {
-                    builder.add_layer_with_media_type(
-                        &path,
-                        "application/vnd.wasm.component.v1+wasm".to_string(),
-                    );
-                }
-                "yml" | "yaml" => {
-                    builder.add_layer_with_media_type(
-                        &path,
-                        "application/vnd.wasm.component.config.v1+yaml".to_string(),
-                    );
+                    builder.add_layer_with_media_type(&path, WASM_LAYER_MEDIA_TYPE.to_string());
                 }
                 _ => println!(
                     "Skipping Unknown file type: {:?} with extension {:?}",
@@ -56,7 +62,10 @@ pub fn main() {
         }
     }
 
-    let config = spec::ConfigBuilder::default().build().unwrap();
+    let config = spec::ConfigBuilder::default()
+        .entrypoint(vec![entry_point])
+        .build()
+        .unwrap();
 
     let img = spec::ImageConfigurationBuilder::default()
         .config(config)
@@ -72,15 +81,19 @@ pub fn main() {
         .context("failed to build image configuration")
         .unwrap();
 
-    builder.add_config(img, args.repo + "/" + &args.name);
+    builder.add_config(img, args.repo + "/" + &args.name + ":" + &args.tag);
 
-    let p = out_dir.join(args.name + ".tar");
-    let f = File::create(p.clone()).unwrap();
+    println!("Creating oci tar file {}", out_dir.clone().display());
+    let f = File::create(out_dir.clone()).unwrap();
     match builder.build(f) {
-        Ok(_) => println!("Successfully created oci tar file {}", p.display()),
+        Ok(_) => println!("Successfully created oci tar file {}", out_dir.display()),
         Err(e) => {
-            print!("Building oci tar file {} failed: {:?}", p.display(), e);
-            fs::remove_file(p).unwrap_or(print!("Failed to remove temporary file"));
+            print!(
+                "Building oci tar file {} failed: {:?}",
+                out_dir.display(),
+                e
+            );
+            fs::remove_file(out_dir).unwrap_or(print!("Failed to remove temporary file"));
         }
     }
 }
@@ -95,10 +108,16 @@ struct Args {
     name: String,
 
     #[arg(short, long)]
+    tag: String,
+
+    #[arg(short, long)]
     repo: String,
 
     #[arg(short, long)]
-    module: Option<String>,
+    module: Vec<String>,
+
+    #[arg(short, long)]
+    layer: Vec<String>,
 
     #[arg(short, long)]
     components: Option<String>,

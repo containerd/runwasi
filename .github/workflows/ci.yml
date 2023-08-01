@@ -28,6 +28,15 @@ jobs:
         runtime: ["common"] # not required, but groups jobs
     uses: ./.github/workflows/action-test-image.yml
 
+  test-image-oci:
+    name: ${{ matrix.runtime }}
+    strategy:
+      matrix:
+        runtime: ["common"] # not required, but groups jobs
+    uses: ./.github/workflows/action-test-image.yml
+    with:
+      image: img-oci
+
   build-ubuntu:
     name: ${{ matrix.runtime }}
     strategy:
@@ -67,7 +76,7 @@ jobs:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
 
-  e2e-wasmtime:
+  e2e-kind:
     name: ${{ matrix.runtime }}
     needs: [build-ubuntu, test-image]
     strategy:
@@ -79,7 +88,22 @@ jobs:
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
-      
+      test-command: make test/k8s-${{ matrix.runtime }}
+
+  e2e-kind-oci:
+    name: ${{ matrix.runtime }}
+    needs: [build-ubuntu, test-image-oci]
+    strategy:
+      matrix:
+        os: ["ubuntu-22.04"]
+        runtime: ["wasmtime", "wasmedge", "wasmer"]
+    uses: ./.github/workflows/action-test-kind.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
+      image: img-oci
+      test-command: make test/k8s-oci-${{ matrix.runtime }}
+
   e2e-k3s:
     name: ${{ matrix.runtime }}
     needs: [build-ubuntu, test-image]

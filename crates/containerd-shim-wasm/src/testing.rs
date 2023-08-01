@@ -123,7 +123,7 @@ where
         let mut cfg = InstanceConfig::new(
             WasiInstance::Engine::default(),
             "test_namespace".into(),
-            "/containerd/address".into(),
+            "/run/containerd/containerd.sock".into(),
         );
         cfg.set_bundle(dir.to_string_lossy().to_string())
             .set_stdout(dir.join("stdout").to_string_lossy().to_string())
