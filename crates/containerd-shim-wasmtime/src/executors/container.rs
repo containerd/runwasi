@@ -106,23 +106,13 @@ impl Executor for LinuxContainerExecutor {
             return false;
         }
 
-        // check the ELF magic number
+        // check the shebang and ELF magic number
         // https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
-        let mut buffer = [0; 4];
-        let file = OpenOptions::new().read(true).open(path);
-        if file.is_err() {
-            log::info!("failed to open {}", executable);
+        if !check_shebang(path.clone(), executable) && !check_elf(path.clone(), executable) {
+            log::info!("{} is not a valid script or elf file", executable);
             return false;
         }
-        let mut file = file.unwrap();
-        match file.read_exact(&mut buffer) {
-            Ok(_) => {}
-            Err(err) => {
-                log::info!("failed to read magic number of {}: {}", executable, err);
-                return false;
-            }
-        }
-        buffer == [0x7f, 0x45, 0x4c, 0x46]
+        true
     }
 
     fn name(&self) -> &'static str {
@@ -144,4 +134,42 @@ fn redirect_io(stdin: Option<i32>, stdout: Option<i32>, stderr: Option<i32>) -> 
         dup2(stderr, STDERR_FILENO)?;
     }
     Ok(())
+}
+
+fn check_shebang(path: PathBuf, executable: &str) -> bool {
+    let mut buffer = [0; 2];
+
+    let file = OpenOptions::new().read(true).open(path);
+    if file.is_err() {
+        log::info!("failed to open {}", executable);
+        return false;
+    }
+    let mut file = file.unwrap();
+    match file.read_exact(&mut buffer) {
+        Ok(_) => {}
+        Err(err) => {
+            log::info!("failed to read shebang of {}: {}", executable, err);
+            return false;
+        }
+    }
+    buffer == [0x23, 0x21] // #!
+}
+
+fn check_elf(path: PathBuf, executable: &str) -> bool {
+    let mut buffer = [0; 4];
+
+    let file = OpenOptions::new().read(true).open(path);
+    if file.is_err() {
+        log::info!("failed to open {}", executable);
+        return false;
+    }
+    let mut file = file.unwrap();
+    match file.read_exact(&mut buffer) {
+        Ok(_) => {}
+        Err(err) => {
+            log::info!("failed to read shebang of {}: {}", executable, err);
+            return false;
+        }
+    }
+    buffer == [0x7f, 0x45, 0x4c, 0x46] // ELF magic number
 }
