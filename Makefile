@@ -108,7 +108,7 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s
 	sudo systemctl restart k3s-runwasi && \
 	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
 	sudo bin/k3s ctr image import --all-platforms target/wasm32-wasi/$(TARGET)/img.tar && \
-	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
+	sudo bin/k3s kubectl apply -f test/k3s/deploy.yaml
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s && \
 	sudo bin/k3s kubectl get pods -o wide
 
