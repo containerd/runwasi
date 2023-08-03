@@ -452,8 +452,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim"
-version = "0.3.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93#7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34b838538bbc58599a085b1d9e525eb15eae53c48c756f3339dc61524f77891a"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -480,8 +481,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-protos"
-version = "0.3.0"
-source = "git+https://github.com/containerd/rust-extensions?rev=7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93#7f7e3117a6ecb49e5e3b48b4f457a4914d2f2b93"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dbbd1b58f3aa972bb5218a0a79c9e96939113f5db5cacbd15be5022e02ba2d5"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
@@ -490,7 +492,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "caps",
@@ -518,7 +520,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmedge"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "cap-std",
@@ -542,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "cap-std",
@@ -1816,7 +1818,7 @@ dependencies = [
 
 [[package]]
 name = "oci-tar-builder"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2950,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "wasi-demo-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "env_logger",
