@@ -13,7 +13,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::syscall::syscall::create_syscall;
 
@@ -83,9 +83,10 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
     Ok(path)
 }
 
-impl Instance for Wasi {
+impl YoukiInstance for Wasi {
     type E = wasmtime::Engine;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+
+    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
@@ -104,27 +105,6 @@ impl Instance for Wasi {
         }
     }
 
-    fn start(&self) -> std::result::Result<u32, Error> {
-        self.start_youki()
-    }
-
-    fn kill(&self, signal: u32) -> std::result::Result<(), Error> {
-        self.kill_youki(signal)
-    }
-
-    fn delete(&self) -> std::result::Result<(), Error> {
-        self.delete_youki()
-    }
-
-    fn wait(
-        &self,
-        waiter: &containerd_shim_wasm::sandbox::instance::Wait,
-    ) -> std::result::Result<(), Error> {
-        self.wait_youki(waiter)
-    }
-}
-
-impl YoukiInstance for Wasi {
     fn get_exit_code(&self) -> ExitCode {
         self.exit_code.clone()
     }
@@ -180,6 +160,7 @@ mod wasitest {
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use containerd_shim_wasm::sandbox::Instance;
     use libc::SIGKILL;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};

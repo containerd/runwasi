@@ -156,7 +156,10 @@ pub trait Instance {
 /// uses youki's libcontainer library as the container runtime.
 /// It provides default implementations for some of the Instance trait methods.
 /// The only method that needs to be implemented is `fn new()`.
-pub trait YoukiInstance: Instance {
+pub trait YoukiInstance {
+    type E: Send + Sync + Clone;
+    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+
     /// Get the exit code of the instance
     fn get_exit_code(&self) -> ExitCode;
 
@@ -168,11 +171,14 @@ pub trait YoukiInstance: Instance {
 
     /// Build the container
     fn build_container(&self) -> Result<Container, Error>;
+}
 
+impl<T: YoukiInstance> Instance for T {
+    type E = T::E;
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
-    fn start_youki(&self) -> Result<u32, Error> {
+    fn start(&self) -> Result<u32, Error> {
         let id = self.get_id();
         log::info!("starting instance: {}", id);
 
@@ -210,7 +216,7 @@ pub trait YoukiInstance: Instance {
     }
 
     /// Send a signal to the instance
-    fn kill_youki(&self, signal: u32) -> Result<(), Error> {
+    fn kill(&self, signal: u32) -> Result<(), Error> {
         let id = self.get_id();
         let root_dir = self.get_root_dir()?;
         log::info!("killing instance: {}", id.clone());
@@ -238,7 +244,7 @@ pub trait YoukiInstance: Instance {
 
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
-    fn delete_youki(&self) -> Result<(), Error> {
+    fn delete(&self) -> Result<(), Error> {
         let id = self.get_id();
         let root_dir = self.get_root_dir()?;
         log::info!("deleting instance: {}", id.clone());
@@ -282,12 +288,16 @@ pub trait YoukiInstance: Instance {
     /// set_up_exit_code_wait() implemented by Wait to set up exit code
     /// processing. Note that the "wait" function doesn't block, but
     /// it sets up the waiting channel.
-    fn wait_youki(&self, waiter: &Wait) -> Result<(), Error> {
+    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
         let id = self.get_id();
         let exit_code = self.get_exit_code();
         log::info!("waiting for instance: {}", id);
         let code = exit_code;
         waiter.set_up_exit_code_wait(code)
+    }
+
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        Self::new_youki(id, cfg)
     }
 }
 

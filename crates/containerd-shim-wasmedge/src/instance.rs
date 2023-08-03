@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::YoukiInstance;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
@@ -90,6 +90,23 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl YoukiInstance for Wasi {
+    type E = Vm;
+
+    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        let cfg = cfg.unwrap(); // TODO: handle error
+        let bundle = cfg.get_bundle().unwrap_or_default();
+        let namespace = cfg.get_namespace();
+        Wasi {
+            id,
+            rootdir: determine_rootdir(bundle.as_str(), namespace).unwrap(),
+            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
+            stdin: cfg.get_stdin().unwrap_or_default(),
+            stdout: cfg.get_stdout().unwrap_or_default(),
+            stderr: cfg.get_stderr().unwrap_or_default(),
+            bundle,
+        }
+    }
+
     fn get_exit_code(&self) -> ExitCode {
         self.exit_code.clone()
     }
@@ -133,43 +150,6 @@ impl YoukiInstance for Wasi {
     }
 }
 
-impl Instance for Wasi {
-    type E = Vm;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
-        let cfg = cfg.unwrap(); // TODO: handle error
-        let bundle = cfg.get_bundle().unwrap_or_default();
-        let namespace = cfg.get_namespace();
-        Wasi {
-            id,
-            rootdir: determine_rootdir(bundle.as_str(), namespace).unwrap(),
-            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            stdin: cfg.get_stdin().unwrap_or_default(),
-            stdout: cfg.get_stdout().unwrap_or_default(),
-            stderr: cfg.get_stderr().unwrap_or_default(),
-            bundle,
-        }
-    }
-
-    fn start(&self) -> std::result::Result<u32, Error> {
-        self.start_youki()
-    }
-
-    fn kill(&self, signal: u32) -> std::result::Result<(), Error> {
-        self.kill_youki(signal)
-    }
-
-    fn delete(&self) -> std::result::Result<(), Error> {
-        self.delete_youki()
-    }
-
-    fn wait(
-        &self,
-        waiter: &containerd_shim_wasm::sandbox::instance::Wait,
-    ) -> std::result::Result<(), Error> {
-        self.wait_youki(waiter)
-    }
-}
-
 impl EngineGetter for Wasi {
     type E = Vm;
     fn new_engine() -> Result<Vm, Error> {
@@ -204,6 +184,7 @@ mod wasitest {
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use containerd_shim_wasm::sandbox::Instance;
     use libc::SIGKILL;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
