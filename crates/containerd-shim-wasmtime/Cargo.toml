@@ -33,7 +33,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 nix = { workspace = true }
-libcontainer = { workspace = true }
+libcontainer = { workspace = true, features = ["default"]}
 serde = { workspace = true }
 libc = { workspace = true }
 

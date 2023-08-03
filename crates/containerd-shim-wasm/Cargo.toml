@@ -28,6 +28,7 @@ clone3 = "0.2"
 libc = { workspace = true }
 caps = "0.5"
 proc-mounts = "0.3"
+libcontainer = { workspace = true }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2", optional = true }
@@ -40,6 +41,11 @@ env_logger = { workspace = true }
 rand = "0.8"
 
 [features]
-default = []
+default = ["libcontainer/default"]
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []
+libseccomp = ["libcontainer/libseccomp"]
+systemd = ["libcontainer/systemd"]
+v2 = ["libcontainer/v2"]
+v1 = ["libcontainer/v1"]
+cgroupsv2_devices = ["libcontainer/cgroupsv2_devices"]
