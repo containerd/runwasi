@@ -155,9 +155,18 @@ pub trait Instance {
 /// YoukiInstance is a trait that gets implemented by a WASI runtime that
 /// uses youki's libcontainer library as the container runtime.
 /// It provides default implementations for some of the Instance trait methods.
-/// The only method that needs to be implemented is `fn new()`.
+/// The implementor of this trait is expected to implement the
+///     new_youki()
+///     get_exit_code()
+///     get_id()
+///     get_root_dir()
+///     build_container()
+/// methods.
 pub trait YoukiInstance {
+    /// The WASI engine type
     type E: Send + Sync + Clone;
+
+    /// Create a new instance
     fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
 
     /// Get the exit code of the instance
@@ -173,8 +182,16 @@ pub trait YoukiInstance {
     fn build_container(&self) -> Result<Container, Error>;
 }
 
+/// Default implementation of the Instance trait for YoukiInstance
+/// This implementation uses the libcontainer library to create and start
+/// the container.
 impl<T: YoukiInstance> Instance for T {
     type E = T::E;
+
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+        Self::new_youki(id, cfg)
+    }
+
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
@@ -294,10 +311,6 @@ impl<T: YoukiInstance> Instance for T {
         log::info!("waiting for instance: {}", id);
         let code = exit_code;
         waiter.set_up_exit_code_wait(code)
-    }
-
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
-        Self::new_youki(id, cfg)
     }
 }
 
