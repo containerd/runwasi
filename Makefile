@@ -32,6 +32,8 @@ fix:
 .PHONY: test
 test:
 	RUST_LOG=trace cargo test --all --verbose -- --nocapture
+	# run wasmedge test without the default `static` feature
+	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --verbose --no-default-features --features standalone -- --nocapture
 
 .PHONY: install
 install:
