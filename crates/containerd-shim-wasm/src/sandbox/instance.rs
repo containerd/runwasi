@@ -152,6 +152,10 @@ pub trait Instance {
     fn wait(&self, waiter: &Wait) -> Result<(), Error>;
 }
 
+/// YoukiInstance is a trait that gets implemented by a WASI runtime that
+/// uses youki's libcontainer library as the container runtime.
+/// It provides default implementations for some of the Instance trait methods.
+/// The only method that needs to be implemented is `fn new()`.
 pub trait YoukiInstance: Instance {
     /// Get the exit code of the instance
     fn get_exit_code(&self) -> ExitCode;
