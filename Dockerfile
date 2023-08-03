@@ -1,71 +1,74 @@
 # syntax=docker/dockerfile:1
 
-# Make sure to keep in sync with the version in rust-toolchain.toml
-ARG RUST_VERSION=1.71
-
+# Make sure to keep RUST_VERSION in sync with the version in rust-toolchain.toml
+ARG BASE_IMAGE="bullseye"
+ARG RUST_VERSION=1.71.1
 ARG XX_VERSION=1.2.1
+ARG CRATE="containerd-shim-wasmtime,containerd-shim-wasmedge"
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
-
-FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION} AS base
+FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-${BASE_IMAGE} AS base
 COPY --from=xx / /
-RUN apt-get update -y && apt-get install --no-install-recommends -y clang pkg-config dpkg-dev jq
+
+COPY ./scripts/dockerfile-utils.sh /usr/bin/dockerfile-utils
+
+# Install host dependencies
+RUN dockerfile-utils install_host
 
 # See https://github.com/tonistiigi/xx/issues/108
 RUN sed -i -E 's/xx-clang --setup-target-triple/XX_VENDOR=\$vendor xx-clang --setup-target-triple/' $(which xx-cargo) && \
     sed -i -E 's/\$\(xx-info\)-/\$\(XX_VENDOR=\$vendor xx-info\)-/g' $(which xx-cargo)
 
 FROM base AS build
-SHELL ["/bin/bash", "-c"]
-ARG BUILD_TAGS TARGETPLATFORM
-RUN xx-apt-get install -y gcc g++ libc++6-dev zlib1g
-RUN xx-apt-get install -y libsystemd-dev libdbus-1-dev libseccomp-dev
+WORKDIR /src
 
-WORKDIR /build/src
-COPY --link crates ./crates
-COPY --link benches ./benches
-COPY --link Cargo.toml ./
-COPY --link Cargo.lock ./
-ARG CRATE=""
-ARG TARGETOS TARGETARCH TARGETVARIANT
-
-RUN --mount=type=cache,target=/usr/local/cargo/git/db \
+RUN --mount=type=bind,target=/src,rw,source=. \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
-    set -e
-    export "CARGO_NET_GIT_FETCH_WITH_CLI=true"
-    if [ -n "${CRATE}" ]; then
-        package="--package=${CRATE}"
-    fi
-    xx-cargo build --release ${package}
+    CARGO_NET_GIT_FETCH_WITH_CLI="true" \
+    cargo fetch
+
+ARG TARGETPLATFORM
+
+RUN dockerfile-utils install_target
+
+ARG CRATE
+
+RUN --mount=type=bind,target=/src,rw,source=. \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/cache \
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/build,id=runwasi-cargo-build-cache-${CRATE}-${BASE_IMAGE}-${TARGETPLATFORM} <<EOT
+    set -ex
+    . dockerfile-utils setup_build
+    for crate in $(echo $CRATE | tr ',' ' '); do
+        package="$package --package=${crate}"
+    done
+    xx-cargo build --release ${package} ${CARGO_FLAGS} --target-dir /build
 EOT
-COPY scripts ./scripts
-RUN --mount=type=cache,target=/usr/local/cargo/git/db \
+
+FROM build AS package
+RUN --mount=type=bind,target=/src,rw,source=. \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/registry/index \
-    --mount=type=cache,target=/build/src/target,id=runwasi-cargo-build-cache-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} <<EOT
-    set -e
-    mkdir /build/bin
-    bins="$(scripts/bins.sh ${CRATE} | jq -r 'join(" ")')"
-    echo "Copying binaries: ${bins}"
-    for bin in ${bins}; do
-        cp target/$(xx-cargo --print-target-triple)/release/${bin} /build/bin/${bin}
+    --mount=type=cache,target=/build,id=runwasi-cargo-build-cache-${CRATE}-${BASE_IMAGE}-${TARGETPLATFORM} <<EOT
+    set -ex
+    mkdir -p /release/tar /release/bin
+    export BUILD_DIR="/build/$(xx-cargo --print-target-triple)/release/"
+    export VARIANT="$(xx-info os)-$(xx-info arch)$(xx-info variant)-$(xx-info libc)"
+    for crate in $(echo $CRATE | tr ',' ' '); do
+        BINS="$(scripts/bins.sh ${crate} | jq -r 'join(" ")')"
+        if [ -n "${BINS}" ]; then
+            tar -C "${BUILD_DIR}" -czf "/release/tar/${crate}-${VARIANT}.tar.gz" ${BINS}
+            tar -C /release/bin -xzf "/release/tar/${crate}-${VARIANT}.tar.gz"
+        fi
     done
 EOT
 
-FROM build AS build-tar
-WORKDIR /build/release
-ARG CRATE
-ARG TARGETOS TARGETARCH TARGETVARIANT
-RUN <<EOF
-if [ -n "$(find /build/bin -type f -exec echo {} \;)" ]; then
-    tar -C /build/bin -czf "/build/release/${CRATE}-${TARGETOS}-${TARGETARCH}${TARGETVARIANT}.tar.gz" .
-fi
-EOF
-
 FROM scratch AS release-tar
-COPY --link --from=build-tar /build/release/* /
+COPY --link --from=package /release/tar/* /
 
 FROM scratch AS release
-COPY --link --from=build /build/bin/* /
+COPY --link --from=package /release/bin/* /

@@ -34,6 +34,7 @@ thiserror = { workspace = true }
 serde_json = { workspace = true }
 nix = { workspace = true }
 libcontainer = { workspace = true }
+dbus = { version = "*", optional = true }
 serde = { workspace = true }
 libc = { workspace = true }
 
@@ -42,6 +43,9 @@ tempfile = "3.7"
 libc = { workspace = true }
 pretty_assertions = "1"
 env_logger = "0.10"
+
+[features]
+vendored_dbus = ["dbus/vendored"]
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"

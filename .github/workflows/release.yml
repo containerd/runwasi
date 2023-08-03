@@ -88,7 +88,7 @@ jobs:
       - name: Setup buildx
         run: docker buildx create --use
       - name: build binaries
-        run: docker buildx bake --set *.cache-from=type=gha,scope=buildkit-release-${CRATE} --set *.cache-to=type=gha,scope=buildkit-release-${CRATE} release-tars
+        run: docker buildx bake --set *.cache-from=type=gha,scope=buildkit-release-${CRATE} --set *.cache-to=type=gha,scope=buildkit-release-${CRATE} tar-cross
         env:
           CRATE: ${{ needs.generate.outputs.crate }}
       - name: upload binary as GitHub artifact
