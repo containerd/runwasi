@@ -1,27 +1,27 @@
 //! Abstractions for running/managing a wasm/wasi instance.
 
-use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
-use anyhow::Context;
 use libc::{SIGINT, SIGKILL, SIGTERM};
 
 use chrono::{DateTime, Utc};
 
 #[cfg(feature = "libcontainer")]
-use libcontainer::{
-    container::{Container, ContainerStatus},
-    signal::Signal,
+use {
+    crate::sandbox::instance_utils::{get_instance_root, instance_exists},
+    anyhow::Context,
+    libcontainer::{
+        container::{Container, ContainerStatus},
+        signal::Signal,
+    },
+    log::error,
+    nix::errno::Errno,
+    nix::sys::wait::waitid,
+    nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus},
+    std::path::PathBuf,
 };
-
-use log::error;
-use nix::errno::Errno;
-use nix::sys::wait::waitid;
-use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
-
-use crate::sandbox::instance_utils::{get_instance_root, instance_exists};
 
 use super::error::Error;
 
