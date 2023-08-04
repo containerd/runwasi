@@ -9,8 +9,13 @@ use anyhow::Context;
 use libc::{SIGINT, SIGKILL, SIGTERM};
 
 use chrono::{DateTime, Utc};
-use libcontainer::container::{Container, ContainerStatus};
-use libcontainer::signal::Signal;
+
+#[cfg(feature = "libcontainer")]
+use libcontainer::{
+    container::{Container, ContainerStatus},
+    signal::Signal,
+};
+
 use log::error;
 use nix::errno::Errno;
 use nix::sys::wait::waitid;
@@ -162,6 +167,7 @@ pub trait Instance {
 ///     get_root_dir()
 ///     build_container()
 /// methods.
+#[cfg(feature = "libcontainer")]
 pub trait YoukiInstance {
     /// The WASI engine type
     type E: Send + Sync + Clone;
@@ -185,6 +191,7 @@ pub trait YoukiInstance {
 /// Default implementation of the Instance trait for YoukiInstance
 /// This implementation uses the libcontainer library to create and start
 /// the container.
+#[cfg(feature = "libcontainer")]
 impl<T: YoukiInstance> Instance for T {
     type E = T::E;
 
