@@ -13,7 +13,7 @@ use containerd_shim_wasm::sandbox::instance::Wait;
 use containerd_shim_wasm::sandbox::instance_utils::{
     get_instance_root, instance_exists, maybe_open_stdio,
 };
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use log::{debug, error};
 use nix::errno::Errno;
@@ -21,11 +21,6 @@ use nix::sys::signal::Signal as NixSignal;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
-use wasmedge_sdk::{
-    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    plugin::PluginManager,
-    Vm, VmBuilder,
-};
 
 use std::{
     fs,
@@ -98,8 +93,7 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl Instance for Wasi {
-    type E = Vm;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(id: String, cfg: Option<&InstanceConfig>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
         let namespace = cfg.get_namespace();
@@ -249,28 +243,6 @@ impl Wasi {
     }
 }
 
-impl EngineGetter for Wasi {
-    type E = Vm;
-    fn new_engine() -> Result<Vm, Error> {
-        PluginManager::load(None).unwrap();
-        let mut host_options = HostRegistrationConfigOptions::default();
-        host_options = host_options.wasi(true);
-        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
-        {
-            host_options = host_options.wasi_nn(true);
-        }
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .with_host_registration_config(host_options)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-        let vm = VmBuilder::new()
-            .with_config(config)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-        Ok(vm)
-    }
-}
-
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
@@ -288,10 +260,7 @@ mod wasitest {
 
     use super::*;
 
-    use wasmedge_sdk::{
-        config::{CommonConfigOptions, ConfigBuilder},
-        wat2wasm,
-    };
+    use wasmedge_sdk::wat2wasm;
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module
@@ -370,11 +339,7 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(
-            Wasi::new_engine()?,
-            "test_namespace".into(),
-            "/containerd/address".into(),
-        );
+        let mut cfg = InstanceConfig::new("test_namespace".into(), "/containerd/address".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -404,14 +369,9 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_delete_after_create() {
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .build()
-            .unwrap();
-        let vm = VmBuilder::new().with_config(config).build().unwrap();
         let i = Wasi::new(
             "".to_string(),
             Some(&InstanceConfig::new(
-                vm,
                 "test_namespace".into(),
                 "/containerd/address".into(),
             )),

@@ -11,7 +11,7 @@ pub mod manager;
 pub mod shim;
 
 pub use error::{Error, Result};
-pub use instance::{EngineGetter, Instance, InstanceConfig};
+pub use instance::{Instance, InstanceConfig};
 pub use manager::{Sandbox as SandboxService, Service as ManagerService};
 pub use shim::{Cli as ShimCli, Local};
 

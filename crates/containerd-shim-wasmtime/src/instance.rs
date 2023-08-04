@@ -18,7 +18,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libc::{SIGINT, SIGKILL};
 use libcontainer::syscall::syscall::create_syscall;
@@ -93,23 +93,23 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl Instance for Wasi {
-    type E = wasmtime::Engine;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(id: String, cfg: Option<&InstanceConfig>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
         let rootdir = determine_rootdir(bundle.as_str(), cfg.get_namespace()).unwrap();
+        let engine = Engine::default();
         Wasi {
             id,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            engine: cfg.get_engine(),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle,
             rootdir,
+            engine,
         }
     }
     fn start(&self) -> Result<u32, Error> {
@@ -255,13 +255,6 @@ impl Wasi {
     }
 }
 
-impl EngineGetter for Wasi {
-    type E = wasmtime::Engine;
-    fn new_engine() -> Result<Engine, Error> {
-        Ok(Engine::default())
-    }
-}
-
 #[cfg(test)]
 mod wasitest {
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
@@ -360,7 +353,7 @@ mod wasitest {
         Ok(())
     }
 
-    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<Engine>> {
+    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig> {
         create_dir(dir.path().join("rootfs"))?;
 
         let opts = Options {
@@ -397,11 +390,7 @@ mod wasitest {
             )
             .build()?;
         spec.save(dir.path().join("config.json"))?;
-        let mut cfg = InstanceConfig::new(
-            Engine::default(),
-            "test_namespace".into(),
-            "/containerd/address".into(),
-        );
+        let mut cfg = InstanceConfig::new("test_namespace".into(), "/containerd/address".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())
