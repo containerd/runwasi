@@ -48,16 +48,8 @@ impl Executor for WasmtimeExecutor {
 
         let start = args[0].clone();
         let mut iterator = start.split('#');
-        let mut cmd = iterator.next().unwrap().to_string();
-        let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
-        if let Some(strpd) = stripped {
-            cmd = strpd.to_string();
-        }
-
-        let mut path = PathBuf::from(cmd);
-        if path.is_relative() {
-            path = std::env::current_dir().unwrap().join(path);
-        }
+        let cmd = iterator.next().unwrap().to_string();
+        let path = PathBuf::from(cmd);
 
         // TODO: do we need to validate the wasm binary?
         // ```rust

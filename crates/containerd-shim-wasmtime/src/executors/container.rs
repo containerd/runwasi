@@ -1,60 +1,19 @@
 use containerd_shim_wasm::sandbox::oci;
-use libcontainer::workload::{Executor, ExecutorError, EMPTY};
-use nix::unistd::{dup, dup2};
+use libcontainer::workload::default::DefaultExecutor;
+use libcontainer::workload::{Executor, ExecutorError};
 
-use std::ffi::CString;
-use std::io::Read;
-use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
-
-use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use nix::unistd;
 use oci_spec::runtime::Spec;
-
-const EXECUTOR_NAME: &str = "default";
+use std::io::Read;
+use std::{fs::OpenOptions, path::PathBuf};
 
 #[derive(Default)]
 pub struct LinuxContainerExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
+    default_executor: DefaultExecutor,
 }
 
 impl Executor for LinuxContainerExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        log::debug!("executing workload with default handler");
-        let args = spec
-            .process()
-            .as_ref()
-            .and_then(|p| p.args().as_ref())
-            .unwrap_or(&EMPTY);
-
-        if args.is_empty() {
-            log::error!("no arguments provided to execute");
-            Err(ExecutorError::InvalidArg)?;
-        }
-
-        redirect_io(self.stdin, self.stdout, self.stderr).map_err(|err| {
-            log::error!("failed to redirect io: {}", err);
-            ExecutorError::Other(format!("failed to redirect io: {}", err))
-        })?;
-
-        let executable = args[0].as_str();
-        let cstring_path = CString::new(executable.as_bytes()).map_err(|err| {
-            log::error!("failed to convert path {executable:?} to cstring: {}", err,);
-            ExecutorError::InvalidArg
-        })?;
-        let a: Vec<CString> = args
-            .iter()
-            .map(|s| CString::new(s.as_bytes()).unwrap_or_default())
-            .collect();
-        unistd::execvp(&cstring_path, &a).map_err(|err| {
-            log::error!("failed to execvp: {}", err);
-            ExecutorError::Execution(err.into())
-        })?;
-
-        // After execvp is called, the process is replaced with the container
-        // payload through execvp, so it should never reach here.
-        unreachable!();
+        self.default_executor.exec(spec)
     }
 
     fn can_handle(&self, spec: &Spec) -> bool {
@@ -133,22 +92,6 @@ impl Executor for LinuxContainerExecutor {
     }
 
     fn name(&self) -> &'static str {
-        EXECUTOR_NAME
+        self.default_executor.name()
     }
-}
-
-fn redirect_io(stdin: Option<i32>, stdout: Option<i32>, stderr: Option<i32>) -> anyhow::Result<()> {
-    if let Some(stdin) = stdin {
-        dup(STDIN_FILENO)?;
-        dup2(stdin, STDIN_FILENO)?;
-    }
-    if let Some(stdout) = stdout {
-        dup(STDOUT_FILENO)?;
-        dup2(stdout, STDOUT_FILENO)?;
-    }
-    if let Some(stderr) = stderr {
-        dup(STDERR_FILENO)?;
-        dup2(stderr, STDERR_FILENO)?;
-    }
-    Ok(())
 }

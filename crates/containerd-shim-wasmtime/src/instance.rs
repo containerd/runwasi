@@ -227,11 +227,7 @@ impl Wasi {
             stdout,
             stderr,
         });
-        let default_executor = Box::new(LinuxContainerExecutor {
-            stdin,
-            stdout,
-            stderr,
-        });
+        let default_executor = Box::<LinuxContainerExecutor>::default();
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![default_executor, wasmtime_executor])?
             .with_root_path(self.rootdir.clone())?
