@@ -66,8 +66,8 @@ impl Executor for WasmtimeExecutor {
         // ```
 
         path.extension()
-            .map(|ext| ext == "wasm" || ext == "wat")
-            .unwrap_or(false)
+            .map(|ext| ext.to_ascii_lowercase())
+            .is_some_and(|ext| ext == "wasm" || ext == "wat")
     }
 
     fn name(&self) -> &'static str {
