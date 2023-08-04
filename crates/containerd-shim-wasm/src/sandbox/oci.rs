@@ -35,6 +35,17 @@ pub fn get_args(spec: &Spec) -> &[String] {
     }
 }
 
+// get_module returns the module name and exported function name to be called
+// from the arguments on the runtime spec process field. The first argument will
+// be the module name and the default function name is "_start".
+//
+// If there is a '#' in the argument it will split the string
+// returning the first part as the module name and the second part as the function
+// name.
+//
+// example: "module.wasm#function" will return (Some("module.wasm"), "function")
+//
+// If there are no arguments then it will return (None, "_start")
 pub fn get_module(spec: &Spec) -> (Option<String>, String) {
     let args = get_args(spec);
 
