@@ -352,9 +352,9 @@ dependencies = [
 
 [[package]]
 name = "cgroups-rs"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b098e7c3a70d03c288fa0a96ccf13e770eb3d78c4cc0e1549b3c13215d5f965"
+checksum = "1fb3af90c8d48ad5f432d8afb521b5b40c2a2fce46dd60e05912de51c47fba64"
 dependencies = [
  "libc",
  "log",
@@ -509,7 +509,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "caps",
- "cgroups-rs 0.3.2",
+ "cgroups-rs 0.3.3",
  "chrono",
  "clone3",
  "command-fds",
