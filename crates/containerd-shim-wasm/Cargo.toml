@@ -28,7 +28,7 @@ clone3 = "0.2"
 libc = { workspace = true }
 caps = "0.5"
 proc-mounts = "0.3"
-cgroups-rs = "0.3.2"
+cgroups-rs = "0.3.3"
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2", optional = true }
