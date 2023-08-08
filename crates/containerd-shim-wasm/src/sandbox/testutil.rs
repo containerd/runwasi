@@ -17,12 +17,20 @@ fn normalize_test_name(test: &str) -> Result<&str> {
 pub fn run_test_with_sudo(test: &str) -> Result<()> {
     // This uses piped stdout/stderr.
     // This makes it so cargo doesn't mess up the caller's TTY.
+    // This also explicitly sets LD_LIBRARY_PATH, which sudo usually removes.
+    // This might be needed when dynamically linking libwasmedge.
 
     let normalized_test = normalize_test_name(test)?;
+    let ld_library_path = std::env::var_os("LD_LIBRARY_PATH")
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
 
     let mut cmd = Command::new("sudo")
         .arg("-E")
-        .arg(std::fs::read_link("/proc/self/exe")?)
+        .arg("env")
+        .arg(format!("LD_LIBRARY_PATH={ld_library_path}"))
+        .arg(std::env::current_exe().unwrap())
         .arg("--")
         .arg(normalized_test)
         .arg("--exact")
