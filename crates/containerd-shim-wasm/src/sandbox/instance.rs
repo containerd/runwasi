@@ -5,11 +5,16 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
 use chrono::{DateTime, Utc};
-use libc::{SIGINT, SIGKILL, SIGTERM};
+use libc::{SIGINT, SIGTERM};
 
 use super::error::Error;
 
 pub type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
+
+#[cfg(unix)]
+use libc::SIGKILL;
+#[cfg(windows)]
+const SIGKILL: i32 = 9;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
@@ -216,6 +221,7 @@ mod noptests {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    #[cfg(unix)]
     use libc::SIGHUP;
 
     use super::*;
@@ -259,6 +265,7 @@ mod noptests {
         Ok(())
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_op_kill_other() -> Result<(), Error> {
         let nop = Nop::new("".to_string(), None);

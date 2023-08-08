@@ -146,12 +146,18 @@ You will need to make sure the `containerd-[ wasmedge | wasmtime ]d` daemon has 
 
 #### Building
 
-1. Install [youki dependencies](https://github.com/containers/youki#dependencies)
+1. Install dependencies
 
-If on ubuntu/debian you can use the following script. Refer to youki's documentation for other systems.
+If on ubuntu/debian you can use the following script. Refer to [youki's](https://github.com/containers/youki#dependencies) documentation for other systems.
 
 ```
-./scripts/setup.sh
+./scripts/setup-linux.sh
+```
+
+If on Windows use (use [git BASH](https://gitforwindows.org/) terminal which has shell emulator)
+
+```
+./scripts/setup-windows.sh
 ```
 
 2. Build

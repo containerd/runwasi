@@ -4,8 +4,6 @@
 
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::fs::File;
-use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -17,7 +15,6 @@ use containerd_shim::protos::ttrpc::{Client, Server};
 use containerd_shim::protos::TaskClient;
 use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::{self as shim, api, TtrpcContext, TtrpcResult};
-use nix::sched::{setns, unshare, CloneFlags};
 use oci_spec::runtime;
 use shim::Flags;
 use ttrpc::context;
@@ -26,6 +23,7 @@ use super::error::Error;
 use super::instance::Instance;
 use super::{oci, sandbox};
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
+use crate::sys::networking::setup_namespaces;
 
 /// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.
 pub trait Sandbox: Task + Send + Sync {
@@ -156,20 +154,7 @@ impl<T: Sandbox + 'static> Manager for Service<T> {
 // Note that this changes the current thread's state.
 // You probably want to run this in a new thread.
 fn start_sandbox(cfg: runtime::Spec, server: &mut Server) -> Result<(), Error> {
-    let namespaces = cfg.linux().as_ref().unwrap().namespaces().as_ref().unwrap();
-    for ns in namespaces {
-        if ns.typ() == runtime::LinuxNamespaceType::Network {
-            if ns.path().is_some() {
-                let p = ns.path().clone().unwrap();
-                let f = File::open(p).context("could not open network namespace")?;
-                setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET)
-                    .context("error setting network namespace")?;
-                break;
-            }
-
-            unshare(CloneFlags::CLONE_NEWNET).context("error unsharing network namespace")?;
-        }
-    }
+    setup_namespaces(&cfg)?;
 
     server.start_listen().context("could not start listener")?;
     Ok(())

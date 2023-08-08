@@ -5,7 +5,9 @@
 
 pub mod sandbox;
 
+mod macros;
 pub mod services;
+pub mod sys;
 
-#[cfg(feature = "libcontainer")]
+#[cfg(all(feature = "libcontainer", not(target_os = "windows")))]
 pub mod libcontainer_instance;

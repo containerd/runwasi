@@ -1,0 +1,5 @@
+[target.'cfg(windows)']
+rustflags = [
+    "-Adead_code",
+    "-Awarnings",
+]
