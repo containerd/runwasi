@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::ErrorKind;
-use std::os::unix::io::RawFd;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
@@ -14,7 +13,7 @@ use containerd_shim_wasm::sandbox::instance_utils::{
     get_instance_root, instance_exists, maybe_open_stdio,
 };
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{SIGINT, SIGKILL};
 use log::{debug, error};
 use nix::errno::Errno;
 use nix::sys::signal::Signal as NixSignal;
@@ -39,10 +38,6 @@ use libcontainer::syscall::syscall::create_syscall;
 
 use crate::executor::WasmEdgeExecutor;
 
-static mut STDIN_FD: Option<RawFd> = None;
-static mut STDOUT_FD: Option<RawFd> = None;
-static mut STDERR_FD: Option<RawFd> = None;
-
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmedge";
 
 type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
@@ -57,20 +52,6 @@ pub struct Wasi {
     bundle: String,
 
     rootdir: PathBuf,
-}
-
-pub fn reset_stdio() {
-    unsafe {
-        if STDIN_FD.is_some() {
-            dup2(STDIN_FD.unwrap(), STDIN_FILENO);
-        }
-        if STDOUT_FD.is_some() {
-            dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
-        }
-        if STDERR_FD.is_some() {
-            dup2(STDERR_FD.unwrap(), STDERR_FILENO);
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -275,12 +256,14 @@ impl EngineGetter for Wasi {
 mod wasitest {
     use std::borrow::Cow;
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
+    use std::os::unix::io::RawFd;
     use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use libc::{dup2, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
 
@@ -292,6 +275,24 @@ mod wasitest {
         config::{CommonConfigOptions, ConfigBuilder},
         wat2wasm,
     };
+
+    static mut STDIN_FD: Option<RawFd> = None;
+    static mut STDOUT_FD: Option<RawFd> = None;
+    static mut STDERR_FD: Option<RawFd> = None;
+
+    fn reset_stdio() {
+        unsafe {
+            if STDIN_FD.is_some() {
+                dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+            }
+            if STDOUT_FD.is_some() {
+                dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+            }
+            if STDERR_FD.is_some() {
+                dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+            }
+        }
+    }
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module
