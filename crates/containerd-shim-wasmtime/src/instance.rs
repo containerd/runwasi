@@ -1,5 +1,5 @@
 use anyhow::Result;
-use containerd_shim_wasm::sandbox::instance::YoukiInstance;
+use containerd_shim_wasm::sandbox::instance::{ExitCode, YoukiInstance};
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
-use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
@@ -22,7 +21,6 @@ use wasmtime::Engine;
 use crate::executor::WasmtimeExecutor;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
-type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 static mut STDIN_FD: Option<RawFd> = None;
 static mut STDOUT_FD: Option<RawFd> = None;
@@ -123,7 +121,7 @@ impl YoukiInstance for Wasi {
         let stdin = maybe_open_stdio(&self.stdin).context("could not open stdin")?;
         let stdout = maybe_open_stdio(&self.stdout).context("could not open stdout")?;
         let stderr = maybe_open_stdio(&self.stderr).context("could not open stderr")?;
-        let err_msg = |err| format!("failed to create container: {}", err);
+        let err_others = |err| Error::Others(format!("failed to create container: {}", err));
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![Box::new(WasmtimeExecutor {
                 stdin,
@@ -131,13 +129,13 @@ impl YoukiInstance for Wasi {
                 stderr,
                 engine,
             })])
-            .map_err(|err| Error::Others(err_msg(err)))?
+            .map_err(err_others)?
             .with_root_path(self.rootdir.clone())
-            .map_err(|err| Error::Others(err_msg(err)))?
+            .map_err(err_others)?
             .as_init(&self.bundle)
             .with_systemd(false)
             .build()
-            .map_err(|err| Error::Others(err_msg(err)))?;
+            .map_err(err_others)?;
         Ok(container)
     }
 }

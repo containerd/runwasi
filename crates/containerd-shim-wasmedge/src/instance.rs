@@ -6,9 +6,8 @@ use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::instance::YoukiInstance;
+use containerd_shim_wasm::sandbox::instance::{ExitCode, YoukiInstance};
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
@@ -37,7 +36,6 @@ static mut STDERR_FD: Option<RawFd> = None;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmedge";
 
-type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 pub struct Wasi {
     id: String,
 
@@ -126,20 +124,20 @@ impl YoukiInstance for Wasi {
         let stderr = maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?;
 
         let syscall = create_syscall();
-        let err_msg = |err| format!("failed to create container: {}", err);
+        let err_others = |err| Error::Others(format!("failed to create container: {}", err));
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![Box::new(WasmEdgeExecutor {
                 stdin,
                 stdout,
                 stderr,
             })])
-            .map_err(|err| Error::Others(err_msg(err)))?
+            .map_err(err_others)?
             .with_root_path(self.rootdir.clone())
-            .map_err(|err| Error::Others(err_msg(err)))?
+            .map_err(err_others)?
             .as_init(&self.bundle)
             .with_systemd(false)
             .build()
-            .map_err(|err| Error::Others(err_msg(err)))?;
+            .map_err(err_others)?;
         // Close the fds now that they have been passed to the container process
         // so that we don't leak them.
         stdin.map(close);
@@ -181,6 +179,7 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use chrono::{DateTime, Utc};
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};

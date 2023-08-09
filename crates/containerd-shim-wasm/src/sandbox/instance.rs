@@ -25,7 +25,7 @@ use {
 
 use super::error::Error;
 
-type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
+pub type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
@@ -161,11 +161,11 @@ pub trait Instance {
 /// uses youki's libcontainer library as the container runtime.
 /// It provides default implementations for some of the Instance trait methods.
 /// The implementor of this trait is expected to implement the
-///     new_youki()
-///     get_exit_code()
-///     get_id()
-///     get_root_dir()
-///     build_container()
+/// * `new_youki()`
+/// * `get_exit_code()`
+/// * `get_id()`
+/// * `get_root_dir()`
+/// * `build_container()`
 /// methods.
 #[cfg(feature = "libcontainer")]
 pub trait YoukiInstance {
