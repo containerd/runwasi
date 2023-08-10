@@ -1,9 +1,7 @@
 use anyhow::Result;
-use containerd_shim_wasm::sandbox::instance::ExitCode;
-use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::youki_instance::YoukiInstance;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
+use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
@@ -13,7 +11,9 @@ use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
+use containerd_shim_wasm::sandbox::instance::ExitCode;
+use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig, LibcontainerInstance};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::syscall::syscall::create_syscall;
 
@@ -82,10 +82,10 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
     Ok(path)
 }
 
-impl YoukiInstance for Wasi {
+impl LibcontainerInstance for Wasi {
     type E = wasmtime::Engine;
 
-    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
@@ -137,6 +137,13 @@ impl YoukiInstance for Wasi {
             .with_systemd(false)
             .build()
             .map_err(err_others)?;
+
+        // Close the fds now that they have been passed to the container process
+        // so that we don't leak them.
+        stdin.map(close);
+        stdout.map(close);
+        stderr.map(close);
+
         Ok(container)
     }
 }

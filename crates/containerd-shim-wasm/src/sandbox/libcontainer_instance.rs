@@ -23,7 +23,7 @@ use std::{path::PathBuf, thread};
 
 use super::{error::Error, instance::Wait, Instance};
 
-/// YoukiInstance is a trait that gets implemented by a WASI runtime that
+/// LibcontainerInstance is a trait that gets implemented by a WASI runtime that
 /// uses youki's libcontainer library as the container runtime.
 /// It provides default implementations for some of the Instance trait methods.
 /// The implementor of this trait is expected to implement the
@@ -33,13 +33,12 @@ use super::{error::Error, instance::Wait, Instance};
 /// * `get_root_dir()`
 /// * `build_container()`
 /// methods.
-#[cfg(feature = "libcontainer")]
-pub trait YoukiInstance {
+pub trait LibcontainerInstance {
     /// The WASI engine type
     type E: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
 
     /// Get the exit code of the instance
     fn get_exit_code(&self) -> ExitCode;
@@ -57,12 +56,11 @@ pub trait YoukiInstance {
 /// Default implementation of the Instance trait for YoukiInstance
 /// This implementation uses the libcontainer library to create and start
 /// the container.
-#[cfg(feature = "libcontainer")]
-impl<T: YoukiInstance> Instance for T {
+impl<T: LibcontainerInstance> Instance for T {
     type E = T::E;
 
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
-        Self::new_youki(id, cfg)
+        Self::new_libcontainer(id, cfg)
     }
 
     /// Start the instance
@@ -115,12 +113,13 @@ impl<T: YoukiInstance> Instance for T {
                 "only SIGKILL and SIGINT are supported".to_string(),
             ));
         }
+        let signal = Signal::try_from(signal as i32)
+            .map_err(|err| Error::InvalidArgument(format!("invalid signal number: {}", err)))?;
         let container_root = get_instance_root(root_dir, id.as_str())?;
         let mut container = Container::load(container_root).with_context(|| {
             format!("could not load state for container {id}", id = id.as_str())
         })?;
-        let signal = Signal::try_from(signal as i32)
-            .map_err(|err| Error::InvalidArgument(format!("invalid signal number: {}", err)))?;
+
         match container.kill(signal, true) {
             Ok(_) => Ok(()),
             Err(e) => {

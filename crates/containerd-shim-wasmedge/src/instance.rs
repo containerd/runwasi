@@ -9,8 +9,7 @@ use anyhow::Result;
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::youki_instance::YoukiInstance;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig, LibcontainerInstance};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
@@ -88,10 +87,10 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
         .join(namespace))
 }
 
-impl YoukiInstance for Wasi {
+impl LibcontainerInstance for Wasi {
     type E = Vm;
 
-    fn new_youki(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
         let namespace = cfg.get_namespace();

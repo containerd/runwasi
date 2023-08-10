@@ -7,10 +7,12 @@ pub mod error;
 // pub mod exec;
 pub mod instance;
 pub mod instance_utils;
+#[cfg(feature = "libcontainer")]
+pub mod libcontainer_instance;
 pub mod manager;
 pub mod shim;
 #[cfg(feature = "libcontainer")]
-pub mod youki_instance;
+pub use libcontainer_instance::LibcontainerInstance;
 
 pub use error::{Error, Result};
 pub use instance::{EngineGetter, Instance, InstanceConfig};
