@@ -2,9 +2,8 @@
 use crate::sandbox::error::Error;
 use anyhow::{bail, Context, Result};
 use std::{
-    fs::{self, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::ErrorKind,
-    os::fd::{IntoRawFd, RawFd},
     path::{Path, PathBuf},
 };
 
@@ -33,12 +32,12 @@ pub fn instance_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Resu
 /// containerd can send an empty path or a non-existant path
 /// In both these cases we should just assume that the stdio stream was not setup (intentionally)
 /// Any other error is a real error.
-pub fn maybe_open_stdio(path: &str) -> Result<Option<RawFd>, Error> {
+pub fn maybe_open_stdio(path: &str) -> Result<Option<File>, Error> {
     if path.is_empty() {
         return Ok(None);
     }
     match OpenOptions::new().read(true).write(true).open(path) {
-        Ok(f) => Ok(Some(f.into_raw_fd())),
+        Ok(f) => Ok(Some(f)),
         Err(err) => match err.kind() {
             ErrorKind::NotFound => Ok(None),
             _ => Err(err.into()),

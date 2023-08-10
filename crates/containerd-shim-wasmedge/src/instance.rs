@@ -1,8 +1,3 @@
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::ErrorKind;
-use std::sync::{Arc, Condvar, Mutex};
-
 use anyhow::Context;
 use anyhow::Result;
 use containerd_shim_wasm::libcontainer_instance::LibcontainerInstance;
@@ -13,6 +8,11 @@ use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::ErrorKind;
+use std::os::fd::IntoRawFd;
+use std::sync::{Arc, Condvar, Mutex};
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     plugin::PluginManager,
@@ -101,9 +101,16 @@ impl LibcontainerInstance for Wasi {
 
     fn build_container(&self) -> std::result::Result<Container, Error> {
         fs::create_dir_all(&self.rootdir)?;
-        let stdin = maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?;
-        let stdout = maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?;
-        let stderr = maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?;
+
+        let stdin = maybe_open_stdio(self.stdin.as_str())
+            .context("could not open stdin")?
+            .map(|f| f.into_raw_fd());
+        let stdout = maybe_open_stdio(self.stdout.as_str())
+            .context("could not open stdout")?
+            .map(|f| f.into_raw_fd());
+        let stderr = maybe_open_stdio(self.stderr.as_str())
+            .context("could not open stderr")?
+            .map(|f| f.into_raw_fd());
 
         let syscall = create_syscall();
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));

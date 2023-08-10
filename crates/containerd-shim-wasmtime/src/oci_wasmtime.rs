@@ -2,10 +2,9 @@ use std::fs::OpenOptions;
 use std::path::Path;
 
 use anyhow::Context;
-use cap_std::fs::File as CapFile;
 use containerd_shim_wasm::sandbox::{error::Error, oci};
 use oci_spec::runtime::Spec;
-use wasmtime_wasi::sync::file::File as WasiFile;
+
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
 
 pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {
@@ -76,12 +75,4 @@ pub fn spec_to_wasi<P: AsRef<Path>>(
 pub fn wasi_dir(path: &str, opts: &OpenOptions) -> Result<WasiDir, std::io::Error> {
     let f = opts.open(path)?;
     Ok(WasiDir::from_std_file(f))
-}
-
-pub fn wasi_file<P: AsRef<Path>>(
-    path: P,
-    opts: &mut OpenOptions,
-) -> Result<WasiFile, std::io::Error> {
-    let f = opts.open(path)?;
-    Ok(WasiFile::from_cap_std(CapFile::from_std(f)))
 }
