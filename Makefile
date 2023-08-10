@@ -17,9 +17,8 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 .PHONY: build
 build:
 	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
+	cargo build -p containerd-shim-wasm --features libcontainer $(RELEASE_FLAG)
 	cargo build $(RELEASE_FLAG)
-	# no libcontainer feature on containerd-shim-wasm
-	cargo build $(RELEASE_FLAG) --no-default-features -p containerd-shim-wasm
 
 .PHONY: check
 check:
