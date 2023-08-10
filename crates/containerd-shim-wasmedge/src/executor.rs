@@ -15,9 +15,19 @@ use wasmedge_sdk::{
 const EXECUTOR_NAME: &str = "wasmedge";
 
 pub struct WasmEdgeExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
+    stdin: Option<RawFd>,
+    stdout: Option<RawFd>,
+    stderr: Option<RawFd>,
+}
+
+impl WasmEdgeExecutor {
+    pub fn new(stdin: Option<RawFd>, stdout: Option<RawFd>, stderr: Option<RawFd>) -> Self {
+        Self {
+            stdin,
+            stdout,
+            stderr,
+        }
+    }
 }
 
 impl Executor for WasmEdgeExecutor {

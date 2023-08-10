@@ -221,13 +221,8 @@ impl Wasi {
         let stdout = maybe_open_stdio(stdout).context("could not open stdout")?;
         let stderr = maybe_open_stdio(stderr).context("could not open stderr")?;
 
-        let wasmtime_executor = Box::new(WasmtimeExecutor {
-            engine,
-            stdin,
-            stdout,
-            stderr,
-        });
-        let default_executor = Box::<LinuxContainerExecutor>::default();
+        let wasmtime_executor = Box::new(WasmtimeExecutor::new(stdin, stdout, stderr, engine));
+        let default_executor = Box::new(LinuxContainerExecutor::new(stdin, stdout, stderr));
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![default_executor, wasmtime_executor])?
             .with_root_path(self.rootdir.clone())?

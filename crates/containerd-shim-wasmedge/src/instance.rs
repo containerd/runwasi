@@ -236,11 +236,7 @@ impl Wasi {
     ) -> anyhow::Result<Container> {
         let syscall = create_syscall();
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmEdgeExecutor {
-                stdin,
-                stdout,
-                stderr,
-            })])?
+            .with_executor(vec![Box::new(WasmEdgeExecutor::new(stdin, stdout, stderr))])?
             .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
             .with_systemd(false)

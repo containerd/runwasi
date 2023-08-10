@@ -15,10 +15,26 @@ use crate::oci_wasmtime::{self, wasi_dir};
 const EXECUTOR_NAME: &str = "wasmtime";
 
 pub struct WasmtimeExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
-    pub engine: Engine,
+    stdin: Option<RawFd>,
+    stdout: Option<RawFd>,
+    stderr: Option<RawFd>,
+    engine: Engine,
+}
+
+impl WasmtimeExecutor {
+    pub fn new(
+        stdin: Option<RawFd>,
+        stdout: Option<RawFd>,
+        stderr: Option<RawFd>,
+        engine: Engine,
+    ) -> Self {
+        Self {
+            stdin,
+            stdout,
+            stderr,
+            engine,
+        }
+    }
 }
 
 impl Executor for WasmtimeExecutor {
