@@ -1,6 +1,7 @@
 use anyhow::Result;
-use containerd_shim_wasm::sandbox::instance::{ExitCode, YoukiInstance};
+use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
+use containerd_shim_wasm::sandbox::youki_instance::YoukiInstance;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use serde::{Deserialize, Serialize};

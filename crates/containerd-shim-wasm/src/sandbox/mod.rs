@@ -9,6 +9,8 @@ pub mod instance;
 pub mod instance_utils;
 pub mod manager;
 pub mod shim;
+#[cfg(feature = "libcontainer")]
+pub mod youki_instance;
 
 pub use error::{Error, Result};
 pub use instance::{EngineGetter, Instance, InstanceConfig};
