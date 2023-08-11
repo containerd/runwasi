@@ -15,7 +15,10 @@ type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
 #[derive(Clone)]
-pub struct InstanceConfig {
+pub struct InstanceConfig<E: Engine> {
+    /// The WASI engine to use.
+    /// This should be cheap to clone.
+    engine: E,
     /// Optional stdin named pipe path.
     stdin: Option<String>,
     /// Optional stdout named pipe path.
@@ -30,9 +33,10 @@ pub struct InstanceConfig {
     containerd_address: String,
 }
 
-impl InstanceConfig {
-    pub fn new(namespace: String, containerd_address: String) -> Self {
+impl<E: Engine> InstanceConfig<E> {
+    pub fn new(engine: E, namespace: String, containerd_address: String) -> Self {
         Self {
+            engine,
             namespace,
             stdin: None,
             stdout: None,
@@ -86,6 +90,11 @@ impl InstanceConfig {
         self.bundle.clone()
     }
 
+    /// get the wasm engine for the instance
+    pub fn get_engine(&self) -> E {
+        self.engine.clone()
+    }
+
     /// get the namespace for the instance
     pub fn get_namespace(&self) -> String {
         self.namespace.clone()
@@ -99,9 +108,9 @@ impl InstanceConfig {
 
 /// Represents a WASI module(s).
 /// Instance is a trait that gets implemented by consumers of this library.
-pub trait Instance {
+pub trait Instance<E: Engine> {
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig>) -> Self;
+    fn new(id: String, cfg: Option<&InstanceConfig<E>>) -> Self;
 
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
@@ -122,6 +131,10 @@ pub trait Instance {
     /// processing. Note that the "wait" function doesn't block, but
     /// it sets up the waiting channel.
     fn wait(&self, waiter: &Wait) -> Result<(), Error>;
+}
+
+pub trait Engine: Clone + Send + Sync {
+    fn new() -> Self;
 }
 
 /// This is used for waiting for the container process to exit and deliver the exit code to the caller.
@@ -165,8 +178,12 @@ pub struct Nop {
     exit_code: Arc<ExitCode>,
 }
 
-impl Instance for Nop {
-    fn new(_id: String, _cfg: Option<&InstanceConfig>) -> Self {
+impl Engine for () {
+    fn new() -> Self {}
+}
+
+impl Instance<()> for Nop {
+    fn new(_id: String, _cfg: Option<&InstanceConfig<()>>) -> Self {
         Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
         }

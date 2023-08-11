@@ -27,6 +27,7 @@ use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
 
 use wasmtime::Engine;
 
+use crate::engine::WasmtimeEngine;
 use crate::executor::WasmtimeExecutor;
 use libcontainer::signal::Signal;
 
@@ -92,15 +93,15 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
     Ok(path)
 }
 
-impl Instance for Wasi {
-    fn new(id: String, cfg: Option<&InstanceConfig>) -> Self {
+impl Instance<WasmtimeEngine> for Wasi {
+    fn new(id: String, cfg: Option<&InstanceConfig<WasmtimeEngine>>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
         let rootdir = determine_rootdir(bundle.as_str(), cfg.get_namespace()).unwrap();
-        let engine = Engine::default();
+        let engine = cfg.get_engine();
         Wasi {
             id,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
@@ -109,7 +110,7 @@ impl Instance for Wasi {
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle,
             rootdir,
-            engine,
+            engine: engine.into(),
         }
     }
     fn start(&self) -> Result<u32, Error> {
@@ -353,7 +354,7 @@ mod wasitest {
         Ok(())
     }
 
-    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig> {
+    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<WasmtimeEngine>> {
         create_dir(dir.path().join("rootfs"))?;
 
         let opts = Options {
@@ -390,7 +391,11 @@ mod wasitest {
             )
             .build()?;
         spec.save(dir.path().join("config.json"))?;
-        let mut cfg = InstanceConfig::new("test_namespace".into(), "/containerd/address".into());
+        let mut cfg = InstanceConfig::new(
+            WasmtimeEngine::default(),
+            "test_namespace".into(),
+            "/containerd/address".into(),
+        );
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())

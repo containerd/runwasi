@@ -13,7 +13,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use super::instance::{Instance, InstanceConfig, Nop, Wait};
+use super::instance::{Engine, Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
@@ -51,10 +51,10 @@ use ttrpc::context::Context;
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
-struct InstanceData<T: Instance> {
+struct InstanceData<T: Instance<E>, E: Engine> {
     instance: Option<T>,
     base: Option<Nop>,
-    cfg: InstanceConfig,
+    cfg: InstanceConfig<E>,
     pid: RwLock<Option<u32>>,
     status: Arc<InstanceDataStatus>,
     state: Arc<RwLock<TaskStateWrapper>>,
@@ -62,9 +62,10 @@ struct InstanceData<T: Instance> {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl<T> InstanceData<T>
+impl<T, E> InstanceData<T, E>
 where
-    T: Instance,
+    T: Instance<E>,
+    E: Engine,
 {
     fn start(&self) -> Result<u32> {
         let mut s = self.state.write().unwrap();
@@ -330,16 +331,18 @@ impl From<TaskState<Deleting>> for TaskState<Exited> {
     }
 }
 
-type LocalInstances<T> = Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>;
+type LocalInstances<T, E> = Arc<RwLock<HashMap<String, Arc<InstanceData<T, E>>>>>;
 
 /// Local implements the Task service for a containerd shim.
 /// It defers all task operations to the `Instance` implementation.
 #[derive(Clone)]
-pub struct Local<T>
+pub struct Local<T, E>
 where
-    T: Instance + Send + Sync,
+    T: Instance<E> + Send + Sync,
+    E: Engine,
 {
-    instances: LocalInstances<T>,
+    engine: E,
+    instances: LocalInstances<T, E>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
     namespace: String,
@@ -357,25 +360,28 @@ mod localtests {
 
     use super::*;
 
-    struct LocalWithDescrutor<T>
+    struct LocalWithDescrutor<T, E>
     where
-        T: Instance + Send + Sync,
+        T: Instance<E> + Send + Sync,
+        E: Engine,
     {
-        local: Arc<Local<T>>,
+        local: Arc<Local<T, E>>,
     }
 
-    impl<T> LocalWithDescrutor<T>
+    impl<T, E> LocalWithDescrutor<T, E>
     where
-        T: Instance + Send + Sync,
+        T: Instance<E> + Send + Sync,
+        E: Engine,
     {
-        fn new(local: Arc<Local<T>>) -> Self {
+        fn new(local: Arc<Local<T, E>>) -> Self {
             Self { local }
         }
     }
 
-    impl<T> Drop for LocalWithDescrutor<T>
+    impl<T, E> Drop for LocalWithDescrutor<T, E>
     where
-        T: Instance + Send + Sync,
+        T: Instance<E> + Send + Sync,
+        E: Engine,
     {
         fn drop(&mut self) {
             self.local
@@ -421,7 +427,8 @@ mod localtests {
         create_bundle(dir.path(), None).unwrap();
 
         let (tx, _rx) = channel();
-        let local = Arc::new(Local::<Nop>::new(
+        let local = Arc::new(Local::<Nop, ()>::new(
+            (),
             tx,
             Arc::new(ExitSignal::default()),
             "test_namespace".into(),
@@ -451,7 +458,8 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop>::new(
+        let local = Arc::new(Local::<Nop, ()>::new(
+            (),
             etx,
             exit_signal,
             "test_namespace".into(),
@@ -625,7 +633,8 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop>::new(
+        let local = Arc::new(Local::<Nop, ()>::new(
+            (),
             etx,
             exit_signal,
             "test_namespace".into(),
@@ -738,21 +747,25 @@ mod localtests {
     }
 }
 
-impl<T> Local<T>
+impl<T, E> Local<T, E>
 where
-    T: Instance + Send + Sync,
+    T: Instance<E> + Send + Sync,
+    E: Engine,
 {
     /// Creates a new local task service.
     pub fn new(
+        engine: E,
         tx: Sender<(String, Box<dyn MessageDyn>)>,
         exit: Arc<ExitSignal>,
         namespace: String,
         containerd_address: String,
     ) -> Self
     where
-        T: Instance + Sync + Send,
+        T: Instance<E> + Sync + Send,
+        E: Engine,
     {
-        Local::<T> {
+        Local::<T, E> {
+            engine,
             instances: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(Mutex::new(tx)),
             exit,
@@ -761,8 +774,12 @@ where
         }
     }
 
-    fn new_base(&self, id: String) -> InstanceData<T> {
-        let cfg = InstanceConfig::new(self.namespace.clone(), self.containerd_address.clone());
+    fn new_base(&self, id: String) -> InstanceData<T, E> {
+        let cfg = InstanceConfig::new(
+            self.engine.clone(),
+            self.namespace.clone(),
+            self.containerd_address.clone(),
+        );
         InstanceData {
             instance: None,
             base: Some(Nop::new(id, None)),
@@ -786,7 +803,7 @@ where
             .unwrap_or_else(|e| warn!("failed to send event for topic {}: {}", topic, e));
     }
 
-    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>> {
+    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T, E>>> {
         self.instances
             .read()
             .unwrap()
@@ -952,8 +969,11 @@ where
             })?;
         }
 
-        let mut builder =
-            InstanceConfig::new(self.namespace.clone(), self.containerd_address.clone());
+        let mut builder = InstanceConfig::new(
+            self.engine.clone(),
+            self.namespace.clone(),
+            self.containerd_address.clone(),
+        );
         builder
             .set_stdin(req.stdin().to_string())
             .set_stdout(req.stdout().to_string())
@@ -1315,20 +1335,23 @@ where
     }
 }
 
-impl<T> SandboxService for Local<T>
+impl<T, E> SandboxService<E> for Local<T, E>
 where
-    T: Instance + Sync + Send,
+    T: Instance<E> + Sync + Send,
+    E: Engine,
 {
     type Instance = T;
     fn new(
         namespace: String,
         containerd_address: String,
         _id: String,
+        engine: E,
         publisher: RemotePublisher,
     ) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn MessageDyn>)>();
         forward_events(namespace.clone(), publisher, rx);
-        Local::<T>::new(
+        Local::<T, E>::new(
+            engine,
             tx.clone(),
             Arc::new(ExitSignal::default()),
             namespace,
@@ -1337,9 +1360,10 @@ where
     }
 }
 
-impl<T> Task for Local<T>
+impl<T, E> Task for Local<T, E>
 where
-    T: Instance + Sync + Send,
+    T: Instance<E> + Sync + Send,
+    E: Engine,
 {
     fn create(
         &self,
@@ -1471,10 +1495,12 @@ fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
 }
 
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
-pub struct Cli<T>
+pub struct Cli<T, E>
 where
-    T: Instance + Sync + Send,
+    T: Instance<E> + Sync + Send,
+    E: Engine,
 {
+    engine: E,
     namespace: String,
     containerd_address: String,
     phantom: std::marker::PhantomData<T>,
@@ -1482,14 +1508,16 @@ where
     _id: String,
 }
 
-impl<I> shim::Shim for Cli<I>
+impl<I, E> shim::Shim for Cli<I, E>
 where
-    I: Instance + Sync + Send,
+    I: Instance<E> + Sync + Send,
+    E: Engine,
 {
-    type T = Local<I>;
+    type T = Local<I, E>;
 
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
+            engine: E::new(),
             phantom: std::marker::PhantomData,
             namespace: args.namespace.to_string(),
             containerd_address: args.address.clone(),
@@ -1611,7 +1639,8 @@ where
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn MessageDyn>)>();
         forward_events(self.namespace.to_string(), publisher, rx);
-        Local::<I>::new(
+        Local::<I, E>::new(
+            self.engine.clone(),
             tx.clone(),
             self.exit.clone(),
             self.namespace.clone(),

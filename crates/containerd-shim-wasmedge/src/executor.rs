@@ -7,14 +7,12 @@ use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use std::os::unix::io::RawFd;
 
-use wasmedge_sdk::{
-    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    params, VmBuilder,
-};
+use wasmedge_sdk::{params, Vm};
 
 const EXECUTOR_NAME: &str = "wasmedge";
 
 pub struct WasmEdgeExecutor {
+    pub engine: Vm,
     pub stdin: Option<RawFd>,
     pub stdout: Option<RawFd>,
     pub stderr: Option<RawFd>,
@@ -56,14 +54,7 @@ impl WasmEdgeExecutor {
             cmd = stripped.to_string();
         }
         let envs = env_to_wasi(spec);
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
-            .build()
-            .map_err(|err| ExecutorError::Execution(err))?;
-        let mut vm = VmBuilder::new()
-            .with_config(config)
-            .build()
-            .map_err(|err| ExecutorError::Execution(err))?;
+        let mut vm = self.engine.clone();
         let wasi_module = vm
             .wasi_module_mut()
             .ok_or_else(|| anyhow::Error::msg("Not found wasi module"))

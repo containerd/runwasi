@@ -21,17 +21,18 @@ use nix::sys::signal::Signal as NixSignal;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
-
 use std::{
     fs,
     path::{Path, PathBuf},
 };
+use wasmedge_sdk::Vm;
 
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
 use libcontainer::signal::Signal;
 use libcontainer::syscall::syscall::create_syscall;
 
+use crate::engine::WasmEdgeEngine;
 use crate::executor::WasmEdgeExecutor;
 
 static mut STDIN_FD: Option<RawFd> = None;
@@ -52,6 +53,7 @@ pub struct Wasi {
     bundle: String,
 
     rootdir: PathBuf,
+    engine: Vm,
 }
 
 pub fn reset_stdio() {
@@ -92,11 +94,12 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
         .join(namespace))
 }
 
-impl Instance for Wasi {
-    fn new(id: String, cfg: Option<&InstanceConfig>) -> Self {
+impl Instance<WasmEdgeEngine> for Wasi {
+    fn new(id: String, cfg: Option<&InstanceConfig<WasmEdgeEngine>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
         let namespace = cfg.get_namespace();
+        let engine = cfg.get_engine();
         Wasi {
             id,
             rootdir: determine_rootdir(bundle.as_str(), namespace).unwrap(),
@@ -105,6 +108,7 @@ impl Instance for Wasi {
             stdout: cfg.get_stdout().unwrap_or_default(),
             stderr: cfg.get_stderr().unwrap_or_default(),
             bundle,
+            engine: engine.into(),
         }
     }
 
@@ -116,7 +120,7 @@ impl Instance for Wasi {
         let stdin = maybe_open_stdio(self.stdin.as_str()).context("could not open stdin")?;
         let stdout = maybe_open_stdio(self.stdout.as_str()).context("could not open stdout")?;
         let stderr = maybe_open_stdio(self.stderr.as_str()).context("could not open stderr")?;
-        let mut container = self.build_container(stdin, stdout, stderr)?;
+        let mut container = self.build_container(self.engine.clone(), stdin, stdout, stderr)?;
 
         let code = self.exit_code.clone();
         let pid = container.pid().unwrap();
@@ -224,6 +228,7 @@ impl Instance for Wasi {
 impl Wasi {
     fn build_container(
         &self,
+        engine: Vm,
         stdin: Option<i32>,
         stdout: Option<i32>,
         stderr: Option<i32>,
@@ -231,6 +236,7 @@ impl Wasi {
         let syscall = create_syscall();
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
             .with_executor(vec![Box::new(WasmEdgeExecutor {
+                engine,
                 stdin,
                 stdout,
                 stderr,
@@ -242,7 +248,6 @@ impl Wasi {
         Ok(container)
     }
 }
-
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
@@ -339,7 +344,11 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new("test_namespace".into(), "/containerd/address".into());
+        let mut cfg = InstanceConfig::new(
+            WasmEdgeEngine::default(),
+            "test_namespace".into(),
+            "/containerd/address".into(),
+        );
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -372,6 +381,7 @@ mod wasitest {
         let i = Wasi::new(
             "".to_string(),
             Some(&InstanceConfig::new(
+                WasmEdgeEngine::default(),
                 "test_namespace".into(),
                 "/containerd/address".into(),
             )),

@@ -27,56 +27,64 @@ use shim::Flags;
 use ttrpc::context;
 
 use super::error::Error;
+use super::instance::Engine;
 use super::instance::Instance;
 use super::oci;
 use super::sandbox;
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
 
 /// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.
-pub trait Sandbox: Task + Send + Sync {
-    type Instance: Instance;
+pub trait Sandbox<E: Engine>: Task + Send + Sync {
+    type Instance: Instance<E>;
 
     fn new(
         namespace: String,
         containerd_address: String,
         id: String,
+        engine: E,
         publisher: RemotePublisher,
     ) -> Self;
 }
 
 /// Service is a manager service which can be used to manage multiple instances of a sandbox in-process.
-pub struct Service<T>
+pub struct Service<T, E>
 where
-    T: Sandbox,
+    T: Sandbox<E>,
+    E: Engine,
 {
     sandboxes: RwLock<HashMap<String, String>>,
+    engine: E,
     phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> Default for Service<T>
+impl<T, E> Default for Service<T, E>
 where
-    T: Sandbox,
+    T: Sandbox<E>,
+    E: Engine,
 {
     fn default() -> Self {
-        Service {
+        Self::new(E::new())
+    }
+}
+
+impl<T, E> Service<T, E>
+where
+    T: Sandbox<E>,
+    E: Engine,
+{
+    pub fn new(engine: E) -> Self {
+        Service::<T, E> {
             sandboxes: RwLock::new(HashMap::new()),
+            engine,
             phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<T> Service<T>
+impl<T, E> Manager for Service<T, E>
 where
-    T: Sandbox,
-{
-    pub fn new() -> Self {
-        Service::<T>::default()
-    }
-}
-
-impl<T> Manager for Service<T>
-where
-    T: Sandbox + 'static,
+    T: Sandbox<E> + 'static,
+    E: Engine,
 {
     fn create(
         &self,
@@ -97,6 +105,7 @@ where
             req.namespace.clone(),
             req.containerd_address.clone(),
             req.id.clone(),
+            self.engine.clone(),
             publisher,
         );
         let task_service = create_task(Arc::new(Box::new(sb)));
