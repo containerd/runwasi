@@ -27,7 +27,7 @@ use super::{error::Error, instance::Wait, Instance};
 /// uses youki's libcontainer library as the container runtime.
 /// It provides default implementations for some of the Instance trait methods.
 /// The implementor of this trait is expected to implement the
-/// * `new_youki()`
+/// * `new_libcontainer()`
 /// * `get_exit_code()`
 /// * `get_id()`
 /// * `get_root_dir()`
