@@ -20,6 +20,7 @@ serde_json = { workspace = true }
 nix = { workspace = true }
 libc = { workspace = true }
 libcontainer = { workspace = true }
+dbus = { version = "*", optional = true }
 
 [dev-dependencies]
 tempfile = "3.7"
@@ -31,6 +32,7 @@ default = ["standalone", "static"]
 standalone = ["wasmedge-sdk/standalone"]
 static = ["wasmedge-sdk/static"]
 wasi_nn = ["wasmedge-sdk/wasi_nn"]
+vendored_dbus = ["dbus/vendored"]
 
 [[bin]]
 name = "containerd-shim-wasmedge-v1"

@@ -1,5 +1,5 @@
 variable "CRATE" {
-    default = ""
+    default = null
 }
 
 # special target: https://github.com/docker/metadata-action#bake-definition
@@ -19,10 +19,15 @@ target "image" {
 
 target "image-cross" {
     inherits = ["image"]
-    platforms = [
-        "linux/amd64",
-        "linux/arm64"
-    ]
+    platforms = ["linux/${arch}"]
+    name = "image-cross-${image}-${arch}"
+    matrix = {
+        image = ["bullseye", "alpine"]
+        arch = ["amd64", "arm64"]
+    }
+    args = {
+        "BASE_IMAGE" = "${image}"
+    }
 }
 
 target "bins" {
@@ -32,14 +37,33 @@ target "bins" {
 
 target "bins-cross" {
     inherits = ["bins"]
-    platforms = [
-        "linux/amd64",
-        "linux/arm64"
-    ]
+    output= ["type=local,dest=bin/${image}-${arch}"]
+    platforms = ["linux/${arch}"]
+    name = "bins-cross-${image}-${arch}"
+    matrix = {
+        image = ["bullseye", "alpine"]
+        arch = ["amd64", "arm64"]
+    }
+    args = {
+        "BASE_IMAGE" = "${image}"
+    }
 }
 
-target "release-tars" {
-    inherits = ["bins-cross"]
+target "tar" {
+    inherits = ["bins"]
     output = ["type=local,dest=release/"]
     target = "release-tar"
+}
+
+target "tar-cross" {
+    inherits = ["tar"]
+    platforms = ["linux/${arch}"]
+    name = "tar-cross-${image}-${arch}"
+    matrix = {
+        image = ["bullseye", "alpine"]
+        arch = ["amd64", "arm64"]
+    }
+    args = {
+        "BASE_IMAGE" = "${image}"
+    }
 }

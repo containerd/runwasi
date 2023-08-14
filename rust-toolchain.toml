@@ -1,3 +1,4 @@
 [toolchain]
+# Make sure to this in sync with RUST_VERSION in the Dockerfile
+channel="1.71.1"
 profile="default"
-channel="1.71.0"
