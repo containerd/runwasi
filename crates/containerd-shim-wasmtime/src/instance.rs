@@ -1,36 +1,25 @@
 use anyhow::Result;
-use containerd_shim_wasm::sandbox::instance_utils::{
-    get_instance_root, instance_exists, maybe_open_stdio,
-};
 use libcontainer::container::builder::ContainerBuilder;
-use libcontainer::container::{Container, ContainerStatus};
-use nix::errno::Errno;
-use nix::sys::wait::waitid;
+use libcontainer::container::Container;
+use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
 
 use anyhow::Context;
-use chrono::{DateTime, Utc};
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
-use libc::{SIGINT, SIGKILL};
+use containerd_shim_wasm::sandbox::instance::ExitCode;
+use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
+use containerd_shim_wasm::sandbox::LibcontainerInstance;
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libcontainer::syscall::syscall::create_syscall;
-use log::error;
-use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus};
 
 use wasmtime::Engine;
 
-use libcontainer::signal::Signal;
-
 use crate::executors::{LinuxContainerExecutor, WasmtimeExecutor};
-
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
-type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 pub struct Wasi {
     exit_code: ExitCode,
@@ -73,9 +62,10 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
     Ok(path)
 }
 
-impl Instance for Wasi {
+impl LibcontainerInstance for Wasi {
     type E = wasmtime::Engine;
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
@@ -93,143 +83,46 @@ impl Instance for Wasi {
             rootdir,
         }
     }
-    fn start(&self) -> Result<u32, Error> {
-        log::info!("starting instance: {}", self.id);
-        let engine: Engine = self.engine.clone();
 
-        let mut container = self.build_container(
-            self.stdin.as_str(),
-            self.stdout.as_str(),
-            self.stderr.as_str(),
-            engine,
-        )?;
-
-        log::info!("created container: {}", self.id);
-        let code = self.exit_code.clone();
-        let pid = container.pid().unwrap();
-
-        container
-            .start()
-            .map_err(|err| Error::Any(anyhow::anyhow!("failed to start container: {}", err)))?;
-
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-
-            let status = match waitid(WaitID::Pid(pid), WaitPidFlag::WEXITED) {
-                Ok(WaitStatus::Exited(_, status)) => status,
-                Ok(WaitStatus::Signaled(_, sig, _)) => sig as i32,
-                Ok(_) => 0,
-                Err(e) => {
-                    if e == Errno::ECHILD {
-                        log::info!("no child process");
-                        0
-                    } else {
-                        panic!("waitpid failed: {}", e);
-                    }
-                }
-            } as u32;
-            let mut ec = lock.lock().unwrap();
-            *ec = Some((status, Utc::now()));
-            drop(ec);
-            cvar.notify_all();
-        });
-
-        Ok(pid.as_raw() as u32)
+    fn get_exit_code(&self) -> ExitCode {
+        self.exit_code.clone()
     }
 
-    fn kill(&self, signal: u32) -> Result<(), Error> {
-        log::info!("killing instance: {}", self.id);
-        if signal as i32 != SIGKILL && signal as i32 != SIGINT {
-            return Err(Error::InvalidArgument(
-                "only SIGKILL and SIGINT are supported".to_string(),
-            ));
-        }
-        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
-        let mut container = Container::load(container_root).with_context(|| {
-            format!(
-                "could not load state for container {id}",
-                id = self.id.as_str()
-            )
-        })?;
-        let signal = Signal::try_from(signal as i32)
-            .map_err(|err| Error::InvalidArgument(format!("invalid signal number: {}", err)))?;
-        match container.kill(signal, true) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                if container.status() == ContainerStatus::Stopped {
-                    return Err(Error::Others("container not running".into()));
-                }
-                Err(Error::Others(e.to_string()))
-            }
-        }
+    fn get_id(&self) -> String {
+        self.id.clone()
     }
 
-    fn delete(&self) -> Result<(), Error> {
-        log::info!("deleting instance: {}", self.id);
-        match instance_exists(&self.rootdir, self.id.as_str()) {
-            Ok(exists) => {
-                if !exists {
-                    return Ok(());
-                }
-            }
-            Err(err) => {
-                error!("could not find the container, skipping cleanup: {}", err);
-                return Ok(());
-            }
-        }
-        let container_root = get_instance_root(&self.rootdir, self.id.as_str())?;
-        let container = Container::load(container_root).with_context(|| {
-            format!(
-                "could not load state for container {id}",
-                id = self.id.as_str()
-            )
-        });
-        match container {
-            Ok(mut container) => container.delete(true).map_err(|err| {
-                Error::Any(anyhow::anyhow!(
-                    "failed to delete container {}: {}",
-                    self.id,
-                    err
-                ))
-            })?,
-            Err(err) => {
-                error!("could not find the container, skipping cleanup: {}", err);
-                return Ok(());
-            }
-        }
-
-        Ok(())
+    fn get_root_dir(&self) -> std::result::Result<PathBuf, Error> {
+        Ok(self.rootdir.clone())
     }
 
-    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
-        log::info!("waiting for instance: {}", self.id);
-        let code = self.exit_code.clone();
-        waiter.set_up_exit_code_wait(code)
-    }
-}
-
-impl Wasi {
-    fn build_container(
-        &self,
-        stdin: &str,
-        stdout: &str,
-        stderr: &str,
-        engine: Engine,
-    ) -> anyhow::Result<Container> {
+    fn build_container(&self) -> std::result::Result<Container, Error> {
+        let engine = self.engine.clone();
         let syscall = create_syscall();
-        let stdin = maybe_open_stdio(stdin).context("could not open stdin")?;
-        let stdout = maybe_open_stdio(stdout).context("could not open stdout")?;
-        let stderr = maybe_open_stdio(stderr).context("could not open stderr")?;
+        let stdin = maybe_open_stdio(&self.stdin).context("could not open stdin")?;
+        let stdout = maybe_open_stdio(&self.stdout).context("could not open stdout")?;
+        let stderr = maybe_open_stdio(&self.stderr).context("could not open stderr")?;
+        let err_others = |err| Error::Others(format!("failed to create container: {}", err));
 
         let wasmtime_executor = Box::new(WasmtimeExecutor::new(stdin, stdout, stderr, engine));
         let default_executor = Box::new(LinuxContainerExecutor::new(stdin, stdout, stderr));
+
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![default_executor, wasmtime_executor])?
-            .with_root_path(self.rootdir.clone())?
+            .with_executor(vec![default_executor, wasmtime_executor])
+            .map_err(err_others)?
+            .with_root_path(self.rootdir.clone())
+            .map_err(err_others)?
             .as_init(&self.bundle)
             .with_systemd(false)
-            .with_detach(true)
-            .build()?;
+            .build()
+            .map_err(err_others)?;
+
+        // Close the fds now that they have been passed to the container process
+        // so that we don't leak them.
+        stdin.map(close);
+        stdout.map(close);
+        stderr.map(close);
+
         Ok(container)
     }
 }
@@ -243,6 +136,7 @@ impl EngineGetter for Wasi {
 
 #[cfg(test)]
 mod wasitest {
+    use std::borrow::Cow;
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
     use std::io::prelude::*;
     use std::os::fd::RawFd;
@@ -250,9 +144,12 @@ mod wasitest {
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use chrono::{DateTime, Utc};
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use containerd_shim_wasm::sandbox::Instance;
+    use libc::SIGKILL;
     use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use nix::unistd::dup2;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
@@ -265,39 +162,45 @@ mod wasitest {
     use super::*;
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
-    const WASI_HELLO_WAT: &[u8]= r#"(module
-        ;; Import the required fd_write WASI function which will write the given io vectors to stdout
-        ;; The function signature for fd_write is:
-        ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
-        (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
-
-        (memory 1)
-        (export "memory" (memory 0))
-
-        ;; Write 'hello world\n' to memory at an offset of 8 bytes
-        ;; Note the trailing newline which is required for the text to appear
-        (data (i32.const 8) "hello world\n")
-
-        (func $main (export "_start")
-            ;; Creating a new io vector within linear memory
-            (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
-            (i32.store (i32.const 4) (i32.const 12))  ;; iov.iov_len - The length of the 'hello world\n' string
-
-            (call $fd_write
-                (i32.const 1) ;; file_descriptor - 1 for stdout
-                (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
-                (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
-                (i32.const 20) ;; nwritten - A place in memory to store the number of bytes written
+    fn hello_world_module(start_fn: Option<&str>) -> Vec<u8> {
+        let start_fn = start_fn.unwrap_or("_start");
+        format!(r#"(module
+            ;; Import the required fd_write WASI function which will write the given io vectors to stdout
+            ;; The function signature for fd_write is:
+            ;; (File Descriptor, *iovs, iovs_len, nwritten) -> Returns number of bytes written
+            (import "wasi_unstable" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
+    
+            (memory 1)
+            (export "memory" (memory 0))
+    
+            ;; Write 'hello world\n' to memory at an offset of 8 bytes
+            ;; Note the trailing newline which is required for the text to appear
+            (data (i32.const 8) "hello world\n")
+    
+            (func $main (export "{start_fn}")
+                ;; Creating a new io vector within linear memory
+                (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
+                (i32.store (i32.const 4) (i32.const 12))  ;; iov.iov_len - The length of the 'hello world\n' string
+    
+                (call $fd_write
+                    (i32.const 1) ;; file_descriptor - 1 for stdout
+                    (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
+                    (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
+                    (i32.const 20) ;; nwritten - A place in memory to store the number of bytes written
+                )
+                drop ;; Discard the number of bytes written from the top of the stack
             )
-            drop ;; Discard the number of bytes written from the top of the stack
         )
-    )
-    "#.as_bytes();
+        "#).as_bytes().to_vec()
+    }
 
     #[test]
     fn test_delete_after_create() -> Result<()> {
-        let dir = tempdir()?;
-        let cfg = prepare_cfg(&dir)?;
+        let cfg = InstanceConfig::new(
+            Wasi::new_engine()?,
+            "test_namespace".into(),
+            "/containerd/address".into(),
+        );
 
         let i = Wasi::new("".to_string(), Some(&cfg));
         i.delete()?;
@@ -306,7 +209,35 @@ mod wasitest {
     }
 
     #[test]
-    fn test_wasi() -> Result<(), Error> {
+    fn test_wasi_entrypoint() -> Result<(), Error> {
+        if !has_cap_sys_admin() {
+            println!("running test with sudo: {}", function!());
+            return run_test_with_sudo(function!());
+        }
+        // start logging
+        // to enable logging run `export RUST_LOG=trace` and append cargo command with
+        // --show-output before running test
+        let _ = env_logger::try_init();
+
+        let dir = tempdir()?;
+        let path = dir.path();
+        let wasm_bytes = hello_world_module(None);
+
+        let res = run_wasi_test(&dir, wasm_bytes.into(), None)?;
+
+        assert_eq!(res.0, 0);
+
+        let output = read_to_string(path.join("stdout"))?;
+        assert_eq!(output, "hello world\n");
+
+        reset_stdio();
+        Ok(())
+    }
+
+    // ignore until https://github.com/containerd/runwasi/issues/194 is resolved
+    #[test]
+    #[ignore]
+    fn test_wasi_custom_entrypoint() -> Result<(), Error> {
         if !has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
@@ -315,42 +246,30 @@ mod wasitest {
         let _ = env_logger::try_init();
 
         let dir = tempdir()?;
-        let cfg = prepare_cfg(&dir)?;
+        let path = dir.path();
+        let wasm_bytes = hello_world_module(Some("foo"));
 
-        let wasi = Wasi::new("test".to_string(), Some(&cfg));
+        let res = run_wasi_test(&dir, wasm_bytes.into(), Some("foo"))?;
 
-        wasi.start()?;
-
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
-        wasi.wait(&waiter).unwrap();
-
-        let res = match rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(res) => res,
-            Err(e) => {
-                wasi.kill(SIGKILL as u32).unwrap();
-                return Err(Error::Others(format!(
-                    "error waiting for module to finish: {0}",
-                    e
-                )));
-            }
-        };
         assert_eq!(res.0, 0);
 
-        let output = read_to_string(dir.path().join("stdout"))?;
+        let output = read_to_string(path.join("stdout"))?;
         assert_eq!(output, "hello world\n");
-
-        wasi.delete()?;
 
         reset_stdio();
         Ok(())
     }
 
-    fn prepare_cfg(dir: &TempDir) -> Result<InstanceConfig<Engine>> {
+    fn run_wasi_test(
+        dir: &TempDir,
+        wasmbytes: Cow<[u8]>,
+        start_fn: Option<&str>,
+    ) -> Result<(u32, DateTime<Utc>), Error> {
         create_dir(dir.path().join("rootfs"))?;
-
+        let rootdir = dir.path().join("runwasi");
+        create_dir(&rootdir)?;
         let opts = Options {
-            root: Some(dir.path().join("runwasi")),
+            root: Some(rootdir),
         };
         let opts_file = OpenOptions::new()
             .read(true)
@@ -367,32 +286,56 @@ mod wasitest {
             .truncate(true)
             .mode(0o755)
             .open(wasm_path)?;
-        f.write_all(WASI_HELLO_WAT)?;
+        f.write_all(&wasmbytes)?;
 
         let stdout = File::create(dir.path().join("stdout"))?;
-        let stderr = File::create(dir.path().join("stderr"))?;
         drop(stdout);
-        drop(stderr);
+
+        let entrypoint = match start_fn {
+            Some(s) => "./hello.wat#".to_string() + s,
+            None => "./hello.wat".to_string(),
+        };
         let spec = SpecBuilder::default()
             .root(RootBuilder::default().path("rootfs").build()?)
             .process(
                 ProcessBuilder::default()
                     .cwd("/")
-                    .args(vec!["./hello.wat".to_string()])
+                    .args(vec![entrypoint])
                     .build()?,
             )
             .build()?;
+
         spec.save(dir.path().join("config.json"))?;
+
         let mut cfg = InstanceConfig::new(
-            Engine::default(),
+            Wasi::new_engine()?,
             "test_namespace".into(),
             "/containerd/address".into(),
         );
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string())
-            .set_stderr(dir.path().join("stderr").to_str().unwrap().to_string());
-        Ok(cfg.to_owned())
+            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
+
+        let wasi = Wasi::new("test".to_string(), Some(cfg));
+
+        wasi.start()?;
+
+        let (tx, rx) = channel();
+        let waiter = Wait::new(tx);
+        wasi.wait(&waiter).unwrap();
+
+        let res = match rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                wasi.kill(SIGKILL as u32).unwrap();
+                return Err(Error::Others(format!(
+                    "error waiting for module to finish: {0}",
+                    e
+                )));
+            }
+        };
+        wasi.delete()?;
+        res
     }
 
     fn reset_stdio() {
