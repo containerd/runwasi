@@ -21,7 +21,7 @@ use crate::sandbox::{
 use crate::sandbox::InstanceConfig;
 use std::{path::PathBuf, thread};
 
-use super::{error::Error, instance::Wait, Instance};
+use crate::sandbox::{error::Error, instance::Wait, Instance};
 
 /// LibcontainerInstance is a trait that gets implemented by a WASI runtime that
 /// uses youki's libcontainer library as the container runtime.

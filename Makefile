@@ -70,6 +70,11 @@ bin/kind: test/k8s/Dockerfile
 test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -type f -name '*.rs')
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
 
+.PHONY: test/nginx
+test/nginx:
+	docker pull docker.io/nginx:latest
+	mkdir -p $@/out && docker save -o $@/out/img.tar docker.io/nginx:latest
+
 .PHONY: test/k8s/cluster
 test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \

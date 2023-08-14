@@ -5,27 +5,21 @@ use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
-use std::os::fd::RawFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
+use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig, LibcontainerInstance};
-use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libcontainer::syscall::syscall::create_syscall;
 
 use wasmtime::Engine;
 
 use crate::executor::WasmtimeExecutor;
-
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
-
-static mut STDIN_FD: Option<RawFd> = None;
-static mut STDOUT_FD: Option<RawFd> = None;
-static mut STDERR_FD: Option<RawFd> = None;
 
 pub struct Wasi {
     exit_code: ExitCode,
@@ -36,20 +30,6 @@ pub struct Wasi {
     bundle: String,
     rootdir: PathBuf,
     id: String,
-}
-
-pub fn reset_stdio() {
-    unsafe {
-        if STDIN_FD.is_some() {
-            dup2(STDIN_FD.unwrap(), STDIN_FILENO);
-        }
-        if STDOUT_FD.is_some() {
-            dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
-        }
-        if STDERR_FD.is_some() {
-            dup2(STDERR_FD.unwrap(), STDERR_FILENO);
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -123,13 +103,12 @@ impl LibcontainerInstance for Wasi {
         let stdout = maybe_open_stdio(&self.stdout).context("could not open stdout")?;
         let stderr = maybe_open_stdio(&self.stderr).context("could not open stderr")?;
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));
+
+        let wasmtime_executor = Box::new(WasmtimeExecutor::new(stdin, stdout, stderr, engine));
+        let default_executor = Box::new(LinuxContainerExecutor::new(stdin, stdout, stderr));
+
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmtimeExecutor {
-                stdin,
-                stdout,
-                stderr,
-                engine,
-            })])
+            .with_executor(vec![default_executor, wasmtime_executor])
             .map_err(err_others)?
             .with_root_path(self.rootdir.clone())
             .map_err(err_others)?
@@ -160,17 +139,25 @@ mod wasitest {
     use std::borrow::Cow;
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
     use std::io::prelude::*;
+    use std::os::fd::RawFd;
     use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
+    use chrono::{DateTime, Utc};
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
     use containerd_shim_wasm::sandbox::Instance;
     use libc::SIGKILL;
+    use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+    use nix::unistd::dup2;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
+
+    static mut STDIN_FD: Option<RawFd> = None;
+    static mut STDOUT_FD: Option<RawFd> = None;
+    static mut STDERR_FD: Option<RawFd> = None;
 
     use super::*;
 
@@ -349,5 +336,19 @@ mod wasitest {
         };
         wasi.delete()?;
         res
+    }
+
+    fn reset_stdio() {
+        unsafe {
+            if STDIN_FD.is_some() {
+                let _ = dup2(STDIN_FD.unwrap(), STDIN_FILENO);
+            }
+            if STDOUT_FD.is_some() {
+                let _ = dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
+            }
+            if STDERR_FD.is_some() {
+                let _ = dup2(STDERR_FD.unwrap(), STDERR_FILENO);
+            }
+        }
     }
 }

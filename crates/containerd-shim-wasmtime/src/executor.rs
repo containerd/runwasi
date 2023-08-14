@@ -1,5 +1,5 @@
 use nix::unistd::{dup, dup2};
-use std::{fs::OpenOptions, os::fd::RawFd};
+use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;
@@ -15,10 +15,26 @@ use crate::oci_wasmtime::{self, wasi_dir};
 const EXECUTOR_NAME: &str = "wasmtime";
 
 pub struct WasmtimeExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
-    pub engine: Engine,
+    stdin: Option<RawFd>,
+    stdout: Option<RawFd>,
+    stderr: Option<RawFd>,
+    engine: Engine,
+}
+
+impl WasmtimeExecutor {
+    pub fn new(
+        stdin: Option<RawFd>,
+        stdout: Option<RawFd>,
+        stderr: Option<RawFd>,
+        engine: Engine,
+    ) -> Self {
+        Self {
+            stdin,
+            stdout,
+            stderr,
+            engine,
+        }
+    }
 }
 
 impl Executor for WasmtimeExecutor {
@@ -39,8 +55,27 @@ impl Executor for WasmtimeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
+    fn can_handle(&self, spec: &Spec) -> bool {
+        // check if the entrypoint of the spec is a wasm binary.
+        let args = oci::get_args(spec);
+        if args.is_empty() {
+            return false;
+        }
+
+        let start = args[0].clone();
+        let mut iterator = start.split('#');
+        let cmd = iterator.next().unwrap().to_string();
+        let path = PathBuf::from(cmd);
+
+        // TODO: do we need to validate the wasm binary?
+        // ```rust
+        //   let bytes = std::fs::read(path).unwrap();
+        //   wasmparser::validate(&bytes).is_ok()
+        // ```
+
+        path.extension()
+            .map(|ext| ext.to_ascii_lowercase())
+            .is_some_and(|ext| ext == "wasm" || ext == "wat")
     }
 
     fn name(&self) -> &'static str {

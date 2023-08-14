@@ -6,7 +6,7 @@ use oci_spec::runtime::Spec;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use log::debug;
-use std::os::unix::io::RawFd;
+use std::{os::unix::io::RawFd, path::PathBuf};
 
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
@@ -16,9 +16,19 @@ use wasmedge_sdk::{
 const EXECUTOR_NAME: &str = "wasmedge";
 
 pub struct WasmEdgeExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
+    stdin: Option<RawFd>,
+    stdout: Option<RawFd>,
+    stderr: Option<RawFd>,
+}
+
+impl WasmEdgeExecutor {
+    pub fn new(stdin: Option<RawFd>, stdout: Option<RawFd>, stderr: Option<RawFd>) -> Self {
+        Self {
+            stdin,
+            stdout,
+            stderr,
+        }
+    }
 }
 
 impl Executor for WasmEdgeExecutor {
@@ -43,8 +53,21 @@ impl Executor for WasmEdgeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
+    fn can_handle(&self, spec: &Spec) -> bool {
+        // check if the entrypoint of the spec is a wasm binary.
+        let args = oci::get_args(spec);
+        if args.is_empty() {
+            return false;
+        }
+
+        let start = args[0].clone();
+        let mut iterator = start.split('#');
+        let cmd = iterator.next().unwrap().to_string();
+        let path = PathBuf::from(cmd);
+
+        path.extension()
+            .map(|ext| ext.to_ascii_lowercase())
+            .is_some_and(|ext| ext == "wasm" || ext == "wat")
     }
 
     fn name(&self) -> &'static str {
