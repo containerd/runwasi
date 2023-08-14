@@ -6,10 +6,12 @@ use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
 use anyhow::Result;
+use containerd_shim_wasm::libcontainer_instance::LibcontainerInstance;
+use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig, LibcontainerInstance};
+use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
@@ -125,8 +127,11 @@ impl LibcontainerInstance for Wasi {
 
         let syscall = create_syscall();
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));
+        let default_executor = Box::new(LinuxContainerExecutor::new(stdin, stdout, stderr));
+        let wasmedge_executor = Box::new(WasmEdgeExecutor::new(stdin, stdout, stderr));
+
         let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmEdgeExecutor::new(stdin, stdout, stderr))])
+            .with_executor(vec![default_executor, wasmedge_executor])
             .map_err(err_others)?
             .with_root_path(self.rootdir.clone())
             .map_err(err_others)?

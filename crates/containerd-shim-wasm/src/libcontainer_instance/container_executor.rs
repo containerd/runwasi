@@ -1,4 +1,4 @@
-use containerd_shim_wasm::sandbox::oci;
+use crate::sandbox::oci;
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{Executor, ExecutorError};
 use nix::unistd::{dup, dup2};

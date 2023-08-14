@@ -1,4 +1,4 @@
 pub mod error;
-pub mod executors;
+pub mod executor;
 pub mod instance;
 pub mod oci_wasmtime;

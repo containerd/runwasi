@@ -9,16 +9,16 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
+use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::LibcontainerInstance;
 use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libcontainer::syscall::syscall::create_syscall;
 
 use wasmtime::Engine;
 
-use crate::executors::{LinuxContainerExecutor, WasmtimeExecutor};
+use crate::executor::WasmtimeExecutor;
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 
 pub struct Wasi {
