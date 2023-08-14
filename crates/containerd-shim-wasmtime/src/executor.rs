@@ -1,7 +1,7 @@
 use nix::unistd::{dup, dup2};
-use std::{fs::OpenOptions, os::fd::RawFd};
+use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
@@ -15,10 +15,26 @@ use crate::oci_wasmtime::{self, wasi_dir};
 const EXECUTOR_NAME: &str = "wasmtime";
 
 pub struct WasmtimeExecutor {
-    pub stdin: Option<RawFd>,
-    pub stdout: Option<RawFd>,
-    pub stderr: Option<RawFd>,
-    pub engine: Engine,
+    stdin: Option<RawFd>,
+    stdout: Option<RawFd>,
+    stderr: Option<RawFd>,
+    engine: Engine,
+}
+
+impl WasmtimeExecutor {
+    pub fn new(
+        stdin: Option<RawFd>,
+        stdout: Option<RawFd>,
+        stderr: Option<RawFd>,
+        engine: Engine,
+    ) -> Self {
+        Self {
+            stdin,
+            stdout,
+            stderr,
+            engine,
+        }
+    }
 }
 
 impl Executor for WasmtimeExecutor {
@@ -39,8 +55,27 @@ impl Executor for WasmtimeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
+    fn can_handle(&self, spec: &Spec) -> bool {
+        // check if the entrypoint of the spec is a wasm binary.
+        let args = oci::get_args(spec);
+        if args.is_empty() {
+            return false;
+        }
+
+        let start = args[0].clone();
+        let mut iterator = start.split('#');
+        let cmd = iterator.next().unwrap().to_string();
+        let path = PathBuf::from(cmd);
+
+        // TODO: do we need to validate the wasm binary?
+        // ```rust
+        //   let bytes = std::fs::read(path).unwrap();
+        //   wasmparser::validate(&bytes).is_ok()
+        // ```
+
+        path.extension()
+            .map(|ext| ext.to_ascii_lowercase())
+            .is_some_and(|ext| ext == "wasm" || ext == "wat")
     }
 
     fn name(&self) -> &'static str {
@@ -82,20 +117,18 @@ impl WasmtimeExecutor {
         let wctx = wasi_builder.build();
 
         log::info!("wasi context ready");
-        let mut iterator = args
-            .first()
-            .context("args must have at least one argument.")?
-            .split('#');
-        let mut cmd = iterator.next().unwrap().to_string();
-        let stripped = cmd.strip_prefix(std::path::MAIN_SEPARATOR);
-        if let Some(strpd) = stripped {
-            cmd = strpd.to_string();
-        }
-        let method = iterator.next().unwrap_or("_start");
-        let mod_path = cmd;
+        let (module_name, method) = oci::get_module(spec);
+        let module_name = match module_name {
+            Some(m) => m,
+            None => {
+                return Err(anyhow::format_err!(
+                    "no module provided, cannot load module from file within container"
+                ))
+            }
+        };
 
-        log::info!("loading module from file");
-        let module = Module::from_file(&self.engine, mod_path)?;
+        log::info!("loading module from file {} ", module_name);
+        let module = Module::from_file(&self.engine, module_name)?;
         let mut linker = Linker::new(&self.engine);
 
         wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
@@ -106,7 +139,7 @@ impl WasmtimeExecutor {
 
         log::info!("getting start function");
         let start_func = instance
-            .get_func(&mut store, method)
+            .get_func(&mut store, &method)
             .ok_or_else(|| anyhow!("module does not have a WASI start function".to_string()))?;
         Ok((store, start_func))
     }

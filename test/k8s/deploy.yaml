@@ -25,3 +25,7 @@ spec:
       - name: demo
         image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
         imagePullPolicy: Never
+      - name: nginx
+        image: docker.io/nginx:latest
+        ports:
+        - containerPort: 80

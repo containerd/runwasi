@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 
 use super::error::Error;
 
-type ExitCode = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
+pub type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
@@ -159,7 +159,7 @@ impl Wait {
     /// code. When the child process exits, the shim will use the ExitCode
     /// to signal the exit status to the caller. This function returns so that
     /// the wait() function in the shim implementation API would not block.
-    pub fn set_up_exit_code_wait(&self, exit_code: Arc<ExitCode>) -> Result<(), Error> {
+    pub fn set_up_exit_code_wait(&self, exit_code: ExitCode) -> Result<(), Error> {
         let sender = self.tx.clone();
         let code = Arc::clone(&exit_code);
         thread::spawn(move || {
@@ -180,7 +180,7 @@ impl Wait {
 pub struct Nop {
     /// Since we are faking the container, we need to keep track of the "exit" code/time
     /// We'll just mark it as exited when kill is called.
-    exit_code: Arc<ExitCode>,
+    exit_code: ExitCode,
 }
 
 impl Instance for Nop {
