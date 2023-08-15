@@ -57,15 +57,12 @@ impl Executor for WasmtimeExecutor {
 
     fn can_handle(&self, spec: &Spec) -> bool {
         // check if the entrypoint of the spec is a wasm binary.
-        let args = oci::get_args(spec);
-        if args.is_empty() {
-            return false;
-        }
-
-        let start = args[0].clone();
-        let mut iterator = start.split('#');
-        let cmd = iterator.next().unwrap().to_string();
-        let path = PathBuf::from(cmd);
+        let (module_name, _method) = oci::get_module(spec);
+        let module_name = match module_name {
+            Some(m) => m,
+            None => return false,
+        };
+        let path = PathBuf::from(module_name);
 
         // TODO: do we need to validate the wasm binary?
         // ```rust
