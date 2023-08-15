@@ -155,11 +155,25 @@ mod wasitest {
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};
 
+    use super::*;
+
     static mut STDIN_FD: Option<RawFd> = None;
     static mut STDOUT_FD: Option<RawFd> = None;
     static mut STDERR_FD: Option<RawFd> = None;
 
-    use super::*;
+    fn reset_stdio() {
+        unsafe {
+            if let Some(stdin) = STDIN_FD {
+                let _ = dup2(stdin, STDIN_FILENO);
+            }
+            if let Some(stdout) = STDOUT_FD {
+                let _ = dup2(stdout, STDOUT_FILENO);
+            }
+            if let Some(stderr) = STDERR_FD {
+                let _ = dup2(stderr, STDERR_FILENO);
+            }
+        }
+    }
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     fn hello_world_module(start_fn: Option<&str>) -> Vec<u8> {
@@ -336,19 +350,5 @@ mod wasitest {
         };
         wasi.delete()?;
         res
-    }
-
-    fn reset_stdio() {
-        unsafe {
-            if STDIN_FD.is_some() {
-                let _ = dup2(STDIN_FD.unwrap(), STDIN_FILENO);
-            }
-            if STDOUT_FD.is_some() {
-                let _ = dup2(STDOUT_FD.unwrap(), STDOUT_FILENO);
-            }
-            if STDERR_FD.is_some() {
-                let _ = dup2(STDERR_FD.unwrap(), STDERR_FILENO);
-            }
-        }
     }
 }
