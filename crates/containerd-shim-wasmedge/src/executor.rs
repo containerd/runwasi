@@ -58,7 +58,10 @@ impl Executor for WasmEdgeExecutor {
         let (module_name, _method) = oci::get_module(spec);
         let module_name = match module_name {
             Some(m) => m,
-            None => return false,
+            None => {
+                log::info!("WasmEdge cannot handle this workload, no arguments provided");
+                return false;
+            }
         };
         let path = PathBuf::from(module_name);
 
