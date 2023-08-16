@@ -15,10 +15,12 @@ use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
 use libcontainer::syscall::syscall::create_syscall;
+use std::os::fd::IntoRawFd;
 
 use wasmtime::Engine;
 
 use crate::executor::WasmtimeExecutor;
+
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd/wasmtime";
 
 pub struct Wasi {
@@ -99,9 +101,15 @@ impl LibcontainerInstance for Wasi {
     fn build_container(&self) -> std::result::Result<Container, Error> {
         let engine = self.engine.clone();
         let syscall = create_syscall();
-        let stdin = maybe_open_stdio(&self.stdin).context("could not open stdin")?;
-        let stdout = maybe_open_stdio(&self.stdout).context("could not open stdout")?;
-        let stderr = maybe_open_stdio(&self.stderr).context("could not open stderr")?;
+        let stdin = maybe_open_stdio(&self.stdin)
+            .context("could not open stdin")?
+            .map(|f| f.into_raw_fd());
+        let stdout = maybe_open_stdio(&self.stdout)
+            .context("could not open stdout")?
+            .map(|f| f.into_raw_fd());
+        let stderr = maybe_open_stdio(&self.stderr)
+            .context("could not open stderr")?
+            .map(|f| f.into_raw_fd());
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));
 
         let wasmtime_executor = Box::new(WasmtimeExecutor::new(stdin, stdout, stderr, engine));
