@@ -148,16 +148,10 @@ You will need to make sure the `containerd-[ wasmedge | wasmtime ]d` daemon has 
 
 1. Install [youki dependencies](https://github.com/containers/youki#dependencies)
 
+If on ubuntu/debian you can use the following script. Refer to youki's documentation for other systems.
+
 ```
-sudo apt-get install    \
-      pkg-config          \
-      libsystemd-dev      \
-      libdbus-glib-1-dev  \
-      build-essential     \
-      libelf-dev          \
-      libseccomp-dev      \
-      libclang-dev        \
-      libssl-dev
+./scripts/setup.sh
 ```
 
 2. Build
