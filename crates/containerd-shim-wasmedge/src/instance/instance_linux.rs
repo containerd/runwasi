@@ -1,22 +1,18 @@
 use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::ErrorKind;
 use std::os::fd::IntoRawFd;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
-use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
+use containerd_shim_wasm::sandbox::instance_utils::{determine_rootdir, maybe_open_stdio};
 use containerd_shim_wasm::sandbox::InstanceConfig;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use libcontainer::syscall::syscall::create_syscall;
 use nix::unistd::close;
-use serde::{Deserialize, Serialize};
 
 use crate::executor::WasmEdgeExecutor;
 
@@ -35,30 +31,6 @@ pub struct Wasi {
     rootdir: PathBuf,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Options {
-    root: Option<PathBuf>,
-}
-
-fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<PathBuf, Error> {
-    let mut file = match File::open(bundle.as_ref().join("options.json")) {
-        Ok(f) => f,
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => {
-                return Ok(<&str as Into<PathBuf>>::into(DEFAULT_CONTAINER_ROOT_DIR).join(namespace))
-            }
-            _ => return Err(err.into()),
-        },
-    };
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
-    let options: Options = serde_json::from_str(&data)?;
-    Ok(options
-        .root
-        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR))
-        .join(namespace))
-}
-
 impl LibcontainerInstance for Wasi {
     type Engine = ();
 
@@ -68,7 +40,12 @@ impl LibcontainerInstance for Wasi {
         let namespace = cfg.get_namespace();
         Wasi {
             id,
-            rootdir: determine_rootdir(bundle.as_str(), namespace).unwrap(),
+            rootdir: determine_rootdir(
+                bundle.as_str(),
+                namespace.as_str(),
+                DEFAULT_CONTAINER_ROOT_DIR,
+            )
+            .unwrap(),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
             stdin: cfg.get_stdin().unwrap_or_default(),
             stdout: cfg.get_stdout().unwrap_or_default(),
@@ -129,7 +106,9 @@ impl LibcontainerInstance for Wasi {
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
+    use std::collections::HashMap;
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
+    use std::io::Write;
     use std::os::unix::io::RawFd;
     use std::os::unix::prelude::OpenOptionsExt;
     use std::sync::mpsc::channel;
@@ -207,17 +186,18 @@ mod wasitest {
     fn run_wasi_test(dir: &TempDir, wasmbytes: Cow<[u8]>) -> Result<(u32, DateTime<Utc>), Error> {
         create_dir(dir.path().join("rootfs"))?;
         let rootdir = dir.path().join("runwasi");
-        create_dir(&rootdir)?;
-        let opts = Options {
-            root: Some(rootdir),
-        };
+        create_dir(rootdir)?;
+        let rootdir = PathBuf::from("/path/to/root");
+        let mut opts = HashMap::new();
+        opts.insert("root", rootdir);
+        let serialized = serde_json::to_string(&opts)?;
         let opts_file = OpenOptions::new()
             .read(true)
             .create(true)
             .truncate(true)
             .write(true)
             .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+        write!(&opts_file, "{}", serialized)?;
 
         let wasm_path = dir.path().join("rootfs/hello.wasm");
         let mut f = OpenOptions::new()
@@ -325,48 +305,6 @@ mod wasitest {
         assert_eq!(res.0, 137);
 
         reset_stdio();
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod rootdirtest {
-    use std::fs::OpenOptions;
-
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
-        let namespace = "test_namespace";
-        let dir = tempdir()?;
-        let rootdir = dir.path().join("runwasi");
-        let opts = Options {
-            root: Some(rootdir.clone()),
-        };
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
-        let root = determine_rootdir(dir.path(), namespace.into())?;
-        assert_eq!(root, rootdir.join(namespace));
-        Ok(())
-    }
-
-    #[test]
-    fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
-        let dir = tempdir()?;
-        let namespace = "test_namespace";
-        let root = determine_rootdir(dir.path(), namespace.into())?;
-        assert!(root.is_absolute());
-        assert_eq!(
-            root,
-            PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR).join(namespace)
-        );
         Ok(())
     }
 }
