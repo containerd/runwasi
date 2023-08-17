@@ -13,7 +13,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use super::instance::{EngineGetter, Instance, InstanceConfig, Nop, Wait};
+use super::instance::{Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
@@ -1472,13 +1472,14 @@ pub struct Cli<T: Instance + Sync + Send> {
 
 impl<I> shim::Shim for Cli<I>
 where
-    I: Instance + Sync + Send + EngineGetter<Engine = <I as Instance>::Engine>,
+    I: Instance + Sync + Send,
+    <I as Instance>::Engine: Default,
 {
     type T = Local<I>;
 
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
-            engine: I::new_engine().unwrap(),
+            engine: Default::default(),
             phantom: std::marker::PhantomData,
             namespace: args.namespace.to_string(),
             containerd_address: args.address.clone(),

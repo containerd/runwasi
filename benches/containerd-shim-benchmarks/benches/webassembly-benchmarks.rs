@@ -14,7 +14,7 @@ use chrono::{DateTime, Utc};
 
 use containerd_shim_wasm::sandbox::exec::has_cap_sys_admin;
 use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{EngineGetter, Error, Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{Error, Instance, InstanceConfig};
 
 use containerd_shim_wasmedge::instance::{reset_stdio, Wasi as WasmEdgeWasi};
 use containerd_shim_wasmtime::instance::Wasi as WasmtimeWasi;

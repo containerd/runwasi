@@ -5,7 +5,7 @@ use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
+use containerd_shim_wasm::sandbox::InstanceConfig;
 use nix::unistd::close;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -13,11 +13,6 @@ use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::fd::IntoRawFd;
 use std::sync::{Arc, Condvar, Mutex};
-use wasmedge_sdk::{
-    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    plugin::PluginManager,
-    Vm, VmBuilder,
-};
 
 use std::{
     fs,
@@ -70,7 +65,7 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl LibcontainerInstance for Wasi {
-    type Engine = Vm;
+    type Engine = ();
 
     fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
@@ -136,29 +131,6 @@ impl LibcontainerInstance for Wasi {
     }
 }
 
-impl EngineGetter for Wasi {
-    type Engine = Vm;
-    fn new_engine() -> Result<Vm, Error> {
-        PluginManager::load(None).unwrap();
-        let mut host_options = HostRegistrationConfigOptions::default();
-        host_options = host_options.wasi(true);
-        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
-        {
-            host_options = host_options.wasi_nn(true);
-        }
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .with_host_registration_config(host_options)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-        let vm = VmBuilder::new()
-            .with_config(config)
-            .build()
-            .map_err(anyhow::Error::msg)?;
-
-        Ok(vm)
-    }
-}
-
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
@@ -181,10 +153,7 @@ mod wasitest {
 
     use super::*;
 
-    use wasmedge_sdk::{
-        config::{CommonConfigOptions, ConfigBuilder},
-        wat2wasm,
-    };
+    use wasmedge_sdk::wat2wasm;
 
     static mut STDIN_FD: Option<RawFd> = None;
     static mut STDOUT_FD: Option<RawFd> = None;
@@ -281,11 +250,8 @@ mod wasitest {
 
         spec.save(dir.path().join("config.json"))?;
 
-        let mut cfg = InstanceConfig::new(
-            Wasi::new_engine()?,
-            "test_namespace".into(),
-            "/containerd/address".into(),
-        );
+        let mut cfg =
+            InstanceConfig::new((), "test_namespace".into(), "/containerd/address".into());
         let cfg = cfg
             .set_bundle(dir.path().to_str().unwrap().to_string())
             .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
@@ -315,14 +281,10 @@ mod wasitest {
     #[test]
     #[serial]
     fn test_delete_after_create() {
-        let config = ConfigBuilder::new(CommonConfigOptions::default())
-            .build()
-            .unwrap();
-        let vm = VmBuilder::new().with_config(config).build().unwrap();
         let i = Wasi::new(
             "".to_string(),
             Some(&InstanceConfig::new(
-                vm,
+                (),
                 "test_namespace".into(),
                 "/containerd/address".into(),
             )),

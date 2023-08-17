@@ -279,10 +279,3 @@ mod noptests {
         nop.delete().unwrap();
     }
 }
-
-/// Abstraction that allows for different wasi engines to be used.
-/// The containerd shim setup by this library will use this trait to get an engine and pass that along to instances.
-pub trait EngineGetter {
-    type Engine: Send + Sync + Clone;
-    fn new_engine() -> Result<Self::Engine, Error>;
-}

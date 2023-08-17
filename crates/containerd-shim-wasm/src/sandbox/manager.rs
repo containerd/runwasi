@@ -62,6 +62,15 @@ impl<T: Sandbox> Service<T> {
     }
 }
 
+impl<T: Sandbox> Default for Service<T>
+where
+    <T::Instance as Instance>::Engine: Default,
+{
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}
+
 impl<T: Sandbox + 'static> Manager for Service<T> {
     fn create(
         &self,
