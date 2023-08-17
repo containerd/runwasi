@@ -70,9 +70,9 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl LibcontainerInstance for Wasi {
-    type E = Vm;
+    type Engine = Vm;
 
-    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
         let cfg = cfg.unwrap(); // TODO: handle error
         let bundle = cfg.get_bundle().unwrap_or_default();
         let namespace = cfg.get_namespace();
@@ -137,7 +137,7 @@ impl LibcontainerInstance for Wasi {
 }
 
 impl EngineGetter for Wasi {
-    type E = Vm;
+    type Engine = Vm;
     fn new_engine() -> Result<Vm, Error> {
         PluginManager::load(None).unwrap();
         let mut host_options = HostRegistrationConfigOptions::default();

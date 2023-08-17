@@ -51,13 +51,10 @@ use ttrpc::context::Context;
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
-struct InstanceData<T: Instance<E = E>, E>
-where
-    E: Sync + Send + Clone,
-{
+struct InstanceData<T: Instance> {
     instance: Option<T>,
     base: Option<Nop>,
-    cfg: InstanceConfig<E>,
+    cfg: InstanceConfig<T::Engine>,
     pid: RwLock<Option<u32>>,
     status: Arc<InstanceDataStatus>,
     state: Arc<RwLock<TaskStateWrapper>>,
@@ -65,11 +62,7 @@ where
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl<T, E> InstanceData<T, E>
-where
-    T: Instance<E = E>,
-    E: Sync + Send + Clone,
-{
+impl<T: Instance> InstanceData<T> {
     fn start(&self) -> Result<u32> {
         let mut s = self.state.write().unwrap();
         let new_state = s.start()?;
@@ -334,18 +327,14 @@ impl From<TaskState<Deleting>> for TaskState<Exited> {
     }
 }
 
-type LocalInstances<T, E> = Arc<RwLock<HashMap<String, Arc<InstanceData<T, E>>>>>;
+type LocalInstances<T> = Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>;
 
 /// Local implements the Task service for a containerd shim.
 /// It defers all task operations to the `Instance` implementation.
 #[derive(Clone)]
-pub struct Local<T, E>
-where
-    T: Instance<E = E> + Send + Sync,
-    E: Send + Sync + Clone,
-{
-    engine: E,
-    instances: LocalInstances<T, E>,
+pub struct Local<T: Instance + Send + Sync> {
+    engine: T::Engine,
+    instances: LocalInstances<T>,
     events: Arc<Mutex<EventSender>>,
     exit: Arc<ExitSignal>,
     namespace: String,
@@ -363,29 +352,17 @@ mod localtests {
 
     use super::*;
 
-    struct LocalWithDescrutor<T, E>
-    where
-        T: Instance<E = E> + Send + Sync,
-        E: Send + Sync + Clone,
-    {
-        local: Arc<Local<T, E>>,
+    struct LocalWithDescrutor<T: Instance + Send + Sync> {
+        local: Arc<Local<T>>,
     }
 
-    impl<T, E> LocalWithDescrutor<T, E>
-    where
-        T: Instance<E = E> + Send + Sync,
-        E: Send + Sync + Clone,
-    {
-        fn new(local: Arc<Local<T, E>>) -> Self {
+    impl<T: Instance + Send + Sync> LocalWithDescrutor<T> {
+        fn new(local: Arc<Local<T>>) -> Self {
             Self { local }
         }
     }
 
-    impl<T, E> Drop for LocalWithDescrutor<T, E>
-    where
-        T: Instance<E = E> + Send + Sync,
-        E: Send + Sync + Clone,
-    {
+    impl<T: Instance + Send + Sync> Drop for LocalWithDescrutor<T> {
         fn drop(&mut self) {
             self.local
                 .instances
@@ -430,7 +407,7 @@ mod localtests {
         create_bundle(dir.path(), None).unwrap();
 
         let (tx, _rx) = channel();
-        let local = Arc::new(Local::<Nop, _>::new(
+        let local = Arc::new(Local::<Nop>::new(
             (),
             tx,
             Arc::new(ExitSignal::default()),
@@ -461,7 +438,7 @@ mod localtests {
         // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
         let (etx, _erx) = channel();
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new(
+        let local = Arc::new(Local::<Nop>::new(
             (),
             etx,
             exit_signal,
@@ -636,7 +613,7 @@ mod localtests {
     fn test_task_lifecycle() -> Result<()> {
         let (etx, _erx) = channel(); // TODO: check events
         let exit_signal = Arc::new(ExitSignal::default());
-        let local = Arc::new(Local::<Nop, _>::new(
+        let local = Arc::new(Local::<Nop>::new(
             (),
             etx,
             exit_signal,
@@ -750,24 +727,16 @@ mod localtests {
     }
 }
 
-impl<T, E> Local<T, E>
-where
-    T: Instance<E = E> + Send + Sync,
-    E: Send + Sync + Clone,
-{
+impl<T: Instance + Send + Sync> Local<T> {
     /// Creates a new local task service.
     pub fn new(
-        engine: E,
+        engine: T::Engine,
         tx: Sender<(String, Box<dyn MessageDyn>)>,
         exit: Arc<ExitSignal>,
         namespace: String,
         containerd_address: String,
-    ) -> Self
-    where
-        T: Instance<E = E> + Sync + Send,
-        E: Send + Sync + Clone,
-    {
-        Local::<T, E> {
+    ) -> Self {
+        Self {
             // Note: engine.clone() is a shallow clone, is really cheap to do, and is safe to pass around.
             engine,
             instances: Arc::new(RwLock::new(HashMap::new())),
@@ -778,7 +747,7 @@ where
         }
     }
 
-    fn new_base(&self, id: String) -> InstanceData<T, E> {
+    fn new_base(&self, id: String) -> InstanceData<T> {
         let cfg = InstanceConfig::new(
             self.engine.clone(),
             self.namespace.clone(),
@@ -807,7 +776,7 @@ where
             .unwrap_or_else(|e| warn!("failed to send event for topic {}: {}", topic, e));
     }
 
-    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T, E>>> {
+    fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>> {
         self.instances
             .read()
             .unwrap()
@@ -1340,22 +1309,18 @@ where
     }
 }
 
-impl<T, E> SandboxService<E> for Local<T, E>
-where
-    T: Instance<E = E> + Sync + Send,
-    E: Sync + Send + Clone,
-{
+impl<T: Instance + Sync + Send> SandboxService for Local<T> {
     type Instance = T;
     fn new(
         namespace: String,
         containerd_address: String,
         _id: String,
-        engine: E,
+        engine: T::Engine,
         publisher: RemotePublisher,
     ) -> Self {
         let (tx, rx) = channel::<(String, Box<dyn MessageDyn>)>();
         forward_events(namespace.clone(), publisher, rx);
-        Local::<T, E>::new(
+        Local::<T>::new(
             engine,
             tx.clone(),
             Arc::new(ExitSignal::default()),
@@ -1365,11 +1330,7 @@ where
     }
 }
 
-impl<T, E> Task for Local<T, E>
-where
-    T: Instance<E = E> + Sync + Send,
-    E: Sync + Send + Clone,
-{
+impl<T: Instance + Sync + Send> Task for Local<T> {
     fn create(
         &self,
         _ctx: &TtrpcContext,
@@ -1500,12 +1461,8 @@ fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
 }
 
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
-pub struct Cli<T, E>
-where
-    T: Instance<E = E> + Sync + Send,
-    E: Sync + Send + Clone,
-{
-    pub engine: E,
+pub struct Cli<T: Instance + Sync + Send> {
+    pub engine: T::Engine,
     namespace: String,
     containerd_address: String,
     phantom: std::marker::PhantomData<T>,
@@ -1513,12 +1470,11 @@ where
     _id: String,
 }
 
-impl<I, E> shim::Shim for Cli<I, E>
+impl<I> shim::Shim for Cli<I>
 where
-    I: Instance<E = E> + Sync + Send + EngineGetter<E = E>,
-    E: Sync + Send + Clone,
+    I: Instance + Sync + Send + EngineGetter<Engine = <I as Instance>::Engine>,
 {
-    type T = Local<I, E>;
+    type T = Local<I>;
 
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
@@ -1644,7 +1600,7 @@ where
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let (tx, rx) = channel::<(String, Box<dyn MessageDyn>)>();
         forward_events(self.namespace.to_string(), publisher, rx);
-        Local::<I, E>::new(
+        Local::<I>::new(
             self.engine.clone(),
             tx.clone(),
             self.exit.clone(),

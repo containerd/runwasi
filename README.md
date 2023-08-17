@@ -55,7 +55,7 @@ use containerd_shim as shim;
 use containerd_shim_wasm::sandbox::{ShimCli, Instance}
 
 struct MyInstance {
- // ...
+    // ...
 }
 
 impl Instance for MyInstance {

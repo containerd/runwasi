@@ -10,7 +10,7 @@ use wasmtime::Engine;
 fn main() {
     info!("starting up!");
     let engine = Engine::default();
-    let s: ManagerService<_, Local<WasiInstance, _>> = ManagerService::new(engine);
+    let s: ManagerService<Local<WasiInstance>> = ManagerService::new(engine);
     let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
     let service = create_manager(s);
 
