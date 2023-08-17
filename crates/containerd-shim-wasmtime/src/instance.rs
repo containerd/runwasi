@@ -13,11 +13,9 @@ use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxCon
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
-use containerd_shim_wasm::sandbox::{EngineGetter, InstanceConfig};
+use containerd_shim_wasm::sandbox::InstanceConfig;
 use libcontainer::syscall::syscall::create_syscall;
 use std::os::fd::IntoRawFd;
-
-use wasmtime::Engine;
 
 use crate::executor::WasmtimeExecutor;
 
@@ -135,13 +133,6 @@ impl LibcontainerInstance for Wasi {
     }
 }
 
-impl EngineGetter for Wasi {
-    type Engine = wasmtime::Engine;
-    fn new_engine() -> Result<Engine, Error> {
-        Ok(Engine::default())
-    }
-}
-
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
@@ -219,7 +210,7 @@ mod wasitest {
     #[test]
     fn test_delete_after_create() -> Result<()> {
         let cfg = InstanceConfig::new(
-            Wasi::new_engine()?,
+            Default::default(),
             "test_namespace".into(),
             "/containerd/address".into(),
         );
@@ -330,7 +321,7 @@ mod wasitest {
         spec.save(dir.path().join("config.json"))?;
 
         let mut cfg = InstanceConfig::new(
-            Wasi::new_engine()?,
+            Default::default(),
             "test_namespace".into(),
             "/containerd/address".into(),
         );
