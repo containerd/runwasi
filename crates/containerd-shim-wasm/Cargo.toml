@@ -43,7 +43,7 @@ rand = "0.8"
 
 [features]
 default = []
-libcontainer = ["libcontainer/default"]
+libcontainer_default = ["libcontainer/default"]
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []
 libseccomp = ["libcontainer/libseccomp"]
