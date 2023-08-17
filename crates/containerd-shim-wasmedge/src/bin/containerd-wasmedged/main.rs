@@ -9,7 +9,7 @@ use ttrpc::{self, Server};
 
 fn main() {
     info!("starting up!");
-    let s: ManagerService<_, Local<WasiInstance, _>> =
+    let s: ManagerService<Local<WasiInstance>> =
         ManagerService::new(WasiInstance::new_engine().unwrap());
     let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
     let service = create_manager(s);

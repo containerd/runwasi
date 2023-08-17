@@ -1,8 +1,6 @@
-bin/
-test/out/img.tar
+/bin/
+/test/out/img.tar
+/test/k8s/_out
 **/target/
-!crates/wasmedge/src/bin/
-!crates/wasmtime/src/bin/
-test/k8s/_out
-release/
-.vscode/
+/release/
+/.vscode/

@@ -33,39 +33,28 @@ use super::sandbox;
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
 
 /// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.
-pub trait Sandbox<E>: Task + Send + Sync
-where
-    E: Send + Sync + Clone,
-{
-    type Instance: Instance<E = E>;
+pub trait Sandbox: Task + Send + Sync {
+    type Instance: Instance;
 
     fn new(
         namespace: String,
         containerd_address: String,
         id: String,
-        engine: E,
+        engine: <Self::Instance as Instance>::Engine,
         publisher: RemotePublisher,
     ) -> Self;
 }
 
 /// Service is a manager service which can be used to manage multiple instances of a sandbox in-process.
-pub struct Service<E, T>
-where
-    E: Send + Sync + Clone,
-    T: Sandbox<E>,
-{
+pub struct Service<T: Sandbox> {
     sandboxes: RwLock<HashMap<String, String>>,
-    engine: E,
+    engine: <T::Instance as Instance>::Engine,
     phantom: std::marker::PhantomData<T>,
 }
 
-impl<E, T> Service<E, T>
-where
-    E: Send + Sync + Clone,
-    T: Sandbox<E>,
-{
-    pub fn new(engine: E) -> Self {
-        Service::<E, T> {
+impl<T: Sandbox> Service<T> {
+    pub fn new(engine: <T::Instance as Instance>::Engine) -> Self {
+        Self {
             sandboxes: RwLock::new(HashMap::new()),
             engine,
             phantom: std::marker::PhantomData,
@@ -73,11 +62,7 @@ where
     }
 }
 
-impl<E, T> Manager for Service<E, T>
-where
-    T: Sandbox<E> + 'static,
-    E: Send + Sync + Clone,
-{
+impl<T: Sandbox + 'static> Manager for Service<T> {
     fn create(
         &self,
         _ctx: &TtrpcContext,

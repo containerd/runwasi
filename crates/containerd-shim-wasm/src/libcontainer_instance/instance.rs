@@ -35,10 +35,10 @@ use crate::sandbox::{error::Error, instance::Wait, Instance};
 /// methods.
 pub trait LibcontainerInstance {
     /// The WASI engine type
-    type E: Send + Sync + Clone;
+    type Engine: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self;
 
     /// Get the exit code of the instance
     fn get_exit_code(&self) -> ExitCode;
@@ -57,9 +57,9 @@ pub trait LibcontainerInstance {
 /// This implementation uses the libcontainer library to create and start
 /// the container.
 impl<T: LibcontainerInstance> Instance for T {
-    type E = T::E;
+    type Engine = T::Engine;
 
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
         Self::new_libcontainer(id, cfg)
     }
 

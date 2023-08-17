@@ -15,13 +15,10 @@ pub type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
 #[derive(Clone)]
-pub struct InstanceConfig<E>
-where
-    E: Send + Sync + Clone,
-{
+pub struct InstanceConfig<Engine: Send + Sync + Clone> {
     /// The WASI engine to use.
     /// This should be cheap to clone.
-    engine: E,
+    engine: Engine,
     /// Optional stdin named pipe path.
     stdin: Option<String>,
     /// Optional stdout named pipe path.
@@ -36,11 +33,8 @@ where
     containerd_address: String,
 }
 
-impl<E> InstanceConfig<E>
-where
-    E: Send + Sync + Clone,
-{
-    pub fn new(engine: E, namespace: String, containerd_address: String) -> Self {
+impl<Engine: Send + Sync + Clone> InstanceConfig<Engine> {
+    pub fn new(engine: Engine, namespace: String, containerd_address: String) -> Self {
         Self {
             engine,
             namespace,
@@ -97,7 +91,7 @@ where
     }
 
     /// get the wasm engine for the instance
-    pub fn get_engine(&self) -> E {
+    pub fn get_engine(&self) -> Engine {
         self.engine.clone()
     }
 
@@ -116,10 +110,10 @@ where
 /// Instance is a trait that gets implemented by consumers of this library.
 pub trait Instance {
     /// The WASI engine type
-    type E: Send + Sync + Clone;
+    type Engine: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self;
 
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
@@ -184,8 +178,8 @@ pub struct Nop {
 }
 
 impl Instance for Nop {
-    type E = ();
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    type Engine = ();
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
         Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
         }
@@ -289,6 +283,6 @@ mod noptests {
 /// Abstraction that allows for different wasi engines to be used.
 /// The containerd shim setup by this library will use this trait to get an engine and pass that along to instances.
 pub trait EngineGetter {
-    type E: Send + Sync + Clone;
-    fn new_engine() -> Result<Self::E, Error>;
+    type Engine: Send + Sync + Clone;
+    fn new_engine() -> Result<Self::Engine, Error>;
 }

@@ -65,9 +65,9 @@ fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<Pat
 }
 
 impl LibcontainerInstance for Wasi {
-    type E = wasmtime::Engine;
+    type Engine = wasmtime::Engine;
 
-    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self {
+    fn new_libcontainer(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
         // TODO: there are failure cases e.x. parsing cfg, loading spec, etc.
         // thus should make `new` return `Result<Self, Error>` instead of `Self`
         log::info!("creating new instance: {}", id);
@@ -136,7 +136,7 @@ impl LibcontainerInstance for Wasi {
 }
 
 impl EngineGetter for Wasi {
-    type E = wasmtime::Engine;
+    type Engine = wasmtime::Engine;
     fn new_engine() -> Result<Engine, Error> {
         Ok(Engine::default())
     }
