@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use anyhow::Context;
-use nix::{sys::signal, unistd::Pid};
+use nix::sys::signal;
+use nix::unistd::Pid;
 pub use oci_spec::runtime::Spec;
 use serde_json as json;
 

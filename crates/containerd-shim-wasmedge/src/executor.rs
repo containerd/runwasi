@@ -1,4 +1,5 @@
-use std::{os::unix::io::RawFd, path::PathBuf};
+use std::os::unix::io::RawFd;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use containerd_shim_wasm::sandbox::oci;
@@ -7,10 +8,8 @@ use libcontainer::workload::{Executor, ExecutorError};
 use log::debug;
 use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
-use wasmedge_sdk::{
-    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    params, VmBuilder,
-};
+use wasmedge_sdk::config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions};
+use wasmedge_sdk::{params, VmBuilder};
 
 const EXECUTOR_NAME: &str = "wasmedge";
 

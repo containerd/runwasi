@@ -1,2 +1,5 @@
 # create three groups for std, external and local crates
 group_imports = "StdExternalCrate"
+
+# https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#imports_granularity
+imports_granularity = "Module"

@@ -1,5 +1,7 @@
+use std::fs::OpenOptions;
 use std::io::Read;
-use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
+use std::os::fd::RawFd;
+use std::path::PathBuf;
 
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::default::DefaultExecutor;

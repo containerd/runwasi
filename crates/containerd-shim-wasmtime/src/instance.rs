@@ -4,8 +4,7 @@ use std::os::fd::IntoRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
@@ -148,8 +147,7 @@ mod wasitest {
     use containerd_shim_wasm::sandbox::instance::Wait;
     use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
     use containerd_shim_wasm::sandbox::Instance;
-    use libc::SIGKILL;
-    use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+    use libc::{SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use nix::unistd::dup2;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
     use tempfile::{tempdir, TempDir};

@@ -7,20 +7,16 @@ use std::env::current_dir;
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use std::thread;
 
 use anyhow::Context;
-use containerd_shim::{
-    self as shim, api,
-    error::Error as ShimError,
-    protos::shim::shim_ttrpc::{create_task, Task},
-    protos::ttrpc::{Client, Server},
-    protos::TaskClient,
-    publisher::RemotePublisher,
-    TtrpcContext, TtrpcResult,
-};
+use containerd_shim::error::Error as ShimError;
+use containerd_shim::protos::shim::shim_ttrpc::{create_task, Task};
+use containerd_shim::protos::ttrpc::{Client, Server};
+use containerd_shim::protos::TaskClient;
+use containerd_shim::publisher::RemotePublisher;
+use containerd_shim::{self as shim, api, TtrpcContext, TtrpcResult};
 use nix::sched::{setns, unshare, CloneFlags};
 use oci_spec::runtime;
 use shim::Flags;
@@ -28,8 +24,7 @@ use ttrpc::context;
 
 use super::error::Error;
 use super::instance::Instance;
-use super::oci;
-use super::sandbox;
+use super::{oci, sandbox};
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
 
 /// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.

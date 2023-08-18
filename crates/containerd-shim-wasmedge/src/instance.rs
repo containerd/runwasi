@@ -1,17 +1,13 @@
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::os::fd::IntoRawFd;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
 
-use anyhow::Context;
-use anyhow::Result;
-use containerd_shim_wasm::libcontainer_instance::LibcontainerInstance;
-use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
+use anyhow::{Context, Result};
+use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;

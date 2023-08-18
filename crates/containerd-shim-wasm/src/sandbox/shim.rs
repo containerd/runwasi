@@ -4,8 +4,7 @@
 
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::fs::{self, File};
-use std::fs::{canonicalize, create_dir_all, OpenOptions};
+use std::fs::{self, canonicalize, create_dir_all, File, OpenOptions};
 use std::ops::Not;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -17,21 +16,17 @@ use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
 use cgroups_rs::{Cgroup, Subsystem};
 use chrono::{DateTime, Utc};
-use containerd_shim::{
-    self as shim, api,
-    error::Error as ShimError,
-    event::Event,
-    mount::mount_rootfs,
-    protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart},
-    protos::protobuf::well_known_types::timestamp::Timestamp,
-    protos::protobuf::{MessageDyn, MessageField},
-    protos::shim::shim_ttrpc::Task,
-    protos::types::task::Status,
-    publisher::RemotePublisher,
-    util::IntoOption,
-    util::{timestamp as new_timestamp, write_address},
-    warn, ExitSignal, TtrpcContext, TtrpcResult,
-};
+use containerd_shim::error::Error as ShimError;
+use containerd_shim::event::Event;
+use containerd_shim::mount::mount_rootfs;
+use containerd_shim::protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart};
+use containerd_shim::protos::protobuf::well_known_types::timestamp::Timestamp;
+use containerd_shim::protos::protobuf::{MessageDyn, MessageField};
+use containerd_shim::protos::shim::shim_ttrpc::Task;
+use containerd_shim::protos::types::task::Status;
+use containerd_shim::publisher::RemotePublisher;
+use containerd_shim::util::{timestamp as new_timestamp, write_address, IntoOption};
+use containerd_shim::{self as shim, api, warn, ExitSignal, TtrpcContext, TtrpcResult};
 use log::{debug, error};
 use nix::mount::{mount, MsFlags};
 use nix::sched::{setns, unshare, CloneFlags};

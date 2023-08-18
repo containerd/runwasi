@@ -1,4 +1,6 @@
-use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
+use std::fs::OpenOptions;
+use std::os::fd::RawFd;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;

@@ -2,7 +2,8 @@ use std::fs::OpenOptions;
 use std::path::Path;
 
 use anyhow::Context;
-use containerd_shim_wasm::sandbox::{error::Error, oci};
+use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::oci;
 use oci_spec::runtime::Spec;
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
 

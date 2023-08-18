@@ -1,4 +1,8 @@
-use std::{env, fs::File, io::prelude::*, process, thread::sleep, time::Duration};
+use std::fs::File;
+use std::io::prelude::*;
+use std::thread::sleep;
+use std::time::Duration;
+use std::{env, process};
 
 fn main() {
     let args: Vec<_> = env::args().collect();

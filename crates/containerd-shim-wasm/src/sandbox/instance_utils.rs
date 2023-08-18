@@ -1,9 +1,7 @@
 //! Common utilities for the containerd shims.
-use std::{
-    fs::{self, File, OpenOptions},
-    io::ErrorKind,
-    path::{Path, PathBuf},
-};
+use std::fs::{self, File, OpenOptions};
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 
