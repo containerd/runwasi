@@ -610,6 +610,7 @@ dependencies = [
  "thiserror",
  "ttrpc",
  "ttrpc-codegen",
+ "wat",
  "windows-sys 0.48.0",
 ]
 
@@ -684,6 +685,7 @@ dependencies = [
  "wasi-common",
  "wasmtime",
  "wasmtime-wasi",
+ "wat",
 ]
 
 [[package]]

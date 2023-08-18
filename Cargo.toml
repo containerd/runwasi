@@ -37,6 +37,7 @@ sha256 = "1.4.0"
 libcontainer = { version = "0.2", default-features = false }
 windows-sys = { version = "0.48" }
 crossbeam = { version = "0.8.2", default-features = false }
+wat = "*" # Use whatever version wasmtime will make us pull
 
 [profile.release]
 panic = "abort"

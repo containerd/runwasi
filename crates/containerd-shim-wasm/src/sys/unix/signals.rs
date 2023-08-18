@@ -1,1 +1,1 @@
-pub use libc::{SIGHUP, SIGINT, SIGKILL, SIGTERM};
+pub use libc::{SIGINT, SIGKILL, SIGTERM};

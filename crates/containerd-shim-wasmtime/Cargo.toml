@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 containerd-shim = { workspace = true }
-containerd-shim-wasm = { workspace = true, features = ["libcontainer_default"]}
+containerd-shim-wasm = { workspace = true, features = ["libcontainer_default"] }
 log = { workspace = true }
 ttrpc = { workspace = true }
 
@@ -22,8 +22,9 @@ wasmtime = { version = "11.0", default-features = false, features = [
     'cranelift',
     'pooling-allocator',
     'vtune',
-]}
+] }
 
+wat = { workspace = true }
 wasmtime-wasi = { version = "11.0", features = ["exit"] }
 wasi-common = "11.0"
 chrono = { workspace = true }

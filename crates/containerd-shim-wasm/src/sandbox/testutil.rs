@@ -58,7 +58,6 @@ pub fn run_test_with_sudo(test: &str) -> Result<()> {
     });
 
     ensure!(cmd.wait()?.success(), "running test with sudo failed");
-
     Ok(())
 }
 

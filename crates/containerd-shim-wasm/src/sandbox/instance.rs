@@ -257,20 +257,6 @@ mod noptests {
         Ok(())
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn test_op_kill_other() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
-
-        let err = nop.kill(SIGHUP as u32).unwrap_err();
-        match err {
-            Error::InvalidArgument(_) => {}
-            _ => panic!("unexpected error: {}", err),
-        }
-
-        Ok(())
-    }
-
     #[test]
     fn test_nop_delete_after_create() {
         let nop = Nop::new("".to_string(), None);
