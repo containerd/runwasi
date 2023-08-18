@@ -56,6 +56,10 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v2
+      - name: Change docker buildx driver
+        run: docker buildx create --use --driver=docker-container
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3

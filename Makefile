@@ -10,7 +10,7 @@ ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
 
-DOCKER_BUILD ?= docker buildx build
+DOCKER_BUILD ?= docker buildx build --cache-to=type=gha --cache-from=type=gha
 
 KIND_CLUSTER_NAME ?= containerd-wasm
 
