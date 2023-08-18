@@ -25,10 +25,19 @@ There are two modes of operation supported:
 1. "Normal" mode where there is 1 shim process per container or k8s pod.
 2. "Shared" mode where there is a single manager service running all shims in process.
 
-In either case you need to implement the `Instance` trait:
+In either case you need to implement a trait to teach runwasi how to use your wasm host.
+
+There are two ways to do this:
+* implementing the `sandbox::Instance` trait
+* or implementing the `container::Engine` trait
+
+The most flexible but complex is the `sandbox::Instance` trait:
 
 ```rust
 pub trait Instance {
+    /// The WASI engine type
+    type Engine: Send + Sync + Clone;
+
     /// Create a new instance
     fn new(id: String, cfg: Option<&InstanceConfig<Self::E>>) -> Self;
     /// Start the instance
@@ -48,6 +57,23 @@ pub trait Instance {
 }
 ```
 
+The `container::Engine` trait provides a simplified API:
+
+```rust
+pub trait Engine: Clone + Send + Sync + 'static {
+    /// The name to use for this engine
+    fn name() -> &'static str;
+    /// Run a WebAssembly container
+    fn run(&self, ctx: impl RuntimeContext, stdio: Stdio) -> Result<i32>;
+    /// Check that the runtime can run the container.
+    /// These checks run after the container creation and before the container start.
+    /// By default it checks that the entrypoint is an existing `.wasm` or `.wat` file.
+    fn can_handle(&self, ctx: impl RuntimeContext) -> Result<()> { /* default implementation*/ }
+}
+```
+
+After implementing `container::Engine` you can use `container::Instance<impl container::Engine>`, which implements the `sandbox::Instance` trait.
+
 To use your implementation in "normal" mode, you'll need to create a binary which has a main that looks something like this:
 
 ```rust
@@ -64,6 +90,25 @@ impl Instance for MyInstance {
 
 fn main() {
     shim::run::<ShimCli<MyInstance>>("io.containerd.myshim.v1", opts);
+}
+```
+
+or when using the `container::Engine` trait, like this:
+
+```rust
+use containerd_shim as shim;
+use containerd_shim_wasm::{sandbox::ShimCli, container::{Instance, Engine}}
+
+struct MyEngine {
+    // ...
+}
+
+impl Engine for MyEngine {
+    // ...
+}
+
+fn main() {
+    shim::run::<ShimCli<Instance<Engine>>>("io.containerd.myshim.v1", opts);
 }
 ```
 

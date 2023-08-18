@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use containerd_shim_wasm::sandbox::{Local, ManagerService};
 use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
-use containerd_shim_wasmedge::instance::Wasi as WasiInstance;
-use log::info;
+use containerd_shim_wasmedge::WasmEdgeInstance;
 use ttrpc::{self, Server};
 
 fn main() {
-    info!("starting up!");
-    let s: ManagerService<Local<WasiInstance>> = Default::default();
+    log::info!("starting up!");
+    let s: ManagerService<Local<WasmEdgeInstance>> = Default::default();
     let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
     let service = create_manager(s);
 
@@ -18,7 +17,7 @@ fn main() {
         .register_service(service);
 
     server.start().unwrap();
-    info!("server started!");
+    log::info!("server started!");
     let (_tx, rx) = std::sync::mpsc::channel::<()>();
     rx.recv().unwrap();
 }

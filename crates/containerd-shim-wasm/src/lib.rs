@@ -9,5 +9,5 @@ pub mod services;
 #[cfg_attr(windows, path = "sys/windows/mod.rs")]
 pub(crate) mod sys;
 
-#[cfg(all(feature = "libcontainer", not(target_os = "windows")))]
-pub mod libcontainer_instance;
+#[cfg(feature = "libcontainer")]
+pub mod container;

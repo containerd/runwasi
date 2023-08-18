@@ -20,7 +20,7 @@ jobs:
       crate: ${{ steps.parse-ref.outputs.crate }}
       version: ${{ steps.parse-ref.outputs.version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - id: parse-ref
@@ -61,7 +61,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ needs.generate.outputs.crate }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
         shell: bash
@@ -82,7 +82,7 @@ jobs:
       - generate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup buildx
         run: docker buildx create --use
       - name: build binaries

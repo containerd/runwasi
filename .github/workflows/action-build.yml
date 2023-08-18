@@ -15,7 +15,7 @@ jobs:
     name: build on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: |
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
