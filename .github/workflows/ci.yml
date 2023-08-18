@@ -87,3 +87,16 @@ jobs:
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
+
+  build-all-features-containerd-shim-wasm:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
+        shell: bash
+      - name: install cargo-all-features
+        run: cargo install cargo-all-features
+      - name: Build containerd-shim-wasm for each feature
+        run: cd crates/containerd-shim-wasm && cargo build-all-features
