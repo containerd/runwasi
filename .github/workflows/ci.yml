@@ -14,13 +14,15 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
-      - uses: Swatinem/rust-cache@v2
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
       - name: Setup build env
         run: ./scripts/setup.sh
         shell: bash
+      - run: 
+          # needed to run rustfmt in nightly toolchain
+          rustup toolchain install nightly --component rustfmt
       - name: Run checks
         run: make check
   build:
