@@ -1,13 +1,12 @@
+use std::{os::unix::io::RawFd, path::PathBuf};
+
 use anyhow::Result;
 use containerd_shim_wasm::sandbox::oci;
-use nix::unistd::{dup, dup2};
-use oci_spec::runtime::Spec;
-
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
 use log::debug;
-use std::{os::unix::io::RawFd, path::PathBuf};
-
+use nix::unistd::{dup, dup2};
+use oci_spec::runtime::Spec;
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
     params, VmBuilder,

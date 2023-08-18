@@ -1,7 +1,8 @@
 //! Testing utilities used across different modules
 
-use super::{Error, Result};
 use std::process::{Command, Stdio};
+
+use super::{Error, Result};
 
 fn normalize_test_name(test: &str) -> Result<&str> {
     let closure_removed = test.trim_end_matches("::{{closure}}");

@@ -1,21 +1,21 @@
-use anyhow::Result;
-use libcontainer::container::builder::ContainerBuilder;
-use libcontainer::container::Container;
-use nix::unistd::close;
-use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
+use std::os::fd::IntoRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 
 use anyhow::Context;
+use anyhow::Result;
 use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use containerd_shim_wasm::sandbox::InstanceConfig;
+use libcontainer::container::builder::ContainerBuilder;
+use libcontainer::container::Container;
 use libcontainer::syscall::syscall::create_syscall;
-use std::os::fd::IntoRawFd;
+use nix::unistd::close;
+use serde::{Deserialize, Serialize};
 
 use crate::executor::WasmtimeExecutor;
 

@@ -1,3 +1,13 @@
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::ErrorKind;
+use std::os::fd::IntoRawFd;
+use std::sync::{Arc, Condvar, Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use anyhow::Context;
 use anyhow::Result;
 use containerd_shim_wasm::libcontainer_instance::LibcontainerInstance;
@@ -6,22 +16,11 @@ use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
 use containerd_shim_wasm::sandbox::InstanceConfig;
-use nix::unistd::close;
-use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::ErrorKind;
-use std::os::fd::IntoRawFd;
-use std::sync::{Arc, Condvar, Mutex};
-
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
-
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use libcontainer::syscall::syscall::create_syscall;
+use nix::unistd::close;
+use serde::{Deserialize, Serialize};
 
 use crate::executor::WasmEdgeExecutor;
 
@@ -147,13 +146,11 @@ mod wasitest {
     use containerd_shim_wasm::sandbox::Instance;
     use libc::{dup2, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-    use tempfile::{tempdir, TempDir};
-
     use serial_test::serial;
+    use tempfile::{tempdir, TempDir};
+    use wasmedge_sdk::wat2wasm;
 
     use super::*;
-
-    use wasmedge_sdk::wat2wasm;
 
     static mut STDIN_FD: Option<RawFd> = None;
     static mut STDOUT_FD: Option<RawFd> = None;
@@ -340,8 +337,9 @@ mod wasitest {
 mod rootdirtest {
     use std::fs::OpenOptions;
 
-    use super::*;
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_determine_rootdir_with_options_file() -> Result<(), Error> {

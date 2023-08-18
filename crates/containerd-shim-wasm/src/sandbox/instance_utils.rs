@@ -1,11 +1,13 @@
 //! Common utilities for the containerd shims.
-use crate::sandbox::error::Error;
-use anyhow::{bail, Context, Result};
 use std::{
     fs::{self, File, OpenOptions},
     io::ErrorKind,
     path::{Path, PathBuf},
 };
+
+use anyhow::{bail, Context, Result};
+
+use crate::sandbox::error::Error;
 
 /// Return the root path for the instance.
 ///

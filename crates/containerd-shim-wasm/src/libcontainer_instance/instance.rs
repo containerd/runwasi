@@ -1,5 +1,7 @@
 //! Abstractions for running/managing a wasm/wasi instance that uses youki's libcontainer library.
 
+use std::{path::PathBuf, thread};
+
 use anyhow::Context;
 use chrono::Utc;
 use libc::{SIGINT, SIGKILL};
@@ -13,15 +15,12 @@ use nix::{
     sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus},
 };
 
+use crate::sandbox::InstanceConfig;
+use crate::sandbox::{error::Error, instance::Wait, Instance};
 use crate::sandbox::{
     instance::ExitCode,
     instance_utils::{get_instance_root, instance_exists},
 };
-
-use crate::sandbox::InstanceConfig;
-use std::{path::PathBuf, thread};
-
-use crate::sandbox::{error::Error, instance::Wait, Instance};
 
 /// LibcontainerInstance is a trait that gets implemented by a WASI runtime that
 /// uses youki's libcontainer library as the container runtime.

@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+use std::fs::metadata;
+use std::io::Write;
+use std::path::PathBuf;
+
 use anyhow::{Context, Error, Result};
 use log::{debug, warn};
 use oci_spec::image::{
@@ -6,10 +11,6 @@ use oci_spec::image::{
 };
 use serde::Serialize;
 use sha256::{digest, try_digest};
-use std::collections::HashMap;
-use std::fs::metadata;
-use std::io::Write;
-use std::path::PathBuf;
 
 #[derive(Debug, Default)]
 pub struct Builder {

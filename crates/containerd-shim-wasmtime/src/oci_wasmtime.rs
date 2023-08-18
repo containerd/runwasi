@@ -4,7 +4,6 @@ use std::path::Path;
 use anyhow::Context;
 use containerd_shim_wasm::sandbox::{error::Error, oci};
 use oci_spec::runtime::Spec;
-
 use wasmtime_wasi::{Dir as WasiDir, WasiCtxBuilder};
 
 pub fn get_rootfs(spec: &Spec) -> Result<WasiDir, Error> {

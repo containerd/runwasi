@@ -1,0 +1,2 @@
+# create three groups for std, external and local crates
+group_imports = "StdExternalCrate"

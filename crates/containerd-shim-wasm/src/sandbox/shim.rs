@@ -13,8 +13,6 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use super::instance::{Instance, InstanceConfig, Nop, Wait};
-use super::{oci, Error, SandboxService};
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
 use cgroups_rs::{Cgroup, Subsystem};
@@ -41,13 +39,15 @@ use nix::sys::stat::Mode;
 use nix::unistd::mkdir;
 use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
-
 use shim::protos::cgroups::metrics::{
     CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat, Throttle,
 };
 use shim::util::convert_to_any;
 use shim::Flags;
 use ttrpc::context::Context;
+
+use super::instance::{Instance, InstanceConfig, Nop, Wait};
+use super::{oci, Error, SandboxService};
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 

@@ -4,9 +4,8 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
-use libc::{SIGINT, SIGKILL, SIGTERM};
-
 use chrono::{DateTime, Utc};
+use libc::{SIGINT, SIGKILL, SIGTERM};
 
 use super::error::Error;
 

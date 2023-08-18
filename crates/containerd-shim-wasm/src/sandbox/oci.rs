@@ -1,17 +1,18 @@
 //! Generic helpers for working with OCI specs that can be consumed by any runtime.
 
+use std::collections::HashMap;
 use std::fs::File;
+use std::io::{ErrorKind, Write};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
+use std::process;
 
-use super::error::Result;
 use anyhow::Context;
 use nix::{sys::signal, unistd::Pid};
 pub use oci_spec::runtime::Spec;
 use serde_json as json;
-use std::collections::HashMap;
-use std::io::{ErrorKind, Write};
-use std::os::unix::process::CommandExt;
-use std::process;
+
+use super::error::Result;
 
 pub fn load(path: &str) -> Result<Spec> {
     let spec = Spec::load(path)?;
@@ -145,8 +146,9 @@ pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<
 
 #[cfg(test)]
 mod oci_tests {
-    use super::*;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+
+    use super::*;
 
     #[test]
     fn test_get_args() -> Result<()> {
