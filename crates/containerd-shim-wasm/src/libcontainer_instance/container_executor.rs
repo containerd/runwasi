@@ -1,12 +1,15 @@
-use crate::sandbox::oci;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::os::fd::RawFd;
+use std::path::PathBuf;
+
+use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{Executor, ExecutorError};
 use nix::unistd::{dup, dup2};
-
-use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use oci_spec::runtime::Spec;
-use std::io::Read;
-use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
+
+use crate::sandbox::oci;
 
 #[derive(Default)]
 pub struct LinuxContainerExecutor {

@@ -23,12 +23,12 @@ build:
 
 .PHONY: check
 check:
-	cargo fmt --all -- --check
+	cargo +nightly fmt --all -- --check
 	cargo clippy --all --all-targets -- -D warnings
 
 .PHONY: fix
 fix:
-	cargo fmt --all
+	cargo +nightly fmt --all
 	cargo clippy --fix --all --all-targets -- -D warnings
 
 .PHONY: test

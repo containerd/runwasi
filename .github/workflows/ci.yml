@@ -20,6 +20,9 @@ jobs:
       - name: Setup build env
         run: ./scripts/setup.sh
         shell: bash
+      - run: 
+          # needed to run rustfmt in nightly toolchain
+          rustup toolchain install nightly --component rustfmt
       - name: Run checks
         run: make check
   build:

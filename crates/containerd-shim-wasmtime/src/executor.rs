@@ -1,12 +1,13 @@
-use nix::unistd::{dup, dup2};
-use std::{fs::OpenOptions, os::fd::RawFd, path::PathBuf};
+use std::fs::OpenOptions;
+use std::os::fd::RawFd;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::{Executor, ExecutorError};
+use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
-
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::WasiCtxBuilder;
 

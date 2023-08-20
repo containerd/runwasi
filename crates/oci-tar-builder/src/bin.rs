@@ -1,9 +1,11 @@
+use std::fs::File;
+use std::path::PathBuf;
 use std::{env, fs};
 
-use {
-    anyhow::Context, clap::Parser, oci_spec::image as spec, oci_tar_builder::Builder,
-    std::fs::File, std::path::PathBuf,
-};
+use anyhow::Context;
+use clap::Parser;
+use oci_spec::image as spec;
+use oci_tar_builder::Builder;
 
 pub fn main() {
     let args = Args::parse();

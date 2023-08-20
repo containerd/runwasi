@@ -1,4 +1,8 @@
-use std::{env, fs::File, io::prelude::*, process, thread::sleep, time::Duration};
+use std::fs::File;
+use std::io::prelude::*;
+use std::thread::sleep;
+use std::time::Duration;
+use std::{env, process};
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -16,7 +20,11 @@ fn main() {
             file.write_all(args[3..].join(" ").as_bytes()).unwrap();
         }
         "daemon" => loop {
-            println!("This is a song that never ends.\nYes, it goes on and on my friends.\nSome people started singing it not knowing what it was,\nSo they'll continue singing it forever just because...\n");
+            println!(
+                "This is a song that never ends.\nYes, it goes on and on my friends.\nSome people \
+                 started singing it not knowing what it was,\nSo they'll continue singing it \
+                 forever just because...\n"
+            );
             sleep(Duration::from_secs(1));
         },
         _ => {
