@@ -50,6 +50,13 @@ jobs:
       - name: Run tests
         run: |
           make test
+      - name: inspect disk usage
+        if: always()
+        run: |
+          echo "Filesystem statistics with df:"
+          df -h
+          echo "Disk Usage with du:"
+          du -h --max-depth=1 /
 
   e2e-wasmtime:
     needs: [build]
@@ -69,6 +76,13 @@ jobs:
         shell: bash
       - name: run
         run: make test/k8s
+      - name: inspect disk usage
+        if: always()
+        run: |
+          echo "Filesystem statistics with df:"
+          df -h
+          echo "Disk Usage with du:"
+          du -h --max-depth=1 /
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
