@@ -1,19 +1,15 @@
 use std::path::PathBuf;
-use std::process::ExitCode;
 
 use containerd_shim_wasm::sandbox::error::Error;
-use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
-use wasmedge_sdk::Vm;
+use containerd_shim_wasm::sandbox::instance::{ExitCode, Wait};
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Stdio};
 
 pub struct Wasi {
     id: String,
 
     exit_code: ExitCode,
 
-    stdin: String,
-    stdout: String,
-    stderr: String,
+    stdio: Stdio,
     bundle: String,
 
     rootdir: PathBuf,
