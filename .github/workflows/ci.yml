@@ -74,11 +74,16 @@ jobs:
         shell: bash
       - name: run
         run: make test/k8s
-      - name: inspect disk usage
+      - name: inspect filesystem
         if: always()
         run: |
           echo "Filesystem statistics with df:"
           df -h
+      - name: inspect disk usage
+        if: always()
+        run: |
+          echo "Disk Usage with du:"
+          du -h --max-depth=1 /
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
