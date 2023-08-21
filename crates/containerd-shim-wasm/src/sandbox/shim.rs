@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{self, canonicalize, create_dir_all, DirBuilder, File, OpenOptions};
 use std::ops::Not;
+#[cfg(unix)]
+use std::os::unix::fs::DirBuilderExt;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
@@ -14,6 +16,8 @@ use std::thread;
 use chrono::{DateTime, Utc};
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::event::Event;
+#[cfg(unix)]
+use containerd_shim::mount::mount_rootfs;
 use containerd_shim::protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart};
 use containerd_shim::protos::protobuf::well_known_types::timestamp::Timestamp;
 use containerd_shim::protos::protobuf::{MessageDyn, MessageField};
@@ -23,23 +27,16 @@ use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::{timestamp as new_timestamp, write_address, IntoOption};
 use containerd_shim::{self as shim, api, warn, ExitSignal, TtrpcContext, TtrpcResult};
 use log::{debug, error};
+#[cfg(unix)]
+use nix::mount::{mount, MsFlags};
 use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
+use shim::Flags;
+use ttrpc::context::Context;
 
 use super::instance::{Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
-use crate::cfg_unix;
-use crate::sys::metrics::get_metrics;
-use crate::sys::networking::setup_namespaces;
-
-cfg_unix! {
-    use containerd_shim::mount::mount_rootfs;
-    use nix::mount::{mount, MsFlags};
-    use std::os::unix::fs::DirBuilderExt;
-}
-
-use shim::Flags;
-use ttrpc::context::Context;
+use crate::sys::{get_metrics, setup_namespaces};
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 

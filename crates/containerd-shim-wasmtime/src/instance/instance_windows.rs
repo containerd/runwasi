@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
-use containerd_shim_wasm::sandbox::instance::{Wait, ExitCode};
 use containerd_shim_wasm::sandbox::error::Error;
+use containerd_shim_wasm::sandbox::instance::{ExitCode, Wait};
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
 
 pub struct Wasi {
     exit_code: ExitCode,

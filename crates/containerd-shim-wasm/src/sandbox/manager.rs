@@ -23,7 +23,7 @@ use super::error::Error;
 use super::instance::Instance;
 use super::{oci, sandbox};
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
-use crate::sys::networking::setup_namespaces;
+use crate::sys::setup_namespaces;
 
 /// Sandbox wraps an Instance and is used with the `Service` to manage multiple instances.
 pub trait Sandbox: Task + Send + Sync {
