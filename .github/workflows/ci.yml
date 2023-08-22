@@ -84,6 +84,8 @@ jobs:
         run: |
           echo "Disk Usage with du:"
           sudo du -h --max-depth=1 /
+          sudo du -h --max-depth=1 /usr
+          sudo du -h /usr
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
