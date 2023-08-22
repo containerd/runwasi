@@ -72,7 +72,7 @@ jobs:
       - name: pre-inspect /usr disk usage
         if: always()
         run: |
-          sudo du -h --max-depth=2 /usr
+          sudo du -h --max-depth=2 /var
       - name: "check cgroup version"
         if: always()
         run: "mount | grep cgroup"
@@ -101,7 +101,7 @@ jobs:
       - name: inspect /usr disk usage
         if: always()
         run: |
-          sudo du -h --max-depth=2 /usr
+          sudo du -h --max-depth=2 /var
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
