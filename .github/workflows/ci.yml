@@ -64,6 +64,15 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: pre-inspect disk usage
+        if: always()
+        run: |
+          echo "Disk Usage with du:"
+          sudo du -h --max-depth=1 /
+      - name: pre-inspect /usr disk usage
+        if: always()
+        run: |
+          sudo du -h --max-depth=2 /usr
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
@@ -87,7 +96,7 @@ jobs:
       - name: inspect /usr disk usage
         if: always()
         run: |
-          sudo du -h /usr
+          sudo du -h --max-depth=2 /usr
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
