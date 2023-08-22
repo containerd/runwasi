@@ -25,7 +25,7 @@ dbus = { version = "*", optional = true }
 nix = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.7"
+tempfile = "3.8"
 pretty_assertions = "1"
 serial_test = "*"
 
