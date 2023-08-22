@@ -41,7 +41,7 @@ libcontainer = { workspace = true }
 dbus = { version = "*", optional = true }
 
 [dev-dependencies]
-tempfile = "3.7"
+tempfile = "3.8"
 libc = { workspace = true }
 pretty_assertions = "1"
 env_logger = "0.10"
