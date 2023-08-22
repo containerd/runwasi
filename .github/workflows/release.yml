@@ -58,6 +58,16 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ needs.generate.outputs.crate }}
@@ -84,6 +94,16 @@ jobs:
       - generate
     runs-on: ubuntu-latest
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - uses: actions/checkout@v3
       - name: Setup buildx
         run: docker buildx create --use
