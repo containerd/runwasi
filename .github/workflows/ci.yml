@@ -83,7 +83,7 @@ jobs:
         if: always()
         run: |
           echo "Disk Usage with du:"
-          du -h --max-depth=1 /
+          sudo du -h --max-depth=1 /
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
