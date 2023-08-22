@@ -13,6 +13,16 @@ jobs:
   fmt:
     runs-on: "ubuntu-latest"
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -31,6 +41,16 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
@@ -59,6 +79,16 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
@@ -86,6 +116,16 @@ jobs:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          tools-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: true
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
