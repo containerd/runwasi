@@ -63,11 +63,11 @@ jobs:
         uses: insightsengineering/disk-space-reclaimer@v1
         with:
           tools-cache: false
-          android: true
+          android: false
           dotnet: true
           haskell: true
-          large-packages: true
-          swap-storage: true
+          large-packages: false
+          swap-storage: false
           docker-images: false
       - name: "check cgroup version"
         run: "mount | grep cgroup"
