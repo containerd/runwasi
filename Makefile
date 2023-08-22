@@ -10,6 +10,15 @@ ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
 
+FEATURES := --features libcontainer_default
+WARNINGS := -D warnings
+ifeq ($(OS), Windows_NT)
+# need to turn off static/standalone for wasm-edge
+FEATURES = --no-default-features
+# turn of warnings until windows is fully supported #49
+WARNINGS = 
+endif
+
 DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
@@ -17,25 +26,26 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 .PHONY: build
 build:
 	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
-	# compiling against libcontainer's default features (dependency on libseccomp)
-	cargo build -p containerd-shim-wasm --features libcontainer_default $(RELEASE_FLAG)
-	cargo build $(RELEASE_FLAG)
+	cargo build -p containerd-shim-wasm $(FEATURES) $(RELEASE_FLAG)
+	cargo build $(FEATURES) $(RELEASE_FLAG)
 
 .PHONY: check
 check:
 	cargo +nightly fmt --all -- --check
-	cargo clippy --all --all-targets -- -D warnings
+	cargo clippy $(FEATURES) --all --all-targets -- $(WARNINGS)
 
 .PHONY: fix
 fix:
 	cargo +nightly fmt --all
-	cargo clippy --fix --all --all-targets -- -D warnings
+	cargo clippy $(FEATURES) --fix --all --all-targets -- $(WARNINGS)
 
 .PHONY: test
 test:
-	RUST_LOG=trace cargo test --all --verbose -- --nocapture
+	RUST_LOG=trace cargo test $(FEATURES) --all --verbose -- --nocapture
+ifneq ($(OS), Windows_NT)
 	# run wasmedge test without the default `static` feature
 	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --verbose --no-default-features --features standalone -- --nocapture
+endif
 
 .PHONY: install
 install:

@@ -16,20 +16,22 @@ containerd-shim = { workspace = true }
 anyhow = { workspace = true }
 serde_json = { workspace = true }
 oci-spec = { workspace = true }
-command-fds = "0.2"
 serde = { workspace = true }
 thiserror = { workspace = true }
 protobuf = "3.2"
 ttrpc = { workspace = true }
-nix = { workspace = true }
 chrono = { workspace = true }
 log = { workspace = true }
-clone3 = "0.2"
 libc = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+clone3 = "0.2"
 caps = "0.5"
+command-fds = "0.2"
 proc-mounts = "0.3"
 libcontainer = { workspace = true, optional = true, default-features = false }
 cgroups-rs = "0.3.3"
+nix = { workspace = true }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2", optional = true }

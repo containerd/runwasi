@@ -23,3 +23,31 @@ After this, you can execute an example, like: `ctr run --rm --runtime=io.contain
 
 > To kill the process from the example, you can run: `ctr task kill -s SIGKILL testwasm`.
 
+## Building and developing on Windows
+
+You need to install `wasmedge`, `llvm` and `make`. This can be done using `winget`, `choco` or manually. (note as of writing this `winget` doesn't have the latest package and will builds will fail).  See `.github/scripts/build-windows.sh` for an example.
+
+Once you have those dependencies you will need to set env:
+
+```
+$env:WASMEDGE_LIB_DIR="C:\Program Files\WasmEdge\lib"
+$env:WASMEDGE_INCLUDE_DIR="C:\Program Files\WasmEdge\include"    
+```
+
+Then you can run:
+
+```
+make build
+```
+
+### Using VS code
+If you are using VS Code for development you can use the following `settings.json` in the `.vscode` folder of the project:
+
+```
+{
+    "rust-analyzer.cargo.noDefaultFeatures": true,
+    "rust-analyzer.cargo.extraEnv": {
+        "WASMEDGE_LIB_DIR": "C:\\Program Files\\WasmEdge\\lib",
+        "WASMEDGE_INCLUDE_DIR": "C:\\Program Files\\WasmEdge\\include"
+    }
+}

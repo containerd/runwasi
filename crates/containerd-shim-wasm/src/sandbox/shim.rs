@@ -4,20 +4,19 @@
 
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::fs::{self, canonicalize, create_dir_all, File, OpenOptions};
+use std::fs::{self, canonicalize, create_dir_all, DirBuilder, File, OpenOptions};
 use std::ops::Not;
-use std::os::unix::io::AsRawFd;
+#[cfg(unix)]
+use std::os::unix::fs::DirBuilderExt;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
-use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
-use cgroups_rs::hierarchies::{self};
-use cgroups_rs::{Cgroup, Subsystem};
 use chrono::{DateTime, Utc};
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::event::Event;
+#[cfg(unix)]
 use containerd_shim::mount::mount_rootfs;
 use containerd_shim::protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart};
 use containerd_shim::protos::protobuf::well_known_types::timestamp::Timestamp;
@@ -28,21 +27,16 @@ use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::{timestamp as new_timestamp, write_address, IntoOption};
 use containerd_shim::{self as shim, api, warn, ExitSignal, TtrpcContext, TtrpcResult};
 use log::{debug, error};
+#[cfg(unix)]
 use nix::mount::{mount, MsFlags};
-use nix::sched::{setns, unshare, CloneFlags};
-use nix::sys::stat::Mode;
-use nix::unistd::mkdir;
 use oci_spec::runtime;
 use shim::api::{StatsRequest, StatsResponse};
-use shim::protos::cgroups::metrics::{
-    CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat, Throttle,
-};
-use shim::util::convert_to_any;
 use shim::Flags;
 use ttrpc::context::Context;
 
 use super::instance::{Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
+use crate::sys::{get_metrics, setup_namespaces};
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
@@ -852,14 +846,19 @@ impl<T: Instance + Send + Sync> Local<T> {
             .as_ref()
             .ok_or_else(|| Error::InvalidArgument("rootfs is not set in runtime spec".to_string()))?
             .path();
-
-        if mkdir(rootfs, Mode::from_bits(0o755).unwrap()).is_ok() { /* ignore */ }
+        let mut mkdir = DirBuilder::new();
+        mkdir.recursive(true);
+        #[cfg(unix)]
+        mkdir.mode(0o755);
+        if mkdir.create(rootfs).is_ok() { /* ignore */ }
 
         let rootfs_mounts = req.rootfs().to_vec();
         if !rootfs_mounts.is_empty() {
             for m in rootfs_mounts {
                 let mount_type = m.type_().none_if(|&x| x.is_empty());
                 let source = m.source.as_str().none_if(|&x| x.is_empty());
+
+                #[cfg(unix)]
                 mount_rootfs(mount_type, source, &m.options.to_vec(), rootfs)?;
             }
         }
@@ -926,6 +925,8 @@ impl<T: Instance + Send + Sync> Local<T> {
                 typ = None;
                 newopts.push("rbind".to_string());
             }
+
+            #[cfg(unix)]
             mount_rootfs(typ, source, &newopts, &rootfs_target).map_err(|err| {
                 ShimError::Other(format!(
                     "error mounting {} to {} as {}: {}",
@@ -1201,105 +1202,12 @@ impl<T: Instance + Send + Sync> Local<T> {
             return Err(Error::InvalidArgument("task is not running".to_string()));
         }
 
-        let mut metrics = Metrics::new();
-        let hier = hierarchies::auto();
+        let metrics = get_metrics(pid.unwrap())?;
 
-        let cgroup = if hier.v2() {
-            let path = format!("/proc/{}/cgroup", pid.unwrap());
-            let content = fs::read_to_string(path)?;
-            let content = content.strip_suffix('\n').unwrap_or_default();
-
-            let parts: Vec<&str> = content.split("::").collect();
-            let path_parts: Vec<&str> = parts[1].split('/').collect();
-            let namespace = path_parts[1];
-            let cgroup_name = path_parts[2];
-            Cgroup::load(
-                hierarchies::auto(),
-                format!("/sys/fs/cgroup/{namespace}/{cgroup_name}"),
-            )
-        } else {
-            let path = get_cgroups_relative_paths_by_pid(pid.unwrap()).unwrap();
-            Cgroup::load_with_relative_paths(hierarchies::auto(), Path::new("."), path)
-        };
-
-        // from https://github.com/containerd/rust-extensions/blob/main/crates/shim/src/cgroup.rs#L97-L127
-        for sub_system in Cgroup::subsystems(&cgroup) {
-            match sub_system {
-                Subsystem::Mem(mem_ctr) => {
-                    let mem = mem_ctr.memory_stat();
-                    let mut mem_entry = MemoryEntry::new();
-                    mem_entry.set_usage(mem.usage_in_bytes);
-                    let mut mem_stat = MemoryStat::new();
-                    mem_stat.set_usage(mem_entry);
-                    mem_stat.set_total_inactive_file(mem.stat.total_inactive_file);
-                    metrics.set_memory(mem_stat);
-                }
-                Subsystem::Cpu(cpu_ctr) => {
-                    let mut cpu_usage = CPUUsage::new();
-                    let mut throttle = Throttle::new();
-                    let stat = cpu_ctr.cpu().stat;
-                    for line in stat.lines() {
-                        let parts = line.split(' ').collect::<Vec<&str>>();
-                        if parts.len() != 2 {
-                            Err(Error::Others(format!("invalid cpu stat line: {}", line)))?;
-                        }
-
-                        // https://github.com/opencontainers/runc/blob/dbe8434359ca35af1c1e10df42b1f4391c1e1010/libcontainer/cgroups/fs2/cpu.go#L70
-                        match parts[0] {
-                            "usage_usec" => {
-                                cpu_usage.set_total(parts[1].parse::<u64>().unwrap());
-                            }
-                            "user_usec" => {
-                                cpu_usage.set_user(parts[1].parse::<u64>().unwrap());
-                            }
-                            "system_usec" => {
-                                cpu_usage.set_kernel(parts[1].parse::<u64>().unwrap());
-                            }
-                            "nr_periods" => {
-                                throttle.set_periods(parts[1].parse::<u64>().unwrap());
-                            }
-                            "nr_throttled" => {
-                                throttle.set_throttled_periods(parts[1].parse::<u64>().unwrap());
-                            }
-                            "throttled_usec" => {
-                                throttle.set_throttled_time(parts[1].parse::<u64>().unwrap());
-                            }
-                            _ => {}
-                        }
-                    }
-                    let mut cpu_stats = CPUStat::new();
-                    cpu_stats.set_throttling(throttle);
-                    cpu_stats.set_usage(cpu_usage);
-                    metrics.set_cpu(cpu_stats);
-                }
-                Subsystem::Pid(pid_ctr) => {
-                    let mut pid_stats = PidsStat::new();
-                    pid_stats.set_current(pid_ctr.get_pid_current().map_err(|err| {
-                        Error::Others(format!("failed to get current pid: {}", err))
-                    })?);
-                    pid_stats.set_limit(
-                        pid_ctr
-                            .get_pid_max()
-                            .map(|val| match val {
-                                // See https://github.com/opencontainers/runc/blob/dbe8434359ca35af1c1e10df42b1f4391c1e1010/libcontainer/cgroups/fs/pids.go#L55
-                                cgroups_rs::MaxValue::Max => 0,
-                                cgroups_rs::MaxValue::Value(val) => val as u64,
-                            })
-                            .map_err(|err| {
-                                Error::Others(format!("failed to get max pid: {}", err))
-                            })?,
-                    );
-                    metrics.set_pids(pid_stats)
-                }
-                _ => {
-                    // TODO: add other subsystems
-                }
-            }
-        }
         let mut stats = StatsResponse {
             ..Default::default()
         };
-        stats.set_stats(convert_to_any(Box::new(metrics))?);
+        stats.set_stats(metrics);
         Ok(stats)
     }
 }
@@ -1418,43 +1326,6 @@ impl<T: Instance + Sync + Send> Task for Local<T> {
     }
 }
 
-#[cfg(target_os = "linux")]
-fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
-    let namespaces = spec
-        .linux()
-        .as_ref()
-        .unwrap()
-        .namespaces()
-        .as_ref()
-        .unwrap();
-    for ns in namespaces {
-        if ns.typ() == runtime::LinuxNamespaceType::Network {
-            if let Some(p) = ns.path() {
-                let f = File::open(p).map_err(|err| {
-                    ShimError::Other(format!(
-                        "could not open network namespace {}: {}",
-                        p.display(),
-                        err
-                    ))
-                })?;
-                setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
-                    ShimError::Other(format!("could not set network namespace: {0}", err))
-                })?;
-            } else {
-                unshare(CloneFlags::CLONE_NEWNET).map_err(|err| {
-                    ShimError::Other(format!("could not unshare network namespace: {0}", err))
-                })?;
-            }
-        }
-    }
-
-    // Keep all mounts changes (such as for the rootfs) private to the shim
-    // This way mounts will automatically be cleaned up when the shim exits.
-    unshare(CloneFlags::CLONE_NEWNS)
-        .map_err(|err| shim::Error::Other(format!("failed to unshare mount namespace: {}", err)))?;
-    Ok(())
-}
-
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
 pub struct Cli<T: Instance + Sync + Send> {
     pub engine: T::Engine,
@@ -1502,8 +1373,7 @@ where
         setup_namespaces(&spec)
             .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
 
-        let envs = vec![] as Vec<(&str, &str)>;
-
+        #[cfg(unix)]
         mount::<str, Path, str, str>(
             None,
             "/".as_ref(),
@@ -1511,7 +1381,9 @@ where
             MsFlags::MS_REC | MsFlags::MS_SLAVE,
             None,
         )
-        .map_err(|err| shim::Error::Other(format!("failed to remount rootfs as slave: {}", err)))?;
+        .map_err(|err| {
+            shim::Error::Other(format!("failed to remount rootfs as secondary: {}", err))
+        })?;
 
         if let Some(mounts) = spec.mounts() {
             for m in mounts {
@@ -1566,6 +1438,7 @@ where
                         })?;
                 }
 
+                #[cfg(unix)]
                 mount::<str, Path, str, str>(
                     Some(&src.to_string_lossy()),
                     dest,
@@ -1582,6 +1455,7 @@ where
             }
         }
 
+        let envs = vec![] as Vec<(&str, &str)>;
         let (_child, address) = shim::spawn(opts, &grouping, envs)?;
 
         write_address(&address)?;
@@ -1632,6 +1506,7 @@ fn forward_events(
         .unwrap();
 }
 
+#[cfg(unix)]
 // This is a copy of the parse_mount function from the youki libcontainer crate.
 fn parse_mount(m: &runtime::Mount) -> MsFlags {
     let mut flags = MsFlags::empty();
