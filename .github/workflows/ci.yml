@@ -73,6 +73,11 @@ jobs:
         if: always()
         run: |
           sudo du -h --max-depth=2 /var
+      - name: inspect docker disk usage
+        if: always()
+        run: |
+          docker system df
+          docker buildx du
       - name: "check cgroup version"
         if: always()
         run: "mount | grep cgroup"
@@ -102,6 +107,11 @@ jobs:
         if: always()
         run: |
           sudo du -h --max-depth=2 /var
+      - name: inspect docker disk usage
+        if: always()
+        run: |
+          docker system df
+          docker buildx du
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
