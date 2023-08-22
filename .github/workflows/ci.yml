@@ -62,8 +62,8 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: insightsengineering/disk-space-reclaimer@v1
         with:
-          tools-cache: false
-          android: false
+          tools-cache: true
+          android: true
           dotnet: true
           haskell: true
           large-packages: false
