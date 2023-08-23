@@ -1,23 +1,16 @@
 //! Generic helpers for working with OCI specs that can be consumed by any runtime.
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::{ErrorKind, Write};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 
 use anyhow::Context;
 pub use oci_spec::runtime::Spec;
-use serde_json as json;
 
 use super::error::Result;
-
-pub fn load(path: &str) -> Result<Spec> {
-    let spec = Spec::load(path)?;
-    Ok(spec)
-}
 
 pub fn get_root(spec: &Spec) -> &PathBuf {
     let root = spec.root().as_ref().unwrap();
@@ -64,12 +57,6 @@ pub fn get_module(spec: &Spec) -> (Option<String>, String) {
     }
 
     (None, "_start".to_string())
-}
-
-pub fn spec_from_file<P: AsRef<Path>>(path: P) -> Result<Spec> {
-    let file = File::open(path)?;
-    let cfg: Spec = json::from_reader(file)?;
-    Ok(cfg)
 }
 
 fn parse_env(envs: &[String]) -> HashMap<String, String> {

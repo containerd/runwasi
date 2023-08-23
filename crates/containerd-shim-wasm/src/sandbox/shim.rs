@@ -29,7 +29,7 @@ use containerd_shim::{self as shim, api, warn, ExitSignal, TtrpcContext, TtrpcRe
 use log::{debug, error};
 #[cfg(unix)]
 use nix::mount::{mount, MsFlags};
-use oci_spec::runtime;
+use oci_spec::runtime::{self, Spec};
 use shim::api::{StatsRequest, StatsResponse};
 use shim::Flags;
 use ttrpc::context::Context;
@@ -798,7 +798,7 @@ impl<T: Instance + Send + Sync> Local<T> {
             return Err(Error::AlreadyExists(req.id));
         }
 
-        let mut spec = oci::load(
+        let mut spec = Spec::load(
             Path::new(req.bundle())
                 .join("config.json")
                 .as_path()
@@ -1357,7 +1357,7 @@ where
 
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
-        let spec = oci::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
+        let spec = Spec::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
             shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
         })?;
 

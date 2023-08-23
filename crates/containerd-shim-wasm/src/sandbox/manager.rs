@@ -15,13 +15,13 @@ use containerd_shim::protos::ttrpc::{Client, Server};
 use containerd_shim::protos::TaskClient;
 use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::{self as shim, api, TtrpcContext, TtrpcResult};
-use oci_spec::runtime;
+use oci_spec::runtime::{self, Spec};
 use shim::Flags;
 use ttrpc::context;
 
 use super::error::Error;
 use super::instance::Instance;
-use super::{oci, sandbox};
+use super::sandbox;
 use crate::services::sandbox_ttrpc::{Manager, ManagerClient};
 use crate::sys::networking::setup_namespaces;
 
@@ -92,7 +92,7 @@ impl<T: Sandbox + 'static> Manager for Service<T> {
 
         sandboxes.insert(req.id.clone(), sock.clone());
 
-        let cfg = oci::spec_from_file(
+        let cfg = Spec::load(
             Path::new(&req.working_directory)
                 .join("config.json")
                 .to_str()
@@ -180,7 +180,7 @@ impl shim::Shim for Shim {
 
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
-        let spec = oci::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
+        let spec = Spec::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
             shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
         })?;
 
@@ -233,7 +233,7 @@ impl shim::Shim for Shim {
 
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
-        let spec = oci::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
+        let spec = Spec::load(dir.join("config.json").to_str().unwrap()).map_err(|err| {
             shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
         })?;
 
