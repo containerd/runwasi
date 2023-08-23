@@ -18,6 +18,7 @@ jobs:
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: insightsengineering/disk-space-reclaimer@v1
+        if: runner.os == 'Linux'
         with:
           tools-cache: true
           android: true
@@ -93,12 +94,18 @@ jobs:
       - name: Package artifacts
         shell: bash
         run: |
-          mkdir -p artifacts
-          make install PREFIX=${{ github.workspace }} RUNTIMES=${{ matrix.runtime }}
-      - uses: actions/upload-artifact@master
+          make dist RUNTIMES=${{ matrix.runtime }}
+          # Check if there's any files to archive as tar fails otherwise
+          if stat dist/bin/* >/dev/null 2>&1; then
+            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz -C dist/bin .
+          else
+            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz -T /dev/null
+          fi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@master
         with:
           name: containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}
-          path: ${{ github.workspace }}/bin
+          path: dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz
 
   e2e-wasmtime:
     needs: [build]
@@ -126,6 +133,16 @@ jobs:
       - name: Setup build env
         run: ./scripts/setup-linux.sh
         shell: bash
+      - name: Download artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: containerd-shim-wasmtime-${{ matrix.os }}
+          path: dist
+      - name: Unpack artifats
+        shell: bash
+        run: |
+          mkdir -p dist/bin
+          tar -xzf dist/containerd-shim-wasmtime-${{ matrix.os }}.tar.gz -C dist/bin
       - name: run
         run: make test/k8s
       # only runs when the previous step fails
@@ -163,6 +180,16 @@ jobs:
       - name: Setup build env
         run: ./scripts/setup-linux.sh
         shell: bash
+      - name: Download artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: containerd-shim-wasmedge-${{ matrix.os }}
+          path: dist
+      - name: Unpack artifats
+        shell: bash
+        run: |
+          mkdir -p dist/bin
+          tar -xzf dist/containerd-shim-wasmedge-${{ matrix.os }}.tar.gz -C dist/bin
       - name: run
         run: make test/k3s
       - name: cleanup
