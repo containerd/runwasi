@@ -14,8 +14,3 @@ pub fn get_metrics(pid: u32) -> Result<Any> {
     let metrics = convert_to_any(Box::new(m)).map_err(|e| Error::Others(e.to_string()))?;
     Ok(metrics)
 }
-
-pub fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
-    // noop for now
-    Ok(())
-}

@@ -5,9 +5,9 @@
 
 pub mod sandbox;
 pub mod services;
-#[cfg_attr(unix, path = "sys/unix.rs")]
-#[cfg_attr(windows, path = "sys/windows.rs")]
-pub mod sys;
+#[cfg_attr(unix, path = "sys/unix/mod.rs")]
+#[cfg_attr(windows, path = "sys/windows/mod.rs")]
+pub(crate) mod sys;
 
 #[cfg(all(feature = "libcontainer", not(target_os = "windows")))]
 pub mod libcontainer_instance;

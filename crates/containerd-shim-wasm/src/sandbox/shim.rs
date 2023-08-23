@@ -36,7 +36,8 @@ use ttrpc::context::Context;
 
 use super::instance::{Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
-use crate::sys::{get_metrics, setup_namespaces};
+use crate::sys::metrics::get_metrics;
+use crate::sys::networking::setup_namespaces;
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
