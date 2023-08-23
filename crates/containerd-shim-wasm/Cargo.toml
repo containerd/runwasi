@@ -28,7 +28,6 @@ libc = { workspace = true }
 clone3 = "0.2"
 caps = "0.5"
 command-fds = "0.2"
-proc-mounts = "0.3"
 libcontainer = { workspace = true, optional = true, default-features = false }
 cgroups-rs = "0.3.3"
 nix = { workspace = true }
@@ -38,10 +37,7 @@ ttrpc-codegen = { version = "0.4.2", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
-pretty_assertions = "1"
 signal-hook = "0.3"
-env_logger = { workspace = true }
-rand = "0.8"
 
 [features]
 default = []

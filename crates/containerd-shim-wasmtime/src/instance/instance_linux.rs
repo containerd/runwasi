@@ -1,20 +1,17 @@
-use std::fs::File;
-use std::io::{ErrorKind, Read};
 use std::os::fd::IntoRawFd;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
-use containerd_shim_wasm::sandbox::instance_utils::maybe_open_stdio;
+use containerd_shim_wasm::sandbox::instance_utils::{determine_rootdir, maybe_open_stdio};
 use containerd_shim_wasm::sandbox::InstanceConfig;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use libcontainer::syscall::syscall::create_syscall;
 use nix::unistd::close;
-use serde::{Deserialize, Serialize};
 
 use crate::executor::WasmtimeExecutor;
 
@@ -31,36 +28,6 @@ pub struct Wasi {
     id: String,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Options {
-    root: Option<PathBuf>,
-}
-
-fn determine_rootdir<P: AsRef<Path>>(bundle: P, namespace: String) -> Result<PathBuf, Error> {
-    log::info!(
-        "determining rootdir for bundle: {}",
-        bundle.as_ref().display()
-    );
-    let mut file = match File::open(bundle.as_ref().join("options.json")) {
-        Ok(f) => f,
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => {
-                return Ok(<&str as Into<PathBuf>>::into(DEFAULT_CONTAINER_ROOT_DIR).join(namespace))
-            }
-            _ => return Err(err.into()),
-        },
-    };
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
-    let options: Options = serde_json::from_str(&data)?;
-    let path = options
-        .root
-        .unwrap_or(PathBuf::from(DEFAULT_CONTAINER_ROOT_DIR))
-        .join(namespace);
-    log::info!("youki root path is: {}", path.display());
-    Ok(path)
-}
-
 impl LibcontainerInstance for Wasi {
     type Engine = wasmtime::Engine;
 
@@ -70,7 +37,12 @@ impl LibcontainerInstance for Wasi {
         log::info!("creating new instance: {}", id);
         let cfg = cfg.unwrap();
         let bundle = cfg.get_bundle().unwrap_or_default();
-        let rootdir = determine_rootdir(bundle.as_str(), cfg.get_namespace()).unwrap();
+        let rootdir = determine_rootdir(
+            bundle.as_str(),
+            &cfg.get_namespace(),
+            DEFAULT_CONTAINER_ROOT_DIR,
+        )
+        .unwrap();
         Wasi {
             id,
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
@@ -135,6 +107,7 @@ impl LibcontainerInstance for Wasi {
 #[cfg(test)]
 mod wasitest {
     use std::borrow::Cow;
+    use std::collections::HashMap;
     use std::fs::{create_dir, read_to_string, File, OpenOptions};
     use std::io::prelude::*;
     use std::os::fd::RawFd;
@@ -206,7 +179,7 @@ mod wasitest {
     }
 
     #[test]
-    fn test_delete_after_create() -> Result<()> {
+    fn test_delete_after_create() -> anyhow::Result<()> {
         let cfg = InstanceConfig::new(
             Default::default(),
             "test_namespace".into(),
@@ -278,17 +251,18 @@ mod wasitest {
     ) -> Result<(u32, DateTime<Utc>), Error> {
         create_dir(dir.path().join("rootfs"))?;
         let rootdir = dir.path().join("runwasi");
-        create_dir(&rootdir)?;
-        let opts = Options {
-            root: Some(rootdir),
-        };
+        create_dir(rootdir)?;
+        let rootdir = PathBuf::from("/path/to/root");
+        let mut opts = HashMap::new();
+        opts.insert("root", rootdir);
+        let serialized = serde_json::to_string(&opts)?;
         let opts_file = OpenOptions::new()
             .read(true)
             .create(true)
             .truncate(true)
             .write(true)
             .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+        write!(&opts_file, "{}", serialized)?;
 
         let wasm_path = dir.path().join("rootfs/hello.wat");
         let mut f = OpenOptions::new()

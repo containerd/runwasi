@@ -4,8 +4,9 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
 
-use crate::sandbox::error::Error;
+use super::Error;
 
 /// Return the root path for the instance.
 ///
@@ -45,6 +46,29 @@ pub fn maybe_open_stdio(path: &str) -> Result<Option<File>, Error> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct Options {
+    root: Option<PathBuf>,
+}
+
+pub fn determine_rootdir<P: AsRef<Path>>(
+    bundle: P,
+    namespace: &str,
+    rootdir: P,
+) -> Result<PathBuf, Error> {
+    let file = match File::open(bundle.as_ref().join("options.json")) {
+        Ok(f) => f,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(rootdir.as_ref().join(namespace)),
+        Err(e) => return Err(e.into()),
+    };
+    let path = serde_json::from_reader::<_, Options>(file)?
+        .root
+        .unwrap_or_else(|| rootdir.as_ref().to_owned())
+        .join(namespace);
+    log::info!("container runtime root path is {path:?}");
+    Ok(path)
+}
+
 fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
     let root_path = fs::canonicalize(&root_path).with_context(|| {
         format!(
@@ -56,9 +80,11 @@ fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> 
     Ok(root_path.join(container_id))
 }
 
+#[cfg(unix)]
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::fs::{File, OpenOptions};
+    use std::io::Write;
 
     use tempfile::tempdir;
 
@@ -79,4 +105,48 @@ mod tests {
         assert!(f.is_some());
         Ok(())
     }
+
+    #[test]
+    fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
+        let namespace = "test_namespace";
+        let dir = tempdir()?;
+        let rootdir = dir.path().join("runwasi");
+        let opts = Options {
+            root: Some(rootdir.clone()),
+        };
+        let opts_file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(dir.path().join("options.json"))?;
+        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
+        let root = determine_rootdir(
+            dir.path(),
+            namespace,
+            &PathBuf::from("/run/containerd/runtime"),
+        )?;
+        assert_eq!(root, rootdir.join(namespace));
+        Ok(())
+    }
+
+    #[test]
+    fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let namespace = "test_namespace";
+        let root = determine_rootdir(
+            dir.path(),
+            namespace,
+            &PathBuf::from("/run/containerd/runtime"),
+        )?;
+        assert!(root.is_absolute());
+        assert_eq!(
+            root,
+            PathBuf::from("/run/containerd/runtime").join(namespace)
+        );
+        Ok(())
+    }
 }
+
+#[cfg(test)]
+mod rootdirtest {}

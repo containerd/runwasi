@@ -543,16 +543,12 @@ dependencies = [
  "clone3",
  "command-fds",
  "containerd-shim",
- "env_logger",
  "libc",
  "libcontainer",
  "log",
  "nix 0.26.2",
  "oci-spec",
- "pretty_assertions",
- "proc-mounts",
  "protobuf 3.2.0",
- "rand",
  "serde",
  "serde_json",
  "signal-hook",
@@ -567,7 +563,6 @@ name = "containerd-shim-wasmedge"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "cap-std",
  "chrono",
  "containerd-shim",
  "containerd-shim-wasm",
@@ -577,8 +572,6 @@ dependencies = [
  "log",
  "nix 0.26.2",
  "oci-spec",
- "pretty_assertions",
- "serde",
  "serde_json",
  "serial_test",
  "tempfile",
@@ -604,7 +597,6 @@ dependencies = [
  "log",
  "nix 0.26.2",
  "oci-spec",
- "pretty_assertions",
  "serde",
  "serde_json",
  "tempfile",
@@ -927,12 +919,6 @@ dependencies = [
  "derive_builder_core",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "diff"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "digest"
@@ -2010,7 +1996,6 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
- "env_logger",
  "log",
  "oci-spec",
  "serde",
@@ -2066,15 +2051,6 @@ dependencies = [
  "redox_syscall 0.3.5",
  "smallvec",
  "windows-targets 0.48.1",
-]
-
-[[package]]
-name = "partition-identity"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fa925f9becb532d758b0014b472c576869910929cf4c3f8054b386f19ab9e21"
-dependencies = [
- "thiserror",
 ]
 
 [[package]]
@@ -2182,16 +2158,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty_assertions"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af7cee1a6c8a5b9208b3cb1061f10c0cb689087b3d8ce85fb9d2dd7a29b6ba66"
-dependencies = [
- "diff",
- "yansi",
-]
-
-[[package]]
 name = "prettyplease"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2238,15 +2204,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "proc-mounts"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d652f8435d0ab70bf4f3590a6a851d59604831a458086541b95238cc51ffcf2"
-dependencies = [
- "partition-identity",
 ]
 
 [[package]]
@@ -4379,12 +4336,6 @@ checksum = "f4686009f71ff3e5c4dbcf1a282d0a44db3f021ba69350cd42086b3e5f1c6985"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "yansi"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "zstd"
