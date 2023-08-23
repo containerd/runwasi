@@ -51,6 +51,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04", "windows-latest"]
+        runtime: ["wasmtime", "wasmedge"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -83,12 +84,21 @@ jobs:
           echo "WASMEDGE_LIB_DIR=C:\Program Files\WasmEdge\lib" >> $env:GITHUB_ENV
           echo "WASMEDGE_INCLUDE_DIR=C:\Program Files\WasmEdge\include" >> $env:GITHUB_ENV
       - name: Build
-        run: make build
+        run: make build RUNTIMES=${{ matrix.runtime }}
       - name: Validate docs
         run: ./scripts/validate-docs.sh
       - name: Run tests
         run: |
           make test
+      - name: Package artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          make install PREFIX=${{ github.workspace }} RUNTIMES=${{ matrix.runtime }}
+      - uses: actions/upload-artifact@master
+        with:
+          name: containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}
+          path: ${{ github.workspace }}/bin
 
   e2e-wasmtime:
     needs: [build]
