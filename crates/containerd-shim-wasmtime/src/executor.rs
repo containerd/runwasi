@@ -1,12 +1,9 @@
 use std::fs::OpenOptions;
-use std::os::fd::RawFd;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use containerd_shim_wasm::sandbox::oci;
-use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use containerd_shim_wasm::sandbox::{oci, Stdio};
 use libcontainer::workload::{Executor, ExecutorError};
-use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::WasiCtxBuilder;
@@ -16,25 +13,13 @@ use crate::oci_wasmtime::{self, wasi_dir};
 const EXECUTOR_NAME: &str = "wasmtime";
 
 pub struct WasmtimeExecutor {
-    stdin: Option<RawFd>,
-    stdout: Option<RawFd>,
-    stderr: Option<RawFd>,
+    stdio: Stdio,
     engine: Engine,
 }
 
 impl WasmtimeExecutor {
-    pub fn new(
-        stdin: Option<RawFd>,
-        stdout: Option<RawFd>,
-        stderr: Option<RawFd>,
-        engine: Engine,
-    ) -> Self {
-        Self {
-            stdin,
-            stdout,
-            stderr,
-            engine,
-        }
+    pub fn new(stdio: Stdio, engine: Engine) -> Self {
+        Self { stdio, engine }
     }
 }
 
@@ -101,18 +86,7 @@ impl WasmtimeExecutor {
             .inherit_stdio()
             .preopened_dir(path, "/")?;
 
-        if let Some(stdin) = self.stdin {
-            dup(STDIN_FILENO)?;
-            dup2(stdin, STDIN_FILENO)?;
-        }
-        if let Some(stdout) = self.stdout {
-            dup(STDOUT_FILENO)?;
-            dup2(stdout, STDOUT_FILENO)?;
-        }
-        if let Some(stderr) = self.stderr {
-            dup(STDERR_FILENO)?;
-            dup2(stderr, STDERR_FILENO)?;
-        }
+        self.stdio.redirect()?;
 
         log::info!("building wasi context");
         let wctx = wasi_builder.build();

@@ -1,15 +1,11 @@
-use std::fs::{self, File};
-use std::os::unix::io::AsRawFd;
+use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
 use cgroups_rs::cgroup::get_cgroups_relative_paths_by_pid;
 use cgroups_rs::hierarchies::{self};
 use cgroups_rs::{Cgroup, Subsystem};
-use containerd_shim::error::Error as ShimError;
 use containerd_shim::{self as shim};
-use nix::sched::{setns, unshare, CloneFlags};
-use oci_spec::runtime;
 use protobuf::well_known_types::any::Any;
 use shim::protos::cgroups::metrics::{
     CPUStat, CPUUsage, MemoryEntry, MemoryStat, Metrics, PidsStat, Throttle,
@@ -117,40 +113,4 @@ pub fn get_metrics(pid: u32) -> Result<Any> {
 
     let metrics = convert_to_any(Box::new(metrics)).map_err(|e| Error::Others(e.to_string()))?;
     Ok(metrics)
-}
-
-pub fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
-    let namespaces = spec
-        .linux()
-        .as_ref()
-        .unwrap()
-        .namespaces()
-        .as_ref()
-        .unwrap();
-    for ns in namespaces {
-        if ns.typ() == runtime::LinuxNamespaceType::Network {
-            if let Some(p) = ns.path() {
-                let f = File::open(p).map_err(|err| {
-                    ShimError::Other(format!(
-                        "could not open network namespace {}: {}",
-                        p.display(),
-                        err
-                    ))
-                })?;
-                setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
-                    ShimError::Other(format!("could not set network namespace: {0}", err))
-                })?;
-            } else {
-                unshare(CloneFlags::CLONE_NEWNET).map_err(|err| {
-                    ShimError::Other(format!("could not unshare network namespace: {0}", err))
-                })?;
-            }
-        }
-    }
-
-    // Keep all mounts changes (such as for the rootfs) private to the shim
-    // This way mounts will automatically be cleaned up when the shim exits.
-    unshare(CloneFlags::CLONE_NEWNS)
-        .map_err(|err| shim::Error::Other(format!("failed to unshare mount namespace: {}", err)))?;
-    Ok(())
 }

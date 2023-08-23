@@ -2,17 +2,15 @@ use std::path::PathBuf;
 
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::{ExitCode, Wait};
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Stdio};
 
 pub struct Wasi {
+    id: String,
     exit_code: ExitCode,
     engine: wasmtime::Engine,
-    stdin: String,
-    stdout: String,
-    stderr: String,
+    stdio: Stdio,
     bundle: String,
     rootdir: PathBuf,
-    id: String,
 }
 
 impl Instance for Wasi {
@@ -34,10 +32,7 @@ impl Instance for Wasi {
         todo!()
     }
 
-    fn wait(
-        &self,
-        waiter: &containerd_shim_wasm::sandbox::instance::Wait,
-    ) -> std::result::Result<(), Error> {
+    fn wait(&self, waiter: &Wait) -> std::result::Result<(), Error> {
         todo!()
     }
 }

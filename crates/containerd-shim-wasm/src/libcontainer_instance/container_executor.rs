@@ -1,30 +1,23 @@
 use std::fs::OpenOptions;
 use std::io::Read;
-use std::os::fd::RawFd;
 use std::path::PathBuf;
 
-use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{Executor, ExecutorError};
-use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
-use crate::sandbox::oci;
+use crate::sandbox::{oci, Stdio};
 
 #[derive(Default)]
 pub struct LinuxContainerExecutor {
-    stdin: Option<RawFd>,
-    stdout: Option<RawFd>,
-    stderr: Option<RawFd>,
+    stdio: Stdio,
     default_executor: DefaultExecutor,
 }
 
 impl LinuxContainerExecutor {
-    pub fn new(stdin: Option<RawFd>, stdout: Option<RawFd>, stderr: Option<RawFd>) -> Self {
+    pub fn new(stdio: Stdio) -> Self {
         Self {
-            stdin,
-            stdout,
-            stderr,
+            stdio,
             ..Default::default()
         }
     }
@@ -32,7 +25,7 @@ impl LinuxContainerExecutor {
 
 impl Executor for LinuxContainerExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        redirect_io(self.stdin, self.stdout, self.stderr).map_err(|err| {
+        self.stdio.redirect().map_err(|err| {
             log::error!("failed to redirect io: {}", err);
             ExecutorError::Other(format!("failed to redirect io: {}", err))
         })?;
@@ -117,20 +110,4 @@ impl Executor for LinuxContainerExecutor {
     fn name(&self) -> &'static str {
         self.default_executor.name()
     }
-}
-
-fn redirect_io(stdin: Option<i32>, stdout: Option<i32>, stderr: Option<i32>) -> anyhow::Result<()> {
-    if let Some(stdin) = stdin {
-        dup(STDIN_FILENO)?;
-        dup2(stdin, STDIN_FILENO)?;
-    }
-    if let Some(stdout) = stdout {
-        dup(STDOUT_FILENO)?;
-        dup2(stdout, STDOUT_FILENO)?;
-    }
-    if let Some(stderr) = stderr {
-        dup(STDERR_FILENO)?;
-        dup2(stderr, STDERR_FILENO)?;
-    }
-    Ok(())
 }
