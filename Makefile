@@ -56,6 +56,9 @@ install:
 		$(INSTALL) target/$(TARGET)/containerd-$(runtime)d $(PREFIX)/bin/; \
 	)
 
+dist:
+	$(MAKE) install PREFIX=$(PWD)/dist RUNTIMES=$(RUNTIMES) TARGET=$(TARGET)
+
 .PHONY: test-image
 test-image: target/wasm32-wasi/$(TARGET)/img.tar
 
@@ -78,7 +81,7 @@ load: target/wasm32-wasi/$(TARGET)/img.tar
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
 
-test/k8s/_out/img: test/k8s/Dockerfile Cargo.toml Cargo.lock $(shell find . -type f -name '*.rs')
+test/k8s/_out/img: test/k8s/Dockerfile dist
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
 
 .PHONY: test/nginx
@@ -110,12 +113,10 @@ bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
 .PHONY: test/k3s
-test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s
-	cargo build $(RELEASE_FLAG) && \
-	cp target/$(TARGET)/containerd-shim-wasmedge-v1 $(PWD)/bin/ && \
+test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s dist
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '  runtime_type = "$(PWD)/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
 	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
 	sudo systemctl daemon-reload && \
@@ -127,6 +128,4 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
-test/k3s/clean: bin/k3s/clean
-	cargo clean
-	rm $(PWD)/bin/containerd-shim-wasmedge-v1
+test/k3s/clean: bin/k3s/clean;
