@@ -12,6 +12,7 @@ on:
 
 jobs:
   e2e-k3s:
+    name: e2e k3s test on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
       - name: "check cgroup version"

@@ -12,6 +12,7 @@ on:
 
 jobs:
   e2e-kind:
+    name: e2e kind test on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
       - name: "check cgroup version"

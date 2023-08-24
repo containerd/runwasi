@@ -9,6 +9,7 @@ on:
 
 jobs:
   fmt:
+    name: lint on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v3
