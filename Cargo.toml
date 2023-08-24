@@ -6,6 +6,7 @@ members = [
     "crates/containerd-shim-wasmedge",
     "crates/containerd-shim-wasmtime",
 ]
+resolver = "2"
 
 [workspace.package]
 edition = "2021"
