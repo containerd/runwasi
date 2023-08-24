@@ -17,11 +17,11 @@ jobs:
         with:
           tools-cache: true
           android: true
-          dotnet: true
-          haskell: true
+          dotnet: false
+          haskell: false
           large-packages: false
           swap-storage: false
-          docker-images: true
+          docker-images: false
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

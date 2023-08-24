@@ -20,30 +20,22 @@ jobs:
         with:
           tools-cache: true
           android: true
-          dotnet: true
-          haskell: true
+          dotnet: false
+          haskell: false
           large-packages: false
           swap-storage: false
-          docker-images: true
-      - name: "check cgroup version"
-        run: "mount | grep cgroup"
-        if: runner.os == 'Linux'
+          docker-images: false
       - uses: actions/checkout@v3
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        env:
-          RUST_CACHE_KEY_OS: ${{ inputs.os }}
-        with:
-          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup build env
         run: |
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
           ./scripts/setup-$os.sh
         shell: bash
-      - name: Set environment variables for Windows
-        if: runner.os == 'Windows'
-        run: |
-          echo "WASMEDGE_LIB_DIR=C:\Program Files\WasmEdge\lib" >> $env:GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=C:\Program Files\WasmEdge\include" >> $env:GITHUB_ENV
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        env:
+          RUST_CACHE_KEY_OS: ${{ inputs.os }}
+        with:
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Build
         run: make build RUNTIMES=${{ inputs.runtime }}
       - name: Validate docs

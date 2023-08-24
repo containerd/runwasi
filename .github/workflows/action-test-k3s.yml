@@ -19,11 +19,11 @@ jobs:
         with:
           tools-cache: true
           android: true
-          dotnet: true
-          haskell: true
+          dotnet: false
+          haskell: false
           large-packages: false
           swap-storage: false
-          docker-images: true
+          docker-images: false
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3
