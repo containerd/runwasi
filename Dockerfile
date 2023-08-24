@@ -2,7 +2,7 @@
 
 # Make sure to keep RUST_VERSION in sync with the version in rust-toolchain.toml
 ARG BASE_IMAGE="bullseye"
-ARG RUST_VERSION=1.71.1
+ARG RUST_VERSION=1.72.0
 ARG XX_VERSION=1.2.1
 ARG CRATE="containerd-shim-wasmtime,containerd-shim-wasmedge"
 
