@@ -51,14 +51,9 @@ libseccomp = ["libcontainer/libseccomp"]
 systemd = ["libcontainer/systemd", "dbus/vendored"]
 cgroupsv2 = ["libcontainer/v2"]
 cgroupsv1 = ["libcontainer/v1"]
-cgroupsv2_devices = ["libcontainer/cgroupsv2_devices"]
 
 [package.metadata.cargo-all-features]
 skip_feature_sets = [
-    ["cgroupsv2", "cgroupsv2_devices"],
-    ["cgroupsv1", "cgroupsv2_devices"],
-    ["libcontainer_default", "cgroupsv2_devices"],
-    ["systemd", "cgroupsv2_devices"],
     ["generate_bindings", "generate_doc"]
 ]
 skip_optional_dependencies = true
