@@ -19,6 +19,7 @@ jobs:
       os: ${{ matrix.os }}
 
   build-ubuntu:
+    name: Build ${{ matrix.runtime }} on ${{ matrix.runtime }}
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
@@ -29,6 +30,7 @@ jobs:
       runtime: ${{ matrix.runtime }}
 
   build-windows:
+    name: Build ${{ matrix.runtime }} on ${{ matrix.runtime }}
     strategy:
       matrix:
         os: ["windows-latest"]
@@ -39,6 +41,7 @@ jobs:
       runtime: ${{ matrix.runtime }}
 
   e2e-wasmtime:
+    name: e2e test ${{ matrix.runtime }} with kind on ${{ matrix.os }}
     needs: [build-ubuntu]
     strategy:
       matrix:
@@ -51,6 +54,7 @@ jobs:
       runtime: ${{ matrix.runtime }}
 
   e2e-k3s:
+    name: e2e test ${{ matrix.runtime }} with k3s on ${{ matrix.os }}
     needs: [build-ubuntu]
     strategy:
       matrix:

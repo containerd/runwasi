@@ -14,16 +14,6 @@ jobs:
   e2e-k3s:
     runs-on: ${{ inputs.os }}
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        with:
-          tools-cache: true
-          android: true
-          dotnet: false
-          haskell: false
-          large-packages: false
-          swap-storage: false
-          docker-images: false
       - name: "check cgroup version"
         run: "mount | grep cgroup"
       - uses: actions/checkout@v3

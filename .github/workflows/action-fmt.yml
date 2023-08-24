@@ -11,17 +11,6 @@ jobs:
   fmt:
     runs-on: ${{ inputs.os }}
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        if: runner.os == 'Linux'
-        with:
-          tools-cache: true
-          android: true
-          dotnet: false
-          haskell: false
-          large-packages: false
-          swap-storage: false
-          docker-images: false
       - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
