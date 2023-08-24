@@ -11,187 +11,65 @@ env:
 
 jobs:
   fmt:
+    name: ${{ matrix.runtime }}
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        if: runner.os == 'Linux'
-        with:
-          tools-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: false
-          docker-images: true
-      - uses: actions/checkout@v3
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: rustfmt, clippy
-          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build env
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-        shell: bash
-      - run: 
-          # needed to run rustfmt in nightly toolchain
-          rustup toolchain install nightly --component rustfmt
-      - name: Set environment variables for Windows
-        if: runner.os == 'Windows'
-        run: |
-          # required until standalong is implemented for windows (https://github.com/WasmEdge/wasmedge-rust-sdk/issues/54)
-          echo "WASMEDGE_LIB_DIR=C:\Program Files\WasmEdge\lib" >> $env:GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=C:\Program Files\WasmEdge\include" >> $env:GITHUB_ENV
-      - name: Run checks
-        run: make check
-  build:
+        runtime: ["common"] # not required, but groups jobs
+    uses: ./.github/workflows/action-fmt.yml
+    with:
+      os: ${{ matrix.os }}
+  
+  test-image:
+    name: ${{ matrix.runtime }}
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04", "windows-latest"]
+        runtime: ["common"] # not required, but groups jobs
+    uses: ./.github/workflows/action-test-image.yml
+
+  build-ubuntu:
+    name: ${{ matrix.runtime }}
+    strategy:
+      matrix:
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
         runtime: ["wasmtime", "wasmedge"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        with:
-          tools-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: false
-          docker-images: true
-      - name: "check cgroup version"
-        run: "mount | grep cgroup"
-        if: runner.os == 'Linux'
-      - uses: actions/checkout@v3
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        env:
-          RUST_CACHE_KEY_OS: ${{ matrix.os }}
-        with:
-           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build env
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-        shell: bash
-      - name: Set environment variables for Windows
-        if: runner.os == 'Windows'
-        run: |
-          echo "WASMEDGE_LIB_DIR=C:\Program Files\WasmEdge\lib" >> $env:GITHUB_ENV
-          echo "WASMEDGE_INCLUDE_DIR=C:\Program Files\WasmEdge\include" >> $env:GITHUB_ENV
-      - name: Build
-        run: make build RUNTIMES=${{ matrix.runtime }}
-      - name: Validate docs
-        run: ./scripts/validate-docs.sh
-      - name: Run tests
-        run: |
-          make test
-      - name: Package artifacts
-        shell: bash
-        run: |
-          make dist RUNTIMES=${{ matrix.runtime }}
-          # Check if there's any files to archive as tar fails otherwise
-          if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz -C dist/bin .
-          else
-            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz -T /dev/null
-          fi
-      - name: Upload artifacts
-        uses: actions/upload-artifact@master
-        with:
-          name: containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}
-          path: dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.os }}.tar.gz
+    uses: ./.github/workflows/action-build.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
+
+  build-windows:
+    name: ${{ matrix.runtime }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+        runtime: ["wasmtime", "wasmedge"]
+    uses: ./.github/workflows/action-build.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
 
   e2e-wasmtime:
-    needs: [build]
+    name: ${{ matrix.runtime }}
+    needs: [build-ubuntu, test-image]
     strategy:
       matrix:
         # 20.04 uses cgroupv1, 22.04 uses cgroupv2
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        with:
-          tools-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: false
-          docker-images: true
-      - name: "check cgroup version"
-        run: "mount | grep cgroup"
-      - uses: actions/checkout@v3
-      - name: setup rust-wasm target
-        run: rustup target add wasm32-wasi
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-        shell: bash
-      - name: Download artifacts
-        uses: actions/download-artifact@master
-        with:
-          name: containerd-shim-wasmtime-${{ matrix.os }}
-          path: dist
-      - name: Unpack artifats
-        shell: bash
-        run: |
-          mkdir -p dist/bin
-          tar -xzf dist/containerd-shim-wasmtime-${{ matrix.os }}.tar.gz -C dist/bin
-      - name: run
-        run: make test/k8s
-      # only runs when the previous step fails
-      - name: inspect failed pods
-        if: failure()
-        run: |
-          kubectl get pods --all-namespaces
-          kubectl describe pods --all-namespaces
-      - name: cleanup
-        if: always()
-        run: make test/k8s/clean
+        runtime:  ["wasmtime"]
+    uses: ./.github/workflows/action-test-kind.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
 
-  e2e-wasmedge:
-    needs: [build]
+  e2e-k3s:
+    name: ${{ matrix.runtime }}
+    needs: [build-ubuntu, test-image]
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        with:
-          tools-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: false
-          docker-images: true
-      - name: "check cgroup version"
-        run: "mount | grep cgroup"
-      - uses: actions/checkout@v3
-      - name: setup rust-wasm target
-        run: rustup target add wasm32-wasi
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-        shell: bash
-      - name: Download artifacts
-        uses: actions/download-artifact@master
-        with:
-          name: containerd-shim-wasmedge-${{ matrix.os }}
-          path: dist
-      - name: Unpack artifats
-        shell: bash
-        run: |
-          mkdir -p dist/bin
-          tar -xzf dist/containerd-shim-wasmedge-${{ matrix.os }}.tar.gz -C dist/bin
-      - name: run
-        run: make test/k3s
-      - name: cleanup
-        if: always()
-        run: make test/k3s/clean
+        runtime: ["wasmedge"]
+    uses: ./.github/workflows/action-test-k3s.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
