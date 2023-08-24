@@ -494,9 +494,9 @@ checksum = "fbdcdcb6d86f71c5e97409ad45898af11cbc995b4ee8112d59095a28d376c935"
 
 [[package]]
 name = "containerd-shim"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34b838538bbc58599a085b1d9e525eb15eae53c48c756f3339dc61524f77891a"
+checksum = "46a08af6d8436b911bd47f34dd3478fe28cfbe40e8e3b2c1d61f3abb264e053d"
 dependencies = [
  "cgroups-rs 0.2.11",
  "command-fds",
@@ -523,9 +523,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-protos"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dbbd1b58f3aa972bb5218a0a79c9e96939113f5db5cacbd15be5022e02ba2d5"
+checksum = "105ad6d5b553163181f33abdb172e1b1f5f567570632258be016acb09ab9578c"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
@@ -2022,9 +2022,9 @@ dependencies = [
 
 [[package]]
 name = "page_size"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b7663cbd190cfd818d08efa8497f6cd383076688c49a391ef7c0d03cd12b561"
+checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
 dependencies = [
  "libc",
  "winapi",
