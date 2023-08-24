@@ -23,7 +23,7 @@ serde_json = "1.0"
 env_logger = "0.10"
 log = "0.4"
 tar = "0.4"
-containerd-shim = "0.4.0"
+containerd-shim = "0.5.0"
 ttrpc = "0.8.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 nix = "0.26"
