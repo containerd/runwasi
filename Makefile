@@ -60,7 +60,7 @@ dist:
 	$(MAKE) install PREFIX=$(PWD)/dist RUNTIMES=$(RUNTIMES) TARGET=$(TARGET)
 
 .PHONY: test-image
-test-image: target/wasm32-wasi/$(TARGET)/img.tar
+test-image: dist/img.tar
 
 .PHONY: test-image
 test-image/clean:
@@ -71,11 +71,14 @@ target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
 	rustup target add wasm32-wasi
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
 
-.PHONY: target/wasm32-wasi/$(TARGET)/img.tar
 target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
 
-load: target/wasm32-wasi/$(TARGET)/img.tar
+dist/img.tar: target/wasm32-wasi/$(TARGET)/img.tar
+	@mkdir -p dist/
+	cp $< $@
+
+load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
 bin/kind: test/k8s/Dockerfile
@@ -90,7 +93,7 @@ test/nginx:
 	mkdir -p $@/out && docker save -o $@/out/img.tar docker.io/nginx:latest
 
 .PHONY: test/k8s/cluster
-test/k8s/cluster: target/wasm32-wasi/$(TARGET)/img.tar bin/kind test/k8s/_out/img bin/kind
+test/k8s/cluster: dist/img.tar bin/kind test/k8s/_out/img
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
@@ -113,7 +116,7 @@ bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
 .PHONY: test/k3s
-test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s dist
+test/k3s: dist/img.tar bin/k3s dist
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
@@ -122,7 +125,7 @@ test/k3s: target/wasm32-wasi/$(TARGET)/img.tar bin/k3s dist
 	sudo systemctl daemon-reload && \
 	sudo systemctl restart k3s-runwasi && \
 	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
-	sudo bin/k3s ctr image import --all-platforms target/wasm32-wasi/$(TARGET)/img.tar && \
+	sudo bin/k3s ctr image import --all-platforms dist/img.tar && \
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s && \
 	sudo bin/k3s kubectl get pods -o wide

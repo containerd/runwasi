@@ -33,6 +33,11 @@ jobs:
         run: |
           mkdir -p dist/bin
           tar -xzf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -C dist/bin
+      - name: Download test image
+        uses: actions/download-artifact@master
+        with:
+          name: test-image
+          path: dist
       - name: run
         run: make test/k8s
       # only runs when the previous step fails

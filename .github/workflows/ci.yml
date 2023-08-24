@@ -11,13 +11,21 @@ env:
 
 jobs:
   fmt:
-    name: lint
+    name: ${{ matrix.runtime }}
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
+        runtime: ["common"] # not required, but groups jobs
     uses: ./.github/workflows/action-fmt.yml
     with:
       os: ${{ matrix.os }}
+  
+  test-image:
+    name: ${{ matrix.runtime }}
+    strategy:
+      matrix:
+        runtime: ["common"] # not required, but groups jobs
+    uses: ./.github/workflows/action-test-image.yml
 
   build-ubuntu:
     name: ${{ matrix.runtime }}
@@ -43,7 +51,7 @@ jobs:
 
   e2e-wasmtime:
     name: ${{ matrix.runtime }}
-    needs: [build-ubuntu]
+    needs: [build-ubuntu, test-image]
     strategy:
       matrix:
         # 20.04 uses cgroupv1, 22.04 uses cgroupv2
@@ -56,7 +64,7 @@ jobs:
 
   e2e-k3s:
     name: ${{ matrix.runtime }}
-    needs: [build-ubuntu]
+    needs: [build-ubuntu, test-image]
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
