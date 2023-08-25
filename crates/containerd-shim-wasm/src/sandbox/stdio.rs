@@ -1,4 +1,4 @@
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::ErrorKind::NotFound;
 use std::io::{Error, Result};
 use std::path::Path;
@@ -34,13 +34,11 @@ macro_rules! stdio_impl {
                     path if path.as_os_str().is_empty() => None,
                     path => Some(path.to_owned()),
                 })
-                .map(
-                    |path| match OpenOptions::new().read(true).write(true).open(path) {
-                        Err(err) if err.kind() == NotFound => Ok(None),
-                        Ok(f) => Ok(Some(f)),
-                        Err(err) => Err(err),
-                    },
-                )
+                .map(|path| match open_file(path) {
+                    Err(err) if err.kind() == NotFound => Ok(None),
+                    Ok(f) => Ok(Some(f)),
+                    Err(err) => Err(err),
+                })
                 .transpose()
                 .map(|opt| Self(Arc::new(Mutex::new(opt.flatten()))))
             }

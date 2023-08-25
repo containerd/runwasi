@@ -75,8 +75,8 @@ target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
 
 dist/img.tar: target/wasm32-wasi/$(TARGET)/img.tar
-	@mkdir -p dist/
-	cp $< $@
+	@mkdir -p "dist/"
+	cp "$<" "$@"
 
 load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<

@@ -12,8 +12,6 @@ oci-spec = { workspace = true, optional = true }
 oci-tar-builder = { optional = true, path = "../oci-tar-builder" }
 anyhow = { workspace = true, optional = true }
 
-
-
 [features]
 default = []
 oci-v1-tar = ["default", "tar", "sha256", "log", "env_logger", "oci-spec", "oci-tar-builder", "anyhow"]
