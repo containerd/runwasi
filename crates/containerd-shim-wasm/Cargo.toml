@@ -29,7 +29,6 @@ clone3 = "0.2"
 caps = "0.5"
 command-fds = "0.2"
 libcontainer = { workspace = true, optional = true, default-features = false }
-cgroups-rs = "0.3.3"
 nix = { workspace = true }
 
 [build-dependencies]
