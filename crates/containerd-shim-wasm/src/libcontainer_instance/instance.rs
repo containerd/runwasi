@@ -5,7 +5,6 @@ use std::thread;
 
 use anyhow::Context;
 use chrono::Utc;
-use libc::{SIGINT, SIGKILL};
 use libcontainer::container::{Container, ContainerStatus};
 use libcontainer::signal::Signal;
 use log::error;
@@ -16,6 +15,7 @@ use crate::sandbox::error::Error;
 use crate::sandbox::instance::{ExitCode, Wait};
 use crate::sandbox::instance_utils::{get_instance_root, instance_exists};
 use crate::sandbox::{Instance, InstanceConfig};
+use crate::sys::signals::{SIGINT, SIGKILL};
 
 /// LibcontainerInstance is a trait that gets implemented by a WASI runtime that
 /// uses youki's libcontainer library as the container runtime.
