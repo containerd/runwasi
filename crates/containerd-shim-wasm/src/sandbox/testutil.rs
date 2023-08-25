@@ -1,8 +1,15 @@
 //! Testing utilities used across different modules
 
+use std::collections::HashMap;
+use std::fs::{create_dir, File};
+use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::mpsc::channel;
+use std::time::Duration;
 
-use super::{Error, Result};
+use anyhow::{bail, ensure, Result};
+
+use crate::sys::signals::SIGKILL;
 
 fn normalize_test_name(test: &str) -> Result<&str> {
     let closure_removed = test.trim_end_matches("::{{closure}}");
@@ -50,15 +57,9 @@ pub fn run_test_with_sudo(test: &str) -> Result<()> {
         std::io::copy(&mut stderr, &mut std::io::stderr()).unwrap();
     });
 
-    cmd.wait()
-        .and_then(|status| {
-            if status.success() {
-                Ok(())
-            } else {
-                Err(std::io::ErrorKind::Other.into())
-            }
-        })
-        .map_err(Error::from)
+    ensure!(cmd.wait()?.success(), "running test with sudo failed");
+
+    Ok(())
 }
 
 #[macro_export]
@@ -76,7 +77,12 @@ macro_rules! function {
 
 #[cfg(unix)]
 use caps::{CapSet, Capability};
+use chrono::{DateTime, Utc};
 pub use function;
+use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+
+use super::instance::Wait;
+use super::{Instance, InstanceConfig};
 
 /// Determines if the current process has the CAP_SYS_ADMIN capability in its effective set.
 pub fn has_cap_sys_admin() -> bool {
@@ -90,4 +96,81 @@ pub fn has_cap_sys_admin() -> bool {
     {
         false
     }
+}
+
+pub fn run_wasi_test<WasmInstance: Instance>(
+    dir: impl AsRef<Path>,
+    wasmbytes: impl AsRef<[u8]>,
+    start_fn: Option<&str>,
+) -> Result<(u32, DateTime<Utc>)>
+where
+    WasmInstance::Engine: Default,
+{
+    create_dir(dir.as_ref().join("rootfs"))?;
+    let rootdir = dir.as_ref().join("runwasi");
+    create_dir(&rootdir)?;
+    let opts = HashMap::from([("root", rootdir)]);
+    let opts_file = std::fs::File::create(dir.as_ref().join("options.json"))?;
+    serde_json::to_writer(opts_file, &opts)?;
+
+    let filename = if wasmbytes.as_ref().starts_with(b"\0asm") {
+        "hello.wasm"
+    } else {
+        "hello.wat"
+    };
+
+    let wasm_path = dir.as_ref().join("rootfs").join(filename);
+    std::fs::write(&wasm_path, wasmbytes)?;
+
+    #[cfg(unix)]
+    std::fs::set_permissions(
+        &wasm_path,
+        std::os::unix::prelude::PermissionsExt::from_mode(0o755),
+    )?;
+
+    let stdout = File::create(dir.as_ref().join("stdout"))?;
+    drop(stdout);
+
+    let entrypoint = match start_fn {
+        Some(s) => format!("./{filename}#{s}"),
+        None => format!("./{filename}"),
+    };
+    let spec = SpecBuilder::default()
+        .root(RootBuilder::default().path("rootfs").build()?)
+        .process(
+            ProcessBuilder::default()
+                .cwd("/")
+                .args(vec![entrypoint])
+                .build()?,
+        )
+        .build()?;
+
+    spec.save(dir.as_ref().join("config.json"))?;
+
+    let mut cfg = InstanceConfig::new(
+        WasmInstance::Engine::default(),
+        "test_namespace".into(),
+        "/containerd/address".into(),
+    );
+    let cfg = cfg
+        .set_bundle(dir.as_ref().to_str().unwrap().to_string())
+        .set_stdout(dir.as_ref().join("stdout").to_str().unwrap().to_string());
+
+    let wasi = WasmInstance::new("test".to_string(), Some(cfg));
+
+    wasi.start()?;
+
+    let (tx, rx) = channel();
+    let waiter = Wait::new(tx);
+    wasi.wait(&waiter).unwrap();
+
+    let res = match rx.recv_timeout(Duration::from_secs(10)) {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            wasi.kill(SIGKILL as u32).unwrap();
+            bail!("error waiting for module to finish: {e}");
+        }
+    };
+    wasi.delete()?;
+    res
 }

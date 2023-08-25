@@ -90,24 +90,18 @@ impl LibcontainerInstance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::borrow::Cow;
-    use std::collections::HashMap;
-    use std::fs::{create_dir, read_to_string, File, OpenOptions};
-    use std::io::prelude::*;
-    use std::os::fd::RawFd;
-    use std::os::unix::prelude::OpenOptionsExt;
-    use std::sync::mpsc::channel;
-    use std::time::Duration;
 
-    use chrono::{DateTime, Utc};
+    use std::fs::read_to_string;
+    use std::os::fd::RawFd;
+
     use containerd_shim_wasm::function;
-    use containerd_shim_wasm::sandbox::instance::Wait;
-    use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use containerd_shim_wasm::sandbox::testutil::{
+        has_cap_sys_admin, run_test_with_sudo, run_wasi_test,
+    };
     use containerd_shim_wasm::sandbox::Instance;
-    use libc::{SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+    use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use nix::unistd::dup2;
-    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-    use tempfile::{tempdir, TempDir};
+    use tempfile::tempdir;
 
     use super::*;
 
@@ -177,7 +171,7 @@ mod wasitest {
     }
 
     #[test]
-    fn test_wasi_entrypoint() -> Result<(), Error> {
+    fn test_wasi_entrypoint() -> anyhow::Result<()> {
         if !has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
@@ -191,7 +185,7 @@ mod wasitest {
         let path = dir.path();
         let wasm_bytes = hello_world_module(None);
 
-        let res = run_wasi_test(&dir, wasm_bytes.into(), None)?;
+        let res = run_wasi_test::<Wasi>(&dir, wasm_bytes, None)?;
 
         assert_eq!(res.0, 0);
 
@@ -205,7 +199,7 @@ mod wasitest {
     // ignore until https://github.com/containerd/runwasi/issues/194 is resolved
     #[test]
     #[ignore]
-    fn test_wasi_custom_entrypoint() -> Result<(), Error> {
+    fn test_wasi_custom_entrypoint() -> anyhow::Result<()> {
         if !has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
@@ -217,7 +211,7 @@ mod wasitest {
         let path = dir.path();
         let wasm_bytes = hello_world_module(Some("foo"));
 
-        let res = run_wasi_test(&dir, wasm_bytes.into(), Some("foo"))?;
+        let res = run_wasi_test::<Wasi>(&dir, wasm_bytes, Some("foo"))?;
 
         assert_eq!(res.0, 0);
 
@@ -226,84 +220,5 @@ mod wasitest {
 
         reset_stdio();
         Ok(())
-    }
-
-    fn run_wasi_test(
-        dir: &TempDir,
-        wasmbytes: Cow<[u8]>,
-        start_fn: Option<&str>,
-    ) -> Result<(u32, DateTime<Utc>), Error> {
-        create_dir(dir.path().join("rootfs"))?;
-        let rootdir = dir.path().join("runwasi");
-        create_dir(rootdir)?;
-        let rootdir = PathBuf::from("/path/to/root");
-        let mut opts = HashMap::new();
-        opts.insert("root", rootdir);
-        let serialized = serde_json::to_string(&opts)?;
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serialized)?;
-
-        let wasm_path = dir.path().join("rootfs/hello.wat");
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o755)
-            .open(wasm_path)?;
-        f.write_all(&wasmbytes)?;
-
-        let stdout = File::create(dir.path().join("stdout"))?;
-        drop(stdout);
-
-        let entrypoint = match start_fn {
-            Some(s) => "./hello.wat#".to_string() + s,
-            None => "./hello.wat".to_string(),
-        };
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args(vec![entrypoint])
-                    .build()?,
-            )
-            .build()?;
-
-        spec.save(dir.path().join("config.json"))?;
-
-        let mut cfg = InstanceConfig::new(
-            Default::default(),
-            "test_namespace".into(),
-            "/containerd/address".into(),
-        );
-        let cfg = cfg
-            .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
-
-        let wasi = Wasi::new("test".to_string(), Some(cfg));
-
-        wasi.start()?;
-
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
-        wasi.wait(&waiter).unwrap();
-
-        let res = match rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(res) => Ok(res),
-            Err(e) => {
-                wasi.kill(SIGKILL as u32).unwrap();
-                return Err(Error::Others(format!(
-                    "error waiting for module to finish: {0}",
-                    e
-                )));
-            }
-        };
-        wasi.delete()?;
-        res
     }
 }

@@ -84,24 +84,18 @@ impl LibcontainerInstance for Wasi {
 
 #[cfg(test)]
 mod wasitest {
-    use std::borrow::Cow;
-    use std::collections::HashMap;
-    use std::fs::{create_dir, read_to_string, File, OpenOptions};
-    use std::io::Write;
-    use std::os::unix::io::RawFd;
-    use std::os::unix::prelude::OpenOptionsExt;
-    use std::sync::mpsc::channel;
-    use std::time::Duration;
 
-    use chrono::{DateTime, Utc};
+    use std::fs::read_to_string;
+    use std::os::unix::io::RawFd;
+
     use containerd_shim_wasm::function;
-    use containerd_shim_wasm::sandbox::instance::Wait;
-    use containerd_shim_wasm::sandbox::testutil::{has_cap_sys_admin, run_test_with_sudo};
+    use containerd_shim_wasm::sandbox::testutil::{
+        has_cap_sys_admin, run_test_with_sudo, run_wasi_test,
+    };
     use containerd_shim_wasm::sandbox::Instance;
-    use libc::{dup2, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+    use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use serial_test::serial;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::tempdir;
     use wasmedge_sdk::wat2wasm;
 
     use super::*;
@@ -162,74 +156,6 @@ mod wasitest {
     "#
     .as_bytes();
 
-    fn run_wasi_test(dir: &TempDir, wasmbytes: Cow<[u8]>) -> Result<(u32, DateTime<Utc>), Error> {
-        create_dir(dir.path().join("rootfs"))?;
-        let rootdir = dir.path().join("runwasi");
-        create_dir(rootdir)?;
-        let rootdir = PathBuf::from("/path/to/root");
-        let mut opts = HashMap::new();
-        opts.insert("root", rootdir);
-        let serialized = serde_json::to_string(&opts)?;
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serialized)?;
-
-        let wasm_path = dir.path().join("rootfs/hello.wasm");
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o755)
-            .open(wasm_path)?;
-        f.write_all(&wasmbytes)?;
-
-        let stdout = File::create(dir.path().join("stdout"))?;
-        drop(stdout);
-
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args(vec!["./hello.wasm".to_string()])
-                    .build()?,
-            )
-            .build()?;
-
-        spec.save(dir.path().join("config.json"))?;
-
-        let mut cfg =
-            InstanceConfig::new((), "test_namespace".into(), "/containerd/address".into());
-        let cfg = cfg
-            .set_bundle(dir.path().to_str().unwrap().to_string())
-            .set_stdout(dir.path().join("stdout").to_str().unwrap().to_string());
-
-        let wasi = Wasi::new("test".to_string(), Some(cfg));
-
-        wasi.start()?;
-
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
-        wasi.wait(&waiter).unwrap();
-
-        let res = match rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(res) => Ok(res),
-            Err(e) => {
-                wasi.kill(SIGKILL as u32).unwrap();
-                return Err(Error::Others(format!(
-                    "error waiting for module to finish: {0}",
-                    e
-                )));
-            }
-        };
-        wasi.delete()?;
-        res
-    }
-
     #[test]
     #[serial]
     fn test_delete_after_create() {
@@ -246,7 +172,7 @@ mod wasitest {
 
     #[test]
     #[serial]
-    fn test_wasi() -> Result<(), Error> {
+    fn test_wasi() -> anyhow::Result<()> {
         if !has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
@@ -256,7 +182,7 @@ mod wasitest {
         let path = dir.path();
         let wasm_bytes = wat2wasm(WASI_HELLO_WAT).unwrap();
 
-        let res = run_wasi_test(&dir, wasm_bytes)?;
+        let res = run_wasi_test::<Wasi>(&dir, wasm_bytes, None)?;
 
         assert_eq!(res.0, 0);
 
@@ -269,7 +195,7 @@ mod wasitest {
 
     #[test]
     #[serial]
-    fn test_wasi_error() -> Result<(), Error> {
+    fn test_wasi_error() -> anyhow::Result<()> {
         if !has_cap_sys_admin() {
             println!("running test with sudo: {}", function!());
             return run_test_with_sudo(function!());
@@ -278,7 +204,7 @@ mod wasitest {
         let dir = tempdir()?;
         let wasm_bytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 
-        let res = run_wasi_test(&dir, wasm_bytes)?;
+        let res = run_wasi_test::<Wasi>(&dir, wasm_bytes, None)?;
 
         // Expect error code from the run.
         assert_eq!(res.0, 137);
