@@ -1,8 +1,12 @@
+use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Result};
+use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::prelude::{AsRawHandle, IntoRawHandle, OwnedHandle};
+use std::path::Path;
 
 use libc::{c_int, close, intptr_t, open_osfhandle, O_APPEND};
+use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OVERLAPPED;
 
 type StdioRawFd = libc::c_int;
 
@@ -20,6 +24,17 @@ pub fn try_into_fd(f: impl Into<OwnedHandle>) -> Result<impl StdioAsRawFd> {
     }
     let _ = handle.into_raw_handle(); // drop ownership of the handle, it's managed by fd now
     Ok(StdioOwnedFd(fd))
+}
+
+pub fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
+    // Containerd always passes a named pipe for stdin, stdout, and stderr so we can check if it is a pipe and open with overlapped IO
+    let mut options = OpenOptions::new();
+    options.read(true).write(true);
+    if path.as_ref().starts_with("\\\\.\\pipe\\") {
+        options.custom_flags(FILE_FLAG_OVERLAPPED);
+    }
+
+    options.open(path)
 }
 
 pub trait StdioAsRawFd {

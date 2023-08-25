@@ -542,6 +542,7 @@ dependencies = [
  "thiserror",
  "ttrpc",
  "ttrpc-codegen",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
