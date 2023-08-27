@@ -44,6 +44,16 @@ macro_rules! stdio_impl {
             }
         }
 
+        impl Drop for $stdio_type {
+            fn drop(&mut self) {
+                if let Some(f) = self.0.try_lock().ok().and_then(|mut f| f.take()) {
+                    unsafe {
+                        let _ = libc::close(f.as_raw_fd());
+                    }
+                }
+            }
+        }
+
         impl $stdio_type {
             pub fn redirect(&self) -> Result<()> {
                 if let Some(f) = self.0.try_lock().ok().and_then(|mut f| f.take()) {
