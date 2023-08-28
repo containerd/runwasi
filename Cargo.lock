@@ -493,7 +493,7 @@ dependencies = [
  "libc",
  "log",
  "mio",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "os_pipe",
  "page_size",
@@ -532,7 +532,7 @@ dependencies = [
  "libc",
  "libcontainer",
  "log",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "protobuf 3.2.0",
  "serde",
@@ -557,7 +557,7 @@ dependencies = [
  "libc",
  "libcontainer",
  "log",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "serde_json",
  "serial_test",
@@ -582,7 +582,7 @@ dependencies = [
  "libc",
  "libcontainer",
  "log",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "serde",
  "serde_json",
@@ -1616,7 +1616,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75adb4021282a72ca63ebbc0e4247750ad74ede68ff062d247691072d709ad8b"
 dependencies = [
  "cc",
- "nix 0.26.2",
+ "nix 0.26.3",
  "num_cpus",
  "pkg-config",
 ]
@@ -1638,7 +1638,7 @@ dependencies = [
  "fixedbitset 0.4.2",
  "libbpf-sys",
  "libc",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "procfs",
  "rbpf",
@@ -1662,7 +1662,7 @@ dependencies = [
  "libc",
  "libcgroups",
  "libseccomp",
- "nix 0.26.2",
+ "nix 0.26.3",
  "oci-spec",
  "once_cell",
  "prctl",
@@ -1879,16 +1879,15 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.26.2"
+version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfdda3d196821d6af13126e40375cdf7da646a96114af134d5f417a9a1dc8e1a"
+checksum = "abbbc55ad7b13aac85f9401c796dcda1b864e07fcad40ad47792eaa8932ea502"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.3",
  "cfg-if 1.0.0",
  "libc",
  "memoffset 0.7.1",
  "pin-utils",
- "static_assertions",
 ]
 
 [[package]]
@@ -2129,7 +2128,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "059a34f111a9dee2ce1ac2826a68b24601c4298cfeb1a587c3cb493d5ab46f52"
 dependencies = [
  "libc",
- "nix 0.26.2",
+ "nix 0.22.3",
 ]
 
 [[package]]
@@ -2902,12 +2901,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "static_assertions"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
 name = "stdweb"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3243,7 +3236,7 @@ dependencies = [
  "byteorder",
  "libc",
  "log",
- "nix 0.26.2",
+ "nix 0.26.3",
  "protobuf 3.2.0",
  "protobuf-codegen 3.2.0",
  "thiserror",
