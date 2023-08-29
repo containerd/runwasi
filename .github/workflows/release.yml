@@ -61,16 +61,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ needs.generate.outputs.crate }}
-      - name: "check cgroup version"
-        run: "mount | grep cgroup"
       - uses: actions/checkout@v3
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
+        shell: bash
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: false
-      - name: Setup build env
-        run: ${GITHUB_WORKSPACE}/.github/scripts/build.sh
-        shell: bash
       - name: Build
         run: cargo build --verbose --package ${{ needs.generate.outputs.crate }}
       - name: Test

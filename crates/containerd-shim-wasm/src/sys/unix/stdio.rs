@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::Result;
-pub use std::os::fd::AsRawFd as StdioAsRawFd;
 use std::os::fd::OwnedFd;
+pub use std::os::fd::{AsRawFd as StdioAsRawFd, RawFd as StdioRawFd};
 use std::path::Path;
 
 pub use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};

@@ -25,7 +25,7 @@ impl LinuxContainerExecutor {
 
 impl Executor for LinuxContainerExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        self.stdio.redirect().map_err(|err| {
+        self.stdio.take().redirect().map_err(|err| {
             log::error!("failed to redirect io: {}", err);
             ExecutorError::Other(format!("failed to redirect io: {}", err))
         })?;

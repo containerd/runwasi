@@ -96,7 +96,7 @@ impl WasmEdgeExecutor {
             .register_module_from_file("main", module_name)
             .map_err(|err| ExecutorError::Execution(err))?;
 
-        self.stdio.redirect()?;
+        self.stdio.take().redirect()?;
 
         Ok(vm)
     }

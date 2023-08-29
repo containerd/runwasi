@@ -49,6 +49,19 @@ jobs:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
 
+  smoke-tests:
+    name: ${{ matrix.runtime }}
+    needs: [build-ubuntu, test-image]
+    strategy:
+      matrix:
+        # 20.04 uses cgroupv1, 22.04 uses cgroupv2
+        os: ["ubuntu-20.04", "ubuntu-22.04"]
+        runtime:  ["wasmtime", "wasmedge"]
+    uses: ./.github/workflows/action-test-smoke.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
+
   e2e-wasmtime:
     name: ${{ matrix.runtime }}
     needs: [build-ubuntu, test-image]

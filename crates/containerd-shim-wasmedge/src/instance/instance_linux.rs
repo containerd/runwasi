@@ -39,11 +39,7 @@ impl LibcontainerInstance for Wasi {
             )
             .unwrap(),
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-            stdio: Stdio {
-                stdin: cfg.get_stdin().try_into().unwrap(),
-                stdout: cfg.get_stdout().try_into().unwrap(),
-                stderr: cfg.get_stderr().try_into().unwrap(),
-            },
+            stdio: Stdio::init_from_cfg(cfg).expect("failed to open stdio"),
             bundle,
         }
     }
@@ -65,7 +61,7 @@ impl LibcontainerInstance for Wasi {
 
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));
         let container = ContainerBuilder::new(self.id.clone(), SyscallType::Linux)
-            .with_executor(WasmEdgeExecutor::new(self.stdio.clone()))
+            .with_executor(WasmEdgeExecutor::new(self.stdio.take()))
             .with_root_path(self.rootdir.clone())
             .map_err(err_others)?
             .as_init(&self.bundle)

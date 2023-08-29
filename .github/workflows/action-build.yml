@@ -31,6 +31,7 @@ jobs:
       - name: Validate docs
         run: ./scripts/validate-docs.sh
       - name: Run tests
+        timeout-minutes: 5
         run: |
           make test
       - name: Package artifacts
