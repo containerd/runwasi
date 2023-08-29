@@ -3,12 +3,12 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use libcontainer::workload::default::DefaultExecutor;
-use libcontainer::workload::{Executor, ExecutorError};
+use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 use oci_spec::runtime::Spec;
 
 use crate::sandbox::{oci, Stdio};
 
-#[derive(Default)]
+#[derive(Clone)]
 pub struct LinuxContainerExecutor {
     stdio: Stdio,
     default_executor: DefaultExecutor,
@@ -18,7 +18,7 @@ impl LinuxContainerExecutor {
     pub fn new(stdio: Stdio) -> Self {
         Self {
             stdio,
-            ..Default::default()
+            default_executor: DefaultExecutor {},
         }
     }
 }
@@ -32,7 +32,19 @@ impl Executor for LinuxContainerExecutor {
         self.default_executor.exec(spec)
     }
 
+    fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
+        self.default_executor.validate(spec)?;
+
+        self.can_handle(spec)
+            .then_some(())
+            .ok_or(ExecutorValidationError::InvalidArg)
+    }
+}
+
+impl LinuxContainerExecutor {
     fn can_handle(&self, spec: &Spec) -> bool {
+        // TODO: some of these logic is now implemented inside the default
+        // executor. Should we de-dup?
         let args = oci::get_args(spec);
 
         if args.is_empty() {
@@ -105,9 +117,5 @@ impl Executor for LinuxContainerExecutor {
                 false
             }
         }
-    }
-
-    fn name(&self) -> &'static str {
-        self.default_executor.name()
     }
 }

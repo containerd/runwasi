@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
 
-use containerd_shim_wasm::libcontainer_instance::{LibcontainerInstance, LinuxContainerExecutor};
+use containerd_shim_wasm::libcontainer_instance::LibcontainerInstance;
 use containerd_shim_wasm::sandbox::error::Error;
 use containerd_shim_wasm::sandbox::instance::ExitCode;
 use containerd_shim_wasm::sandbox::instance_utils::determine_rootdir;
@@ -9,7 +9,7 @@ use containerd_shim_wasm::sandbox::stdio::Stdio;
 use containerd_shim_wasm::sandbox::InstanceConfig;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
-use libcontainer::syscall::syscall::create_syscall;
+use libcontainer::syscall::syscall::SyscallType;
 
 use crate::executor::WasmtimeExecutor;
 
@@ -67,16 +67,11 @@ impl LibcontainerInstance for Wasi {
 
     fn build_container(&self) -> std::result::Result<Container, Error> {
         let engine = self.engine.clone();
-        let syscall = create_syscall();
         self.stdio.redirect()?;
         let err_others = |err| Error::Others(format!("failed to create container: {}", err));
 
-        let wasmtime_executor = Box::new(WasmtimeExecutor::new(self.stdio.clone(), engine));
-        let default_executor = Box::new(LinuxContainerExecutor::new(self.stdio.clone()));
-
-        let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![default_executor, wasmtime_executor])
-            .map_err(err_others)?
+        let container = ContainerBuilder::new(self.id.clone(), SyscallType::Linux)
+            .with_executor(WasmtimeExecutor::new(self.stdio.clone(), engine))
             .with_root_path(self.rootdir.clone())
             .map_err(err_others)?
             .as_init(&self.bundle)
