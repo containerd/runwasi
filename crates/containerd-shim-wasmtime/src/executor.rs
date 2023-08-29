@@ -46,6 +46,7 @@ impl Executor for WasmtimeExecutor {
             }
             Err(ExecutorValidationError::CantHandle(_)) => {
                 LinuxContainerExecutor::new(self.stdio.clone()).exec(spec)?;
+
                 Ok(())
             }
             Err(_) => Err(ExecutorError::InvalidArg),
@@ -137,7 +138,7 @@ impl WasmtimeExecutor {
             .map(|ext| ext.to_ascii_lowercase())
             .is_some_and(|ext| ext == "wasm" || ext == "wat")
             .then_some(())
-            .ok_or(ExecutorValidationError::InvalidArg)?;
+            .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
 
         Ok(())
     }

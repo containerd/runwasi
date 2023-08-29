@@ -117,7 +117,7 @@ impl WasmEdgeExecutor {
             .map(|ext| ext.to_ascii_lowercase())
             .is_some_and(|ext| ext == "wasm" || ext == "wat")
             .then_some(())
-            .ok_or(ExecutorValidationError::InvalidArg)?;
+            .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
 
         Ok(())
     }
