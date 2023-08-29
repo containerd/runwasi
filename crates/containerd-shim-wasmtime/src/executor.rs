@@ -4,16 +4,15 @@ use std::{fs::OpenOptions, os::fd::RawFd};
 use anyhow::{anyhow, Context, Result};
 use containerd_shim_wasm::sandbox::oci;
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use libcontainer::workload::{Executor, ExecutorError};
-use oci_spec::runtime::Spec;
+use libcontainer::oci_spec::runtime::Spec;
+use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::WasiCtxBuilder;
 
 use crate::oci_wasmtime::{self, wasi_dir};
 
-const EXECUTOR_NAME: &str = "wasmtime";
-
+#[derive(Clone)]
 pub struct WasmtimeExecutor {
     pub stdin: Option<RawFd>,
     pub stdout: Option<RawFd>,
@@ -39,12 +38,16 @@ impl Executor for WasmtimeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
-    }
+    fn validate(
+        &self,
+        spec: &Spec,
+    ) -> std::result::Result<(), libcontainer::workload::ExecutorValidationError> {
+        let args = oci::get_args(spec);
+        if args.len() != 1 {
+            return Err(ExecutorValidationError::InvalidArg);
+        }
 
-    fn name(&self) -> &'static str {
-        EXECUTOR_NAME
+        Ok(())
     }
 }
 

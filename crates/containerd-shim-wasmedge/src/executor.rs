@@ -4,7 +4,7 @@ use nix::unistd::{dup, dup2};
 use oci_spec::runtime::Spec;
 
 use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use libcontainer::workload::{Executor, ExecutorError};
+use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 use std::os::unix::io::RawFd;
 
 use wasmedge_sdk::{
@@ -12,8 +12,7 @@ use wasmedge_sdk::{
     params, VmBuilder,
 };
 
-const EXECUTOR_NAME: &str = "wasmedge";
-
+#[derive(Clone)]
 pub struct WasmEdgeExecutor {
     pub stdin: Option<RawFd>,
     pub stdout: Option<RawFd>,
@@ -40,12 +39,16 @@ impl Executor for WasmEdgeExecutor {
         };
     }
 
-    fn can_handle(&self, _spec: &Spec) -> bool {
-        true
-    }
+    fn validate(
+        &self,
+        spec: &Spec,
+    ) -> std::result::Result<(), libcontainer::workload::ExecutorValidationError> {
+        let args = oci::get_args(spec);
+        if args.is_empty() {
+            return Err(ExecutorValidationError::InvalidArg);
+        }
 
-    fn name(&self) -> &'static str {
-        EXECUTOR_NAME
+        Ok(())
     }
 }
 

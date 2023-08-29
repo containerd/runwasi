@@ -15,6 +15,7 @@ use containerd_shim_wasm::sandbox::instance_utils::{
 };
 use containerd_shim_wasm::sandbox::{EngineGetter, Instance, InstanceConfig};
 use libc::{dup2, SIGINT, SIGKILL, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libcontainer::syscall::syscall::SyscallType;
 use log::{debug, error};
 use nix::errno::Errno;
 use nix::sys::signal::Signal as NixSignal;
@@ -35,7 +36,6 @@ use std::{
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::{Container, ContainerStatus};
 use libcontainer::signal::Signal;
-use libcontainer::syscall::syscall::create_syscall;
 
 use crate::executor::WasmEdgeExecutor;
 
@@ -234,13 +234,12 @@ impl Wasi {
         stdout: Option<i32>,
         stderr: Option<i32>,
     ) -> anyhow::Result<Container> {
-        let syscall = create_syscall();
-        let container = ContainerBuilder::new(self.id.clone(), syscall.as_ref())
-            .with_executor(vec![Box::new(WasmEdgeExecutor {
+        let container = ContainerBuilder::new(self.id.clone(), SyscallType::Linux)
+            .with_executor(WasmEdgeExecutor {
                 stdin,
                 stdout,
                 stderr,
-            })])?
+            })
             .with_root_path(self.rootdir.clone())?
             .as_init(&self.bundle)
             .with_systemd(false)
