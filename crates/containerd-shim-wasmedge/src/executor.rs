@@ -24,7 +24,7 @@ impl WasmEdgeExecutor {
 
 impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        match self.can_handle(spec) {
+        match can_handle(spec) {
             Ok(()) => {
                 // parse wasi parameters
                 let args = oci::get_args(spec);
@@ -54,7 +54,7 @@ impl Executor for WasmEdgeExecutor {
     }
 
     fn validate(&self, spec: &Spec) -> std::result::Result<(), ExecutorValidationError> {
-        match self.can_handle(spec) {
+        match can_handle(spec) {
             Ok(()) => Ok(()),
             Err(ExecutorValidationError::CantHandle(_)) => {
                 LinuxContainerExecutor::new(self.stdio.clone()).validate(spec)?;
@@ -100,27 +100,6 @@ impl WasmEdgeExecutor {
 
         Ok(vm)
     }
-
-    fn can_handle(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
-        // check if the entrypoint of the spec is a wasm binary.
-        let (module_name, _method) = oci::get_module(spec);
-        let module_name = match module_name {
-            Some(m) => m,
-            None => {
-                log::info!("WasmEdge cannot handle this workload, no arguments provided");
-                return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
-            }
-        };
-        let path = PathBuf::from(module_name);
-
-        path.extension()
-            .map(|ext| ext.to_ascii_lowercase())
-            .is_some_and(|ext| ext == "wasm" || ext == "wat")
-            .then_some(())
-            .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
-
-        Ok(())
-    }
 }
 
 fn env_to_wasi(spec: &Spec) -> Vec<String> {
@@ -133,4 +112,25 @@ fn env_to_wasi(spec: &Spec) -> Vec<String> {
         .as_ref()
         .unwrap_or(&default);
     env.to_vec()
+}
+
+fn can_handle(spec: &Spec) -> Result<(), ExecutorValidationError> {
+    // check if the entrypoint of the spec is a wasm binary.
+    let (module_name, _method) = oci::get_module(spec);
+    let module_name = match module_name {
+        Some(m) => m,
+        None => {
+            log::info!("WasmEdge cannot handle this workload, no arguments provided");
+            return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
+        }
+    };
+    let path = PathBuf::from(module_name);
+
+    path.extension()
+        .map(|ext| ext.to_ascii_lowercase())
+        .is_some_and(|ext| ext == "wasm" || ext == "wat")
+        .then_some(())
+        .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
+
+    Ok(())
 }

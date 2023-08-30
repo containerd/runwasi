@@ -27,7 +27,7 @@ impl WasmtimeExecutor {
 
 impl Executor for WasmtimeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        match self.can_handle(spec) {
+        match can_handle(spec) {
             Ok(()) => {
                 let args = oci::get_args(spec);
                 if args.is_empty() {
@@ -54,7 +54,7 @@ impl Executor for WasmtimeExecutor {
     }
 
     fn validate(&self, spec: &Spec) -> std::result::Result<(), ExecutorValidationError> {
-        match self.can_handle(spec) {
+        match can_handle(spec) {
             Ok(()) => Ok(()),
             Err(ExecutorValidationError::CantHandle(_)) => {
                 LinuxContainerExecutor::new(self.stdio.clone()).validate(spec)?;
@@ -115,31 +115,31 @@ impl WasmtimeExecutor {
             .ok_or_else(|| anyhow!("module does not have a WASI start function".to_string()))?;
         Ok((store, start_func))
     }
+}
 
-    fn can_handle(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
-        // check if the entrypoint of the spec is a wasm binary.
-        let (module_name, _method) = oci::get_module(spec);
-        let module_name = match module_name {
-            Some(m) => m,
-            None => {
-                log::info!("Wasmtime cannot handle this workload, no arguments provided");
-                return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
-            }
-        };
-        let path = PathBuf::from(module_name);
+fn can_handle(spec: &Spec) -> Result<(), ExecutorValidationError> {
+    // check if the entrypoint of the spec is a wasm binary.
+    let (module_name, _method) = oci::get_module(spec);
+    let module_name = match module_name {
+        Some(m) => m,
+        None => {
+            log::info!("Wasmtime cannot handle this workload, no arguments provided");
+            return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
+        }
+    };
+    let path = PathBuf::from(module_name);
 
-        // TODO: do we need to validate the wasm binary?
-        // ```rust
-        //   let bytes = std::fs::read(path).unwrap();
-        //   wasmparser::validate(&bytes).is_ok()
-        // ```
+    // TODO: do we need to validate the wasm binary?
+    // ```rust
+    //   let bytes = std::fs::read(path).unwrap();
+    //   wasmparser::validate(&bytes).is_ok()
+    // ```
 
-        path.extension()
-            .map(|ext| ext.to_ascii_lowercase())
-            .is_some_and(|ext| ext == "wasm" || ext == "wat")
-            .then_some(())
-            .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
+    path.extension()
+        .map(|ext| ext.to_ascii_lowercase())
+        .is_some_and(|ext| ext == "wasm" || ext == "wat")
+        .then_some(())
+        .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
 
-        Ok(())
-    }
+    Ok(())
 }
