@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
+use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
 use containerd_shim_wasm::sandbox::{oci, Stdio};
-use libcontainer::workload::{Executor, ExecutorError};
+use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 use log::debug;
 use oci_spec::runtime::Spec;
 use wasmedge_sdk::config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions};
@@ -10,6 +11,7 @@ use wasmedge_sdk::{params, VmBuilder};
 
 const EXECUTOR_NAME: &str = "wasmedge";
 
+#[derive(Clone)]
 pub struct WasmEdgeExecutor {
     stdio: Stdio,
 }
@@ -22,45 +24,45 @@ impl WasmEdgeExecutor {
 
 impl Executor for WasmEdgeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        // parse wasi parameters
-        let args = oci::get_args(spec);
-        if args.is_empty() {
-            return Err(ExecutorError::InvalidArg);
-        }
+        match can_handle(spec) {
+            Ok(()) => {
+                // parse wasi parameters
+                let args = oci::get_args(spec);
+                if args.is_empty() {
+                    return Err(ExecutorError::InvalidArg);
+                }
 
-        let vm = self
-            .prepare(args, spec)
-            .map_err(|err| ExecutorError::Other(format!("failed to prepare function: {}", err)))?;
+                let vm = self.prepare(args, spec).map_err(|err| {
+                    ExecutorError::Other(format!("failed to prepare function: {}", err))
+                })?;
 
-        // TODO: How to get exit code?
-        // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
-        let (module_name, method) = oci::get_module(spec);
-        debug!("running {:?} with method {}", module_name, method);
-        match vm.run_func(Some("main"), method, params!()) {
-            Ok(_) => std::process::exit(0),
-            Err(_) => std::process::exit(137),
-        };
-    }
-
-    fn can_handle(&self, spec: &Spec) -> bool {
-        // check if the entrypoint of the spec is a wasm binary.
-        let (module_name, _method) = oci::get_module(spec);
-        let module_name = match module_name {
-            Some(m) => m,
-            None => {
-                log::info!("WasmEdge cannot handle this workload, no arguments provided");
-                return false;
+                // TODO: How to get exit code?
+                // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
+                let (module_name, method) = oci::get_module(spec);
+                debug!("running {:?} with method {}", module_name, method);
+                match vm.run_func(Some("main"), method, params!()) {
+                    Ok(_) => std::process::exit(0),
+                    Err(_) => std::process::exit(137),
+                };
             }
-        };
-        let path = PathBuf::from(module_name);
-
-        path.extension()
-            .map(|ext| ext.to_ascii_lowercase())
-            .is_some_and(|ext| ext == "wasm" || ext == "wat")
+            Err(ExecutorValidationError::CantHandle(_)) => {
+                LinuxContainerExecutor::new(self.stdio.clone()).exec(spec)?;
+                Ok(())
+            }
+            Err(_) => Err(ExecutorError::InvalidArg),
+        }
     }
 
-    fn name(&self) -> &'static str {
-        EXECUTOR_NAME
+    fn validate(&self, spec: &Spec) -> std::result::Result<(), ExecutorValidationError> {
+        match can_handle(spec) {
+            Ok(()) => Ok(()),
+            Err(ExecutorValidationError::CantHandle(_)) => {
+                LinuxContainerExecutor::new(self.stdio.clone()).validate(spec)?;
+
+                Ok(())
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -110,4 +112,25 @@ fn env_to_wasi(spec: &Spec) -> Vec<String> {
         .as_ref()
         .unwrap_or(&default);
     env.to_vec()
+}
+
+fn can_handle(spec: &Spec) -> Result<(), ExecutorValidationError> {
+    // check if the entrypoint of the spec is a wasm binary.
+    let (module_name, _method) = oci::get_module(spec);
+    let module_name = match module_name {
+        Some(m) => m,
+        None => {
+            log::info!("WasmEdge cannot handle this workload, no arguments provided");
+            return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
+        }
+    };
+    let path = PathBuf::from(module_name);
+
+    path.extension()
+        .map(|ext| ext.to_ascii_lowercase())
+        .is_some_and(|ext| ext == "wasm" || ext == "wat")
+        .then_some(())
+        .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
+
+    Ok(())
 }

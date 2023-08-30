@@ -2,8 +2,9 @@ use std::fs::OpenOptions;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
 use containerd_shim_wasm::sandbox::{oci, Stdio};
-use libcontainer::workload::{Executor, ExecutorError};
+use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 use oci_spec::runtime::Spec;
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::WasiCtxBuilder;
@@ -12,6 +13,7 @@ use crate::oci_wasmtime::{self, wasi_dir};
 
 const EXECUTOR_NAME: &str = "wasmtime";
 
+#[derive(Clone)]
 pub struct WasmtimeExecutor {
     stdio: Stdio,
     engine: Engine,
@@ -25,47 +27,42 @@ impl WasmtimeExecutor {
 
 impl Executor for WasmtimeExecutor {
     fn exec(&self, spec: &Spec) -> Result<(), ExecutorError> {
-        let args = oci::get_args(spec);
-        if args.is_empty() {
-            return Err(ExecutorError::InvalidArg);
-        }
+        match can_handle(spec) {
+            Ok(()) => {
+                let args = oci::get_args(spec);
+                if args.is_empty() {
+                    return Err(ExecutorError::InvalidArg);
+                }
 
-        let (mut store, f) = self
-            .prepare(spec, args)
-            .map_err(|err| ExecutorError::Other(format!("failed to prepare function: {}", err)))?;
+                let (mut store, f) = self.prepare(spec, args).map_err(|err| {
+                    ExecutorError::Other(format!("failed to prepare function: {}", err))
+                })?;
 
-        log::info!("calling start function");
-        match f.call(&mut store, &[], &mut []) {
-            Ok(_) => std::process::exit(0),
-            Err(_) => std::process::exit(137),
-        };
-    }
-
-    fn can_handle(&self, spec: &Spec) -> bool {
-        // check if the entrypoint of the spec is a wasm binary.
-        let (module_name, _method) = oci::get_module(spec);
-        let module_name = match module_name {
-            Some(m) => m,
-            None => {
-                log::info!("Wasmtime cannot handle this workload, no arguments provided");
-                return false;
+                log::info!("calling start function");
+                match f.call(&mut store, &[], &mut []) {
+                    Ok(_) => std::process::exit(0),
+                    Err(_) => std::process::exit(137),
+                };
             }
-        };
-        let path = PathBuf::from(module_name);
+            Err(ExecutorValidationError::CantHandle(_)) => {
+                LinuxContainerExecutor::new(self.stdio.clone()).exec(spec)?;
 
-        // TODO: do we need to validate the wasm binary?
-        // ```rust
-        //   let bytes = std::fs::read(path).unwrap();
-        //   wasmparser::validate(&bytes).is_ok()
-        // ```
-
-        path.extension()
-            .map(|ext| ext.to_ascii_lowercase())
-            .is_some_and(|ext| ext == "wasm" || ext == "wat")
+                Ok(())
+            }
+            Err(_) => Err(ExecutorError::InvalidArg),
+        }
     }
 
-    fn name(&self) -> &'static str {
-        EXECUTOR_NAME
+    fn validate(&self, spec: &Spec) -> std::result::Result<(), ExecutorValidationError> {
+        match can_handle(spec) {
+            Ok(()) => Ok(()),
+            Err(ExecutorValidationError::CantHandle(_)) => {
+                LinuxContainerExecutor::new(self.stdio.clone()).validate(spec)?;
+
+                Ok(())
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -118,4 +115,31 @@ impl WasmtimeExecutor {
             .ok_or_else(|| anyhow!("module does not have a WASI start function".to_string()))?;
         Ok((store, start_func))
     }
+}
+
+fn can_handle(spec: &Spec) -> Result<(), ExecutorValidationError> {
+    // check if the entrypoint of the spec is a wasm binary.
+    let (module_name, _method) = oci::get_module(spec);
+    let module_name = match module_name {
+        Some(m) => m,
+        None => {
+            log::info!("Wasmtime cannot handle this workload, no arguments provided");
+            return Err(ExecutorValidationError::CantHandle(EXECUTOR_NAME));
+        }
+    };
+    let path = PathBuf::from(module_name);
+
+    // TODO: do we need to validate the wasm binary?
+    // ```rust
+    //   let bytes = std::fs::read(path).unwrap();
+    //   wasmparser::validate(&bytes).is_ok()
+    // ```
+
+    path.extension()
+        .map(|ext| ext.to_ascii_lowercase())
+        .is_some_and(|ext| ext == "wasm" || ext == "wat")
+        .then_some(())
+        .ok_or(ExecutorValidationError::CantHandle(EXECUTOR_NAME))?;
+
+    Ok(())
 }
