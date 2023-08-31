@@ -1,4 +1,4 @@
-name: Run end to end tests on k3s
+name: Run smoke tests
 
 on:
   workflow_call:
@@ -11,8 +11,8 @@ on:
         type: string
 
 jobs:
-  e2e-k3s:
-    name: e2e k3s test on ${{ inputs.os }}
+  smoke-test:
+    name: smoke test on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v3
@@ -36,7 +36,9 @@ jobs:
           path: dist
       - name: run
         timeout-minutes: 5
-        run: make test/k3s
-      - name: cleanup
-        if: always()
-        run: make test/k3s/clean
+        run: |
+          ls -alh dist
+          ls -alh dist/bin
+          make load
+          sudo cp -f dist/bin/* /usr/local/bin
+          sudo ctr run --rm --runtime=io.containerd.${{ inputs.runtime }}.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'

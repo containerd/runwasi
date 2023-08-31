@@ -57,7 +57,7 @@ install:
 	)
 
 dist:
-	$(MAKE) install PREFIX=$(PWD)/dist RUNTIMES=$(RUNTIMES) TARGET=$(TARGET)
+	$(MAKE) install PREFIX="$(PWD)/dist" RUNTIMES="$(RUNTIMES)" TARGET="$(TARGET)"
 
 .PHONY: test-image
 test-image: dist/img.tar

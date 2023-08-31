@@ -1,7 +1,7 @@
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result};
 use containerd_shim_wasm::libcontainer_instance::LinuxContainerExecutor;
 use containerd_shim_wasm::sandbox::{oci, Stdio};
 use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
@@ -83,23 +83,17 @@ impl WasmtimeExecutor {
             .inherit_stdio()
             .preopened_dir(path, "/")?;
 
-        self.stdio.redirect()?;
+        self.stdio.take().redirect()?;
 
         log::info!("building wasi context");
         let wctx = wasi_builder.build();
 
         log::info!("wasi context ready");
         let (module_name, method) = oci::get_module(spec);
-        let module_name = match module_name {
-            Some(m) => m,
-            None => {
-                return Err(anyhow::format_err!(
-                    "no module provided, cannot load module from file within container"
-                ))
-            }
-        };
+        let module_name = module_name
+            .context("no module provided, cannot load module from file within container")?;
 
-        log::info!("loading module from file {} ", module_name);
+        log::info!("loading module from file {}", module_name);
         let module = Module::from_file(&self.engine, module_name)?;
         let mut linker = Linker::new(&self.engine);
 
@@ -112,7 +106,7 @@ impl WasmtimeExecutor {
         log::info!("getting start function");
         let start_func = instance
             .get_func(&mut store, &method)
-            .ok_or_else(|| anyhow!("module does not have a WASI start function".to_string()))?;
+            .context("module does not have a WASI start function")?;
         Ok((store, start_func))
     }
 }

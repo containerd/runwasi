@@ -8,11 +8,11 @@ use std::path::Path;
 use libc::{c_int, close, intptr_t, open_osfhandle, O_APPEND};
 use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OVERLAPPED;
 
-type StdioRawFd = libc::c_int;
+pub type StdioRawFd = libc::c_int;
 
-pub static STDIN_FILENO: StdioRawFd = 0;
-pub static STDOUT_FILENO: StdioRawFd = 1;
-pub static STDERR_FILENO: StdioRawFd = 2;
+pub const STDIN_FILENO: StdioRawFd = 0;
+pub const STDOUT_FILENO: StdioRawFd = 1;
+pub const STDERR_FILENO: StdioRawFd = 2;
 
 struct StdioOwnedFd(c_int);
 

@@ -36,6 +36,7 @@ sha256 = "1.4.0"
 # TODO: once lincontainer releases 0.2, switch to released version. The current commit is the tip of the tree from `youki` and a release candidate.
 libcontainer = { git = "https://github.com/containers/youki", rev = "09e67372a892f22a89eeef62ff429c3cbcac6d41", default-features = false }
 windows-sys = { version = "0.48" }
+crossbeam = { version = "0.8.2", default-features = false }
 
 [profile.release]
 panic = "abort"
