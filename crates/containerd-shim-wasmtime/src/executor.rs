@@ -7,7 +7,7 @@ use containerd_shim_wasm::sandbox::{oci, Stdio};
 use libcontainer::workload::{Executor, ExecutorError, ExecutorValidationError};
 use oci_spec::runtime::Spec;
 use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::{maybe_exit_on_error, WasiCtxBuilder};
 
 use crate::oci_wasmtime::{self, wasi_dir};
 
@@ -39,10 +39,14 @@ impl Executor for WasmtimeExecutor {
                 })?;
 
                 log::info!("calling start function");
-                match f.call(&mut store, &[], &mut []) {
-                    Ok(_) => std::process::exit(0),
-                    Err(_) => std::process::exit(137),
-                };
+
+                let status = f.call(&mut store, &[], &mut []);
+                let status = status
+                    .map(|_| 0)
+                    .map_err(maybe_exit_on_error)
+                    .unwrap_or(137);
+
+                std::process::exit(status);
             }
             Err(ExecutorValidationError::CantHandle(_)) => {
                 LinuxContainerExecutor::new(self.stdio.clone()).exec(spec)?;

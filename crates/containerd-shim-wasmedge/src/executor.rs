@@ -36,14 +36,18 @@ impl Executor for WasmEdgeExecutor {
                     ExecutorError::Other(format!("failed to prepare function: {}", err))
                 })?;
 
-                // TODO: How to get exit code?
-                // This was relatively straight forward in go, but wasi and wasmtime are totally separate things in rust
                 let (module_name, method) = oci::get_module(spec);
                 debug!("running {:?} with method {}", module_name, method);
-                match vm.run_func(Some("main"), method, params!()) {
-                    Ok(_) => std::process::exit(0),
-                    Err(_) => std::process::exit(137),
-                };
+                if let Err(err) = vm.run_func(Some("main"), method, params!()) {
+                    log::info!("failed to execute function: {err}");
+                    std::process::exit(137);
+                }
+
+                let status = vm
+                    .wasi_module()
+                    .map(|module| module.exit_code())
+                    .unwrap_or(137);
+                std::process::exit(status as i32);
             }
             Err(ExecutorValidationError::CantHandle(_)) => {
                 LinuxContainerExecutor::new(self.stdio.clone()).exec(spec)?;

@@ -139,6 +139,22 @@ mod wasitest {
     )
     "#.as_bytes();
 
+    fn module_with_exit_code(exit_code: u32) -> Vec<u8> {
+        format!(r#"(module
+            ;; Import the required proc_exit WASI function which terminates the program with an exit code.
+            ;; The function signature for proc_exit is:
+            ;; (exit_code: i32) -> !
+            (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))
+            (memory 1)
+            (export "memory" (memory 0))
+            (func $main (export "_start")
+                (call $proc_exit (i32.const {exit_code}))
+                unreachable
+            )
+        )
+        "#).as_bytes().to_vec()
+    }
+
     const WASI_RETURN_ERROR: &[u8] = r#"(module
         (func $main (export "_start")
             (unreachable)
@@ -199,6 +215,26 @@ mod wasitest {
 
         // Expect error code from the run.
         assert_eq!(res.0, 137);
+
+        reset_stdio();
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_wasi_exit_code() -> anyhow::Result<()> {
+        if !has_cap_sys_admin() {
+            println!("running test with sudo: {}", function!());
+            return run_test_with_sudo(function!());
+        }
+
+        let expected_exit_code: u32 = 42;
+
+        let dir = tempdir()?;
+        let wasm_bytes = module_with_exit_code(expected_exit_code);
+        let (actual_exit_code, _) = run_wasi_test::<Wasi>(&dir, wasm_bytes, None)?;
+
+        assert_eq!(actual_exit_code, expected_exit_code);
 
         reset_stdio();
         Ok(())

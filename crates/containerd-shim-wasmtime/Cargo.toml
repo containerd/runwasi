@@ -24,7 +24,7 @@ wasmtime = { version = "11.0", default-features = false, features = [
     'vtune',
 ]}
 
-wasmtime-wasi = "11.0"
+wasmtime-wasi = { version = "11.0", features = ["exit"] }
 wasi-common = "11.0"
 chrono = { workspace = true }
 anyhow = { workspace = true }
@@ -43,6 +43,7 @@ dbus = { version = "*", optional = true }
 [dev-dependencies]
 tempfile = "3.8"
 libc = { workspace = true }
+serial_test = "*"
 env_logger = "0.10"
 
 [features]
