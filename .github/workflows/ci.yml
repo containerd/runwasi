@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge"]
+        runtime: ["wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
@@ -43,7 +43,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["wasmtime", "wasmedge"]
+        runtime: ["wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
@@ -56,7 +56,7 @@ jobs:
       matrix:
         # 20.04 uses cgroupv1, 22.04 uses cgroupv2
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime:  ["wasmtime", "wasmedge"]
+        runtime:  ["wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-test-smoke.yml
     with:
       os: ${{ matrix.os }}
@@ -74,14 +74,14 @@ jobs:
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
-
+      
   e2e-k3s:
     name: ${{ matrix.runtime }}
     needs: [build-ubuntu, test-image]
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime: ["wasmedge"]
+        runtime: ["wasmedge", "wasmer"]
     uses: ./.github/workflows/action-test-k3s.yml
     with:
       os: ${{ matrix.os }}

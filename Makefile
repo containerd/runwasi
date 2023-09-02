@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 TEST_IMG_NAME ?= wasmtest:latest
-RUNTIMES ?= wasmedge wasmtime
+RUNTIMES ?= wasmedge wasmtime wasmer
 export CONTAINERD_NAMESPACE ?= default
 
 TARGET ?= debug
@@ -115,8 +115,8 @@ bin/k3s:
 bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
-.PHONY: test/k3s
-test/k3s: dist/img.tar bin/k3s dist
+.PHONY: test/k3s-wasmedge
+test/k3s-wasmedge: dist/img.tar bin/k3s dist
 	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
 	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
@@ -127,7 +127,22 @@ test/k3s: dist/img.tar bin/k3s dist
 	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
 	sudo bin/k3s ctr image import --all-platforms dist/img.tar && \
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s && \
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s && \
+	sudo bin/k3s kubectl get pods -o wide
+
+.PHONY: test/k3s-wasmer
+test/k3s-wasmer: dist/img.tar bin/k3s dist
+	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmer-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
+	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
+	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
+	sudo systemctl daemon-reload && \
+	sudo systemctl restart k3s-runwasi && \
+	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
+	sudo bin/k3s ctr image import --all-platforms dist/img.tar && \
+	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s && \
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
