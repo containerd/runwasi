@@ -80,7 +80,7 @@ impl WasmtimeExecutor {
         let env = oci_wasmtime::env_to_wasi(spec);
         log::info!("setting up wasi");
 
-        let path = wasi_dir(".", OpenOptions::new().read(true))?;
+        let path = wasi_dir("/", OpenOptions::new().read(true))?;
         let wasi_builder = WasiCtxBuilder::new()
             .args(args)?
             .envs(env.as_slice())?
