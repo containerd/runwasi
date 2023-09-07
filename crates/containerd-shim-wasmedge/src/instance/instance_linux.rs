@@ -77,37 +77,17 @@ impl LibcontainerInstance for Wasi {
 mod wasitest {
 
     use std::fs::read_to_string;
-    use std::os::unix::io::RawFd;
 
     use containerd_shim_wasm::function;
     use containerd_shim_wasm::sandbox::testutil::{
         has_cap_sys_admin, run_test_with_sudo, run_wasi_test,
     };
     use containerd_shim_wasm::sandbox::Instance;
-    use libc::{dup2, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
     use serial_test::serial;
     use tempfile::tempdir;
     use wasmedge_sdk::wat2wasm;
 
     use super::*;
-
-    static mut STDIN_FD: Option<RawFd> = None;
-    static mut STDOUT_FD: Option<RawFd> = None;
-    static mut STDERR_FD: Option<RawFd> = None;
-
-    fn reset_stdio() {
-        unsafe {
-            if let Some(stdin) = STDIN_FD {
-                let _ = dup2(stdin, STDIN_FILENO);
-            }
-            if let Some(stdout) = STDOUT_FD {
-                let _ = dup2(stdout, STDOUT_FILENO);
-            }
-            if let Some(stderr) = STDERR_FD {
-                let _ = dup2(stderr, STDERR_FILENO);
-            }
-        }
-    }
 
     // This is taken from https://github.com/bytecodealliance/wasmtime/blob/6a60e8363f50b936e4c4fc958cb9742314ff09f3/docs/WASI-tutorial.md?plain=1#L270-L298
     const WASI_HELLO_WAT: &[u8]= r#"(module
@@ -185,6 +165,13 @@ mod wasitest {
             return run_test_with_sudo(function!());
         }
 
+        // start logging
+        // to enable logging run `export RUST_LOG=trace` and append cargo command with
+        // --show-output before running test
+        let _ = env_logger::try_init();
+
+        let _guard = Stdio::init_from_std().guard();
+
         let dir = tempdir()?;
         let path = dir.path();
         let wasm_bytes = wat2wasm(WASI_HELLO_WAT).unwrap();
@@ -196,7 +183,6 @@ mod wasitest {
         let output = read_to_string(path.join("stdout"))?;
         assert_eq!(output, "hello world\n");
 
-        reset_stdio();
         Ok(())
     }
 
@@ -208,6 +194,11 @@ mod wasitest {
             return run_test_with_sudo(function!());
         }
 
+        // start logging
+        let _ = env_logger::try_init();
+
+        let _guard = Stdio::init_from_std().guard();
+
         let dir = tempdir()?;
         let wasm_bytes = wat2wasm(WASI_RETURN_ERROR).unwrap();
 
@@ -216,7 +207,6 @@ mod wasitest {
         // Expect error code from the run.
         assert_eq!(res.0, 137);
 
-        reset_stdio();
         Ok(())
     }
 
@@ -228,6 +218,11 @@ mod wasitest {
             return run_test_with_sudo(function!());
         }
 
+        // start logging
+        let _ = env_logger::try_init();
+
+        let _guard = Stdio::init_from_std().guard();
+
         let expected_exit_code: u32 = 42;
 
         let dir = tempdir()?;
@@ -236,7 +231,6 @@ mod wasitest {
 
         assert_eq!(actual_exit_code, expected_exit_code);
 
-        reset_stdio();
         Ok(())
     }
 }
