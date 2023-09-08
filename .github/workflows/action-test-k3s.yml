@@ -36,7 +36,7 @@ jobs:
           path: dist
       - name: run
         timeout-minutes: 5
-        run: make test/k3s
+        run: make test/k3s-${{ inputs.runtime }}
       - name: cleanup
         if: always()
         run: make test/k3s/clean
