@@ -112,3 +112,41 @@ impl<P: AsRef<Path>, const FD: StdioRawFd> TryFrom<Option<P>> for StdioStream<FD
 pub type Stdin = StdioStream<STDIN_FILENO>;
 pub type Stdout = StdioStream<STDOUT_FILENO>;
 pub type Stderr = StdioStream<STDERR_FILENO>;
+
+#[cfg(test)]
+mod test {
+    use std::fs::File;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    /// containerd can send an empty path or a non-existant path
+    /// In both these cases we should just assume that the stdio stream was not setup (intentionally)
+    /// Any other error is a real error.
+    #[test]
+    fn test_maybe_open_stdio() -> anyhow::Result<()> {
+        // None
+        let s = Stdout::try_from(None::<&Path>)?;
+        assert!(s.0.take().as_raw_fd().is_none());
+
+        // empty path
+        let s = Stdout::try_from(Some(""))?;
+        assert!(s.0.take().as_raw_fd().is_none());
+
+        // nonexistent path
+        let s = Stdout::try_from(Some("/some/nonexistent/path"))?;
+        assert!(s.0.take().as_raw_fd().is_none());
+
+        // valid path
+        let dir = tempdir()?;
+        let path = dir.path().join("testfile");
+        let temp = File::create(&path)?;
+        drop(temp);
+
+        // a valid path should not fail
+        let s = Stdout::try_from(Some(&path))?;
+        assert!(s.0.take().as_raw_fd().is_some());
+        Ok(())
+    }
+}

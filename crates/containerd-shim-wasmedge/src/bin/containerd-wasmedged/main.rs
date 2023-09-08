@@ -3,7 +3,7 @@ use std::sync::Arc;
 use containerd_shim_wasm::sandbox::{Local, ManagerService};
 use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
 use containerd_shim_wasmedge::WasmEdgeInstance;
-use ttrpc::{self, Server};
+use ttrpc::Server;
 
 fn main() {
     log::info!("starting up!");
