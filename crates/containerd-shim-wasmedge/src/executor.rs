@@ -88,7 +88,7 @@ impl WasmEdgeExecutor {
         wasi_module.initialize(
             Some(args.iter().map(|s| s as &str).collect()),
             Some(envs.iter().map(|s| s as &str).collect()),
-            Some(vec!["/:."]),
+            Some(vec!["/:/"]),
         );
 
         let (module_name, _) = oci::get_module(spec);
