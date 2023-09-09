@@ -10,11 +10,14 @@ ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
 
-FEATURES := --features libcontainer_default
-WARNINGS := -D warnings
+FEATURES_wasm = --features libcontainer_default
+FEATURES_wasmedge = 
+WARNINGS = -D warnings
 ifeq ($(OS), Windows_NT)
+# need to disable libcontainer
+FEATURES_wasm = 
 # need to turn off static/standalone for wasm-edge
-FEATURES = --no-default-features
+FEATURES_wasmedge = --no-default-features
 # turn of warnings until windows is fully supported #49
 WARNINGS = 
 endif
@@ -23,41 +26,77 @@ DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
 
-.PHONY: build
-build:
-	cargo build -p containerd-shim-wasm --features generate_bindings $(RELEASE_FLAG)
-	cargo build -p containerd-shim-wasm $(FEATURES) $(RELEASE_FLAG)
-	cargo build $(FEATURES) $(RELEASE_FLAG)
+.PHONY: build build-common build-wasm build-%
+build: build-wasm $(RUNTIMES:%=build-%);
 
-.PHONY: check
-check:
-	cargo +nightly fmt --all -- --check
-	cargo clippy $(FEATURES) --all --all-targets -- $(WARNINGS)
+build-common: build-wasm;
+build-wasm:
+	cargo build -p containerd-shim-wasm --no-default-features --features generate_bindings $(RELEASE_FLAG)
+	cargo build -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
 
-.PHONY: fix
-fix:
-	cargo +nightly fmt --all
-	cargo clippy $(FEATURES) --fix --all --all-targets -- $(WARNINGS)
+build-%:
+	cargo build -p containerd-shim-$* $(FEATURES_$*) $(RELEASE_FLAG)
 
-.PHONY: test
-test:
-	RUST_LOG=trace cargo test $(FEATURES) --all --verbose -- --nocapture
+.PHONY: check check-common check-wasm check-%
+check: check-wasm $(RUNTIMES:%=check-%);
+
+check-common: check-wasm;
+check-wasm:
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- --check
+	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- $(WARNINGS)
+
+check-%:
+	cargo +nightly fmt -p containerd-shim-$* -- --check
+	cargo clippy $(FEATURES_$*) -p containerd-shim-$* -- $(WARNINGS)
+
+.PHONY: fix fix-common fix-wasm fix-%
+fix: fix-wasm $(RUNTIMES:%=fix-%);
+
+fix-common: fix-wasm;
+fix-wasm:
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm
+	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- $(WARNINGS)
+
+fix-%:
+	cargo +nightly fmt -p containerd-shim-$*
+	cargo clippy $(FEATURES_$*) --fix -p containerd-shim-$* -- $(WARNINGS)
+
+.PHONY: test test-common test-wasm test-wasmedge test-%
+test: test-wasm $(RUNTIMES:%=test-%);
+
+test-common: test-wasm;
+test-wasm:
+	# oci-tar-builder and wasi-demo-app have no tests
+	RUST_LOG=trace cargo test --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture
+
+test-wasmedge:
+	# run tests in one thread to prevent paralellism
+	RUST_LOG=trace cargo test --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose -- --nocapture --test-threads=1
 ifneq ($(OS), Windows_NT)
 	# run wasmedge test without the default `static` feature
-	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --verbose --no-default-features --features standalone -- --nocapture
+	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose -- --nocapture --test-threads=1
 endif
 
-.PHONY: install
-install:
-	mkdir -p $(PREFIX)/bin
-	$(foreach runtime,$(RUNTIMES), \
-		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)-v1 $(PREFIX)/bin/; \
-		$(INSTALL) target/$(TARGET)/containerd-shim-$(runtime)d-v1 $(PREFIX)/bin/; \
-		$(INSTALL) target/$(TARGET)/containerd-$(runtime)d $(PREFIX)/bin/; \
-	)
+test-%:
+	# run tests in one thread to prevent paralellism
+	RUST_LOG=trace cargo test --package containerd-shim-$* $(FEATURES_$*) --lib --verbose -- --nocapture --test-threads=1
 
+.PHONY: install install-%
+install: $(RUNTIMES:%=install-%);
+
+install-%:
+	mkdir -p $(PREFIX)/bin
+	$(INSTALL) target/$(TARGET)/containerd-shim-$*-v1 $(PREFIX)/bin/
+	$(INSTALL) target/$(TARGET)/containerd-shim-$*d-v1 $(PREFIX)/bin/
+	$(INSTALL) target/$(TARGET)/containerd-$*d $(PREFIX)/bin/
+
+# dist is not phony, so that if the folder exist we don't try to do work
 dist:
-	$(MAKE) install PREFIX="$(PWD)/dist" RUNTIMES="$(RUNTIMES)" TARGET="$(TARGET)"
+	$(MAKE) $(RUNTIMES:%=dist-%) TARGET="$(TARGET)"
+
+.PHONY: dist-%
+dist-%: build-%
+	$(MAKE) install-$* PREFIX="$(PWD)/dist" TARGET="$(TARGET)"
 
 .PHONY: test-image
 test-image: dist/img.tar

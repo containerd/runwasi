@@ -27,17 +27,18 @@ jobs:
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Build
-        run: make build RUNTIMES=${{ inputs.runtime }}
+        run: make build-${{ inputs.runtime }}
       - name: Validate docs
         run: ./scripts/validate-docs.sh
       - name: Run tests
         timeout-minutes: 5
         run: |
-          make test
+          make test-${{ inputs.runtime }}
       - name: Package artifacts
+        if: ${{ inputs.runtime != 'common' }}
         shell: bash
         run: |
-          make dist RUNTIMES=${{ inputs.runtime }}
+          make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -C dist/bin .
@@ -45,6 +46,7 @@ jobs:
             tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
+        if: ${{ inputs.runtime != 'common' }}
         uses: actions/upload-artifact@master
         with:
           name: containerd-shim-${{ inputs.runtime }}-${{ inputs.os }}
