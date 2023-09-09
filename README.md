@@ -115,32 +115,32 @@ Shared mode requires precise control over real threads and as such should not be
 
 #### Components
 
-- **containerd-shim-[ wasmedge | wasmtime ]-v1**
+- **containerd-shim-[ wasmedge | wasmtime | wasmer ]-v1**
 
-This is a containerd shim which runs wasm workloads in [WasmEdge](https://github.com/WasmEdge/WasmEdge) or [Wasmtime](https://github.com/bytecodealliance/wasmtime).
-You can use it with containerd's `ctr` by specifying `--runtime=io.containerd.[ wasmedge | wasmtime ].v1` when creating the container.
+This is a containerd shim which runs wasm workloads in [WasmEdge](https://github.com/WasmEdge/WasmEdge) or [Wasmtime](https://github.com/bytecodealliance/wasmtime) or [Wasmer](https://github.com/wasmerio/wasmer).
+You can use it with containerd's `ctr` by specifying `--runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1` when creating the container.
 And make sure the shim binary must be in $PATH (that is the $PATH that containerd sees). Usually you just run `make install` after `make build`.
 > build shim with wasmedge we need install library first
 
 This shim runs one per pod.
 
-- **containerd-shim-[ wasmedge | wasmtime ]d-v1**
+- **containerd-shim-[ wasmedge | wasmtime | wasmer ]d-v1**
 
-A cli used to connect containerd to the `containerd-[ wasmedge | wasmtime ]d` sandbox daemon.
-When containerd requests for a container to be created, it fires up this shim binary which will connect to the `containerd-[ wasmedge | wasmtime ]d` service running on the host.
+A cli used to connect containerd to the `containerd-[ wasmedge | wasmtime | wasmer ]d` sandbox daemon.
+When containerd requests for a container to be created, it fires up this shim binary which will connect to the `containerd-[ wasmedge | wasmtime | wasmer ]d` service running on the host.
 The service will return a path to a unix socket which this shim binary will write back to containerd which containerd will use to connect to for shim requests.
-This binary does not serve requests, it is only responsible for sending requests to the `contianerd-[ wasmedge | wasmtime ]d` daemon to create or destroy sandboxes.
+This binary does not serve requests, it is only responsible for sending requests to the `contianerd-[ wasmedge | wasmtime | wasmer ]d` daemon to create or destroy sandboxes.
 
-- **containerd-[ wasmedge | wasmtime ]d**
+- **containerd-[ wasmedge | wasmtime | wasmer ]d**
 
 This is a sandbox manager that enables running 1 wasm host for the entire node instead of one per pod (or container).
 When a container is created, a request is sent to this service to create a sandbox.
 The "sandbox" is a containerd task service that runs in a new thread on its own unix socket, which we return back to containerd to connect to.
 
-The Wasmedge / Wasmtime engine is shared between all sandboxes in the service.
+The Wasmedge / Wasmtime / Wasmer engine is shared between all sandboxes in the service.
 
-To use this shim, specify `io.containerd.[ wasmedge | wasmtime ]d.v1` as the runtime to use.
-You will need to make sure the `containerd-[ wasmedge | wasmtime ]d` daemon has already been started.
+To use this shim, specify `io.containerd.[ wasmedge | wasmtime | wasmer ]d.v1` as the runtime to use.
+You will need to make sure the `containerd-[ wasmedge | wasmtime | wasmer ]d` daemon has already been started.
 
 ### Contributing
 
@@ -192,7 +192,7 @@ make test-image
 ### Running integration tests with k3s
 
 ```
-make test/k3s
+make test/k3s-[ wasmedge | wasmer ]
 ```
 
 ### Running integration tests with kind
@@ -237,6 +237,27 @@ You should see some output repeated like:
 
 ```terminal
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
+
+This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+
+This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+
+(...)
+```
+
+#### Demo 3 using wasmer
+
+Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
+You should see some output repeated like:
+
+```terminal
+sudo ctr run --rm --runtime=io.containerd.wasmer.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
 
 This is a song that never ends.
 Yes, it goes on and on my friends.
