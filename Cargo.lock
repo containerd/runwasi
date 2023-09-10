@@ -603,6 +603,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "containerd-shim-wasm-test"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "containerd-shim-wasm",
+ "env_logger",
+ "lazy_static",
+ "libc",
+ "log",
+ "oci-spec",
+ "serde_json",
+ "tempfile",
+ "wat",
+]
+
+[[package]]
 name = "containerd-shim-wasmedge"
 version = "0.1.1"
 dependencies = [

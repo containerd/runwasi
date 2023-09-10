@@ -1,0 +1,21 @@
+[package]
+name = "containerd-shim-wasm-test"
+description = "Library for testing containerd shims for wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+containerd-shim-wasm = { workspace = true }
+env_logger = "0.10"
+libc = { workspace = true }
+log = { workspace = true }
+oci-spec = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3.8"
+
+[build-dependencies]
+anyhow = { workspace = true }
+lazy_static = { version = "1.4.0" }
+wat = { version = "1.0.46" }

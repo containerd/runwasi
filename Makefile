@@ -42,8 +42,8 @@ check: check-wasm $(RUNTIMES:%=check-%);
 
 check-common: check-wasm;
 check-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- --check
-	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- $(WARNINGS)
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- --check
+	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
 
 check-%:
 	cargo +nightly fmt -p containerd-shim-$* -- --check
@@ -54,8 +54,8 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 
 fix-common: fix-wasm;
 fix-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm
-	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -- $(WARNINGS)
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test
+	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
 
 fix-%:
 	cargo +nightly fmt -p containerd-shim-$*
