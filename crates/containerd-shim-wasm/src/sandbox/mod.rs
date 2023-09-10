@@ -16,5 +16,3 @@ pub use shim::{Cli as ShimCli, Local};
 pub use stdio::Stdio;
 
 pub(crate) mod oci;
-
-pub mod testutil;
