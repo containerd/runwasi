@@ -23,4 +23,5 @@ pub fn parse_version() {
 
 #[cfg(unix)]
 #[cfg(test)]
-mod tests;
+#[path = "tests.rs"]
+mod wasmtime_tests;
