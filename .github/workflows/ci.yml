@@ -15,10 +15,11 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
-        runtime: ["common"] # not required, but groups jobs
+        runtime: ["common", "wasmedge", "wasmtime", "wasmer"]
     uses: ./.github/workflows/action-fmt.yml
     with:
       os: ${{ matrix.os }}
+      runtime: ${{ matrix.runtime }}
   
   test-image:
     name: ${{ matrix.runtime }}
@@ -32,7 +33,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
@@ -43,7 +44,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}

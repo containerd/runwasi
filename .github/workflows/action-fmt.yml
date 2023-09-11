@@ -6,6 +6,9 @@ on:
       os:
         required: true
         type: string
+      runtime:
+        required: true
+        type: string
 
 jobs:
   fmt:
@@ -26,4 +29,4 @@ jobs:
           # needed to run rustfmt in nightly toolchain
           rustup toolchain install nightly --component rustfmt
       - name: Run checks
-        run: make check
+        run: make check-${{ inputs.runtime }}
