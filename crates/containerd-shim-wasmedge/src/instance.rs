@@ -15,13 +15,8 @@ pub struct WasmEdgeEngine {
 
 impl Default for WasmEdgeEngine {
     fn default() -> Self {
-        PluginManager::load(None).unwrap();
-
         let host_options = HostRegistrationConfigOptions::default();
         let host_options = host_options.wasi(true);
-        #[cfg(all(target_os = "linux", feature = "wasi_nn", target_arch = "x86_64"))]
-        let host_options = host_options.wasi_nn(true);
-
         let config = ConfigBuilder::default()
             .with_host_registration_config(host_options)
             .build()
@@ -59,6 +54,8 @@ impl Engine for WasmEdgeEngine {
             None => "main".to_string(),
         };
 
+        PluginManager::load(None)?;
+        let vm = vm.auto_detect_plugins()?;
         let vm = vm
             .register_module_from_file(&mod_name, &path)
             .context("registering module")?;
