@@ -1,7 +1,8 @@
 use containerd_shim as shim;
 use containerd_shim_wasm::sandbox::ShimCli;
-use containerd_shim_wasmer::instance::Wasi as WasiInstance;
+use containerd_shim_wasmer::{parse_version, WasmerInstance};
 
 fn main() {
-    shim::run::<ShimCli<WasiInstance>>("io.containerd.wasmer.v1", None);
+    parse_version();
+    shim::run::<ShimCli<WasmerInstance>>("io.containerd.wasmer.v1", None);
 }

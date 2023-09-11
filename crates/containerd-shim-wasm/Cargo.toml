@@ -24,6 +24,7 @@ chrono = { workspace = true }
 log = { workspace = true }
 libc = { workspace = true }
 crossbeam = { workspace = true }
+wat = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 clone3 = "0.2"

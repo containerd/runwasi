@@ -104,21 +104,18 @@ impl<T: Sandbox + 'static> Manager for Service<T> {
 
         let id = &req.id;
 
-        match thread::Builder::new()
+        let _ = thread::Builder::new()
             .name(format!("{}-sandbox-create", id))
             .spawn(move || {
                 let r = start_sandbox(cfg, &mut server);
                 tx.send(r).context("could not send sandbox result").unwrap();
-            }) {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(Error::Others(format!("failed to spawn sandbox thread: {}", e)).into());
-            }
-        }
+            })
+            .context("failed to spawn sandbox thread")
+            .map_err(Error::from)?;
 
         rx.recv()
             .context("could not receive sandbox result")
-            .map_err(|err| Error::Others(format!("{}", err)))??;
+            .map_err(Error::from)??;
         Ok(sandbox::CreateResponse {
             socket_path: sock,
             ..Default::default()

@@ -42,6 +42,10 @@ pub enum Error {
     #[cfg(unix)]
     #[error("{0}")]
     Errno(#[from] nix::errno::Errno),
+    /// Errors from libcontainer
+    #[cfg(all(feature = "libcontainer", not(target_os = "windows")))]
+    #[error("{0}")]
+    Libcontainer(#[from] libcontainer::error::LibcontainerError),
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;

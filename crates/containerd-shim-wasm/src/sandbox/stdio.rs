@@ -1,10 +1,7 @@
-use std::fs::File;
 use std::io::ErrorKind::NotFound;
 use std::io::{Error, Result};
 use std::path::Path;
-use std::sync::Arc;
-
-use crossbeam::atomic::AtomicCell;
+use std::sync::{Arc, OnceLock};
 
 use super::InstanceConfig;
 use crate::sys::stdio::*;
@@ -15,6 +12,8 @@ pub struct Stdio {
     pub stdout: Stdout,
     pub stderr: Stderr,
 }
+
+static INITIAL_STDIO: OnceLock<Stdio> = OnceLock::new();
 
 impl Stdio {
     pub fn redirect(self) -> Result<()> {
@@ -39,17 +38,39 @@ impl Stdio {
             stderr: cfg.get_stderr().try_into()?,
         })
     }
+
+    pub fn init_from_std() -> Self {
+        Self {
+            stdin: Stdin::try_from_std().unwrap_or_default(),
+            stdout: Stdout::try_from_std().unwrap_or_default(),
+            stderr: Stderr::try_from_std().unwrap_or_default(),
+        }
+    }
+
+    pub fn guard(self) -> impl Drop {
+        StdioGuard(self)
+    }
+}
+
+struct StdioGuard(Stdio);
+
+impl Drop for StdioGuard {
+    fn drop(&mut self) {
+        let _ = self.0.take().redirect();
+    }
 }
 
 #[derive(Clone, Default)]
-pub struct StdioStream<const FD: StdioRawFd>(Arc<AtomicCell<Option<File>>>);
+pub struct StdioStream<const FD: StdioRawFd>(Arc<StdioOwnedFd>);
 
 impl<const FD: StdioRawFd> StdioStream<FD> {
     pub fn redirect(self) -> Result<()> {
-        if let Some(f) = self.0.take() {
-            let f = try_into_fd(f)?;
-            let _ = unsafe { libc::dup(FD) };
-            if unsafe { libc::dup2(f.as_raw_fd(), FD) } == -1 {
+        if let Some(fd) = self.0.as_raw_fd() {
+            // Before any redirection we try to keep a copy of the original stdio
+            // to make sure the streams stay open
+            INITIAL_STDIO.get_or_init(Stdio::init_from_std);
+
+            if unsafe { libc::dup2(fd, FD) } == -1 {
                 return Err(Error::last_os_error());
             }
         }
@@ -57,27 +78,34 @@ impl<const FD: StdioRawFd> StdioStream<FD> {
     }
 
     pub fn take(&self) -> Self {
-        Self(Arc::new(AtomicCell::new(self.0.take())))
+        Self(Arc::new(self.0.take()))
+    }
+
+    pub fn try_from_std() -> Result<Self> {
+        let fd: i32 = unsafe { libc::dup(FD) };
+        if fd == -1 {
+            return Err(Error::last_os_error());
+        }
+        Ok(Self(Arc::new(unsafe { StdioOwnedFd::from_raw_fd(fd) })))
     }
 }
 
 impl<P: AsRef<Path>, const FD: StdioRawFd> TryFrom<Option<P>> for StdioStream<FD> {
     type Error = Error;
     fn try_from(path: Option<P>) -> Result<Self> {
-        let file = path
+        let fd = path
             .and_then(|path| match path.as_ref() {
                 path if path.as_os_str().is_empty() => None,
-                path => Some(path.to_owned()),
+                path => Some(StdioOwnedFd::try_from_path(path)),
             })
-            .map(|path| match open_file(path) {
-                Err(err) if err.kind() == NotFound => Ok(None),
-                Ok(f) => Ok(Some(f)),
-                Err(err) => Err(err),
-            })
-            .transpose()?
-            .flatten();
+            .transpose()
+            .or_else(|err| match err.kind() {
+                NotFound => Ok(None),
+                _ => Err(err),
+            })?
+            .unwrap_or_default();
 
-        Ok(Self(Arc::new(AtomicCell::new(file))))
+        Ok(Self(Arc::new(fd)))
     }
 }
 

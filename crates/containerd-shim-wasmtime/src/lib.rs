@@ -2,14 +2,11 @@ use std::env;
 
 use containerd_shim::parse;
 
-pub mod error;
-#[cfg_attr(unix, path = "instance/instance_linux.rs")]
-#[cfg_attr(windows, path = "instance/instance_windows.rs")]
+#[cfg_attr(unix, path = "instance_linux.rs")]
+#[cfg_attr(windows, path = "instance_windows.rs")]
 pub mod instance;
-pub mod oci_wasmtime;
 
-#[cfg(unix)]
-pub mod executor;
+pub use instance::WasmtimeInstance;
 
 pub fn parse_version() {
     let os_args: Vec<_> = env::args_os().collect();
@@ -23,3 +20,7 @@ pub fn parse_version() {
         std::process::exit(0);
     }
 }
+
+#[cfg(unix)]
+#[cfg(test)]
+mod tests;

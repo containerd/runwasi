@@ -610,6 +610,7 @@ dependencies = [
  "thiserror",
  "ttrpc",
  "ttrpc-codegen",
+ "wat",
  "windows-sys 0.48.0",
 ]
 
@@ -622,10 +623,10 @@ dependencies = [
  "containerd-shim",
  "containerd-shim-wasm",
  "dbus",
+ "env_logger",
  "libc",
  "libcontainer",
  "log",
- "nix 0.26.4",
  "oci-spec",
  "serde_json",
  "serial_test",
@@ -672,10 +673,8 @@ dependencies = [
  "containerd-shim-wasm",
  "dbus",
  "env_logger",
- "libc",
  "libcontainer",
  "log",
- "nix 0.26.4",
  "oci-spec",
  "serde",
  "serde_json",
@@ -686,6 +685,7 @@ dependencies = [
  "wasi-common",
  "wasmtime",
  "wasmtime-wasi",
+ "wat",
 ]
 
 [[package]]

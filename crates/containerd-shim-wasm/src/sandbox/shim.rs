@@ -13,6 +13,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 
+use anyhow::Context as AnyhowContext;
 use chrono::{DateTime, Utc};
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::event::Event;
@@ -1020,7 +1021,7 @@ impl<T: Instance + Send + Sync> Local<T> {
         let id = req.id().to_string();
         let state = i.state.clone();
 
-        thread::Builder::new()
+        let _ = thread::Builder::new()
             .name(format!("{}-wait", req.id()))
             .spawn(move || {
                 let ec = rx.recv().unwrap();
@@ -1055,9 +1056,8 @@ impl<T: Instance + Send + Sync> Local<T> {
                         error!("failed to send event for topic {}: {}", topic, err)
                     });
             })
-            .map_err(|err| {
-                Error::Others(format!("could not spawn thread to wait exit: {}", err))
-            })?;
+            .context("could not spawn thread to wait exit")
+            .map_err(Error::from)?;
 
         debug!("started: {:?}", req);
 

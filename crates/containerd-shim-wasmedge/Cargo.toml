@@ -15,16 +15,16 @@ anyhow = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
-libc = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 libcontainer = { workspace = true }
 dbus = { version = "*", optional = true }
-nix = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.7"
+tempfile = "3.8"
 serial_test = "*"
+env_logger = "0.10"
+libc = { workspace = true }
 
 [features]
 default = ["standalone", "static"]
