@@ -4,30 +4,25 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-wasmer = { version = "4.1.2" }
-wasmer-wasix = { version = "0.12.0" }
-wasmer-compiler = { version = "4.1.2", features = ["compiler"] }
-tokio = "1.32.0"
-containerd-shim = { workspace = true }
-containerd-shim-wasm = { workspace = true, features = ["libcontainer_default"]}
-chrono = { workspace = true }
-libc = { workspace = true }
-log = { workspace = true }
-serde_json = { workspace = true }
-serde = { workspace = true }
 anyhow = { workspace = true }
+containerd-shim = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["libcontainer_default"] }
+log = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 
+tokio = "1.32.0"
+wasmer = { version = "4.1.2" }
+wasmer-compiler = { version = "4.1.2", features = ["compiler"] }
+wasmer-wasix = { version = "0.12.0" }
+
 [target.'cfg(unix)'.dependencies]
 libcontainer = { workspace = true }
-nix = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.7"
-libc = { workspace = true }
-env_logger = "0.10"
+env_logger = { workspace = true }
 serial_test = "*"
+tempfile = "3.8"
 
 [[bin]]
 name = "containerd-shim-wasmer-v1"

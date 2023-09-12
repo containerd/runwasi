@@ -36,7 +36,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let bundle = cfg.get_bundle().unwrap_or_default().into();
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-        let rootdir = determine_rootdir(&bundle, &namespace, &rootdir).unwrap();
+        let rootdir = determine_rootdir(&bundle, &namespace, rootdir).unwrap();
         let stdio = Stdio::init_from_cfg(cfg).expect("failed to open stdio");
         Self {
             id,

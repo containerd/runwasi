@@ -12,24 +12,23 @@ repository.workspace = true
 doctest = false
 
 [dependencies]
-containerd-shim = { workspace = true }
 anyhow = { workspace = true }
-serde_json = { workspace = true }
-oci-spec = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
-protobuf = "3.2"
-ttrpc = { workspace = true }
 chrono = { workspace = true }
-log = { workspace = true }
-libc = { workspace = true }
+containerd-shim = { workspace = true }
 crossbeam = { workspace = true }
+libc = { workspace = true }
+log = { workspace = true }
+oci-spec = { workspace = true }
+protobuf = "3.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ttrpc = { workspace = true }
 wat = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
-clone3 = "0.2"
 caps = "0.5"
-command-fds = "0.2"
+dbus = { version = "*", optional = true }
 libcontainer = { workspace = true, optional = true, default-features = false }
 nix = { workspace = true }
 
@@ -40,8 +39,7 @@ windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage
 ttrpc-codegen = { version = "0.4.2", optional = true }
 
 [dev-dependencies]
-tempfile = "3"
-signal-hook = "0.3"
+tempfile = "3.8"
 
 [features]
 default = []
@@ -53,3 +51,4 @@ systemd = ["libcontainer/systemd"]
 cgroupsv2 = ["libcontainer/v2"]
 cgroupsv1 = ["libcontainer/v1"]
 cgroupsv2_devices = ["libcontainer/cgroupsv2_devices"]
+vendored_dbus = ["dbus/vendored"]

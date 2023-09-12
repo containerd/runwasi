@@ -1,5 +1,5 @@
 //! Common utilities for the containerd shims.
-use std::fs::{self, File, OpenOptions};
+use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
@@ -30,31 +30,15 @@ pub fn instance_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Resu
     Ok(instance_root.exists())
 }
 
-/// containerd can send an empty path or a non-existant path
-/// In both these cases we should just assume that the stdio stream was not setup (intentionally)
-/// Any other error is a real error.
-pub fn maybe_open_stdio(path: &str) -> Result<Option<File>, Error> {
-    if path.is_empty() {
-        return Ok(None);
-    }
-    match OpenOptions::new().read(true).write(true).open(path) {
-        Ok(f) => Ok(Some(f)),
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => Ok(None),
-            _ => Err(err.into()),
-        },
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 struct Options {
     root: Option<PathBuf>,
 }
 
-pub fn determine_rootdir<P: AsRef<Path>>(
-    bundle: P,
+pub fn determine_rootdir(
+    bundle: impl AsRef<Path>,
     namespace: &str,
-    rootdir: P,
+    rootdir: impl AsRef<Path>,
 ) -> Result<PathBuf, Error> {
     let file = match File::open(bundle.as_ref().join("options.json")) {
         Ok(f) => f,
@@ -70,7 +54,7 @@ pub fn determine_rootdir<P: AsRef<Path>>(
 }
 
 fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
-    let root_path = fs::canonicalize(&root_path).with_context(|| {
+    let root_path = root_path.as_ref().canonicalize().with_context(|| {
         format!(
             "failed to canonicalize {} for container {}",
             root_path.as_ref().display(),
@@ -83,28 +67,9 @@ fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> 
 #[cfg(unix)]
 #[cfg(test)]
 mod tests {
-    use std::fs::{File, OpenOptions};
-    use std::io::Write;
-
     use tempfile::tempdir;
 
     use super::*;
-
-    #[test]
-    fn test_maybe_open_stdio() -> Result<(), Error> {
-        let f = maybe_open_stdio("")?;
-        assert!(f.is_none());
-
-        let f = maybe_open_stdio("/some/nonexistent/path")?;
-        assert!(f.is_none());
-
-        let dir = tempdir()?;
-        let temp = File::create(dir.path().join("testfile"))?;
-        drop(temp);
-        let f = maybe_open_stdio(dir.path().join("testfile").as_path().to_str().unwrap())?;
-        assert!(f.is_some());
-        Ok(())
-    }
 
     #[test]
     fn test_determine_rootdir_with_options_file() -> Result<(), Error> {
@@ -114,18 +79,11 @@ mod tests {
         let opts = Options {
             root: Some(rootdir.clone()),
         };
-        let opts_file = OpenOptions::new()
-            .read(true)
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(dir.path().join("options.json"))?;
-        write!(&opts_file, "{}", serde_json::to_string(&opts)?)?;
-        let root = determine_rootdir(
-            dir.path(),
-            namespace,
-            &PathBuf::from("/run/containerd/runtime"),
+        std::fs::write(
+            dir.path().join("options.json"),
+            serde_json::to_string(&opts)?,
         )?;
+        let root = determine_rootdir(dir.path(), namespace, "/run/containerd/runtime")?;
         assert_eq!(root, rootdir.join(namespace));
         Ok(())
     }
@@ -134,11 +92,7 @@ mod tests {
     fn test_determine_rootdir_without_options_file() -> Result<(), Error> {
         let dir = tempdir()?;
         let namespace = "test_namespace";
-        let root = determine_rootdir(
-            dir.path(),
-            namespace,
-            &PathBuf::from("/run/containerd/runtime"),
-        )?;
+        let root = determine_rootdir(dir.path(), namespace, "/run/containerd/runtime")?;
         assert!(root.is_absolute());
         assert_eq!(
             root,
