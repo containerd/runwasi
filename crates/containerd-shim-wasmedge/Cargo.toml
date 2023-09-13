@@ -3,13 +3,14 @@ name = "containerd-shim-wasmedge"
 version.workspace = true
 edition.workspace = true
 
+[[bin]]
+name = "containerd-shim-wasmedge-v1"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
-oci-spec = { workspace = true, features = ["runtime"] }
-ttrpc = { workspace = true }
 
 wasmedge-sdk = { version = "0.11.2" }
 wasmedge-sys = "*"
@@ -24,15 +25,3 @@ default = ["standalone", "static"]
 standalone = ["wasmedge-sdk/standalone"]
 static = ["wasmedge-sdk/static"]
 wasi_nn = ["wasmedge-sdk/wasi_nn"]
-
-[[bin]]
-name = "containerd-shim-wasmedge-v1"
-path = "src/bin/containerd-shim-wasmedge-v1/main.rs"
-
-[[bin]]
-name = "containerd-shim-wasmedged-v1"
-path = "src/bin/containerd-shim-wasmedged-v1/main.rs"
-
-[[bin]]
-name = "containerd-wasmedged"
-path = "src/bin/containerd-wasmedged/main.rs"

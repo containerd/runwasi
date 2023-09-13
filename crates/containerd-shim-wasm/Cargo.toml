@@ -15,6 +15,7 @@ doctest = false
 anyhow = { workspace = true }
 chrono = { workspace = true }
 containerd-shim = { workspace = true }
+containerd-shim-wasm-macros = { path = "../containerd-shim-wasm-macros" }
 crossbeam = { workspace = true }
 libc = { workspace = true }
 log = { workspace = true }

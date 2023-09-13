@@ -39,8 +39,8 @@ check: check-wasm $(RUNTIMES:%=check-%);
 
 check-common: check-wasm;
 check-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- --check
-	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -p containerd-shim-wasm-macros -- --check
+	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -p containerd-shim-wasm-macros -- $(WARNINGS)
 
 check-%:
 	cargo +nightly fmt -p containerd-shim-$* -- --check
@@ -51,8 +51,8 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 
 fix-common: fix-wasm;
 fix-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test
-	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -p containerd-shim-wasm-macros
+	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -p containerd-shim-wasm-macros -- $(WARNINGS)
 
 fix-%:
 	cargo +nightly fmt -p containerd-shim-$*
@@ -68,15 +68,15 @@ test-wasm:
 
 test-wasmedge:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace cargo test --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace cargo test --package containerd-shim-wasmedge $(FEATURES_wasmedge) --verbose -- --nocapture --test-threads=1
 ifneq ($(OS), Windows_NT)
 	# run wasmedge test without the default `static` feature
-	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --no-default-features --features standalone --verbose -- --nocapture --test-threads=1
 endif
 
 test-%:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace cargo test --package containerd-shim-$* $(FEATURES_$*) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace cargo test --package containerd-shim-$* $(FEATURES_$*) --verbose -- --nocapture --test-threads=1
 
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
@@ -84,8 +84,8 @@ install: $(RUNTIMES:%=install-%);
 install-%:
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) target/$(TARGET)/containerd-shim-$*-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-shim-$*d-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-$*d $(PREFIX)/bin/
+	ln -sf ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
+	ln -sf ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
 # dist is not phony, so that if the folder exist we don't try to do work
 dist:

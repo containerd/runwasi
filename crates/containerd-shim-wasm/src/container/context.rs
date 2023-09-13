@@ -1,6 +1,11 @@
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
 use oci_spec::runtime::Spec;
+
+use crate::container::PathResolve;
 
 pub trait RuntimeContext {
     // ctx.args() returns arguments from the runtime spec process field, including the
@@ -20,6 +25,8 @@ pub trait RuntimeContext {
     //   "my_module.wat" -> { path: "my_module.wat", func: "_start" }
     //   "#init" -> { path: "", func: "init" }
     fn wasi_entrypoint(&self) -> WasiEntrypoint;
+
+    fn resolved_wasi_entrypoint(&self) -> Result<WasiEntrypoint>;
 }
 
 pub struct WasiEntrypoint {
@@ -47,6 +54,35 @@ impl RuntimeContext for Spec {
             path: PathBuf::from(path),
             func: func.to_string(),
         }
+    }
+
+    fn resolved_wasi_entrypoint(&self) -> Result<WasiEntrypoint> {
+        let wasi_entrypoint = self.wasi_entrypoint();
+
+        let path = wasi_entrypoint
+            .path
+            .resolve_in_path_or_cwd()
+            .next()
+            .context("module not found")?;
+
+        let mut buffer = [0; 4];
+        File::open(&path)?.read_exact(&mut buffer)?;
+
+        if buffer.as_slice() != b"\0asm" {
+            // Check if this is a `.wat` file
+            wat::parse_file(&path)?;
+        }
+
+        Ok(WasiEntrypoint {
+            path,
+            ..wasi_entrypoint
+        })
+    }
+}
+
+impl From<WasiEntrypoint> for (PathBuf, String) {
+    fn from(value: WasiEntrypoint) -> Self {
+        (value.path, value.func)
     }
 }
 

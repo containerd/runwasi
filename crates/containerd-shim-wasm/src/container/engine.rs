@@ -1,10 +1,6 @@
-use std::fs::File;
-use std::io::Read;
+use anyhow::Result;
 
-use anyhow::{Context, Result};
-
-use crate::container::{PathResolve, RuntimeContext};
-use crate::sandbox::Stdio;
+use crate::container::{RuntimeContext, Stdio};
 
 pub trait Engine: Clone + Send + Sync + 'static {
     /// The name to use for this engine
@@ -19,21 +15,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// * a file with the `wasm` filetype header
     /// * a parsable `wat` file.
     fn can_handle(&self, ctx: &impl RuntimeContext) -> Result<()> {
-        let path = ctx
-            .wasi_entrypoint()
-            .path
-            .resolve_in_path_or_cwd()
-            .next()
-            .context("module not found")?;
-
-        let mut buffer = [0; 4];
-        File::open(&path)?.read_exact(&mut buffer)?;
-
-        if buffer.as_slice() != b"\0asm" {
-            // Check if this is a `.wat` file
-            wat::parse_file(&path)?;
-        }
-
+        ctx.resolved_wasi_entrypoint()?;
         Ok(())
     }
 }

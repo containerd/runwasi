@@ -15,4 +15,4 @@ pub use manager::{Sandbox as SandboxService, Service as ManagerService};
 pub use shim::{Cli as ShimCli, Local};
 pub use stdio::Stdio;
 
-pub(crate) mod oci;
+pub mod oci;
