@@ -2,3 +2,4 @@
 # Make sure to this in sync with RUST_VERSION in the Dockerfile
 channel="1.72.0"
 profile="default"
+targets = ["wasm32-wasi"]

@@ -3,3 +3,6 @@ rustflags = [
     "-Adead_code",
     "-Awarnings",
 ]
+
+[target.'cfg(unix)']
+runner = 'scripts/test-runner.sh'

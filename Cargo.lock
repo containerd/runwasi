@@ -457,9 +457,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.2"
+version = "4.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a13b88d2c62ff462f88e4a121f17a82c1af05693a2f192b5c38d14de73c19f6"
+checksum = "84ed82781cea27b43c9b106a979fe450a13a31aab0500595fb3fc06616de08e6"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -603,19 +603,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "containerd-shim-wasm-test"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "containerd-shim-wasm",
+ "env_logger",
+ "lazy_static",
+ "libc",
+ "log",
+ "oci-spec",
+ "serde_json",
+ "tempfile",
+ "wat",
+]
+
+[[package]]
 name = "containerd-shim-wasmedge"
 version = "0.1.1"
 dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "env_logger",
+ "containerd-shim-wasm-test",
  "libc",
  "libcontainer",
  "log",
  "oci-spec",
  "serial_test",
- "tempfile",
  "ttrpc",
  "wasmedge-sdk",
  "wasmedge-sys",
@@ -628,12 +643,11 @@ dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "env_logger",
+ "containerd-shim-wasm-test",
  "libcontainer",
  "log",
  "oci-spec",
  "serial_test",
- "tempfile",
  "tokio",
  "ttrpc",
  "wasmer",
@@ -648,12 +662,11 @@ dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "env_logger",
+ "containerd-shim-wasm-test",
  "libcontainer",
  "log",
  "oci-spec",
  "serial_test",
- "tempfile",
  "ttrpc",
  "wasi-common",
  "wasmtime",
@@ -3315,9 +3328,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.4"
+version = "0.101.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d93931baf2d282fff8d3a532bbfd7653f734643161b87e3e01e59a04439bf0d"
+checksum = "45a27e3b59326c16e23d30aeb7a36a24cc0d29e71d68ff611cdfb4a01d013bed"
 dependencies = [
  "ring",
  "untrusted",

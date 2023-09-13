@@ -18,10 +18,9 @@ wasmedge-sys = "*"
 libcontainer = { workspace = true }
 
 [dev-dependencies]
-env_logger = { workspace = true }
+containerd-shim-wasm-test = { workspace = true }
 libc = { workspace = true }
 serial_test = "*"
-tempfile = "3.8"
 
 [features]
 default = ["standalone", "static"]

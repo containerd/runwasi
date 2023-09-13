@@ -20,9 +20,8 @@ wasmer-wasix = { version = "0.12.0" }
 libcontainer = { workspace = true }
 
 [dev-dependencies]
-env_logger = { workspace = true }
+containerd-shim-wasm-test = { workspace = true }
 serial_test = "*"
-tempfile = "3.8"
 
 [[bin]]
 name = "containerd-shim-wasmer-v1"

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/containerd-shim-wasm",
+    "crates/containerd-shim-wasm-test",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
     "crates/containerd-shim-wasmedge",
@@ -20,6 +21,7 @@ homepage = "https://github.com/containerd/runwasi"
 [workspace.dependencies]
 anyhow = "1.0"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
+containerd-shim-wasm-test = { path = "crates/containerd-shim-wasm-test" }
 serde = "1.0"
 serde_json = "1.0"
 env_logger = "0.10"
