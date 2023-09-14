@@ -624,7 +624,6 @@ dependencies = [
  "containerd-shim-wasm-test",
  "log",
  "serial_test",
- "tokio",
  "wasmer",
  "wasmer-compiler",
  "wasmer-wasix",

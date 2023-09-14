@@ -12,7 +12,6 @@ anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["tokio"]}
 log = { workspace = true }
 
-tokio = "1.32.0"
 wasmer = { version = "4.1.2" }
 wasmer-compiler = { version = "4.1.2", features = ["compiler"] }
 wasmer-wasix = { version = "0.12.0" }

@@ -37,7 +37,7 @@ serde_json = "1.0"
 sha256 = "1.4.0"
 tar = "0.4"
 thiserror = "1.0"
-tokio = "1.32.0"
+tokio = "1"
 ttrpc = "0.8.0"
 wat = "*" # Use whatever version wasmtime will make us pull
 windows-sys = { version = "0.48" }
