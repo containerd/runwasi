@@ -1,17 +1,12 @@
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{PathResolve, RuntimeContext, Stdio};
+use containerd_shim_wasm::container::{RuntimeContext, Stdio};
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::{Vm, VmBuilder};
 
 static VM: OnceLock<Vm> = OnceLock::new();
-
-#[containerd_shim_wasm::validate]
-fn validate(ctx: &impl RuntimeContext) -> bool {
-    ctx.resolved_wasi_entrypoint().is_ok()
-}
 
 #[containerd_shim_wasm::main("WasmEdge")]
 fn main(ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
@@ -34,11 +29,10 @@ fn main(ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
 
     let args = ctx.args();
     let envs: Vec<_> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
-    let (path, func) = ctx.wasi_entrypoint().into();
-    let path = path
-        .resolve_in_path_or_cwd()
-        .next()
-        .context("module not found")?;
+    let (path, func) = ctx
+        .resolved_wasi_entrypoint()
+        .context("module not found")?
+        .into();
 
     vm.wasi_module_mut()
         .context("Not found wasi module")?

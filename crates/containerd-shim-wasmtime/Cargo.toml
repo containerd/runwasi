@@ -3,13 +3,14 @@ name = "containerd-shim-wasmtime"
 version.workspace = true
 edition.workspace = true
 
+[[bin]]
+name = "containerd-shim-wasmtime-v1"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
-oci-spec = { workspace = true, features = ["runtime"] }
-ttrpc = { workspace = true }
 
 # We are not including the `async` feature here:
 # 1. Because we don't even use it
@@ -31,15 +32,3 @@ wasi-common = "11.0"
 [dev-dependencies]
 containerd-shim-wasm-test = { workspace = true }
 serial_test = "*"
-
-[[bin]]
-name = "containerd-shim-wasmtime-v1"
-path = "src/bin/containerd-shim-wasmtime-v1/main.rs"
-
-[[bin]]
-name = "containerd-shim-wasmtimed-v1"
-path = "src/bin/containerd-shim-wasmtimed-v1/main.rs"
-
-[[bin]]
-name = "containerd-wasmtimed"
-path = "src/bin/containerd-wasmtimed/main.rs"

@@ -618,14 +618,11 @@ name = "containerd-shim-wasmer"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "containerd-shim-wasm-test",
  "log",
- "oci-spec",
  "serial_test",
  "tokio",
- "ttrpc",
  "wasmer",
  "wasmer-compiler",
  "wasmer-wasix",
@@ -636,13 +633,10 @@ name = "containerd-shim-wasmtime"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "containerd-shim-wasm-test",
  "log",
- "oci-spec",
  "serial_test",
- "ttrpc",
  "wasi-common",
  "wasmtime",
  "wasmtime-wasi",
