@@ -569,6 +569,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio",
  "ttrpc",
  "ttrpc-codegen",
  "wat",
@@ -579,6 +580,7 @@ dependencies = [
 name = "containerd-shim-wasm-macros"
 version = "0.1.1"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn 2.0.33",
 ]

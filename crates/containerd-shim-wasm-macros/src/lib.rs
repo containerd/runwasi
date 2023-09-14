@@ -10,7 +10,29 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
     let instance_ident = quote::format_ident!("{}Instance", name.value());
     let lower_name = syn::LitStr::new(name.value().to_lowercase().as_str(), name.span());
 
+    let (async_runtime, get_async_runtime) = async_quotes();
+    let async_wasi_termination = if cfg!(feature = "tokio") {
+        quote::quote! {
+            trait WasiTerminationFuture {
+                fn __containerd_wasm_shim_macro_exit_shim_process(self);
+            }
+
+            impl<F: ::std::future::Future> WasiTerminationFuture for F
+            where
+                F::Output: WasiTermination,
+            {
+                fn __containerd_wasm_shim_macro_exit_shim_process(self) {
+                    #get_async_runtime.block_on(self).__containerd_wasm_shim_macro_exit_shim_process()
+                }
+            }
+        }
+    } else {
+        quote::quote! {}
+    };
+
     let expanded = quote::quote! {
+        #async_runtime
+
         trait __ContainerdShimWasmMacroRuntimeTrait {
             fn can_handle(ctx: &impl ::containerd_shim_wasm::container::RuntimeContext) -> ::anyhow::Result<()> {
                 ctx.resolved_wasi_entrypoint()?;
@@ -40,31 +62,31 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
                 #input
 
                 trait WasiTermination {
-                    fn exit_shim_process(self);
+                    fn __containerd_wasm_shim_macro_exit_shim_process(self);
                 }
 
                 impl WasiTermination for () {
-                    fn exit_shim_process(self) {
+                    fn __containerd_wasm_shim_macro_exit_shim_process(self) {
                         ::std::process::exit(0);
                     }
                 }
 
                 impl WasiTermination for i32 {
-                    fn exit_shim_process(self) {
+                    fn __containerd_wasm_shim_macro_exit_shim_process(self) {
                         ::std::process::exit(self);
                     }
                 }
 
                 impl WasiTermination for ::std::convert::Infallible {
-                    fn exit_shim_process(self) {
+                    fn __containerd_wasm_shim_macro_exit_shim_process(self) {
                         match self {}
                     }
                 }
 
                 impl<T: WasiTermination, E: Into<::anyhow::Error>> WasiTermination for ::std::result::Result<T, E> {
-                    fn exit_shim_process(self) {
+                    fn __containerd_wasm_shim_macro_exit_shim_process(self) {
                         match self {
-                            Ok(term) => term.exit_shim_process(),
+                            Ok(term) => term.__containerd_wasm_shim_macro_exit_shim_process(),
                             Err(err) => {
                                 ::log::info!("error: {}", err.into());
                                 ::std::process::exit(137);
@@ -73,8 +95,9 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
                     }
                 }
 
-                let result = __containerd_shim_wasm_macro_runtime_main(ctx, stdio);
-                WasiTermination::exit_shim_process(result);
+                #async_wasi_termination
+
+                __containerd_shim_wasm_macro_runtime_main(ctx, stdio).__containerd_wasm_shim_macro_exit_shim_process();
                 unreachable!();
             }
         }
@@ -134,42 +157,85 @@ pub fn validate(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut input: syn::ItemFn = syn::parse(input).unwrap();
     input.sig.ident = quote::format_ident!("__containerd_shim_wasm_macro_runtime_validate");
 
+    let (_, get_async_runtime) = async_quotes();
+    let async_wasi_can_handle = if cfg!(feature = "tokio") {
+        quote::quote! {
+            trait WasiCanHandleFuture {
+                fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()>;
+            }
+
+            impl<F: ::std::future::Future> WasiCanHandleFuture for F
+            where
+                F::Output: WasiCanHandle,
+            {
+                fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()> {
+                    #get_async_runtime.block_on(self).__containerd_wasm_shim_macro_report_can_handle()
+                }
+            }
+        }
+    } else {
+        quote::quote! {}
+    };
+
     let expanded = quote::quote! {
         impl __ContainerdShimWasmMacroRuntimeStruct {
             fn can_handle(ctx: &impl ::containerd_shim_wasm::container::RuntimeContext) -> ::anyhow::Result<()> {
                 #input
 
                 trait WasiCanHandle {
-                    fn report(self) -> ::anyhow::Result<()>;
+                    fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()>;
                 }
 
                 impl WasiCanHandle for bool {
-                    fn report(self) -> ::anyhow::Result<()> {
+                    fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()> {
                         use ::anyhow::Context;
                         self.then_some(()).context("can't handle workflow")
                     }
                 }
 
                 impl WasiCanHandle for () {
-                    fn report(self) -> ::anyhow::Result<()> {
+                    fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()> {
                         Ok(())
                     }
                 }
 
                 impl<T: WasiCanHandle, E: Into<::anyhow::Error>> WasiCanHandle for ::std::result::Result<T, E> {
-                    fn report(self) -> ::anyhow::Result<()> {
+                    fn __containerd_wasm_shim_macro_report_can_handle(self) -> ::anyhow::Result<()> {
                         match self {
-                            Ok(can_handle) => can_handle.report(),
+                            Ok(can_handle) => can_handle.__containerd_wasm_shim_macro_report_can_handle(),
                             Err(err) => Err(err.into()),
                         }
                     }
                 }
 
-                let result = __containerd_shim_wasm_macro_runtime_validate(ctx);
-                WasiCanHandle::report(result)
+                #async_wasi_can_handle
+
+                __containerd_shim_wasm_macro_runtime_validate(ctx).__containerd_wasm_shim_macro_report_can_handle()
             }
         }
     };
 
     TokenStream::from(expanded)
+}
+
+fn async_quotes() -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+    let async_runtime = if cfg!(feature = "tokio") {
+        quote::quote! {
+            static __CONTAINERD_SHIM_WASM_MACRO_ASYNC_RUNTIME: ::std::sync::OnceLock<::containerd_shim_wasm::tokio::runtime::Runtime> = ::std::sync::OnceLock::new();
+        }
+    } else {
+        quote::quote! {}
+    };
+
+    let get_async_runtime = if cfg!(feature = "tokio") {
+        quote::quote! {
+            __CONTAINERD_SHIM_WASM_MACRO_ASYNC_RUNTIME.get_or_init(|| {
+                ::containerd_shim_wasm::tokio::runtime::Runtime::new().expect("failed to create runtime")
+            })
+        }
+    } else {
+        quote::quote! {}
+    };
+
+    (async_runtime, get_async_runtime)
 }

@@ -9,3 +9,7 @@ proc-macro = true
 [dependencies]
 syn = { version = "2.0.32", features = ["full"]}
 quote = "1.0.33"
+proc-macro2 = "*"
+
+[features]
+tokio = []

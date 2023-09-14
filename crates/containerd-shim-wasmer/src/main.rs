@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{RuntimeContext, Stdio};
 use wasmer::{Cranelift, Module, Store};
-use wasmer_wasix::{virtual_fs::host_fs::FileSystem, WasiEnv, WasiError};
+use wasmer_wasix::virtual_fs::host_fs::FileSystem;
+use wasmer_wasix::{WasiEnv, WasiError};
 
 #[containerd_shim_wasm::main("Wasmer")]
-fn main(ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+async fn main(ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
     let args = ctx.args();
     let envs = std::env::vars();
     let (path, func) = ctx
@@ -25,11 +26,6 @@ fn main(ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
 
     log::info!("loading module from file {path:?}");
     let module = Module::from_file(&store, path)?;
-
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?;
-    let _guard = runtime.enter();
 
     log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
     let (instance, wasi_env) = WasiEnv::builder(mod_name)

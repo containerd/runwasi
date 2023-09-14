@@ -3,6 +3,7 @@
     html_logo_url = "https://raw.githubusercontent.com/containerd/runwasi/e251de3307bbdc8bf3229020ea2ae2711f31aafa/art/logo/runwasi_logo_icon.svg"
 )]
 
+#[cfg(feature = "container_api")]
 pub mod container;
 pub mod sandbox;
 pub mod services;
@@ -11,5 +12,8 @@ pub mod services;
 #[cfg_attr(windows, path = "sys/windows/mod.rs")]
 pub(crate) mod sys;
 
+#[cfg(feature = "macros")]
 pub use containerd_shim_wasm_macros::*;
+#[cfg(feature = "tokio")]
+pub use tokio;
 pub use {containerd_shim as shim, ttrpc};

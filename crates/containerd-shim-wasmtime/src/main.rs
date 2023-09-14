@@ -2,7 +2,6 @@ use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{RuntimeContext, Stdio};
-
 use wasi_common::I32Exit;
 use wasmtime::{Linker, Module, Store};
 use wasmtime_wasi::{Dir, WasiCtxBuilder};

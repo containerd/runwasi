@@ -15,7 +15,7 @@ doctest = false
 anyhow = { workspace = true }
 chrono = { workspace = true }
 containerd-shim = { workspace = true }
-containerd-shim-wasm-macros = { path = "../containerd-shim-wasm-macros" }
+containerd-shim-wasm-macros = { path = "../containerd-shim-wasm-macros", optional = true }
 crossbeam = { workspace = true }
 libc = { workspace = true }
 log = { workspace = true }
@@ -24,6 +24,7 @@ protobuf = "3.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
 
@@ -45,3 +46,8 @@ tempfile = "3.8"
 [features]
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []
+
+default = ["macros", "container_api"]
+container_api = []
+macros = ["dep:containerd-shim-wasm-macros", "container_api"]
+tokio = ["dep:tokio", "containerd-shim-wasm-macros/tokio"]

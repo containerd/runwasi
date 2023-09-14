@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim-wasm = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["tokio"]}
 log = { workspace = true }
 
 tokio = "1.32.0"
