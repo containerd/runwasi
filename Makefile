@@ -11,12 +11,9 @@ ifeq ($(TARGET),release)
 RELEASE_FLAG = --release
 endif
 
-FEATURES_wasm = --features libcontainer_default
 FEATURES_wasmedge = 
 WARNINGS = -D warnings
 ifeq ($(OS), Windows_NT)
-# need to disable libcontainer
-FEATURES_wasm = 
 # need to turn off static/standalone for wasm-edge
 FEATURES_wasmedge = --no-default-features
 # turn of warnings until windows is fully supported #49

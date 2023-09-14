@@ -29,8 +29,8 @@ wat = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
-dbus = { version = "*", optional = true }
-libcontainer = { workspace = true, optional = true, default-features = false }
+dbus = { version = "*", features = ["vendored"] }
+libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
 nix = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
@@ -43,12 +43,5 @@ ttrpc-codegen = { version = "0.4.2", optional = true }
 tempfile = "3.8"
 
 [features]
-default = []
-libcontainer_default = ["libcontainer/default", "dbus/vendored"]
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []
-libseccomp = ["libcontainer/libseccomp"]
-systemd = ["libcontainer/systemd", "dbus/vendored"]
-cgroupsv2 = ["libcontainer/v2"]
-cgroupsv1 = ["libcontainer/v1"]
-cgroupsv2_devices = ["libcontainer/cgroupsv2_devices"]

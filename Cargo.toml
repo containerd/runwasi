@@ -20,26 +20,26 @@ homepage = "https://github.com/containerd/runwasi"
 
 [workspace.dependencies]
 anyhow = "1.0"
+cap-std = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+containerd-shim = "0.5.0"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
 containerd-shim-wasm-test = { path = "crates/containerd-shim-wasm-test" }
+crossbeam = { version = "0.8.2", default-features = false }
+env_logger = "0.10"
+libc = "0.2.147"
+libcontainer = { version = "0.2", default-features = false }
+log = "0.4"
+nix = "0.26"
+oci-spec = { version = "0.6.1", features = ["runtime"] }
 serde = "1.0"
 serde_json = "1.0"
-env_logger = "0.10"
-log = "0.4"
-tar = "0.4"
-containerd-shim = "0.5.0"
-ttrpc = "0.8.0"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-nix = "0.26"
-cap-std = "1.0"
-thiserror = "1.0"
-libc = "0.2.147"
-oci-spec = { version = "0.6.1", features = ["runtime"] }
 sha256 = "1.4.0"
-libcontainer = { version = "0.2", default-features = false }
-windows-sys = { version = "0.48" }
-crossbeam = { version = "0.8.2", default-features = false }
+tar = "0.4"
+thiserror = "1.0"
+ttrpc = "0.8.0"
 wat = "*" # Use whatever version wasmtime will make us pull
+windows-sys = { version = "0.48" }
 
 [profile.release]
 panic = "abort"
