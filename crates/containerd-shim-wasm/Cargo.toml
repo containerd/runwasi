@@ -24,7 +24,7 @@ protobuf = "3.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 ttrpc = { workspace = true }
 wat = { workspace = true }
 
