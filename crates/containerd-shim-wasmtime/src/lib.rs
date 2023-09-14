@@ -2,8 +2,6 @@ use std::env;
 
 use containerd_shim::parse;
 
-#[cfg_attr(unix, path = "instance_linux.rs")]
-#[cfg_attr(windows, path = "instance_windows.rs")]
 pub mod instance;
 
 pub use instance::WasmtimeInstance;
