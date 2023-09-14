@@ -1,8 +1,7 @@
 use anyhow::Result;
-use containerd_shim::{self as shim};
+use containerd_shim::util::convert_to_any;
 use oci_spec::runtime;
 use protobuf::well_known_types::any::Any;
-use shim::util::convert_to_any;
 
 pub fn get_metrics(pid: u32) -> Result<Any> {
     // Create empty message for now

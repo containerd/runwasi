@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 containerd-shim = { workspace = true }
-containerd-shim-wasm = { workspace = true, features = ["libcontainer_default"] }
+containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
@@ -27,9 +27,6 @@ wasmtime = { version = "11.0", default-features = false, features = [
 ]}
 wasmtime-wasi = { version = "11.0", features = ["exit"] }
 wasi-common = "11.0"
-
-[target.'cfg(unix)'.dependencies]
-libcontainer = { workspace = true }
 
 [dev-dependencies]
 containerd-shim-wasm-test = { workspace = true }
