@@ -10,11 +10,11 @@ use libcontainer::syscall::syscall::SyscallType;
 use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 
-use crate::container::executor::Executor;
 use crate::container::Engine;
 use crate::sandbox::instance::{ExitCode, Wait};
 use crate::sandbox::instance_utils::{determine_rootdir, get_instance_root, instance_exists};
 use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio};
+use crate::sys::container::executor::Executor;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 

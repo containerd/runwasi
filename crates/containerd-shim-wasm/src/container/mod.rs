@@ -12,8 +12,6 @@
 
 mod context;
 mod engine;
-mod executor;
-mod instance;
 mod path;
 
 pub use context::{RuntimeContext, WasiEntrypoint};
@@ -22,3 +20,4 @@ pub use instance::Instance;
 pub use path::PathResolve;
 
 pub use crate::sandbox::stdio::Stdio;
+use crate::sys::container::instance;
