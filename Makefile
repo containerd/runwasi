@@ -1,5 +1,6 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
+LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
 export CONTAINERD_NAMESPACE ?= default
@@ -87,8 +88,8 @@ install: $(RUNTIMES:%=install-%);
 install-%:
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) target/$(TARGET)/containerd-shim-$*-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-shim-$*d-v1 $(PREFIX)/bin/
-	$(INSTALL) target/$(TARGET)/containerd-$*d $(PREFIX)/bin/
+	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
+	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
 # dist is not phony, so that if the folder exist we don't try to do work
 dist:
