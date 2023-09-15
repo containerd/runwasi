@@ -11,7 +11,7 @@ log = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 
-wasmedge-sdk = { version = "0.11.2" }
+wasmedge-sdk = { version = "0.12.1" }
 wasmedge-sys = "*"
 
 [target.'cfg(unix)'.dependencies]
