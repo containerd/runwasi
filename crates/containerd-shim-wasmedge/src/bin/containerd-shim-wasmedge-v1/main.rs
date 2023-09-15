@@ -1,8 +1,6 @@
-use containerd_shim as shim;
-use containerd_shim_wasm::sandbox::ShimCli;
-use containerd_shim_wasmedge::{parse_version, WasmEdgeInstance};
+use containerd_shim_wasm::sandbox::cli::{revision, shim_main, version};
+use containerd_shim_wasmedge::WasmEdgeInstance;
 
 fn main() {
-    parse_version();
-    shim::run::<ShimCli<WasmEdgeInstance>>("io.containerd.wasmedge.v1", None);
+    shim_main::<WasmEdgeInstance>("WasmEdge", version!(), revision!(), None);
 }

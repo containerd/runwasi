@@ -2,6 +2,7 @@
 
 use crate::services::sandbox;
 
+pub mod cli;
 pub mod error;
 pub mod instance;
 pub mod instance_utils;
