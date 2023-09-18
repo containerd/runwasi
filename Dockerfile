@@ -4,7 +4,7 @@
 ARG BASE_IMAGE="bullseye"
 ARG RUST_VERSION=1.72.0
 ARG XX_VERSION=1.2.1
-ARG CRATE="containerd-shim-wasmtime,containerd-shim-wasmedge"
+ARG CRATE="containerd-shim-wasmtime,containerd-shim-wasmedge,containerd-shim-wasmer"
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-${BASE_IMAGE} AS base

@@ -32,7 +32,6 @@ dockerfile_utils_alpine() {
         export LIBSECCOMP_LINK_TYPE="static"
         export LIBSECCOMP_LIB_PATH="$(xx-info sysroot)usr/lib"
         export RUSTFLAGS="-Cstrip=symbols -Clink-arg=-lgcc"
-        export CARGO_FLAGS="--features=vendored_dbus"
     }
 
 }
