@@ -36,7 +36,7 @@ jobs:
           path: dist
       - name: run
         timeout-minutes: 5
-        run: make test/k8s
+        run: make test/k8s-${{ inputs.runtime }}
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()
