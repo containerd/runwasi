@@ -43,7 +43,7 @@ pub enum Error {
     #[error("{0}")]
     Errno(#[from] nix::errno::Errno),
     /// Errors from libcontainer
-    #[cfg(all(feature = "libcontainer", not(target_os = "windows")))]
+    #[cfg(unix)]
     #[error("{0}")]
     Libcontainer(#[from] libcontainer::error::LibcontainerError),
 }

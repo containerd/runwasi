@@ -25,7 +25,7 @@ fn parse_env(envs: &[String]) -> HashMap<String, String> {
         .collect()
 }
 
-pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<()> {
+pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<()> {
     if let Some(hooks) = hooks {
         let prestart_hooks = hooks.prestart().as_ref().unwrap();
 
@@ -55,7 +55,7 @@ pub fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<
                 }
             } else {
                 #[cfg(unix)]
-                hook_command.arg0(&hook.path().display().to_string());
+                hook_command.arg0(hook.path());
             };
 
             let envs: HashMap<String, String> = if let Some(env) = hook.env() {
