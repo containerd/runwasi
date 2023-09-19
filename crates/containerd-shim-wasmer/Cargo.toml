@@ -25,12 +25,4 @@ serial_test = "*"
 
 [[bin]]
 name = "containerd-shim-wasmer-v1"
-path = "src/bin/containerd-shim-wasmer-v1/main.rs"
-
-[[bin]]
-name = "containerd-shim-wasmerd-v1"
-path = "src/bin/containerd-shim-wasmerd-v1/main.rs"
-
-[[bin]]
-name = "containerd-wasmerd"
-path = "src/bin/containerd-wasmerd/main.rs"
+path = "src/main.rs"

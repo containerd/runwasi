@@ -37,12 +37,4 @@ serial_test = "*"
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"
-path = "src/bin/containerd-shim-wasmtime-v1/main.rs"
-
-[[bin]]
-name = "containerd-shim-wasmtimed-v1"
-path = "src/bin/containerd-shim-wasmtimed-v1/main.rs"
-
-[[bin]]
-name = "containerd-wasmtimed"
-path = "src/bin/containerd-wasmtimed/main.rs"
+path = "src/main.rs"
