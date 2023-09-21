@@ -70,9 +70,11 @@ jobs:
         with:
           cache: false
       - name: Build
-        run: cargo build --verbose --package ${{ needs.generate.outputs.crate }}
+        timeout-minutes: 5
+        run: make build-$(cut -d- -f3 <<<"${{ needs.generate.outputs.crate }}")
       - name: Test
-        run: cargo test --verbose --package ${{ needs.generate.outputs.crate }}
+        timeout-minutes: 5
+        run: make test-$(cut -d- -f3 <<<"${{ needs.generate.outputs.crate }}")
 
   release:
     permissions:
