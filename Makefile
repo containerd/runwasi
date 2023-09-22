@@ -1,14 +1,19 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
+CARGO ?= cargo
 LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
-export CONTAINERD_NAMESPACE ?= default
+CONTAINERD_NAMESPACE ?= default
 
-TARGET ?= debug
+TARGET ?= 
+OPT_PROFILE ?= debug
 RELEASE_FLAG :=
-ifeq ($(TARGET),release)
+ifeq ($(OPT_PROFILE),release)
 RELEASE_FLAG = --release
+endif
+ifneq ($(TARGET),)
+TARGET_FLAG = --target=$(TARGET)
 endif
 
 FEATURES_wasmedge = 
@@ -24,40 +29,42 @@ DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
 
+export
+
 .PHONY: build build-common build-wasm build-%
 build: build-wasm $(RUNTIMES:%=build-%);
 
 build-common: build-wasm;
 build-wasm:
-	cargo build -p containerd-shim-wasm --no-default-features --features generate_bindings $(RELEASE_FLAG)
-	cargo build -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
+	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm --no-default-features --features generate_bindings $(RELEASE_FLAG)
+	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
 
 build-%:
-	cargo build -p containerd-shim-$* $(FEATURES_$*) $(RELEASE_FLAG)
+	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-$* $(FEATURES_$*) $(RELEASE_FLAG)
 
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
 
 check-common: check-wasm;
 check-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- --check
-	cargo clippy $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
 
 check-%:
-	cargo +nightly fmt -p containerd-shim-$* -- --check
-	cargo clippy $(FEATURES_$*) -p containerd-shim-$* -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$* -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) -p containerd-shim-$* -- $(WARNINGS)
 
 .PHONY: fix fix-common fix-wasm fix-%
 fix: fix-wasm $(RUNTIMES:%=fix-%);
 
 fix-common: fix-wasm;
 fix-wasm:
-	cargo +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test
-	cargo clippy $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
 
 fix-%:
-	cargo +nightly fmt -p containerd-shim-$*
-	cargo clippy $(FEATURES_$*) --fix -p containerd-shim-$* -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$*
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) --fix -p containerd-shim-$* -- $(WARNINGS)
 
 .PHONY: test test-common test-wasm test-wasmedge test-%
 test: test-wasm $(RUNTIMES:%=test-%);
@@ -65,26 +72,26 @@ test: test-wasm $(RUNTIMES:%=test-%);
 test-common: test-wasm;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
-	RUST_LOG=trace cargo test --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture
 
 test-wasmedge:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace cargo test --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose -- --nocapture --test-threads=1
 ifneq ($(OS), Windows_NT)
 	# run wasmedge test without the default `static` feature
-	RUST_LOG=trace cargo test --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose -- --nocapture --test-threads=1
 endif
 
 test-%:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace cargo test --package containerd-shim-$* $(FEATURES_$*) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose -- --nocapture --test-threads=1
 
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
 
 install-%: build-%
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) target/$(TARGET)/containerd-shim-$*-v1 $(PREFIX)/bin/
+	$(INSTALL) target/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
@@ -92,24 +99,24 @@ install-%: build-%
 dist: $(RUNTIMES:%=dist-%);
 
 dist-%:
-	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* PREFIX="$(PWD)/dist" TARGET="$(TARGET)"
+	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* PREFIX="$(PWD)/dist" OPT_PROFILE="$(OPT_PROFILE)"
 
 .PHONY: test-image
 test-image: dist/img.tar
 
 .PHONY: test-image
 test-image/clean:
-	rm -rf target/wasm32-wasi/$(TARGET)/
+	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/
 
-.PHONY: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
-target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm:
+.PHONY: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm:
 	rustup target add wasm32-wasi
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
 
-target/wasm32-wasi/$(TARGET)/img.tar: target/wasm32-wasi/$(TARGET)/wasi-demo-app.wasm
+target/wasm32-wasi/$(OPT_PROFILE)/img.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
 
-dist/img.tar: target/wasm32-wasi/$(TARGET)/img.tar
+dist/img.tar: target/wasm32-wasi/$(OPT_PROFILE)/img.tar
 	@mkdir -p "dist/"
 	cp "$<" "$@"
 
