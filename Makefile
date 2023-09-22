@@ -82,19 +82,17 @@ test-%:
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
 
-install-%:
+install-%: build-%
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) target/$(TARGET)/containerd-shim-$*-v1 $(PREFIX)/bin/
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
-# dist is not phony, so that if the folder exist we don't try to do work
-dist:
-	$(MAKE) $(RUNTIMES:%=dist-%) TARGET="$(TARGET)"
+.PHONY: dist dist-%
+dist: $(RUNTIMES:%=dist-%);
 
-.PHONY: dist-%
-dist-%: build-%
-	$(MAKE) install-$* PREFIX="$(PWD)/dist" TARGET="$(TARGET)"
+dist-%:
+	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* PREFIX="$(PWD)/dist" TARGET="$(TARGET)"
 
 .PHONY: test-image
 test-image: dist/img.tar
@@ -121,21 +119,21 @@ load: dist/img.tar
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
 
-test/k8s/_out/img: test/k8s/Dockerfile dist
-	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --iidfile=$(@) --load  .
+test/k8s/_out/img-%: test/k8s/Dockerfile dist-%
+	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
 
 .PHONY: test/nginx
 test/nginx:
 	docker pull docker.io/nginx:latest
 	mkdir -p $@/out && docker save -o $@/out/img.tar docker.io/nginx:latest
 
-.PHONY: test/k8s/cluster
-test/k8s/cluster: dist/img.tar bin/kind test/k8s/_out/img
-	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img)" && \
+.PHONY: test/k8s/cluster-%
+test/k8s/cluster-%: dist/img.tar bin/kind test/k8s/_out/img-%
+	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img-$*)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
-.PHONY: test/k8s
-test/k8s: test/k8s/cluster
+.PHONY: test/k8s-%
+test/k8s-%: test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 
@@ -152,34 +150,23 @@ bin/k3s:
 bin/k3s/clean:
 	bin/k3s-runwasi-uninstall.sh
 
-.PHONY: test/k3s-wasmedge
-test/k3s-wasmedge: dist/img.tar bin/k3s dist
-	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmedge-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
-	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
-	sudo systemctl daemon-reload && \
-	sudo systemctl restart k3s-runwasi && \
-	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
-	sudo bin/k3s ctr image import --all-platforms dist/img.tar && \
+.PHONY: test/k3s-%
+test/k3s-%: dist/img.tar bin/k3s dist-%
+	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-$*-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+	echo "CONTAINERD_NAMESPACE='$(CONTAINERD_NAMESPACE)'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env
+	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env
+	sudo systemctl daemon-reload
+	sudo systemctl restart k3s-runwasi
+	timeout 60 bash -c -- 'while ! sudo bin/k3s ctr version; do sleep 1; done'
+	sudo bin/k3s ctr image import --all-platforms dist/img.tar
+	timeout 60 bash -c -- 'while [ "$$(sudo bin/k3s kubectl get pods --all-namespaces --no-headers | wc -l)" == "0" ]; do sleep 1; done'
+	timeout 60 bash -c -- 'while [ "$$(sudo bin/k3s kubectl get pods --all-namespaces --no-headers | grep -vE "Completed|Running" | wc -l)" != "0" ]; do sleep 1; done'
+	sudo bin/k3s kubectl get pods --all-namespaces
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s && \
-	sudo bin/k3s kubectl get pods -o wide
-
-.PHONY: test/k3s-wasmer
-test/k3s-wasmer: dist/img.tar bin/k3s dist
-	sudo cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo '  runtime_type = "$(PWD)/dist/bin/containerd-shim-wasmer-v1"' | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl && \
-	echo "CONTAINERD_NAMESPACE='default'" | sudo tee /etc/systemd/system/k3s-runwasi.service.env && \
-	echo "NO_PROXY=192.168.0.0/16" | sudo tee -a /etc/systemd/system/k3s-runwasi.service.env && \
-	sudo systemctl daemon-reload && \
-	sudo systemctl restart k3s-runwasi && \
-	timeout 60 bash -c -- 'while true; do sudo bin/k3s ctr version && break; sleep 1; done' && \
-	sudo bin/k3s ctr image import --all-platforms dist/img.tar && \
-	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s && \
+	sudo bin/k3s kubectl get pods --all-namespaces
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
