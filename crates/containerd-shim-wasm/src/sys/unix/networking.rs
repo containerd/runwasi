@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::os::unix::io::AsRawFd;
 
 use anyhow::Result;
 use containerd_shim::error::Error as ShimError;
@@ -25,7 +24,7 @@ pub fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
                         err
                     ))
                 })?;
-                setns(f.as_raw_fd(), CloneFlags::CLONE_NEWNET).map_err(|err| {
+                setns(f, CloneFlags::CLONE_NEWNET).map_err(|err| {
                     ShimError::Other(format!("could not set network namespace: {0}", err))
                 })?;
             } else {
