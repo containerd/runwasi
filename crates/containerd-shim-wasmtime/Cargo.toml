@@ -29,7 +29,7 @@ wasmtime-wasi = { version = "11.0", features = ["exit"] }
 wasi-common = "11.0"
 
 [dev-dependencies]
-containerd-shim-wasm-test = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = "*"
 
 [[bin]]

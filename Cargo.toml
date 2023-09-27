@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/containerd-shim-wasm",
-    "crates/containerd-shim-wasm-test",
+    "crates/containerd-shim-wasm-test-modules",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
     "crates/containerd-shim-wasmedge",
@@ -24,7 +24,7 @@ cap-std = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.5.0"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
-containerd-shim-wasm-test = { path = "crates/containerd-shim-wasm-test" }
+containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules" }
 crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
 libc = "0.2.147"
@@ -36,6 +36,7 @@ serde = "1.0"
 serde_json = "1.0"
 sha256 = "1.4.0"
 tar = "0.4"
+tempfile = "3.8"
 thiserror = "1.0"
 ttrpc = "0.8.0"
 wat = "*" # Use whatever version wasmtime will make us pull

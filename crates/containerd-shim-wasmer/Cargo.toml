@@ -17,7 +17,7 @@ wasmer-compiler = { version = "4.1.2", features = ["compiler"] }
 wasmer-wasix = { version = "0.12.0" }
 
 [dev-dependencies]
-containerd-shim-wasm-test = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = "*"
 
 [[bin]]

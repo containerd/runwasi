@@ -1,13 +1,12 @@
 [package]
-name = "containerd-shim-wasm-test"
-description = "Library for testing containerd shims for wasm"
+name = "containerd-shim-wasm-test-modules"
+description = "Set of WebAssembly modules for testing containerd shims for wasm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim-wasm = { workspace = true }
 env_logger = "0.10"
 libc = { workspace = true }
 log = { workspace = true }

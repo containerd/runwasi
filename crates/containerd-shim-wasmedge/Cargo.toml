@@ -15,7 +15,7 @@ wasmedge-sdk = { version = "0.12.2" }
 wasmedge-sys = "*"
 
 [dev-dependencies]
-containerd-shim-wasm-test = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["testing"] }
 libc = { workspace = true }
 serial_test = "*"
 

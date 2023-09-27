@@ -10,3 +10,6 @@ pub mod services;
 #[cfg_attr(unix, path = "sys/unix/mod.rs")]
 #[cfg_attr(windows, path = "sys/windows/mod.rs")]
 pub(crate) mod sys;
+
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;

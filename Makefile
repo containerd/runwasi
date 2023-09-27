@@ -47,8 +47,8 @@ check: check-wasm $(RUNTIMES:%=check-%);
 
 check-common: check-wasm;
 check-wasm:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- --check
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 check-%:
 	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$* -- --check
@@ -59,8 +59,8 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 
 fix-common: fix-wasm;
 fix-wasm:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test -- $(WARNINGS)
+	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 fix-%:
 	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$*
@@ -72,7 +72,7 @@ test: test-wasm $(RUNTIMES:%=test-%);
 test-common: test-wasm;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture --test-threads=1
 
 test-wasmedge:
 	# run tests in one thread to prevent paralellism

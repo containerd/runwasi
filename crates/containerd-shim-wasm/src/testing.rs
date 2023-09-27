@@ -8,17 +8,12 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
-#[cfg(unix)]
-use libc::SIGKILL;
-
-#[cfg(windows)]
-const SIGKILL: i32 = 9;
-
-use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
+pub use containerd_shim_wasm_test_modules as modules;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
 
-pub mod modules;
+use crate::sandbox::instance::Wait;
+use crate::sandbox::{Instance, InstanceConfig};
+use crate::sys::signals::SIGKILL;
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
