@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::thread;
 
@@ -20,33 +21,37 @@ use crate::sys::container::executor::Executor;
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
-    engine: E,
     exit_code: ExitCode,
-    stdio: Stdio,
-    bundle: PathBuf,
     rootdir: PathBuf,
     id: String,
+    _phantom: PhantomData<E>,
 }
 
 impl<E: Engine> SandboxInstance for Instance<E> {
     type Engine = E;
 
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
-        let cfg = cfg.unwrap();
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, SandboxError> {
+        let cfg = cfg.context("missing configuration")?;
         let engine = cfg.get_engine();
-        let bundle = cfg.get_bundle().unwrap_or_default().into();
+        let bundle = cfg.get_bundle().context("missing bundle")?;
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-        let rootdir = determine_rootdir(&bundle, &namespace, rootdir).unwrap();
-        let stdio = Stdio::init_from_cfg(cfg).expect("failed to open stdio");
-        Self {
+        let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
+        let stdio = Stdio::init_from_cfg(cfg)?;
+
+        ContainerBuilder::new(id.clone(), SyscallType::Linux)
+            .with_executor(Executor::new(engine, stdio))
+            .with_root_path(rootdir.clone())?
+            .as_init(&bundle)
+            .with_systemd(false)
+            .build()?;
+
+        Ok(Self {
             id,
             exit_code: ExitCode::default(),
-            engine,
-            stdio,
-            bundle,
             rootdir,
-        }
+            _phantom: Default::default(),
+        })
     }
 
     /// Start the instance
@@ -54,18 +59,12 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, SandboxError> {
         log::info!("starting instance: {}", self.id);
-        let mut container = ContainerBuilder::new(self.id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(self.engine.clone(), self.stdio.take()))
-            .with_root_path(self.rootdir.clone())?
-            .as_init(&self.bundle)
-            .with_systemd(false)
-            .build()?;
 
+        let container_root = get_instance_root(&self.rootdir, &self.id)?;
+        let mut container = Container::load(container_root)?;
         let pid = container.pid().context("failed to get pid")?.as_raw();
 
-        container.start().map_err(|err| {
-            SandboxError::Any(anyhow::anyhow!("failed to start container: {}", err))
-        })?;
+        container.start()?;
 
         let exit_code = self.exit_code.clone();
         thread::spawn(move || {
@@ -110,30 +109,20 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     fn delete(&self) -> Result<(), SandboxError> {
         log::info!("deleting instance: {}", self.id);
         match instance_exists(&self.rootdir, &self.id) {
-            Ok(exists) => {
-                if !exists {
-                    return Ok(());
-                }
-            }
+            Ok(true) => {}
+            Ok(false) => return Ok(()),
             Err(err) => {
                 log::error!("could not find the container, skipping cleanup: {}", err);
                 return Ok(());
             }
         }
         let container_root = get_instance_root(&self.rootdir, &self.id)?;
-        let container = Container::load(container_root)
-            .with_context(|| format!("could not load state for container {}", self.id));
-        match container {
-            Ok(mut container) => container.delete(true).map_err(|err| {
-                SandboxError::Any(anyhow::anyhow!(
-                    "failed to delete container {}: {}",
-                    &self.id,
-                    err
-                ))
-            })?,
+        match Container::load(container_root) {
+            Ok(mut container) => {
+                container.delete(true)?;
+            }
             Err(err) => {
                 log::error!("could not find the container, skipping cleanup: {}", err);
-                return Ok(());
             }
         }
         Ok(())

@@ -746,10 +746,10 @@ impl<T: Instance + Send + Sync> Local<T> {
         );
         InstanceData {
             instance: None,
-            base: Some(Nop::new(id, None)),
+            base: Some(Nop::new(id, None).unwrap()),
             cfg,
             pid: RwLock::new(None),
-            status: Arc::new((Mutex::new(None), Condvar::new())),
+            status: Arc::default(),
             state: Arc::new(RwLock::new(TaskStateWrapper::Created(
                 TaskState::<Created> {
                     s: std::marker::PhantomData,
@@ -954,11 +954,11 @@ impl<T: Instance + Send + Sync> Local<T> {
         self.instances.write().unwrap().insert(
             req.id().to_string(),
             Arc::new(InstanceData {
-                instance: Some(T::new(req.id().to_string(), Some(&builder))),
+                instance: Some(T::new(req.id().to_string(), Some(&builder))?),
                 base: None,
                 cfg: builder,
                 pid: RwLock::new(None),
-                status: Arc::new((Mutex::new(None), Condvar::new())),
+                status: Arc::default(),
                 state: Arc::new(RwLock::new(TaskStateWrapper::Created(
                     TaskState::<Created> {
                         s: std::marker::PhantomData,
@@ -1097,9 +1097,7 @@ impl<T: Instance + Send + Sync> Local<T> {
             ..Default::default()
         };
 
-        let status = i.status.0.lock().unwrap();
-        if status.is_some() {
-            let ec = status.unwrap();
+        if let Some(ec) = *i.status.0.lock().unwrap() {
             event.exit_status = ec.0;
             resp.exit_status = ec.0;
 
@@ -1111,7 +1109,6 @@ impl<T: Instance + Send + Sync> Local<T> {
             event.set_exited_at(timestamp.clone());
             resp.set_exited_at(timestamp);
         }
-        drop(status);
 
         self.instances.write().unwrap().remove(req.id());
 
@@ -1175,12 +1172,7 @@ impl<T: Instance + Send + Sync> Local<T> {
 
         state.set_pid(pid.unwrap());
 
-        let status = i.status.0.lock().unwrap();
-
-        let code = *status;
-        drop(status);
-
-        if let Some(c) = code {
+        if let Some(c) = *i.status.0.lock().unwrap() {
             state.set_status(Status::STOPPED);
             let ec = c;
             state.exit_status = ec.0;

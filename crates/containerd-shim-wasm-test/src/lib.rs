@@ -137,7 +137,7 @@ where
             .set_stderr(dir.join("stderr").to_string_lossy().to_string())
             .set_stdin(dir.join("stdin").to_string_lossy().to_string());
 
-        let instance = WasiInstance::new("test".to_string(), Some(&cfg));
+        let instance = WasiInstance::new("test".to_string(), Some(&cfg))?;
         Ok(WasiTest { instance, tempdir })
     }
 }
