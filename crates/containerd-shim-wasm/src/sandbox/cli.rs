@@ -6,7 +6,8 @@ use containerd_shim::{parse, run, Config};
 use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
-use crate::sandbox::{Instance, Local, ManagerService, ShimCli};
+use crate::sandbox::shim::Local;
+use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
 pub mod r#impl {

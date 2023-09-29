@@ -33,9 +33,9 @@ impl Stdio {
 
     pub fn init_from_cfg(cfg: &InstanceConfig<impl Send + Sync + Clone>) -> Result<Self> {
         Ok(Self {
-            stdin: cfg.get_stdin().try_into()?,
-            stdout: cfg.get_stdout().try_into()?,
-            stderr: cfg.get_stderr().try_into()?,
+            stdin: StdioStream::try_from_path(cfg.get_stdin())?,
+            stdout: StdioStream::try_from_path(cfg.get_stdout())?,
+            stderr: StdioStream::try_from_path(cfg.get_stderr())?,
         })
     }
 
@@ -90,20 +90,18 @@ impl<const FD: StdioRawFd> StdioStream<FD> {
     }
 }
 
-impl<P: AsRef<Path>, const FD: StdioRawFd> TryFrom<Option<P>> for StdioStream<FD> {
-    type Error = Error;
-    fn try_from(path: Option<P>) -> Result<Self> {
-        let fd = path
-            .and_then(|path| match path.as_ref() {
-                path if path.as_os_str().is_empty() => None,
-                path => Some(StdioOwnedFd::try_from_path(path)),
-            })
-            .transpose()
-            .or_else(|err| match err.kind() {
-                NotFound => Ok(None),
-                _ => Err(err),
-            })?
-            .unwrap_or_default();
+impl<const FD: StdioRawFd> StdioStream<FD> {
+    fn try_from_path(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        if path.as_os_str().is_empty() {
+            return Ok(Self(Arc::default()));
+        }
+
+        let fd = match StdioOwnedFd::try_from_path(path) {
+            Err(err) if err.kind() == NotFound => Default::default(),
+            Err(err) => return Err(err),
+            Ok(fd) => fd,
+        };
 
         Ok(Self(Arc::new(fd)))
     }
@@ -126,16 +124,12 @@ mod test {
     /// Any other error is a real error.
     #[test]
     fn test_maybe_open_stdio() -> anyhow::Result<()> {
-        // None
-        let s = Stdout::try_from(None::<&Path>)?;
-        assert!(s.0.take().as_raw_fd().is_none());
-
         // empty path
-        let s = Stdout::try_from(Some(""))?;
+        let s = Stdout::try_from_path("")?;
         assert!(s.0.take().as_raw_fd().is_none());
 
         // nonexistent path
-        let s = Stdout::try_from(Some("/some/nonexistent/path"))?;
+        let s = Stdout::try_from_path("/some/nonexistent/path")?;
         assert!(s.0.take().as_raw_fd().is_none());
 
         // valid path
@@ -145,7 +139,7 @@ mod test {
         drop(temp);
 
         // a valid path should not fail
-        let s = Stdout::try_from(Some(&path))?;
+        let s = Stdout::try_from_path(path)?;
         assert!(s.0.take().as_raw_fd().is_some());
         Ok(())
     }

@@ -37,7 +37,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, SandboxError> {
         let cfg = cfg.context("missing configuration")?;
         let engine = cfg.get_engine();
-        let bundle = cfg.get_bundle().context("missing bundle")?;
+        let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
         let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;

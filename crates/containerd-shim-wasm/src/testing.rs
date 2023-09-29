@@ -122,13 +122,13 @@ where
 
         let mut cfg = InstanceConfig::new(
             WasiInstance::Engine::default(),
-            "test_namespace".into(),
-            "/run/containerd/containerd.sock".into(),
+            "test_namespace",
+            "/run/containerd/containerd.sock",
         );
-        cfg.set_bundle(dir.to_string_lossy().to_string())
-            .set_stdout(dir.join("stdout").to_string_lossy().to_string())
-            .set_stderr(dir.join("stderr").to_string_lossy().to_string())
-            .set_stdin(dir.join("stdin").to_string_lossy().to_string());
+        cfg.set_bundle(dir)
+            .set_stdout(dir.join("stdout"))
+            .set_stderr(dir.join("stderr"))
+            .set_stdin(dir.join("stdin"));
 
         let instance = WasiInstance::new("test".to_string(), Some(&cfg))?;
         Ok(WasiTest { instance, tempdir })

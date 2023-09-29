@@ -1,5 +1,6 @@
 //! Abstractions for running/managing a wasm/wasi instance.
 
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -16,13 +17,13 @@ pub struct InstanceConfig<Engine: Send + Sync + Clone> {
     /// This should be cheap to clone.
     engine: Engine,
     /// Optional stdin named pipe path.
-    stdin: Option<String>,
+    stdin: PathBuf,
     /// Optional stdout named pipe path.
-    stdout: Option<String>,
+    stdout: PathBuf,
     /// Optional stderr named pipe path.
-    stderr: Option<String>,
+    stderr: PathBuf,
     /// Path to the OCI bundle directory.
-    bundle: Option<String>,
+    bundle: PathBuf,
     /// Namespace for containerd
     namespace: String,
     // /// GRPC address back to main containerd
@@ -30,60 +31,66 @@ pub struct InstanceConfig<Engine: Send + Sync + Clone> {
 }
 
 impl<Engine: Send + Sync + Clone> InstanceConfig<Engine> {
-    pub fn new(engine: Engine, namespace: String, containerd_address: String) -> Self {
+    pub fn new(
+        engine: Engine,
+        namespace: impl AsRef<str>,
+        containerd_address: impl AsRef<str>,
+    ) -> Self {
+        let namespace = namespace.as_ref().to_string();
+        let containerd_address = containerd_address.as_ref().to_string();
         Self {
             engine,
             namespace,
             containerd_address,
-            stdin: None,
-            stdout: None,
-            stderr: None,
-            bundle: None,
+            stdin: PathBuf::default(),
+            stdout: PathBuf::default(),
+            stderr: PathBuf::default(),
+            bundle: PathBuf::default(),
         }
     }
 
     /// set the stdin path for the instance
-    pub fn set_stdin(&mut self, stdin: String) -> &mut Self {
-        self.stdin = Some(stdin);
+    pub fn set_stdin(&mut self, stdin: impl AsRef<Path>) -> &mut Self {
+        self.stdin = stdin.as_ref().to_path_buf();
         self
     }
 
     /// get the stdin path for the instance
-    pub fn get_stdin(&self) -> Option<String> {
-        self.stdin.clone()
+    pub fn get_stdin(&self) -> &Path {
+        &self.stdin
     }
 
     /// set the stdout path for the instance
-    pub fn set_stdout(&mut self, stdout: String) -> &mut Self {
-        self.stdout = Some(stdout);
+    pub fn set_stdout(&mut self, stdout: impl AsRef<Path>) -> &mut Self {
+        self.stdout = stdout.as_ref().to_path_buf();
         self
     }
 
     /// get the stdout path for the instance
-    pub fn get_stdout(&self) -> Option<String> {
-        self.stdout.clone()
+    pub fn get_stdout(&self) -> &Path {
+        &self.stdout
     }
 
     /// set the stderr path for the instance
-    pub fn set_stderr(&mut self, stderr: String) -> &mut Self {
-        self.stderr = Some(stderr);
+    pub fn set_stderr(&mut self, stderr: impl AsRef<Path>) -> &mut Self {
+        self.stderr = stderr.as_ref().to_path_buf();
         self
     }
 
     /// get the stderr path for the instance
-    pub fn get_stderr(&self) -> Option<String> {
-        self.stderr.clone()
+    pub fn get_stderr(&self) -> &Path {
+        &self.stderr
     }
 
     /// set the OCI bundle path for the instance
-    pub fn set_bundle(&mut self, bundle: String) -> &mut Self {
-        self.bundle = Some(bundle);
+    pub fn set_bundle(&mut self, bundle: impl AsRef<Path>) -> &mut Self {
+        self.bundle = bundle.as_ref().to_path_buf();
         self
     }
 
     /// get the OCI bundle path for the instance
-    pub fn get_bundle(&self) -> Option<String> {
-        self.bundle.clone()
+    pub fn get_bundle(&self) -> &Path {
+        &self.bundle
     }
 
     /// get the wasm engine for the instance
