@@ -1,7 +1,9 @@
 use std::marker::PhantomData;
+use std::time::Duration;
+
+use chrono::{DateTime, Utc};
 
 use crate::container::Engine;
-use crate::sandbox::instance::Wait;
 use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
 
 pub struct Instance<E: Engine>(PhantomData<E>);
@@ -31,13 +33,10 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         todo!();
     }
 
-    /// Set up waiting for the instance to exit
-    /// The Wait struct is used to send the exit code and time back to the
-    /// caller. The recipient is expected to call function
-    /// set_up_exit_code_wait() implemented by Wait to set up exit code
-    /// processing. Note that the "wait" function doesn't block, but
-    /// it sets up the waiting channel.
-    fn wait(&self, _waiter: &Wait) -> Result<(), SandboxError> {
+    /// Waits for the instance to finish and retunrs its exit code
+    /// Returns None if the timeout is reached before the instance has finished.
+    /// This is a blocking call.
+    fn wait_timeout(&self, _t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
         todo!();
     }
 }

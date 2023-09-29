@@ -9,6 +9,7 @@ pub mod instance_utils;
 pub mod manager;
 pub mod shim;
 pub mod stdio;
+pub mod sync;
 
 pub use error::{Error, Result};
 pub use instance::{Instance, InstanceConfig};
