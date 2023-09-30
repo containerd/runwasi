@@ -27,7 +27,7 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
 containerd-shim-wasm-test = { path = "crates/containerd-shim-wasm-test" }
 crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
-libc = "0.2.147"
+libc = "0.2.148"
 libcontainer = { version = "0.2", default-features = false }
 log = "0.4"
 nix = "0.27"
