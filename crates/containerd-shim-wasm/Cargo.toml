@@ -31,7 +31,7 @@ wat = { workspace = true }
 caps = "0.5"
 dbus = { version = "*", features = ["vendored"] }
 libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
-nix = { workspace = true }
+nix = { workspace = true, features = ["sched", "mount"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

@@ -562,7 +562,7 @@ dependencies = [
  "libc",
  "libcontainer",
  "log",
- "nix 0.26.4",
+ "nix 0.27.1",
  "oci-spec",
  "protobuf 3.2.0",
  "serde",

@@ -9,6 +9,7 @@ use libcontainer::signal::Signal;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
+use nix::unistd::Pid;
 
 use crate::container::Engine;
 use crate::sandbox::instance::{ExitCode, Wait};
@@ -60,7 +61,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
             .with_systemd(false)
             .build()?;
 
-        let pid = container.pid().context("failed to get pid")?;
+        let pid = container.pid().context("failed to get pid")?.as_raw();
 
         container.start().map_err(|err| {
             SandboxError::Any(anyhow::anyhow!("failed to start container: {}", err))
@@ -70,7 +71,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         thread::spawn(move || {
             let (lock, cvar) = &*exit_code;
 
-            let status = match waitid(WaitID::Pid(pid), WaitPidFlag::WEXITED) {
+            let status = match waitid(WaitID::Pid(Pid::from_raw(pid)), WaitPidFlag::WEXITED) {
                 Ok(WaitStatus::Exited(_, status)) => status,
                 Ok(WaitStatus::Signaled(_, sig, _)) => sig as i32,
                 Ok(_) => 0,
@@ -86,7 +87,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
             cvar.notify_all();
         });
 
-        Ok(pid.as_raw() as u32)
+        Ok(pid as u32)
     }
 
     /// Send a signal to the instance
