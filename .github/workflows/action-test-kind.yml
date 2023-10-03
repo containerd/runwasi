@@ -43,6 +43,17 @@ jobs:
         run: |
           kubectl get pods --all-namespaces
           kubectl describe pods --all-namespaces
+      - name: tar logs
+        if: failure()
+        run: |
+          bin/kind export logs ./kind-logs --name containerd-wasm
+          tar czf kind-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -C ./kind-logs .
+      - name: upload logs
+        if: failure()
+        uses: actions/upload-artifact@master
+        with:
+          name: kind-logs-${{ inputs.runtime }}-${{ inputs.os }}
+          path: kind-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz
       - name: cleanup
         if: always()
         run: make test/k8s/clean
