@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::fs::{self, canonicalize, create_dir_all, DirBuilder, File, OpenOptions};
+use std::fs::{self, DirBuilder, File};
 use std::ops::Not;
 #[cfg(unix)]
 use std::os::unix::fs::DirBuilderExt;
@@ -30,7 +30,7 @@ use containerd_shim::{self as shim, api, warn, ExitSignal, TtrpcContext, TtrpcRe
 use log::{debug, error};
 #[cfg(unix)]
 use nix::mount::{mount, MsFlags};
-use oci_spec::runtime::{self, Spec};
+use oci_spec::runtime::Spec;
 use shim::api::{StatsRequest, StatsResponse};
 use shim::Flags;
 use ttrpc::context::Context;
@@ -38,7 +38,6 @@ use ttrpc::context::Context;
 use super::instance::{Instance, InstanceConfig, Nop, Wait};
 use super::{oci, Error, SandboxService};
 use crate::sys::metrics::get_metrics;
-use crate::sys::networking::setup_namespaces;
 
 type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
 
@@ -338,6 +337,7 @@ mod localtests {
     use std::time::Duration;
 
     use anyhow::Context;
+    use oci_spec::runtime;
     use serde_json as json;
     use tempfile::tempdir;
 
@@ -1371,9 +1371,6 @@ where
             .unwrap_or(&id)
             .to_string();
 
-        setup_namespaces(&spec)
-            .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
-
         #[cfg(unix)]
         mount::<str, Path, str, str>(
             None,
@@ -1385,76 +1382,6 @@ where
         .map_err(|err| {
             shim::Error::Other(format!("failed to remount rootfs as secondary: {}", err))
         })?;
-
-        if let Some(mounts) = spec.mounts() {
-            for m in mounts {
-                match m.typ().as_ref() {
-                    None => return Err(shim::Error::Other("No mount type specified".to_string())),
-                    Some(mount_type) => {
-                        if mount_type != "bind" {
-                            continue;
-                        }
-                    }
-                }
-
-                let dest = m.destination();
-                let source = m
-                    .source()
-                    .as_ref()
-                    .ok_or_else(|| shim::Error::Other("No source mount path".to_string()))?;
-
-                let src = canonicalize(source).map_err(|err| {
-                    shim::Error::Other(format!(
-                        "Failed to canonicalize the source file path: {}",
-                        err
-                    ))
-                })?;
-
-                let dir = if src.is_file() {
-                    Path::new(&dest).parent().ok_or_else(|| {
-                        shim::Error::Other("Invalid destination file path".to_string())
-                    })?
-                } else {
-                    Path::new(&dest)
-                };
-
-                create_dir_all(dir).map_err(|err| {
-                    shim::Error::Other(format!(
-                        "Failed to create destination directory structure: {}",
-                        err
-                    ))
-                })?;
-
-                // Create target file for bind mount
-                if src.is_file() {
-                    OpenOptions::new()
-                        .create(true)
-                        .write(true)
-                        .open(dest)
-                        .map_err(|err| {
-                            shim::Error::Other(format!(
-                                "failed to create bind mount destination file: {}",
-                                err
-                            ))
-                        })?;
-                }
-
-                #[cfg(unix)]
-                mount::<str, Path, str, str>(
-                    Some(&src.to_string_lossy()),
-                    dest,
-                    None,
-                    parse_mount(m),
-                    None,
-                )
-                .map_err(|err| {
-                    shim::Error::Other(format!(
-                        "failed to mount targets that list in spec.mount: {}",
-                        err
-                    ))
-                })?;
-            }
-        }
 
         let envs = vec![] as Vec<(&str, &str)>;
         let (_child, address) = shim::spawn(opts, &grouping, envs)?;
@@ -1505,57 +1432,4 @@ fn forward_events(
             }
         })
         .unwrap();
-}
-
-#[cfg(unix)]
-// This is a copy of the parse_mount function from the youki libcontainer crate.
-fn parse_mount(m: &runtime::Mount) -> MsFlags {
-    let mut flags = MsFlags::empty();
-    if let Some(options) = &m.options() {
-        for s in options {
-            if let Some((is_clear, flag)) = match s.as_str() {
-                "defaults" => Some((false, MsFlags::empty())),
-                "ro" => Some((false, MsFlags::MS_RDONLY)),
-                "rw" => Some((true, MsFlags::MS_RDONLY)),
-                "suid" => Some((true, MsFlags::MS_NOSUID)),
-                "nosuid" => Some((false, MsFlags::MS_NOSUID)),
-                "dev" => Some((true, MsFlags::MS_NODEV)),
-                "nodev" => Some((false, MsFlags::MS_NODEV)),
-                "exec" => Some((true, MsFlags::MS_NOEXEC)),
-                "noexec" => Some((false, MsFlags::MS_NOEXEC)),
-                "sync" => Some((false, MsFlags::MS_SYNCHRONOUS)),
-                "async" => Some((true, MsFlags::MS_SYNCHRONOUS)),
-                "dirsync" => Some((false, MsFlags::MS_DIRSYNC)),
-                "remount" => Some((false, MsFlags::MS_REMOUNT)),
-                "mand" => Some((false, MsFlags::MS_MANDLOCK)),
-                "nomand" => Some((true, MsFlags::MS_MANDLOCK)),
-                "atime" => Some((true, MsFlags::MS_NOATIME)),
-                "noatime" => Some((false, MsFlags::MS_NOATIME)),
-                "diratime" => Some((true, MsFlags::MS_NODIRATIME)),
-                "nodiratime" => Some((false, MsFlags::MS_NODIRATIME)),
-                "bind" => Some((false, MsFlags::MS_BIND)),
-                "rbind" => Some((false, MsFlags::MS_BIND | MsFlags::MS_REC)),
-                "unbindable" => Some((false, MsFlags::MS_UNBINDABLE)),
-                "runbindable" => Some((false, MsFlags::MS_UNBINDABLE | MsFlags::MS_REC)),
-                "private" => Some((true, MsFlags::MS_PRIVATE)),
-                "rprivate" => Some((true, MsFlags::MS_PRIVATE | MsFlags::MS_REC)),
-                "shared" => Some((true, MsFlags::MS_SHARED)),
-                "rshared" => Some((true, MsFlags::MS_SHARED | MsFlags::MS_REC)),
-                "slave" => Some((true, MsFlags::MS_SLAVE)),
-                "rslave" => Some((true, MsFlags::MS_SLAVE | MsFlags::MS_REC)),
-                "relatime" => Some((true, MsFlags::MS_RELATIME)),
-                "norelatime" => Some((true, MsFlags::MS_RELATIME)),
-                "strictatime" => Some((true, MsFlags::MS_STRICTATIME)),
-                "nostrictatime" => Some((true, MsFlags::MS_STRICTATIME)),
-                _ => None,
-            } {
-                if is_clear {
-                    flags &= !flag;
-                } else {
-                    flags |= flag;
-                }
-            };
-        }
-    }
-    flags
 }
