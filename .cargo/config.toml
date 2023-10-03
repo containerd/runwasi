@@ -6,3 +6,6 @@ rustflags = [
 
 [target.'cfg(unix)']
 runner = 'scripts/test-runner.sh'
+
+[profile.release]
+strip = "symbols"
