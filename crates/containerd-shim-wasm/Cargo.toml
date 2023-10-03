@@ -14,15 +14,18 @@ doctest = false
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-git-version = "0.3.5"
 containerd-shim = { workspace = true }
+containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 crossbeam = { workspace = true }
+env_logger = { workspace = true, optional = true }
+git-version = "0.3.5"
 libc = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true }
 protobuf = "3.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
+tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
@@ -40,8 +43,11 @@ windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage
 ttrpc-codegen = { version = "0.4.2", optional = true }
 
 [dev-dependencies]
-tempfile = "3.8"
+containerd-shim-wasm-test-modules = { workspace = true }
+env_logger = { workspace = true }
+tempfile = { workspace = true }
 
 [features]
+testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile"]
 generate_bindings = ["ttrpc-codegen"]
 generate_doc = []

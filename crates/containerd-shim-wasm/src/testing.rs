@@ -8,17 +8,12 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
-#[cfg(unix)]
-use libc::SIGKILL;
-
-#[cfg(windows)]
-const SIGKILL: i32 = 9;
-
-use containerd_shim_wasm::sandbox::instance::Wait;
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig};
+pub use containerd_shim_wasm_test_modules as modules;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
 
-pub mod modules;
+use crate::sandbox::instance::Wait;
+use crate::sandbox::{Instance, InstanceConfig};
+use crate::sys::signals::SIGKILL;
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
@@ -137,7 +132,7 @@ where
             .set_stderr(dir.join("stderr").to_string_lossy().to_string())
             .set_stdin(dir.join("stdin").to_string_lossy().to_string());
 
-        let instance = WasiInstance::new("test".to_string(), Some(&cfg));
+        let instance = WasiInstance::new("test".to_string(), Some(&cfg))?;
         Ok(WasiTest { instance, tempdir })
     }
 }

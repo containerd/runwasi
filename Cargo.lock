@@ -556,8 +556,10 @@ dependencies = [
  "caps",
  "chrono",
  "containerd-shim",
+ "containerd-shim-wasm-test-modules",
  "crossbeam",
  "dbus",
+ "env_logger",
  "git-version",
  "libc",
  "libcontainer",
@@ -576,11 +578,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "containerd-shim-wasm-test"
+name = "containerd-shim-wasm-test-modules"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "containerd-shim-wasm",
  "env_logger",
  "lazy_static",
  "libc",
@@ -598,7 +599,6 @@ dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "containerd-shim-wasm-test",
  "libc",
  "log",
  "oci-spec",
@@ -615,7 +615,6 @@ dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "containerd-shim-wasm-test",
  "log",
  "oci-spec",
  "serial_test",
@@ -633,7 +632,6 @@ dependencies = [
  "anyhow",
  "containerd-shim",
  "containerd-shim-wasm",
- "containerd-shim-wasm-test",
  "log",
  "oci-spec",
  "serial_test",

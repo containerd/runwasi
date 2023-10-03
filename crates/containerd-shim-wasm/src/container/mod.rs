@@ -21,3 +21,6 @@ pub use path::PathResolve;
 
 pub use crate::sandbox::stdio::Stdio;
 use crate::sys::container::instance;
+
+#[cfg(test)]
+mod tests;

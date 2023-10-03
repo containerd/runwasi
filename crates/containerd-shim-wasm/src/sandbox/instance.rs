@@ -112,7 +112,9 @@ pub trait Instance {
     type Engine: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Self;
+    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error>
+    where
+        Self: Sized;
 
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
@@ -178,10 +180,10 @@ pub struct Nop {
 
 impl Instance for Nop {
     type Engine = ();
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
-        Nop {
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error> {
+        Ok(Nop {
             exit_code: Arc::new((Mutex::new(None), Condvar::new())),
-        }
+        })
     }
     fn start(&self) -> Result<u32, Error> {
         Ok(std::process::id())
@@ -220,7 +222,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
+        let nop = Nop::new("".to_string(), None)?;
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
 
@@ -233,7 +235,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigterm() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
+        let nop = Nop::new("".to_string(), None)?;
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
 
@@ -246,7 +248,7 @@ mod noptests {
 
     #[test]
     fn test_nop_kill_sigint() -> Result<(), Error> {
-        let nop = Nop::new("".to_string(), None);
+        let nop = Nop::new("".to_string(), None)?;
         let (tx, rx) = channel();
         let waiter = Wait::new(tx);
 
@@ -258,8 +260,9 @@ mod noptests {
     }
 
     #[test]
-    fn test_nop_delete_after_create() {
-        let nop = Nop::new("".to_string(), None);
-        nop.delete().unwrap();
+    fn test_nop_delete_after_create() -> Result<(), Error> {
+        let nop = Nop::new("".to_string(), None)?;
+        nop.delete()?;
+        Ok(())
     }
 }

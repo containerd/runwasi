@@ -9,7 +9,7 @@ pub struct Instance<E: Engine>(PhantomData<E>);
 impl<E: Engine> SandboxInstance for Instance<E> {
     type Engine = E;
 
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Self {
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, SandboxError> {
         todo!();
     }
 
