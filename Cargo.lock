@@ -2006,7 +2006,7 @@ checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 [[package]]
 name = "libcgroups"
 version = "0.2.0"
-source = "git+https://github.com/jprendes/youki.git?rev=dd324aad42f2285553e2a356b599e6e40796c4b9#dd324aad42f2285553e2a356b599e6e40796c4b9"
+source = "git+https://github.com/jprendes/youki.git?rev=af5c9a9f67777af8b474e7ef893b5f36c6257420#af5c9a9f67777af8b474e7ef893b5f36c6257420"
 dependencies = [
  "fixedbitset 0.4.2",
  "nix 0.27.1",
@@ -2020,7 +2020,7 @@ dependencies = [
 [[package]]
 name = "libcontainer"
 version = "0.2.0"
-source = "git+https://github.com/jprendes/youki.git?rev=dd324aad42f2285553e2a356b599e6e40796c4b9#dd324aad42f2285553e2a356b599e6e40796c4b9"
+source = "git+https://github.com/jprendes/youki.git?rev=af5c9a9f67777af8b474e7ef893b5f36c6257420#af5c9a9f67777af8b474e7ef893b5f36c6257420"
 dependencies = [
  "bitflags 2.4.0",
  "caps",
@@ -2030,6 +2030,7 @@ dependencies = [
  "libc",
  "libcgroups",
  "libseccomp",
+ "log",
  "nix 0.27.1",
  "oci-spec",
  "once_cell",
