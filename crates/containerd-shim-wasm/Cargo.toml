@@ -22,7 +22,7 @@ git-version = "0.3.5"
 libc = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true }
-protobuf = "3.2"
+protobuf = "=3.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true, optional = true }
@@ -33,7 +33,7 @@ wat = { workspace = true }
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
 dbus = { version = "*", features = ["vendored"] }
-libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
+libcontainer = { workspace = true, features = ["no-clone3", "libseccomp", "systemd", "v1", "v2"]}
 nix = { workspace = true, features = ["sched", "mount"] }
 
 [target.'cfg(windows)'.dependencies]

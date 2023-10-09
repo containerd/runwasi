@@ -28,7 +28,7 @@ containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-m
 crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
 libc = "0.2.148"
-libcontainer = { version = "0.2", default-features = false }
+libcontainer = { git = "https://github.com/jprendes/youki.git", rev = "dd324aad42f2285553e2a356b599e6e40796c4b9", default-features = false }
 log = "0.4"
 nix = "0.27"
 oci-spec = { version = "0.6.1", features = ["runtime"] }
