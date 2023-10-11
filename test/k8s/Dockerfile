@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
-ARG KIND_VERSION=v0.17.0
-ARG KIND_NODE_VERSION=v1.23.13
+ARG KIND_VERSION=v0.20.0
+ARG KIND_NODE_VERSION=v1.27.3
 ARG RUNTIME=wasmtime
 
 FROM scratch AS kind
