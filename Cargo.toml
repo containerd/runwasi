@@ -28,7 +28,6 @@ containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-m
 crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
 libc = "0.2.149"
-# Move back to a published version of libcontainer when a new release is available
 libcontainer = { version = "0.3", default-features = false }
 log = "0.4"
 nix = "0.27"
