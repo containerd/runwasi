@@ -29,7 +29,7 @@ crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
 libc = "0.2.149"
 # Move back to a published version of libcontainer when a new release is available
-libcontainer = { git = "https://github.com/containers/youki.git", rev = "fd25afb76a66b9e1cd7c4a37ae76bf46fc3f5542", default-features = false }
+libcontainer = { version = "0.3", default-features = false }
 log = "0.4"
 nix = "0.27"
 oci-spec = { version = "0.6.3", features = ["runtime"] }
