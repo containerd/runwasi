@@ -10,7 +10,7 @@ use crate::sandbox::{Instance, Local, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
 pub mod r#impl {
-    pub use git_version::git_describe;
+    pub use git_version::git_version;
 }
 
 pub use crate::{revision, version};
@@ -25,12 +25,13 @@ macro_rules! version {
 #[macro_export]
 macro_rules! revision {
     () => {
-        Some($crate::sandbox::cli::r#impl::git_describe!(
-            "--match=:",
-            "--always",
-            "--abbrev=15",
-            "--dirty=.m"
-        ))
+        match $crate::sandbox::cli::r#impl::git_version!(
+            args = ["--match=:", "--always", "--abbrev=15", "--dirty=.m"],
+            fallback = "",
+        ) {
+            "" => None,
+            version => Some(version),
+        }
     };
 }
 
