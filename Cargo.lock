@@ -2006,8 +2006,9 @@ checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
 name = "libcgroups"
-version = "0.2.0"
-source = "git+https://github.com/containers/youki.git?rev=fd25afb76a66b9e1cd7c4a37ae76bf46fc3f5542#fd25afb76a66b9e1cd7c4a37ae76bf46fc3f5542"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f4f714d22aa5a2748ba76a149fed9f838fac3bd1c6d1092fead794200bc77f0"
 dependencies = [
  "fixedbitset 0.4.2",
  "nix 0.27.1",
@@ -2020,8 +2021,9 @@ dependencies = [
 
 [[package]]
 name = "libcontainer"
-version = "0.2.0"
-source = "git+https://github.com/containers/youki.git?rev=fd25afb76a66b9e1cd7c4a37ae76bf46fc3f5542#fd25afb76a66b9e1cd7c4a37ae76bf46fc3f5542"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d58cc6e9f2f361a9c9b33a2e546070febe8391d9178e3cea77772fa4fc8d31d"
 dependencies = [
  "bitflags 2.4.0",
  "caps",
@@ -3365,9 +3367,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.188"
+version = "1.0.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf9e0fcba69a370eed61bcf2b728575f726b50b55cba78064753d708ddc7549e"
+checksum = "8e422a44e74ad4001bdc8eede9a4570ab52f71190e9c076d14369f38b9200537"
 dependencies = [
  "serde_derive",
 ]
@@ -3395,9 +3397,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.188"
+version = "1.0.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
+checksum = "1e48d1f918009ce3145511378cf68d613e3b3d9137d67272562080d68a2b32d5"
 dependencies = [
  "proc-macro2",
  "quote",
