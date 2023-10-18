@@ -32,12 +32,15 @@ jobs:
     name: ${{ matrix.runtime }}
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
+        os: ["ubuntu-22.04"]
         runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
+        libc: ["musl", "gnu"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
+      target: "x86_64-unknown-linux-${{ matrix.libc }}"
+      slug: "linux-${{ matrix.libc }}"
 
   build-windows:
     name: ${{ matrix.runtime }}
@@ -49,6 +52,7 @@ jobs:
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
+      slug: "windows"
 
   smoke-tests:
     name: ${{ matrix.runtime }}
