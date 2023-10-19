@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::sandbox::oci::OciArtifact;
+use crate::sandbox::oci::WasmLayer;
 
 pub trait RuntimeContext {
     // ctx.args() returns arguments from the runtime spec process field, including the
@@ -23,7 +24,9 @@ pub trait RuntimeContext {
     //   "#init" -> { path: "", func: "init" }
     fn wasi_entrypoint(&self) -> WasiEntrypoint;
 
-    fn oci_artifacts(&self) -> &[OciArtifact];
+    fn wasm_layers(&self) -> &[WasmLayer];
+
+    fn platform(&self) -> &Platform;
 }
 
 pub struct WasiEntrypoint {
@@ -33,7 +36,8 @@ pub struct WasiEntrypoint {
 
 pub(crate) struct WasiContext<'a> {
     pub spec: &'a Spec,
-    pub oci_artifacts: &'a [OciArtifact],
+    pub wasm_layers: &'a [WasmLayer],
+    pub platform: &'a Platform,
 }
 
 impl RuntimeContext for WasiContext<'_> {
@@ -59,8 +63,12 @@ impl RuntimeContext for WasiContext<'_> {
         }
     }
 
-    fn oci_artifacts(&self) -> &[OciArtifact] {
-        self.oci_artifacts
+    fn wasm_layers(&self) -> &[WasmLayer] {
+        self.wasm_layers
+    }
+
+    fn platform(&self) -> &Platform {
+        self.platform
     }
 }
 
@@ -85,7 +93,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let args = ctx.args();
@@ -104,7 +113,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let args = ctx.args();
@@ -131,7 +141,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let args = ctx.args();
@@ -152,7 +163,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let path = ctx.wasi_entrypoint().path;
@@ -179,7 +191,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
@@ -207,7 +220,8 @@ mod tests {
 
         let ctx = WasiContext {
             spec: &spec,
-            oci_artifacts: &[],
+            wasm_layers: &[],
+            platform: &Platform::default(),
         };
 
         let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();

@@ -1,7 +1,12 @@
 #[cfg(feature = "oci-v1-tar")]
 use {
-    anyhow::Context, oci_spec::image as spec, oci_tar_builder::Builder, sha256::try_digest,
-    std::env, std::fs::File, std::path::PathBuf,
+    anyhow::Context,
+    oci_spec::image::{self as spec, Arch},
+    oci_tar_builder::Builder,
+    sha256::try_digest,
+    std::env,
+    std::fs::File,
+    std::path::PathBuf,
 };
 
 #[cfg(not(feature = "oci-v1-tar"))]
@@ -39,8 +44,8 @@ fn main() {
     let layer_digest = try_digest(layer_path.as_path()).unwrap();
     let img = spec::ImageConfigurationBuilder::default()
         .config(config)
-        .os("wasi")
-        .architecture("wasm")
+        .os("wasip1")
+        .architecture(Arch::Wasm)
         .rootfs(
             spec::RootFsBuilder::default()
                 .diff_ids(vec!["sha256:".to_owned() + &layer_digest])

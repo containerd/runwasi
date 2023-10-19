@@ -323,22 +323,22 @@ To kill the process from demo 2, you can run in other session: `sudo ctr task ki
 
 The test binary supports commands for different type of functionality, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to try it out.
 
-## Demo 3 using WASM OCI artifacts
+## Demo 3 using OCI Images with custom WASM layers
 
-The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI artifact that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI artifact can be run across any platform and provides for de-duplication in the Containerd content store among other benefits.
+The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits.
 
 To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).
 
-> **Note**: This requires containerd components based on https://github.com/containerd/containerd/pull/8699.  Both CTR and containerd need to be build with that patch.  If you do not have this patch for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps
+> **Note**: This requires containerd 1.7.7+ and 1.6.25+ (not yet released).  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps.
 
-Build and import the OCI artifact image:
+Build and import the OCI image with WASM layers image:
 
 ```
 make test-image/oci
 make load/oci
 ```
 
-Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 --label application/vnd.bytecodealliance.wasm.module=oci.wasm ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`
+Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`
 
 ```
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci wasi-demo-oci.wasm echo 'hello'

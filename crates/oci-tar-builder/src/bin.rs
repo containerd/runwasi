@@ -4,11 +4,9 @@ use std::{env, fs};
 
 use anyhow::Context;
 use clap::Parser;
-use oci_spec::image as spec;
+use oci_spec::image::{self as spec, Arch};
 use oci_tar_builder::Builder;
 
-// Following labels and media types must match in ../containerd-shim-wasm/src/sandbox/oci.rs
-// not using it here to avoid needing to have all the deps for containerd-shim-wasm
 pub const WASM_LAYER_MEDIA_TYPE: &str =
     "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
 
@@ -27,8 +25,6 @@ pub fn main() {
 
     let mut builder = Builder::default();
     for module_path in args.module.iter() {
-        builder.as_module_artifact();
-
         let module_path = PathBuf::from(module_path);
         builder.add_layer_with_media_type(&module_path, WASM_LAYER_MEDIA_TYPE.to_string());
     }
@@ -43,7 +39,6 @@ pub fn main() {
     }
 
     if let Some(components_path) = args.components.as_deref() {
-        builder.as_component_artifact();
         let paths = fs::read_dir(components_path).unwrap();
 
         for path in paths {
@@ -69,8 +64,8 @@ pub fn main() {
 
     let img = spec::ImageConfigurationBuilder::default()
         .config(config)
-        .os("wasi")
-        .architecture("wasm")
+        .os("wasip1")
+        .architecture(Arch::Wasm)
         .rootfs(
             spec::RootFsBuilder::default()
                 .diff_ids(vec![])

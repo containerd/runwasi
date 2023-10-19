@@ -46,6 +46,8 @@ pub enum Error {
     #[cfg(unix)]
     #[error("{0}")]
     Libcontainer(#[from] libcontainer::error::LibcontainerError),
+    #[error("{0}")]
+    Containerd(String),
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;

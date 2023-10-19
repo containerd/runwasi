@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1.4
 
-ARG KIND_NODE_VERSION=v1.23.13
+ARG KIND_NODE_VERSION=v1.27.3@sha256:3966ac761ae0136263ffdb6cfd4db23ef8a83cba8a463690e98317add2c9ba72
 ARG RUNTIME=wasmtime
-ARG GO_VERSION="1.21.1"
+ARG GO_VERSION="1.21.3-bullseye"
 
 # modified from https://github.com/kubernetes-sigs/kind/blob/main/images/base/Dockerfile
 # stage for building containerd
 FROM golang:${GO_VERSION} as build-containerd
-ARG CONTAINERD_VERSION="main"
+ARG CONTAINERD_VERSION="v1.7.7"
 ARG CONTAINERD_CLONE_URL="https://github.com/containerd/containerd"
 # we don't build with optional snapshotters, we never select any of these
 # they're not ideal inside kind anyhow, and we save some disk space
@@ -28,8 +28,7 @@ RUN apt-get update -y && \
 ADD dist/bin/* /usr/local/bin/
 
 ARG RUNTIME
-RUN sed -i 's,SystemdCgroup = true,,' /etc/containerd/config.toml && \
-    cat <<EOF >> /etc/containerd/config.toml
+RUN cat <<EOF >> /etc/containerd/config.toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
 runtime_type = "io.containerd.${RUNTIME}.v1"
 EOF

@@ -12,11 +12,14 @@ use libcontainer::syscall::syscall::SyscallType;
 use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
+use oci_spec::image::Platform;
 
 use crate::container::Engine;
 use crate::sandbox::instance_utils::{determine_rootdir, get_instance_root, instance_exists};
 use crate::sandbox::sync::WaitableCell;
-use crate::sandbox::{containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio};
+use crate::sandbox::{
+    containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio,
+};
 use crate::sys::container::executor::Executor;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
@@ -40,16 +43,16 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
         let stdio = Stdio::init_from_cfg(cfg)?;
 
-        // check if container is OCI artifact and attempt to read the module
-        let modules = containerd::Client::connect(cfg.get_containerd_address(), &namespace)?
+        // check if container is OCI image with wasm layers and attempt to read the module
+        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address(), &namespace)?
             .load_modules(&id)
             .unwrap_or_else(|e| {
-                log::warn!("Error obtaining wasm layers for container {}.  Will attempt to use files inside containerd image. Error: {}", id.clone(), e);
-                vec![]
+                log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
+                (vec![], Platform::default())
             });
 
         ContainerBuilder::new(id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(engine, stdio, modules))
+            .with_executor(Executor::new(engine, stdio, modules, platform))
             .with_root_path(rootdir.clone())?
             .as_init(&bundle)
             .with_systemd(false)

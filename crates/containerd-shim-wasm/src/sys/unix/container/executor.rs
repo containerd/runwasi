@@ -10,10 +10,11 @@ use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,
     ExecutorValidationError,
 };
+use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
 use crate::container::{Engine, PathResolve, RuntimeContext, Stdio, WasiContext};
-use crate::sandbox::oci::OciArtifact;
+use crate::sandbox::oci::WasmLayer;
 
 #[derive(Clone)]
 enum InnerExecutor {
@@ -27,7 +28,8 @@ pub(crate) struct Executor<E: Engine> {
     engine: E,
     stdio: Stdio,
     inner: OnceCell<InnerExecutor>,
-    oci_artifacts: Vec<OciArtifact>,
+    wasm_layers: Vec<WasmLayer>,
+    platform: Platform,
 }
 
 impl<E: Engine> LibcontainerExecutor for Executor<E> {
@@ -64,27 +66,30 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
 }
 
 impl<E: Engine> Executor<E> {
-    pub fn new(engine: E, stdio: Stdio, oci_artifacts: Vec<OciArtifact>) -> Self {
+    pub fn new(engine: E, stdio: Stdio, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
         Self {
             engine,
             stdio,
             inner: Default::default(),
-            oci_artifacts,
+            wasm_layers,
+            platform,
         }
     }
 
     fn ctx<'a>(&'a self, spec: &'a Spec) -> WasiContext<'a> {
-        let oci_artifacts = &self.oci_artifacts;
+        let wasm_layers = &self.wasm_layers;
+        let platform = &self.platform;
         WasiContext {
             spec,
-            oci_artifacts,
+            wasm_layers,
+            platform,
         }
     }
 
     fn inner(&self, spec: &Spec) -> &InnerExecutor {
         self.inner.get_or_init(|| {
             // if the spec has oci annotations we know it is wasm so short circuit checks
-            if !self.oci_artifacts.is_empty() {
+            if !self.wasm_layers.is_empty() {
                 InnerExecutor::Wasm
             } else if is_linux_container(&self.ctx(spec)).is_ok() {
                 InnerExecutor::Linux

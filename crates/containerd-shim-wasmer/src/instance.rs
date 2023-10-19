@@ -31,7 +31,7 @@ impl Engine for WasmerEngine {
         log::info!("Create a Store");
         let mut store = Store::new(self.engine.clone());
 
-        let module = match ctx.oci_artifacts() {
+        let module = match ctx.wasm_layers() {
             [] => {
                 log::info!("loading module from file {path:?}");
                 let path = path
@@ -42,10 +42,10 @@ impl Engine for WasmerEngine {
                 Module::from_file(&store, path)?
             }
             [module] => {
-                log::info!("loading module from OCI Artifact");
+                log::info!("loading module wasm OCI layers");
                 Module::from_binary(&store, &module.layer)?
             }
-            [..] => bail!("only a single module is supported when using OCI Artifact"),
+            [..] => bail!("only a single module is supported when using images with OCI layers"),
         };
 
         let runtime = tokio::runtime::Builder::new_multi_thread()

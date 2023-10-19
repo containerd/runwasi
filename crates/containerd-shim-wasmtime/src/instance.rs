@@ -37,7 +37,7 @@ impl Engine for WasmtimeEngine {
         log::info!("wasi context ready");
         let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
 
-        let module = match ctx.oci_artifacts() {
+        let module = match ctx.wasm_layers() {
             [] => {
                 log::info!("loading module from file");
                 let path = path
@@ -48,10 +48,10 @@ impl Engine for WasmtimeEngine {
                 Module::from_file(&self.engine, path)?
             }
             [module] => {
-                log::info!("loading module from OCI Artifact");
+                log::info!("loading module wasm OCI layers");
                 Module::from_binary(&self.engine, &module.layer)?
             }
-            [..] => bail!("only a single module is supported when using OCI Artifact"),
+            [..] => bail!("only a single module is supported when using images with OCI layers"),
         };
 
         let mut linker = Linker::new(&self.engine);

@@ -20,7 +20,7 @@ See [wasi-demo-app build script](../wasi-demo-app/build.rs) for an example.
 
 ### Executable usage
 
-There is an experimental executable that uses the library and can package a wasm module as an OCI artifact.  This isn't currently usable with containerd/runwasi today.  See the [OCI artifacts in containerd](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc) for more information.
+There is an experimental executable that uses the library and can package a wasm module as an OCI image with wasm layers.  See the [OCI WASM in containerd](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc) for more information.
 
 To generate the package and import to a registry using a tool such as [regctl](https://github.com/regclient/regclient/blob/main/docs/regctl.md#image-commands): 
 

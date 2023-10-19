@@ -57,7 +57,7 @@ impl Engine for WasmEdgeEngine {
         PluginManager::load(None)?;
         let vm = vm.auto_detect_plugins()?;
 
-        let vm = match ctx.oci_artifacts() {
+        let vm = match ctx.wasm_layers() {
             [] => {
                 debug!("loading module from file");
                 let path = entrypoint_path
@@ -69,11 +69,11 @@ impl Engine for WasmEdgeEngine {
                     .context("registering module")?
             }
             [module] => {
-                log::info!("loading module from OCI Artifact");
+                log::info!("loading module from wasm OCI layers");
                 vm.register_module_from_bytes(&mod_name, &module.layer)
                     .context("registering module")?
             }
-            [..] => bail!("only a single module is supported when using OCI Artifact"),
+            [..] => bail!("only a single module is supported when using images with OCI layers"),
         };
 
         stdio.redirect()?;

@@ -188,8 +188,11 @@ dist/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
 load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
+CTR_VERSION := $(shell sudo ctr version | sed -n -e '/Version/ {s/.*: *//p;q;}')
 load/oci: dist/img-oci.tar
-	sudo ../containerd/bin/ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+	@echo $(CTR_VERSION)\\nv1.7.7 | sort -crV || (echo "containerd version must be 1.7.7+ was $(CTR_VERSION)" && exit 1)
+	@echo using containerd $(CTR_VERSION)
+	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
 .PHONY:
 target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm

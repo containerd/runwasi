@@ -12,11 +12,8 @@ pub use oci_spec::runtime::Spec;
 
 use super::error::Result;
 
-pub const COMPONENT_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.component.v1+wasm";
-pub const MODULE_ARTIFACT_TYPE: &str = "application/vnd.bytecodealliance.module.v1+wasm";
-
 #[derive(Clone)]
-pub struct OciArtifact {
+pub struct WasmLayer {
     pub config: Descriptor,
     pub layer: Vec<u8>,
 }
