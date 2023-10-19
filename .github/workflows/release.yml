@@ -19,6 +19,7 @@ jobs:
     outputs:
       crate: ${{ steps.parse-ref.outputs.crate }}
       version: ${{ steps.parse-ref.outputs.version }}
+      runtime: ${{ steps.parse-ref.outputs.runtime }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -41,8 +42,11 @@ jobs:
             exit 1
           fi
 
+          RUNTIME="$(cut -d- -f3 <<<"${CRATE}")"
+
           echo "CRATE=${CRATE}" >> $GITHUB_OUTPUT
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "RUNTIME=${RUNTIME}" >> $GITHUB_OUTPUT
 
           setVersion="$(./scripts/version.sh "${CRATE}")"
           if [ ! "${VERSION#v}" = "${setVersion}" ]; then
@@ -55,26 +59,46 @@ jobs:
       - generate
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
-    runs-on: ${{ matrix.os }}
+        arch: ["x86_64", "aarch64"]
+    runs-on: "ubuntu-22.04"
     steps:
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-${{ needs.generate.outputs.crate }}
       - uses: actions/checkout@v3
       - name: Setup build env
         run: ./scripts/setup-linux.sh
-        shell: bash
-      - name: Install rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        env:
+          RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.generate.outputs.crate }}-${{ matrix.arch }}
         with:
-          cache: false
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - name: Setup cross-rs
+        run: ./scripts/setup-cross.sh ${{ matrix.arch }}-unknown-linux-musl
+      - name: Setup build profile
+        shell: bash
+        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
-        timeout-minutes: 5
-        run: make build-$(cut -d- -f3 <<<"${{ needs.generate.outputs.crate }}")
+        timeout-minutes: 10
+        run: make build-${{ needs.generate.outputs.runtime }}
       - name: Test
-        timeout-minutes: 5
-        run: make test-$(cut -d- -f3 <<<"${{ needs.generate.outputs.crate }}")
+        if: ${{ matrix.arch == 'x86_64' }}
+        timeout-minutes: 10
+        run: make test-${{ needs.generate.outputs.runtime }}
+      - name: Package artifacts
+        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        shell: bash
+        run: |
+          make dist-${{ needs.generate.outputs.runtime }}
+          # Check if there's any files to archive as tar fails otherwise
+          if stat dist/bin/* >/dev/null 2>&1; then
+            tar -czf dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
+          else
+            tar -czf dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
+          fi
+      - name: Upload artifacts
+        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        uses: actions/upload-artifact@master
+        with:
+          name: containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}
+          path: dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz
 
   release:
     permissions:
@@ -85,29 +109,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup buildx
-        run: docker buildx create --use
-      - name: build binaries
-        run: docker buildx bake --set *.cache-from=type=gha,scope=buildkit-release-${CRATE} --set *.cache-to=type=gha,scope=buildkit-release-${CRATE} tar-cross
-        env:
-          CRATE: ${{ needs.generate.outputs.crate }}
-      - name: upload binary as GitHub artifact
-        uses: actions/upload-artifact@v3
+      - name: Download artifacts
+        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        uses: actions/download-artifact@master
         with:
-          path: release/
-          name: ${{ needs.generate.outputs.crate }}-${{ needs.generate.outputs.version }}
+          path: release
       - name: Create release
         run: |
           gh release create ${{ github.ref }} --generate-notes --prerelease
-          # skip upload if there are no files
-          if stat release/* >/dev/null 2>&1; then
-            for i in release/*; do
-              gh release upload ${RELEASE_NAME} $i
-            done
-          else
-            echo "No files to upload"
-            exit 0
-          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
+      - name: Upload release artifacts
+        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        run: |
+          for i in release/*/*; do
+            gh release upload ${RELEASE_NAME} $i
+          done
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
