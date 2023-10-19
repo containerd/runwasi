@@ -6,7 +6,21 @@ TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
 CONTAINERD_NAMESPACE ?= default
 
-TARGET ?= 
+ifeq ($(CARGO),cross)
+# Set the default target as defined in Cross.toml
+TARGET ?= $(shell uname -m)-unknown-linux-musl
+# When using `cross` we need to run the tests outside the `cross` container.
+# We stop `cargo test` from running the tests with the `--no-run` flag.
+# We then need to run the generate test binary manually.
+# For that we use `--message-format=json` and `jq` to find the name of the binary, `xargs` and execute it.
+TEST_ARGS_SEP= --no-run --color=always --message-format=json | \
+	jq -R '. as $$line | try (fromjson | .executable | strings) catch ($$line+"\n" | stderr | empty)' -r | \
+	xargs -I_ ./scripts/test-runner.sh ./_
+else
+TARGET ?= $(shell rustc --version -v | sed -En 's/host: (.*)/\1/p')
+TEST_ARGS_SEP= --
+endif
+
 OPT_PROFILE ?= debug
 RELEASE_FLAG :=
 ifeq ($(OPT_PROFILE),release)
@@ -47,11 +61,13 @@ check: check-wasm $(RUNTIMES:%=check-%);
 
 check-common: check-wasm;
 check-wasm:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 check-%:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$* -- --check
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p containerd-shim-$* -- --check
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) -p containerd-shim-$* -- $(WARNINGS)
 
 .PHONY: fix fix-common fix-wasm fix-%
@@ -59,11 +75,13 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 
 fix-common: fix-wasm;
 fix-wasm:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 fix-%:
-	$(CARGO) +nightly fmt $(TARGET_FLAG) -p containerd-shim-$*
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p containerd-shim-$*
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) --fix -p containerd-shim-$* -- $(WARNINGS)
 
 .PHONY: test test-common test-wasm test-wasmedge test-%
@@ -72,26 +90,28 @@ test: test-wasm $(RUNTIMES:%=test-%);
 test-common: test-wasm;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-wasmedge:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 ifneq ($(OS), Windows_NT)
+ifneq ($(patsubst %-musl,,xx_$(TARGET)),)
 	# run wasmedge test without the default `static` feature
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
+endif
 endif
 
 test-%:
 	# run tests in one thread to prevent paralellism
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose -- --nocapture --test-threads=1
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
 
 install-%: build-%
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) target/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
+	$(INSTALL) target/$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
@@ -99,7 +119,7 @@ install-%: build-%
 dist: $(RUNTIMES:%=dist-%);
 
 dist-%:
-	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* PREFIX="$(PWD)/dist" OPT_PROFILE="$(OPT_PROFILE)"
+	[ -f $(PWD)/dist/bin/containerd-shim-$*-v1 ] || $(MAKE) install-$* CARGO=$(CARGO) PREFIX="$(PWD)/dist" OPT_PROFILE="$(OPT_PROFILE)"
 
 .PHONY: test-image
 test-image: dist/img.tar
@@ -128,6 +148,9 @@ load: dist/img.tar
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
 
+# Use a static build of the shims for better compatibility.
+# Using cross defaults to x86_64-unknown-linux-musl, which creates a static build.
+test/k8s/_out/img-%: CARGO=cross
 test/k8s/_out/img-%: test/k8s/Dockerfile dist-%
 	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
 

@@ -105,24 +105,25 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 // Get the path to binary where the `WasmEdge_VersionGet` C ffi symbol is defined.
 // If wasmedge is dynamically linked, this will be the path to the `.so`.
 // If wasmedge is statically linked, this will be the path to the current executable.
-fn get_wasmedge_binary_path() -> Option<std::path::PathBuf> {
+fn get_wasmedge_binary_path() -> std::path::PathBuf {
     use std::os::unix::prelude::OsStrExt;
 
     let f = wasmedge_sys::ffi::WasmEdge_VersionGet;
     let mut info = unsafe { std::mem::zeroed() };
     if unsafe { libc::dladdr(f as *const libc::c_void, &mut info) } == 0 {
-        None
+        // no dladdr support, must be a static binary
+        std::env::current_exe().unwrap_or_default()
     } else {
         let fname = unsafe { std::ffi::CStr::from_ptr(info.dli_fname) };
         let fname = std::ffi::OsStr::from_bytes(fname.to_bytes());
-        Some(std::path::PathBuf::from(fname))
+        std::path::PathBuf::from(fname)
     }
 }
 
 #[cfg(feature = "static")]
 #[test]
 fn check_static_linking() {
-    let wasmedge_path = get_wasmedge_binary_path().unwrap().canonicalize().unwrap();
+    let wasmedge_path = get_wasmedge_binary_path().canonicalize().unwrap();
     let current_exe = std::env::current_exe().unwrap().canonicalize().unwrap();
     assert!(wasmedge_path == current_exe);
 }
@@ -130,7 +131,7 @@ fn check_static_linking() {
 #[cfg(not(feature = "static"))]
 #[test]
 fn check_dynamic_linking() {
-    let wasmedge_path = get_wasmedge_binary_path().unwrap().canonicalize().unwrap();
+    let wasmedge_path = get_wasmedge_binary_path().canonicalize().unwrap();
     let current_exe = std::env::current_exe().unwrap().canonicalize().unwrap();
     assert!(wasmedge_path != current_exe);
 }
