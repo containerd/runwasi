@@ -1,15 +1,12 @@
 //! Abstractions for running/managing a wasm/wasi instance.
 
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 
 use super::error::Error;
+use super::sync::WaitableCell;
 use crate::sys::signals::*;
-
-pub type ExitCode = Arc<(Mutex<Option<(u32, DateTime<Utc>)>>, Condvar)>;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
@@ -107,7 +104,9 @@ impl<Engine: Send + Sync + Clone> InstanceConfig<Engine> {
 
 /// Represents a WASI module(s).
 /// Instance is a trait that gets implemented by consumers of this library.
-pub trait Instance {
+/// This trait requires that any type implementing it is `'static`, similar to `std::any::Any`.
+/// This means that the type cannot contain a non-`'static` reference.
+pub trait Instance: 'static {
     /// The WASI engine type
     type Engine: Send + Sync + Clone;
 
@@ -128,61 +127,30 @@ pub trait Instance {
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
 
-    /// Set up waiting for the instance to exit
-    /// The Wait struct is used to send the exit code and time back to the
-    /// caller. The recipient is expected to call function
-    /// set_up_exit_code_wait() implemented by Wait to set up exit code
-    /// processing. Note that the "wait" function doesn't block, but
-    /// it sets up the waiting channel.
-    fn wait(&self, waiter: &Wait) -> Result<(), Error>;
-}
-
-/// This is used for waiting for the container process to exit and deliver the exit code to the caller.
-/// Since the shim needs to provide the caller the process exit code, this struct wraps the required
-/// thread setup to make the shims simpler.
-pub struct Wait {
-    tx: Sender<(u32, DateTime<Utc>)>,
-}
-
-impl Wait {
-    /// Create a new Wait struct with the provided sending endpoint of a channel.
-    pub fn new(sender: Sender<(u32, DateTime<Utc>)>) -> Self {
-        Wait { tx: sender }
+    /// Waits for the instance to finish and retunrs its exit code
+    /// This is a blocking call.
+    fn wait(&self) -> (u32, DateTime<Utc>) {
+        self.wait_timeout(None).unwrap()
     }
 
-    /// This is called by the shim to create the thread to wait for the exit
-    /// code. When the child process exits, the shim will use the ExitCode
-    /// to signal the exit status to the caller. This function returns so that
-    /// the wait() function in the shim implementation API would not block.
-    pub fn set_up_exit_code_wait(&self, exit_code: ExitCode) -> Result<(), Error> {
-        let sender = self.tx.clone();
-        let code = Arc::clone(&exit_code);
-        thread::spawn(move || {
-            let (lock, cvar) = &*code;
-            let mut exit = lock.lock().unwrap();
-            while (*exit).is_none() {
-                exit = cvar.wait(exit).unwrap();
-            }
-            let ec = (*exit).unwrap();
-            sender.send(ec).unwrap();
-        });
-
-        Ok(())
-    }
+    /// Waits for the instance to finish and retunrs its exit code
+    /// Returns None if the timeout is reached before the instance has finished.
+    /// This is a blocking call.
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)>;
 }
 
 /// This is used for the "pause" container with cri and is a no-op instance implementation.
 pub struct Nop {
     /// Since we are faking the container, we need to keep track of the "exit" code/time
     /// We'll just mark it as exited when kill is called.
-    exit_code: ExitCode,
+    exit_code: WaitableCell<(u32, DateTime<Utc>)>,
 }
 
 impl Instance for Nop {
     type Engine = ();
     fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error> {
         Ok(Nop {
-            exit_code: Arc::new((Mutex::new(None), Condvar::new())),
+            exit_code: WaitableCell::new(),
         })
     }
     fn start(&self) -> Result<u32, Error> {
@@ -197,25 +165,20 @@ impl Instance for Nop {
             }
         };
 
-        let exit_code = self.exit_code.clone();
-        let (lock, cvar) = &*exit_code;
-        let mut lock = lock.lock().unwrap();
-        *lock = Some((code, Utc::now()));
-        cvar.notify_all();
+        let _ = self.exit_code.set((code, Utc::now()));
 
         Ok(())
     }
     fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
-    fn wait(&self, waiter: &Wait) -> Result<(), Error> {
-        waiter.set_up_exit_code_wait(self.exit_code.clone())
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+        self.exit_code.wait_timeout(t).copied()
     }
 }
 
 #[cfg(test)]
 mod noptests {
-    use std::sync::mpsc::channel;
     use std::time::Duration;
 
     use super::*;
@@ -223,12 +186,10 @@ mod noptests {
     #[test]
     fn test_nop_kill_sigkill() -> Result<(), Error> {
         let nop = Nop::new("".to_string(), None)?;
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
 
-        nop.wait(&waiter).unwrap();
         nop.kill(SIGKILL as u32)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+
+        let ec = nop.wait_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 137);
         Ok(())
     }
@@ -236,12 +197,10 @@ mod noptests {
     #[test]
     fn test_nop_kill_sigterm() -> Result<(), Error> {
         let nop = Nop::new("".to_string(), None)?;
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
 
-        nop.wait(&waiter).unwrap();
         nop.kill(SIGTERM as u32)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+
+        let ec = nop.wait_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
         Ok(())
     }
@@ -249,12 +208,10 @@ mod noptests {
     #[test]
     fn test_nop_kill_sigint() -> Result<(), Error> {
         let nop = Nop::new("".to_string(), None)?;
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
 
-        nop.wait(&waiter).unwrap();
         nop.kill(SIGINT as u32)?;
-        let ec = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+
+        let ec = nop.wait_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(ec.0, 0);
         Ok(())
     }

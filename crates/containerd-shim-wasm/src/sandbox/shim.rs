@@ -10,8 +10,9 @@ use std::ops::Not;
 use std::os::unix::fs::DirBuilderExt;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
+use std::time::Duration;
 
 use anyhow::Context as AnyhowContext;
 use chrono::{DateTime, Utc};
@@ -35,286 +36,175 @@ use shim::api::{StatsRequest, StatsResponse};
 use shim::Flags;
 use ttrpc::context::Context;
 
-use super::instance::{Instance, InstanceConfig, Nop, Wait};
+use super::instance::{Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
 use crate::sys::metrics::get_metrics;
 
-type InstanceDataStatus = (Mutex<Option<(u32, DateTime<Utc>)>>, Condvar);
-
-struct InstanceData<T: Instance> {
-    instance: Option<T>,
-    base: Option<Nop>,
-    cfg: InstanceConfig<T::Engine>,
-    pid: RwLock<Option<u32>>,
-    status: Arc<InstanceDataStatus>,
-    state: Arc<RwLock<TaskStateWrapper>>,
+enum InstanceOption<I: Instance> {
+    Instance(I),
+    Nop(Nop),
 }
 
-type Result<T> = std::result::Result<T, Error>;
+impl<I: Instance> Instance for InstanceOption<I> {
+    type Engine = ();
+
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self> {
+        // this is never called
+        unimplemented!();
+    }
+
+    fn start(&self) -> Result<u32> {
+        match self {
+            Self::Instance(i) => i.start(),
+            Self::Nop(i) => i.start(),
+        }
+    }
+
+    fn kill(&self, signal: u32) -> Result<()> {
+        match self {
+            Self::Instance(i) => i.kill(signal),
+            Self::Nop(i) => i.kill(signal),
+        }
+    }
+
+    fn delete(&self) -> Result<()> {
+        match self {
+            Self::Instance(i) => i.delete(),
+            Self::Nop(i) => i.delete(),
+        }
+    }
+
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+        match self {
+            Self::Instance(i) => i.wait_timeout(t),
+            Self::Nop(i) => i.wait_timeout(t),
+        }
+    }
+}
+
+struct InstanceData<T: Instance> {
+    instance: InstanceOption<T>,
+    cfg: InstanceConfig<T::Engine>,
+    pid: RwLock<Option<u32>>,
+    state: Arc<RwLock<TaskState>>,
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl<T: Instance> InstanceData<T> {
     fn start(&self) -> Result<u32> {
         let mut s = self.state.write().unwrap();
-        let new_state = s.start()?;
-        *s = new_state.into();
-        if self.instance.is_some() {
-            return self
-                .instance
-                .as_ref()
-                .unwrap()
-                .start()
-                .map(|pid| {
-                    s.started().map(|new_state| {
-                        *s = new_state.into();
-                        new_state
-                    })?;
-                    Ok(pid)
-                })
-                .map_err(|err| {
-                    let _ = s
-                        .stop()
-                        .map(|new_state| {
-                            *s = new_state.into();
-                            new_state
-                        })
-                        .map_err(|e| warn!("could not set exited state after failed start: {}", e));
-                    err
-                })?;
+        s.start()?;
+
+        let res = self.instance.start();
+
+        // These state transitions are always `Ok(())` because
+        // we hold the lock since `s.start()`
+        let _ = match res {
+            Ok(_) => s.started(),
+            Err(_) => s.stop(),
         };
 
-        return self.base.as_ref().unwrap().start().and_then(|pid| {
-            s.started()
-                .map(|new_state| {
-                    *s = new_state.into();
-                    new_state
-                })
-                .map_err(|err| {
-                    let new_state = s
-                        .stop()
-                        .map_err(|e| warn!("could not set exited state after failed start: {}", e));
-                    if let Ok(ns) = new_state {
-                        *s = ns.into();
-                    }
-                    err
-                })?;
-            Ok(pid)
-        });
+        res
     }
 
     fn kill(&self, signal: u32) -> Result<()> {
-        let s = self.state.read().unwrap();
+        let mut s = self.state.write().unwrap();
         s.kill()?;
-        if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().kill(signal);
-        }
-        self.base.as_ref().unwrap().kill(signal)
+
+        self.instance.kill(signal)
     }
 
     fn delete(&self) -> Result<()> {
         let mut s = self.state.write().unwrap();
-        let new_state = s.delete()?;
-        *s = new_state.into();
-        if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().delete().map_err(|err| {
-                let _ = s
-                    .stop()
-                    .map(|new_state| {
-                        *s = new_state.into();
-                        new_state
-                    })
-                    .map_err(|e| warn!("could not set reset state after failed delete: {}", e));
-                err
-            });
+        s.delete()?;
+
+        let res = self.instance.delete();
+
+        if res.is_err() {
+            // Always `Ok(())` because we hold the lock since `s.delete()`
+            let _ = s.stop();
         }
-        self.base.as_ref().unwrap().delete().map_err(|err| {
-            let _ = s
-                .stop()
-                .map(|new_state| {
-                    *s = new_state.into();
-                    new_state
-                })
-                .map_err(|e| {
-                    warn!("could not set exited state after failed delete: {}", e);
-                });
-            err
-        })
+
+        res
     }
 
-    fn wait(&self, waiter: &Wait) -> Result<()> {
-        if self.instance.is_some() {
-            return self.instance.as_ref().unwrap().wait(waiter);
+    fn wait(&self) -> (u32, DateTime<Utc>) {
+        let res = self.instance.wait();
+        let mut s = self.state.write().unwrap();
+        *s = TaskState::Exited;
+        res
+    }
+
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+        let res = self.instance.wait_timeout(t);
+        if res.is_some() {
+            let mut s = self.state.write().unwrap();
+            *s = TaskState::Exited;
         }
-        self.base.as_ref().unwrap().wait(waiter)
+        res
     }
 }
 
 type EventSender = Sender<(String, Box<dyn MessageDyn>)>;
 
 #[derive(Debug, Clone, Copy)]
-struct Created {}
-#[derive(Debug, Clone, Copy)]
-struct Starting {}
-#[derive(Debug, Clone, Copy)]
-struct Started {}
-#[derive(Debug, Clone, Copy)]
-struct Exited {}
-#[derive(Debug, Clone, Copy)]
-struct Deleting {}
-
-#[derive(Debug, Clone, Copy)]
-struct TaskState<T> {
-    s: std::marker::PhantomData<T>,
+enum TaskState {
+    Created,
+    Starting,
+    Started,
+    Exited,
+    Deleting,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum TaskStateWrapper {
-    Created(TaskState<Created>),
-    Starting(TaskState<Starting>),
-    Started(TaskState<Started>),
-    Exited(TaskState<Exited>),
-    Deleting(TaskState<Deleting>),
-}
-
-impl TaskStateWrapper {
-    fn start(self) -> Result<TaskState<Starting>> {
-        match self {
-            TaskStateWrapper::Created(s) => Ok(s.into()),
-            s => Err(Error::FailedPrecondition(format!(
-                "invalid state transition: ${:?} => Starting",
-                s,
-            ))),
-        }
+impl TaskState {
+    pub fn start(&mut self) -> Result<()> {
+        *self = match self {
+            Self::Created => Ok(Self::Starting),
+            _ => state_transition_error(*self, Self::Starting),
+        }?;
+        Ok(())
     }
 
-    fn kill(self) -> Result<()> {
-        match self {
-            TaskStateWrapper::Started(_) => Ok(()),
-            s => Err(Error::FailedPrecondition(format!(
-                "cannot kill non-running container, current state: {:?}",
-                s,
-            ))),
-        }
+    pub fn kill(&mut self) -> Result<()> {
+        *self = match self {
+            Self::Started => Ok(Self::Started),
+            _ => state_transition_error(*self, "Killing"),
+        }?;
+        Ok(())
     }
 
-    fn delete(self) -> Result<TaskState<Deleting>> {
-        match self {
-            TaskStateWrapper::Created(s) => Ok(s.into()),
-            TaskStateWrapper::Exited(s) => Ok(s.into()),
-            s => Err(Error::FailedPrecondition(format!(
-                "cannot delete non-exted container, current state: {:?}",
-                s,
-            ))),
-        }
+    pub fn delete(&mut self) -> Result<()> {
+        *self = match self {
+            Self::Created | Self::Exited => Ok(Self::Deleting),
+            _ => state_transition_error(*self, Self::Deleting),
+        }?;
+        Ok(())
     }
 
-    fn started(self) -> Result<TaskState<Started>> {
-        match self {
-            TaskStateWrapper::Starting(s) => Ok(s.into()),
-            s => Err(Error::FailedPrecondition(format!(
-                "invalid state transition: ${:?} => Started",
-                s,
-            ))),
-        }
+    pub fn started(&mut self) -> Result<()> {
+        *self = match self {
+            Self::Starting => Ok(Self::Started),
+            _ => state_transition_error(*self, Self::Started),
+        }?;
+        Ok(())
     }
 
-    fn stop(self) -> Result<TaskState<Exited>> {
-        match self {
-            TaskStateWrapper::Started(s) => Ok(s.into()),
-            TaskStateWrapper::Starting(s) => Ok(s.into()),
-            TaskStateWrapper::Deleting(s) => Ok(s.into()),
-            s => Err(Error::FailedPrecondition(format!(
-                "invalid state transition: ${:?} => Exited",
-                s,
-            ))),
-        }
+    pub fn stop(&mut self) -> Result<()> {
+        *self = match self {
+            Self::Started | Self::Starting => Ok(Self::Exited),
+            // This is for potential failure cases where we want delete to be able to be retried.
+            Self::Deleting => Ok(Self::Exited),
+            _ => state_transition_error(*self, Self::Exited),
+        }?;
+        Ok(())
     }
 }
 
-impl From<TaskState<Created>> for TaskStateWrapper {
-    fn from(s: TaskState<Created>) -> Self {
-        TaskStateWrapper::Created(s)
-    }
-}
-
-impl From<TaskState<Starting>> for TaskStateWrapper {
-    fn from(s: TaskState<Starting>) -> Self {
-        TaskStateWrapper::Starting(s)
-    }
-}
-
-impl From<TaskState<Started>> for TaskStateWrapper {
-    fn from(s: TaskState<Started>) -> Self {
-        TaskStateWrapper::Started(s)
-    }
-}
-
-impl From<TaskState<Exited>> for TaskStateWrapper {
-    fn from(s: TaskState<Exited>) -> Self {
-        TaskStateWrapper::Exited(s)
-    }
-}
-
-impl From<TaskState<Deleting>> for TaskStateWrapper {
-    fn from(s: TaskState<Deleting>) -> Self {
-        TaskStateWrapper::Deleting(s)
-    }
-}
-
-impl From<TaskState<Created>> for TaskState<Starting> {
-    fn from(_val: TaskState<Created>) -> Self {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-impl From<TaskState<Created>> for TaskState<Deleting> {
-    fn from(_val: TaskState<Created>) -> TaskState<Deleting> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-impl From<TaskState<Starting>> for TaskState<Started> {
-    fn from(_val: TaskState<Starting>) -> TaskState<Started> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-impl From<TaskState<Starting>> for TaskState<Exited> {
-    fn from(_val: TaskState<Starting>) -> TaskState<Exited> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-impl From<TaskState<Started>> for TaskState<Exited> {
-    fn from(_val: TaskState<Started>) -> TaskState<Exited> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-impl From<TaskState<Exited>> for TaskState<Deleting> {
-    fn from(_val: TaskState<Exited>) -> TaskState<Deleting> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
-}
-
-// This is for potential failure cases where we want delete to be able to be retried.
-impl From<TaskState<Deleting>> for TaskState<Exited> {
-    fn from(_val: TaskState<Deleting>) -> TaskState<Exited> {
-        TaskState {
-            s: std::marker::PhantomData,
-        }
-    }
+fn state_transition_error<T>(from: impl std::fmt::Debug, to: impl std::fmt::Debug) -> Result<T> {
+    Err(Error::FailedPrecondition(format!(
+        "invalid state transition: {from:?} => {to:?}"
+    )))
 }
 
 type LocalInstances<T> = Arc<RwLock<HashMap<String, Arc<InstanceData<T>>>>>;
@@ -458,8 +348,7 @@ mod localtests {
 
         // A little janky since this is internal data, but check that this is seen as a sandbox container
         let i = local.get_instance("testbase")?;
-        assert!(i.base.is_some());
-        assert!(i.instance.is_none());
+        assert!(matches!(i.instance, InstanceOption::Nop(_)));
 
         local.task_start(api::StartRequest {
             id: "testbase".to_string(),
@@ -502,8 +391,7 @@ mod localtests {
         // again, this is janky since it is internal data, but check that this is seen as a "real" container.
         // this is the inverse of the above test case.
         let i = local.get_instance("testinstance")?;
-        assert!(i.base.is_none());
-        assert!(i.instance.is_some());
+        assert!(matches!(i.instance, InstanceOption::Instance(_)));
 
         local.task_start(api::StartRequest {
             id: "testinstance".to_string(),
@@ -745,16 +633,10 @@ impl<T: Instance + Send + Sync> Local<T> {
             self.containerd_address.clone(),
         );
         InstanceData {
-            instance: None,
-            base: Some(Nop::new(id, None).unwrap()),
+            instance: InstanceOption::Nop(Nop::new(id, None).unwrap()),
             cfg,
             pid: RwLock::new(None),
-            status: Arc::default(),
-            state: Arc::new(RwLock::new(TaskStateWrapper::Created(
-                TaskState::<Created> {
-                    s: std::marker::PhantomData,
-                },
-            ))),
+            state: Arc::new(RwLock::new(TaskState::Created)),
         }
     }
 
@@ -954,16 +836,10 @@ impl<T: Instance + Send + Sync> Local<T> {
         self.instances.write().unwrap().insert(
             req.id().to_string(),
             Arc::new(InstanceData {
-                instance: Some(T::new(req.id().to_string(), Some(&builder))?),
-                base: None,
+                instance: InstanceOption::Instance(T::new(req.id().to_string(), Some(&builder))?),
                 cfg: builder,
                 pid: RwLock::new(None),
-                status: Arc::default(),
-                state: Arc::new(RwLock::new(TaskStateWrapper::Created(
-                    TaskState::<Created> {
-                        s: std::marker::PhantomData,
-                    },
-                ))),
+                state: Arc::new(RwLock::new(TaskState::Created)),
             }),
         );
 
@@ -1010,37 +886,18 @@ impl<T: Instance + Send + Sync> Local<T> {
             ..Default::default()
         });
 
-        let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        let waiter = Wait::new(tx);
-        i.wait(&waiter)?;
-
-        let status = i.status.clone();
-
         let sender = self.events.clone();
-
         let id = req.id().to_string();
-        let state = i.state.clone();
 
-        let _ = thread::Builder::new()
+        thread::Builder::new()
             .name(format!("{}-wait", req.id()))
             .spawn(move || {
-                let ec = rx.recv().unwrap();
-
-                let mut s = state.write().unwrap();
-                *s = TaskStateWrapper::Exited(TaskState::<Exited> {
-                    s: std::marker::PhantomData,
-                });
-
-                let (lock, cvar) = &*status;
-                let mut status = lock.lock().unwrap();
-                *status = Some(ec);
-                cvar.notify_all();
-                drop(status);
+                let exit_code = i.wait();
 
                 let timestamp = new_timestamp().unwrap();
                 let event = TaskExit {
                     container_id: id.clone(),
-                    exit_status: ec.0,
+                    exit_status: exit_code.0,
                     exited_at: MessageField::some(timestamp),
                     pid,
                     id,
@@ -1097,7 +954,7 @@ impl<T: Instance + Send + Sync> Local<T> {
             ..Default::default()
         };
 
-        if let Some(ec) = *i.status.0.lock().unwrap() {
+        if let Some(ec) = i.wait_timeout(Duration::ZERO) {
             event.exit_status = ec.0;
             resp.exit_status = ec.0;
 
@@ -1123,17 +980,7 @@ impl<T: Instance + Send + Sync> Local<T> {
 
         let i = self.get_instance(req.id())?;
 
-        let (lock, cvar) = &*i.status.clone();
-        let mut status = lock.lock().unwrap();
-        while (*status).is_none() {
-            status = cvar.wait(status).unwrap();
-        }
-
-        let (tx, rx) = channel::<(u32, DateTime<Utc>)>();
-        let waiter = Wait::new(tx);
-        i.wait(&waiter)?;
-
-        let code = rx.recv().unwrap();
+        let code = i.wait();
         debug!("wait done: {:?}", req);
 
         let mut timestamp = Timestamp::new();
@@ -1172,7 +1019,7 @@ impl<T: Instance + Send + Sync> Local<T> {
 
         state.set_pid(pid.unwrap());
 
-        if let Some(c) = *i.status.0.lock().unwrap() {
+        if let Some(c) = i.wait_timeout(Duration::ZERO) {
             state.set_status(Status::STOPPED);
             let ec = c;
             state.exit_status = ec.0;

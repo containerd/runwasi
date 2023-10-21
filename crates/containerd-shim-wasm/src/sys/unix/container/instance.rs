@@ -1,9 +1,10 @@
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::thread;
+use std::time::Duration;
 
 use anyhow::Context;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use libcontainer::signal::Signal;
@@ -13,15 +14,15 @@ use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
 
 use crate::container::Engine;
-use crate::sandbox::instance::{ExitCode, Wait};
 use crate::sandbox::instance_utils::{determine_rootdir, get_instance_root, instance_exists};
+use crate::sandbox::sync::WaitableCell;
 use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio};
 use crate::sys::container::executor::Executor;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
-    exit_code: ExitCode,
+    exit_code: WaitableCell<(u32, DateTime<Utc>)>,
     rootdir: PathBuf,
     id: String,
     _phantom: PhantomData<E>,
@@ -48,7 +49,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
         Ok(Self {
             id,
-            exit_code: ExitCode::default(),
+            exit_code: WaitableCell::new(),
             rootdir,
             _phantom: Default::default(),
         })
@@ -59,6 +60,8 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, SandboxError> {
         log::info!("starting instance: {}", self.id);
+        // make sure we have an exit code by the time we finish (even if there's a panic)
+        let guard = self.exit_code.set_guard_with(|| (137, Utc::now()));
 
         let container_root = get_instance_root(&self.rootdir, &self.id)?;
         let mut container = Container::load(container_root)?;
@@ -68,7 +71,8 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
         let exit_code = self.exit_code.clone();
         thread::spawn(move || {
-            let (lock, cvar) = &*exit_code;
+            // move the exit code guard into this thread
+            let _guard = guard;
 
             let status = match waitid(WaitID::Pid(Pid::from_raw(pid)), WaitPidFlag::WEXITED) {
                 Ok(WaitStatus::Exited(_, status)) => status,
@@ -78,12 +82,12 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                     log::info!("no child process");
                     0
                 }
-                Err(e) => panic!("waitpid failed: {e}"),
+                Err(e) => {
+                    log::error!("waitpid failed: {e}");
+                    137
+                }
             } as u32;
-            let mut ec = lock.lock().unwrap();
-            *ec = Some((status, Utc::now()));
-            drop(ec);
-            cvar.notify_all();
+            let _ = exit_code.set((status, Utc::now()));
         });
 
         Ok(pid as u32)
@@ -128,14 +132,10 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         Ok(())
     }
 
-    /// Set up waiting for the instance to exit
-    /// The Wait struct is used to send the exit code and time back to the
-    /// caller. The recipient is expected to call function
-    /// set_up_exit_code_wait() implemented by Wait to set up exit code
-    /// processing. Note that the "wait" function doesn't block, but
-    /// it sets up the waiting channel.
-    fn wait(&self, waiter: &Wait) -> Result<(), SandboxError> {
-        log::info!("waiting for instance: {}", self.id);
-        waiter.set_up_exit_code_wait(self.exit_code.clone())
+    /// Waits for the instance to finish and retunrs its exit code
+    /// Returns None if the timeout is reached before the instance has finished.
+    /// This is a blocking call.
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+        self.exit_code.wait_timeout(t).copied()
     }
 }

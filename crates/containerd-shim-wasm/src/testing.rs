@@ -4,14 +4,12 @@ use std::collections::HashMap;
 use std::fs::{create_dir, read_to_string, write, File};
 use std::marker::PhantomData;
 use std::ops::Add;
-use std::sync::mpsc::channel;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
 
-use crate::sandbox::instance::Wait;
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
 
@@ -165,16 +163,11 @@ where
         let dir = self.tempdir.path();
 
         log::info!("waiting wasi test");
-
-        let (tx, rx) = channel();
-        let waiter = Wait::new(tx);
-        self.instance.wait(&waiter).unwrap();
-
-        let (status, _) = match rx.recv_timeout(timeout) {
-            Ok(res) => res,
-            Err(e) => {
+        let (status, _) = match self.instance.wait_timeout(timeout) {
+            Some(res) => res,
+            None => {
                 self.instance.kill(SIGKILL as u32)?;
-                bail!("error waiting for module to finish: {e}");
+                bail!("timeout while waiting for module to finish");
             }
         };
 
