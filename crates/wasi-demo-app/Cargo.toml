@@ -8,7 +8,7 @@ tar = { workspace = true, optional = true }
 sha256 = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
-oci-spec = { workspace = true, optional = true }
+oci-spec = { workspace = true, optional=true }
 oci-tar-builder = { optional = true, path = "../oci-tar-builder" }
 anyhow = { workspace = true, optional = true }
 

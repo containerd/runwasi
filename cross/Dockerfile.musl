@@ -22,4 +22,4 @@ rustflags = ["-Clink-arg=-lgcc"]
 EOF
 
 RUN apt-get -y update && \
-    apt-get install -y pkg-config
+    apt-get install -y pkg-config protobuf-compiler

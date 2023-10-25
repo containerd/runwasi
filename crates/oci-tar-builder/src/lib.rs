@@ -11,7 +11,6 @@ use oci_spec::image::{
 };
 use serde::Serialize;
 use sha256::{digest, try_digest};
-
 #[derive(Debug, Default)]
 pub struct Builder {
     configs: Vec<(ImageConfiguration, String)>,
@@ -124,7 +123,7 @@ impl Builder {
                 .build()
                 .context("failed to build descriptor")?;
 
-            // add all layer_digests including any OCI artifacts types that are may not be in the rootfs
+            // add all layer_digests including any OCI WASM types that are may not be in the rootfs
             let mut layers = Vec::new();
             for (_k, v) in layer_digests.iter() {
                 layers.push(v.clone());
@@ -150,7 +149,9 @@ impl Builder {
 
             let manifest = ImageManifestBuilder::default()
                 .schema_version(SCHEMA_VERSION)
-                .media_type(MediaType::ImageManifest)
+                .media_type(MediaType::ImageManifest);
+
+            let manifest = manifest
                 .layers(layers)
                 .config(desc)
                 .annotations(annotations.clone())

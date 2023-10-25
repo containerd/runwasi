@@ -10,9 +10,11 @@ use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,
     ExecutorValidationError,
 };
+use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::{Engine, PathResolve, RuntimeContext, Stdio};
+use crate::container::{Engine, PathResolve, RuntimeContext, Stdio, WasiContext};
+use crate::sandbox::oci::WasmLayer;
 
 #[derive(Clone)]
 enum InnerExecutor {
@@ -26,6 +28,8 @@ pub(crate) struct Executor<E: Engine> {
     engine: E,
     stdio: Stdio,
     inner: OnceCell<InnerExecutor>,
+    wasm_layers: Vec<WasmLayer>,
+    platform: Platform,
 }
 
 impl<E: Engine> LibcontainerExecutor for Executor<E> {
@@ -49,7 +53,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             }
             InnerExecutor::Wasm => {
                 log::info!("calling start function");
-                match self.engine.run_wasi(spec, self.stdio.take()) {
+                match self.engine.run_wasi(&self.ctx(spec), self.stdio.take()) {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
@@ -62,19 +66,34 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
 }
 
 impl<E: Engine> Executor<E> {
-    pub fn new(engine: E, stdio: Stdio) -> Self {
+    pub fn new(engine: E, stdio: Stdio, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
         Self {
             engine,
             stdio,
             inner: Default::default(),
+            wasm_layers,
+            platform,
+        }
+    }
+
+    fn ctx<'a>(&'a self, spec: &'a Spec) -> WasiContext<'a> {
+        let wasm_layers = &self.wasm_layers;
+        let platform = &self.platform;
+        WasiContext {
+            spec,
+            wasm_layers,
+            platform,
         }
     }
 
     fn inner(&self, spec: &Spec) -> &InnerExecutor {
         self.inner.get_or_init(|| {
-            if is_linux_container(spec).is_ok() {
+            // if the spec has oci annotations we know it is wasm so short circuit checks
+            if !self.wasm_layers.is_empty() {
+                InnerExecutor::Wasm
+            } else if is_linux_container(&self.ctx(spec)).is_ok() {
                 InnerExecutor::Linux
-            } else if self.engine.can_handle(spec).is_ok() {
+            } else if self.engine.can_handle(&self.ctx(spec)).is_ok() {
                 InnerExecutor::Wasm
             } else {
                 InnerExecutor::CantHandle
@@ -83,8 +102,8 @@ impl<E: Engine> Executor<E> {
     }
 }
 
-fn is_linux_container(spec: &Spec) -> Result<()> {
-    let executable = spec
+fn is_linux_container(ctx: &impl RuntimeContext) -> Result<()> {
+    let executable = ctx
         .entrypoint()
         .context("no entrypoint provided")?
         .resolve_in_path()

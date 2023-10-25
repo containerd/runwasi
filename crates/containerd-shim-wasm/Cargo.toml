@@ -29,12 +29,15 @@ tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
+tokio = { version = "1.28.2", features = [ "full" ] }
+futures = { version = "0.3.28" }
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
 dbus = { version = "*", features = ["vendored"] }
 libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
 nix = { workspace = true, features = ["sched", "mount"] }
+containerd-client = "0.4.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

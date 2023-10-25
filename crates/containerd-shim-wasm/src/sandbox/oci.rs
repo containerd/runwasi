@@ -7,9 +7,16 @@ use std::os::unix::process::CommandExt;
 use std::process;
 
 use anyhow::Context;
+use oci_spec::image::Descriptor;
 pub use oci_spec::runtime::Spec;
 
 use super::error::Result;
+
+#[derive(Clone)]
+pub struct WasmLayer {
+    pub config: Descriptor,
+    pub layer: Vec<u8>,
+}
 
 fn parse_env(envs: &[String]) -> HashMap<String, String> {
     // make NAME=VALUE to HashMap<NAME, VALUE>.

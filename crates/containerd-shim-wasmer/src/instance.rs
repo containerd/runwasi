@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
     Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint,
 };
@@ -22,24 +22,31 @@ impl Engine for WasmerEngine {
         let args = ctx.args();
         let envs = std::env::vars();
         let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
-        let path = path
-            .resolve_in_path_or_cwd()
-            .next()
-            .context("module not found")?;
 
         let mod_name = match path.file_stem() {
             Some(name) => name.to_string_lossy().to_string(),
             None => "main".to_string(),
         };
 
-        log::info!("redirect stdio");
-        stdio.redirect()?;
-
         log::info!("Create a Store");
         let mut store = Store::new(self.engine.clone());
 
-        log::info!("loading module from file {path:?}");
-        let module = Module::from_file(&store, path)?;
+        let module = match ctx.wasm_layers() {
+            [] => {
+                log::info!("loading module from file {path:?}");
+                let path = path
+                    .resolve_in_path_or_cwd()
+                    .next()
+                    .context("module not found")?;
+
+                Module::from_file(&store, path)?
+            }
+            [module] => {
+                log::info!("loading module wasm OCI layers");
+                Module::from_binary(&store, &module.layer)?
+            }
+            [..] => bail!("only a single module is supported when using images with OCI layers"),
+        };
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -53,6 +60,9 @@ impl Engine for WasmerEngine {
             .fs(Box::<FileSystem>::default())
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
+
+        log::info!("redirect stdio");
+        stdio.redirect()?;
 
         log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;

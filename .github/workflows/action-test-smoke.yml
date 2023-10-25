@@ -32,7 +32,7 @@ jobs:
       - name: Download test image
         uses: actions/download-artifact@master
         with:
-          name: test-image
+          name: test-img
           path: dist
       - name: run
         timeout-minutes: 5

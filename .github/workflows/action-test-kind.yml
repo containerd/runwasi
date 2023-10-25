@@ -9,10 +9,16 @@ on:
       runtime:
         required: true
         type: string
+      image:
+        type: string
+        default: img
+      test-command:
+        type: string
+        required: true
 
 jobs:
   e2e-kind:
-    name: e2e kind test on ${{ inputs.os }}
+    name: e2e kind test on ${{ inputs.os }} with ${{ inputs.image }}
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v3
@@ -32,11 +38,11 @@ jobs:
       - name: Download test image
         uses: actions/download-artifact@master
         with:
-          name: test-image
+          name: test-${{ inputs.image }}
           path: dist
       - name: run
-        timeout-minutes: 5
-        run: make test/k8s-${{ inputs.runtime }}
+        timeout-minutes: 7
+        run: ${{ inputs.test-command }}
       # only runs when the previous step fails
       - name: inspect failed pods
         if: failure()

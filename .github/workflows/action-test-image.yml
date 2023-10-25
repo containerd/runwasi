@@ -2,17 +2,21 @@ name: Run end to end tests on kind
 
 on:
   workflow_call:
+    inputs:
+      image:
+        type: string
+        default: img
 
 jobs:
   test-image:
-    name: build test image
+    name: build test ${{ inputs.image }}
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
       - name: build
-        run: make dist/img.tar
+        run: make dist/${{ inputs.image }}.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@master
         with:
-          name: test-image
-          path: dist/img.tar
+          name: test-${{ inputs.image }}
+          path: dist/${{ inputs.image }}.tar

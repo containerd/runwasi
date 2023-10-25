@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
+
+use crate::sandbox::oci::WasmLayer;
 
 pub trait RuntimeContext {
     // ctx.args() returns arguments from the runtime spec process field, including the
@@ -20,6 +23,10 @@ pub trait RuntimeContext {
     //   "my_module.wat" -> { path: "my_module.wat", func: "_start" }
     //   "#init" -> { path: "", func: "init" }
     fn wasi_entrypoint(&self) -> WasiEntrypoint;
+
+    fn wasm_layers(&self) -> &[WasmLayer];
+
+    fn platform(&self) -> &Platform;
 }
 
 pub struct WasiEntrypoint {
@@ -27,9 +34,16 @@ pub struct WasiEntrypoint {
     pub func: String,
 }
 
-impl RuntimeContext for Spec {
+pub(crate) struct WasiContext<'a> {
+    pub spec: &'a Spec,
+    pub wasm_layers: &'a [WasmLayer],
+    pub platform: &'a Platform,
+}
+
+impl RuntimeContext for WasiContext<'_> {
     fn args(&self) -> &[String] {
-        self.process()
+        self.spec
+            .process()
             .as_ref()
             .and_then(|p| p.args().as_ref())
             .map(|a| a.as_slice())
@@ -47,6 +61,14 @@ impl RuntimeContext for Spec {
             path: PathBuf::from(path),
             func: func.to_string(),
         }
+    }
+
+    fn wasm_layers(&self) -> &[WasmLayer] {
+        self.wasm_layers
+    }
+
+    fn platform(&self) -> &Platform {
+        self.platform
     }
 }
 
@@ -68,9 +90,14 @@ mod tests {
                     .build()?,
             )
             .build()?;
-        let spec = &spec;
 
-        let args = spec.args();
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let args = ctx.args();
         assert_eq!(args.len(), 1);
         assert_eq!(args[0], "hello.wat");
 
@@ -83,9 +110,14 @@ mod tests {
             .root(RootBuilder::default().path("rootfs").build()?)
             .process(ProcessBuilder::default().cwd("/").args(vec![]).build()?)
             .build()?;
-        let spec = &spec;
 
-        let args = spec.args();
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let args = ctx.args();
         assert_eq!(args.len(), 0);
 
         Ok(())
@@ -106,9 +138,14 @@ mod tests {
                     .build()?,
             )
             .build()?;
-        let spec = &spec;
 
-        let args = spec.args();
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let args = ctx.args();
         assert_eq!(args.len(), 3);
         assert_eq!(args[0], "hello.wat");
         assert_eq!(args[1], "echo");
@@ -123,9 +160,14 @@ mod tests {
             .root(RootBuilder::default().path("rootfs").build()?)
             .process(ProcessBuilder::default().cwd("/").args(vec![]).build()?)
             .build()?;
-        let spec = &spec;
 
-        let path = spec.wasi_entrypoint().path;
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let path = ctx.wasi_entrypoint().path;
         assert!(path.as_os_str().is_empty());
 
         Ok(())
@@ -146,9 +188,14 @@ mod tests {
                     .build()?,
             )
             .build()?;
-        let spec = &spec;
 
-        let WasiEntrypoint { path, func } = spec.wasi_entrypoint();
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
         assert_eq!(path, Path::new("hello.wat"));
         assert_eq!(func, "foo");
 
@@ -170,9 +217,14 @@ mod tests {
                     .build()?,
             )
             .build()?;
-        let spec = &spec;
 
-        let WasiEntrypoint { path, func } = spec.wasi_entrypoint();
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
         assert_eq!(path, Path::new("/root/hello.wat"));
         assert_eq!(func, "_start");
 
