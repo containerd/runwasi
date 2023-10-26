@@ -230,6 +230,10 @@ test/k8s/cluster-oci-%: dist/img-oci.tar bin/kind test/k8s/_out/img-oci-%
 test/k8s-%: test/k8s/clean test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
+	# verify that we are still running after some time	
+	sleep 5s
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
+
 
 .PHONY: test/k8s/clean
 test/k8s/clean: bin/kind
@@ -251,6 +255,9 @@ test/k3s-%: dist/img.tar bin/k3s dist-%
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
 	sudo bin/k3s kubectl get pods --all-namespaces
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s
+	# verify that we are still running after some time	
+	sleep 5s
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	sudo bin/k3s kubectl get pods -o wide
 
 .PHONY: test/k3s/clean
