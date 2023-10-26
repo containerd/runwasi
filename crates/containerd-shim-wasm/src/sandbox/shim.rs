@@ -39,6 +39,7 @@ use ttrpc::context::Context;
 use super::instance::{Instance, InstanceConfig, Nop};
 use super::{oci, Error, SandboxService};
 use crate::sys::metrics::get_metrics;
+use crate::sys::networking::setup_namespaces;
 
 enum InstanceOption<I: Instance> {
     Instance(I),
@@ -1209,6 +1210,9 @@ where
             .get("io.kubernetes.cri.sandbox-id")
             .unwrap_or(&id)
             .to_string();
+
+        setup_namespaces(&spec)
+            .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
 
         #[cfg(unix)]
         mount::<str, Path, str, str>(
