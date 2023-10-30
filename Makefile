@@ -206,10 +206,10 @@ bin/kind: test/k8s/Dockerfile
 # Using cross with no target defaults to <arch>-unknown-linux-musl, which creates a static binary.
 test/k8s/_out/img-%: override CARGO=cross TARGET= TARGET_DIR=
 test/k8s/_out/img-%: test/k8s/Dockerfile dist-%
-	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
+	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile --build-arg="RUNTIME=$*" --iidfile=$(@) --load .
 
 test/k8s/_out/img-oci-%: test/k8s/Dockerfile.oci dist-%
-	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile.oci --build-arg="RUNTIME=$*" --iidfile=$(@) --load  .
+	mkdir -p $(@D) && $(DOCKER_BUILD) -f test/k8s/Dockerfile.oci --build-arg="RUNTIME=$*" --iidfile=$(@) --load .
 
 .PHONY: test/nginx
 test/nginx:
