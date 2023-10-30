@@ -24,7 +24,7 @@ cap-std = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.6.0"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm" }
-containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules" }
+containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.3.0"}
 crossbeam = { version = "0.8.2", default-features = false }
 env_logger = "0.10"
 libc = "0.2.149"
