@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: make build-${{ needs.generate.outputs.runtime }}
       - name: Test
         if: ${{ matrix.arch == 'x86_64' }}
