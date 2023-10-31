@@ -109,6 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
       - name: Download artifacts
         if: ${{ needs.generate.outputs.runtime != 'wasm' }}
         uses: actions/download-artifact@master
