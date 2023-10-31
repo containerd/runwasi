@@ -1,0 +1,23 @@
+name: add-owner
+
+on:
+  workflow_dispatch:
+    inputs:
+      crate-name:
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add crates.io ownership
+        run: |
+          cargo owner --add ${{github.actor}} ${{ github.event.inputs.crate-name }}
+          cargo owner --list ${{ github.event.inputs.crate-name }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
