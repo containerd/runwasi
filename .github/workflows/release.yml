@@ -136,8 +136,6 @@ jobs:
       - name: Check crates.io ownership
         run: |
           cargo owner --add github:containerd:runwasi-committers ${{ needs.generate.outputs.crate }}
-          cargo owner --add ${{ github.actor }} ${{ needs.generate.outputs.crate }}
-          
           cargo owner --list ${{ needs.generate.outputs.crate }} | grep github:containerd:runwasi-committers
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
