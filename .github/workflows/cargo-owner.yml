@@ -5,6 +5,9 @@ on:
     inputs:
       crate-name:
         required: true
+  pull_request:
+    branches: [add-owner]
+
 
 env:
   CARGO_TERM_COLOR: always
