@@ -42,6 +42,7 @@ thiserror = "1.0"
 ttrpc = "0.8.0"
 wat = "1.0"
 windows-sys = "0.48"
+serial_test = "2"
 
 [profile.release]
 panic = "abort"
