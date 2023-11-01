@@ -7,14 +7,14 @@ license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-env_logger = "0.10"
+env_logger = { workspace = true }
 libc = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true }
 serde_json = { workspace = true }
-tempfile = "3.8"
+tempfile = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }
-lazy_static = { version = "1.4.0" }
-wat = { version = "1.0.46" }
+lazy_static = "1.4.0"
+wat = { workspace = true }

@@ -30,7 +30,7 @@ wasi-common = "11.0"
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
-serial_test = "*"
+serial_test = { workspace = true }
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"

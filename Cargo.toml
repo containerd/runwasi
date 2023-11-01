@@ -40,8 +40,9 @@ tar = "0.4"
 tempfile = "3.8"
 thiserror = "1.0"
 ttrpc = "0.8.0"
-wat = "*" # Use whatever version wasmtime will make us pull
-windows-sys = { version = "0.48" }
+wat = "1.0"
+windows-sys = "0.48"
+serial_test = "2"
 
 [profile.release]
 panic = "abort"
