@@ -4,31 +4,45 @@ This document describes the steps to release a new version of the crate.
 
 ## Overview
 
-Releases are handled by the [release](.github/workflows/release.yml) GitHub actions workflow.
-The workflow is triggered when a new tag is pushed to the repository following the pattern `<crate>/v<version>`.
+To create a new release, push a new tag following the format `<crate>/v<version>`. 
+This triggers the [release](.github/workflows/release.yml) GitHub Actions workflow.
 
 In the future we may include a workflow for tagging the release but for now this is manual.
 
-The release workflow will:
+The workflow performs the following steps:
 - Build the crate to be released (determined by the tag)
 - Run the tests for that crate (and only that crate!)
 - Build any associated release artifacts (e.g. the containerd-shim-wasmtime crate includes several binaries).
 - Publish the crate to crates.io
 
+### Crate Release Sequence
+1. `containerd-shim-wasm-test-modules`
+2. `containerd-shim-wasm`
+3. All runtime-related crates.
+
 The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
+
+## Local Development vs. Release
+Locally, crates reference local paths. During release, they target published versions. Use both `path` and `version` fields in your Cargo.toml:
+
+e.g.
+
+```toml
+containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
+```
 
 ## Steps
 
-1. Open a PR to bump crate version in the Cargo.toml for that crate.
+1. Open a PR to bump crate version abd dependency versions in `Cargo.toml` for that crate
 2. PR can be merged after 2 LGTMs
 3. Tag the release with the format `<crate>/v<version>` (e.g. `containerd-shim-wasm/v0.2.0`)
 4. Wait for the release workflow to complete
 5. Manually verify the release on crates.io and on the GitHub releases page.
 6. If this is the first time publishing this crate, see the [First release of a crate](#First-release-of-a-crate) section.
 
-If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.
-
-For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.
+> Note: If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.
+>
+> For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.
 
 ## First release of a crate
 
