@@ -666,7 +666,6 @@ dependencies = [
  "serial_test",
  "ttrpc",
  "wasmedge-sdk",
- "wasmedge-sys",
 ]
 
 [[package]]

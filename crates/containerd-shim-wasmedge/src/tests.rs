@@ -108,9 +108,12 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 fn get_wasmedge_binary_path() -> std::path::PathBuf {
     use std::os::unix::prelude::OsStrExt;
 
-    let f = wasmedge_sys::ffi::WasmEdge_VersionGet;
+    extern "C" {
+        pub fn WasmEdge_VersionGet() -> *const libc::c_char;
+    }
+
     let mut info = unsafe { std::mem::zeroed() };
-    if unsafe { libc::dladdr(f as *const libc::c_void, &mut info) } == 0 {
+    if unsafe { libc::dladdr(WasmEdge_VersionGet as *const libc::c_void, &mut info) } == 0 {
         // no dladdr support, must be a static binary
         std::env::current_exe().unwrap_or_default()
     } else {
