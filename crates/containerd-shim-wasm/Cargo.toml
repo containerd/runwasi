@@ -34,7 +34,7 @@ futures = { version = "0.3.29" }
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
-dbus = { version = "*", features = ["vendored"] }
+dbus = { version = "0", features = ["vendored"] }
 libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
 nix = { workspace = true, features = ["sched", "mount"] }
 containerd-client = "0.4.0"

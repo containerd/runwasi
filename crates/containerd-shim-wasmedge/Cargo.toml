@@ -16,7 +16,7 @@ wasmedge-sdk = { version = "0.12.2" }
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
 libc = { workspace = true }
-serial_test = "*"
+serial_test = "2"
 
 [features]
 default = ["standalone", "static"]

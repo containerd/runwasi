@@ -18,7 +18,7 @@ wasmer-wasix = { version = "0.12.0" }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
-serial_test = "*"
+serial_test = "2"
 
 [[bin]]
 name = "containerd-shim-wasmer-v1"
