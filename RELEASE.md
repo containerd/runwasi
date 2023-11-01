@@ -33,7 +33,7 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 
 ## Steps
 
-1. Open a PR to bump crate version abd dependency versions in `Cargo.toml` for that crate
+1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate
 2. PR can be merged after 2 LGTMs
 3. Tag the release with the format `<crate>/v<version>` (e.g. `containerd-shim-wasm/v0.2.0`)
 4. Wait for the release workflow to complete
