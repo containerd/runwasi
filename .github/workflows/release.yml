@@ -13,50 +13,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  generate:
+  parse:
     runs-on: ubuntu-latest
-    name: Generate
+    name: Parse ref
     outputs:
-      crate: ${{ steps.parse-ref.outputs.crate }}
-      version: ${{ steps.parse-ref.outputs.version }}
-      runtime: ${{ steps.parse-ref.outputs.runtime }}
+      crate: ${{ steps.parse.outputs.crate }}
+      version: ${{ steps.parse.outputs.version }}
+      runtime: ${{ steps.parse.outputs.runtime }}
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
-      - id: parse-ref
+      - id: parse
         name: Parse ref
-        run: |
-          set -e
-
-          CRATE="$(cut -d/ -f1 <<<"${GITHUB_REF#refs/*/}")"
-          VERSION="$(cut -d/ -f2 <<<"${GITHUB_REF#refs/*/}")"
-
-          if [ -z "${CRATE}" ]; then
-            echo "::error::Could not determine crate name from ref '${GITHUB_REF}'"
-            exit 1
-          fi
-
-          if [ -z "${VERSION}" ]; then
-            echo "::error::Could not determine version from ref '${GITHUB_REF}'"
-            exit 1
-          fi
-
-          RUNTIME="$(cut -d- -f3 <<<"${CRATE}")"
-
-          echo "CRATE=${CRATE}" >> $GITHUB_OUTPUT
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          echo "RUNTIME=${RUNTIME}" >> $GITHUB_OUTPUT
-
-          setVersion="$(./scripts/version.sh "${CRATE}")"
-          if [ ! "${VERSION#v}" = "${setVersion}" ]; then
-            echo "::error::Version mismatch: tag version ${VERSION#v} != crate version ${setVersion}"
-            exit 1
-          fi
+        shell: bash
+        run: ./scripts/parse_ref.sh ${{ github.ref }} >> ${GITHUB_OUTPUT}
 
   build:
     needs:
-      - generate
+      - parse
     strategy:
       matrix:
         arch: ["x86_64", "aarch64"]
@@ -67,7 +42,7 @@ jobs:
         run: ./scripts/setup-linux.sh
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
-          RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.generate.outputs.crate }}-${{ matrix.arch }}
+          RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.parse.outputs.crate }}-${{ matrix.arch }}
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup cross-rs
@@ -77,42 +52,42 @@ jobs:
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         timeout-minutes: 20
-        run: make build-${{ needs.generate.outputs.runtime }}
+        run: make build-${{ needs.parse.outputs.runtime }}
       - name: Test
         if: ${{ matrix.arch == 'x86_64' }}
         timeout-minutes: 10
-        run: make test-${{ needs.generate.outputs.runtime }}
+        run: make test-${{ needs.parse.outputs.runtime }}
       - name: Package artifacts
-        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
         shell: bash
         run: |
-          make dist-${{ needs.generate.outputs.runtime }}
+          make dist-${{ needs.parse.outputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
+            tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
+            tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
-        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}
-          path: dist/containerd-shim-${{ needs.generate.outputs.runtime }}-${{ matrix.arch }}.tar.gz
+          name: containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}
+          path: dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz
 
   release:
     permissions:
       contents: write
     needs:
       - build
-      - generate
+      - parse
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Download artifacts
-        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
         uses: actions/download-artifact@master
         with:
           path: release
@@ -121,23 +96,23 @@ jobs:
           gh release create ${{ github.ref }} --generate-notes --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
+          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
       - name: Upload release artifacts
-        if: ${{ needs.generate.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
         run: |
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
           done
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ needs.generate.outputs.crate }}/${{ needs.generate.outputs.version }}
+          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
       - name: Cargo publish
-        run: cargo publish --package ${{ needs.generate.outputs.crate }} --verbose --locked
+        run: cargo publish --package ${{ needs.parse.outputs.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
       - name: Check crates.io ownership
         run: |
-          cargo owner --add github:containerd:runwasi-committers ${{ needs.generate.outputs.crate }}
-          cargo owner --list ${{ needs.generate.outputs.crate }} | grep github:containerd:runwasi-committers
+          cargo owner --add github:containerd:runwasi-committers ${{ needs.parse.outputs.crate }}
+          cargo owner --list ${{ needs.parse.outputs.crate }} | grep github:containerd:runwasi-committers
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
