@@ -10,9 +10,9 @@ This triggers the [release](.github/workflows/release.yml) GitHub Actions workfl
 In the future we may include a workflow for tagging the release but for now this is manual.
 
 The workflow performs the following steps:
-- Build the crate to be released (determined by the tag)
+- Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)
 - Run the tests for that crate (and only that crate!)
-- Build any associated release artifacts (e.g. the containerd-shim-wasmtime crate includes several binaries).
+- Creates a GitHub release for that crate (attaching any artifacts)
 - Publish the crate to crates.io
 
 ### Crate Release Sequence
@@ -23,7 +23,8 @@ The workflow performs the following steps:
 The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
 
 ## Local Development vs. Release
-Locally, crates reference local paths. During release, they target published versions. Use both `path` and `version` fields in your Cargo.toml:
+Locally, crates reference local paths. During release, they target published versions.
+Use both `path` and `version` fields in the workspace `Cargo.toml`:
 
 e.g.
 
