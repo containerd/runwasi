@@ -36,11 +36,11 @@ macro_rules! revision {
     };
 }
 
-pub fn shim_main<I>(
+pub fn shim_main<'a, I>(
     name: &str,
     version: &str,
-    revision: Option<&str>,
-    shim_version: Option<&str>,
+    revision: impl Into<Option<&'a str>>,
+    shim_version: impl Into<Option<&'a str>>,
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,
@@ -55,12 +55,12 @@ pub fn shim_main<I>(
         println!("{argv0}:");
         println!("  Runtime: {name}");
         println!("  Version: {version}");
-        println!("  Revision: {}", revision.unwrap_or("<none>"));
+        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
         println!();
 
         std::process::exit(0);
     }
-    let shim_version = shim_version.unwrap_or("v1");
+    let shim_version = shim_version.into().unwrap_or("v1");
 
     let lower_name = name.to_lowercase();
     let shim_cli = format!("containerd-shim-{lower_name}-{shim_version}");
