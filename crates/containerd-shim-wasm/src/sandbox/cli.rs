@@ -36,8 +36,13 @@ macro_rules! revision {
     };
 }
 
-pub fn shim_main<I>(name: &str, version: &str, revision: Option<&str>, config: Option<Config>)
-where
+pub fn shim_main<'a, I>(
+    name: &str,
+    version: &str,
+    revision: impl Into<Option<&'a str>>,
+    shim_version: impl Into<Option<&'a str>>,
+    config: Option<Config>,
+) where
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
@@ -50,17 +55,18 @@ where
         println!("{argv0}:");
         println!("  Runtime: {name}");
         println!("  Version: {version}");
-        println!("  Revision: {}", revision.unwrap_or("<none>"));
+        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
         println!();
 
         std::process::exit(0);
     }
+    let shim_version = shim_version.into().unwrap_or("v1");
 
     let lower_name = name.to_lowercase();
-    let shim_cli = format!("containerd-shim-{lower_name}-v1");
-    let shim_client = format!("containerd-shim-{lower_name}d-v1");
+    let shim_cli = format!("containerd-shim-{lower_name}-{shim_version}");
+    let shim_client = format!("containerd-shim-{lower_name}d-{shim_version}");
     let shim_daemon = format!("containerd-{lower_name}d");
-    let shim_id = format!("io.containerd.{lower_name}.v1");
+    let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 
     match argv0.to_lowercase() {
         s if s == shim_cli => {
