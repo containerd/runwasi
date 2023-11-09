@@ -36,18 +36,12 @@ jobs:
           path: dist
       - name: run
         timeout-minutes: 5
-        run: make test/k3s-${{ inputs.runtime }}
+        run: make test/k3s-${{ inputs.runtime }} E2ELOGS=/tmp/e2e-logs
       # only runs when the previous step fails
-      - name: inspect failed pods
-        if: failure()
-        run: |
-          sudo bin/k3s kubectl get pods --all-namespaces
-          sudo bin/k3s kubectl describe pods --all-namespaces
       - name: tar logs
         if: failure()
         run: |
-          sudo journalctl -u k3s-runwasi > k3s.log
-          sudo tar czf k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -C . k3s.log -C /var/log/pods . -C /var/lib/rancher/k3s/agent/containerd/ containerd.log
+          sudo tar czf k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz -C /tmp/e2e-logs .
           sudo chown ${USER}:${USER} k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz
       - name: upload logs
         if: failure()
@@ -55,6 +49,3 @@ jobs:
         with:
           name: k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}
           path: k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz
-      - name: cleanup
-        if: always()
-        run: make test/k3s/clean

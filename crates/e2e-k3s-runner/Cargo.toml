@@ -1,0 +1,11 @@
+[package]
+name = "e2e-k3s-runner"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { version = "4.4", features = ["derive"] }
+itertools = "0.11"
+path-clean = "1.0"
+tempfile = { workspace = true }

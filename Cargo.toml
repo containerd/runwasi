@@ -4,6 +4,7 @@ members = [
     "crates/containerd-shim-wasm-test-modules",
     "crates/wasi-demo-app",
     "crates/oci-tar-builder",
+    "crates/e2e-k3s-runner",
     "crates/containerd-shim-wasmedge",
     "crates/containerd-shim-wasmtime",
     "crates/containerd-shim-wasmer"
