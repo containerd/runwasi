@@ -29,7 +29,7 @@ tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
-tokio = { version = "1.28.2", features = [ "full" ] }
+tokio = { version = "1.34.0", features = [ "full" ] }
 futures = { version = "0.3.29" }
 
 [target.'cfg(unix)'.dependencies]
