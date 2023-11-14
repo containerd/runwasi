@@ -6,6 +6,8 @@ TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
 CONTAINERD_NAMESPACE ?= default
 
+EXTRA_CRATES = oci-tar-builder wasi-demo-app containerd-shim-wasm-test-modules
+
 # We have a bit of fancy logic here to determine the target 
 # since we support building for gnu and musl
 # TARGET must evenutually match one of the values in the cross.toml
@@ -56,6 +58,9 @@ ifeq ($(OS), Windows_NT)
 FEATURES_wasmedge = --no-default-features
 # turn of warnings until windows is fully supported #49
 WARNINGS = 
+else
+# on unix we also build `e2e-k3s-runner`
+EXTRA_CRATES += e2e-k3s-runner
 endif
 
 DOCKER_BUILD ?= docker buildx build
@@ -81,8 +86,8 @@ check: check-wasm $(RUNTIMES:%=check-%);
 check-common: check-wasm;
 check-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
-	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+	CARGO= $(CARGO) +nightly fmt $(EXTRA_CRATES:%=-p %) -p containerd-shim-wasm -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) $(EXTRA_CRATES:%=-p %) -p containerd-shim-wasm -- $(WARNINGS)
 
 check-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -95,8 +100,8 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 fix-common: fix-wasm;
 fix-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
-	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+	CARGO= $(CARGO) +nightly fmt $(EXTRA_CRATES:%=-p %) -p containerd-shim-wasm
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix $(EXTRA_CRATES:%=-p %) -p containerd-shim-wasm -- $(WARNINGS)
 
 fix-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -108,7 +113,7 @@ test: test-wasm $(RUNTIMES:%=test-%);
 
 test-common: test-wasm;
 test-wasm:
-	# oci-tar-builder and wasi-demo-app have no tests
+	# The crates in $(EXTRA_CRATES) have no tests
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-wasmedge:
@@ -239,29 +244,9 @@ test/k8s-%: test/k8s/clean test/k8s/cluster-%
 test/k8s/clean: bin/kind
 	bin/kind delete cluster --name $(KIND_CLUSTER_NAME)
 
-.PHONY: bin/k3s
-bin/k3s:
-	mkdir -p bin && \
-	curl -sfL https://get.k3s.io | INSTALL_K3S_BIN_DIR=$(PWD)/bin INSTALL_K3S_SYMLINK=skip INSTALL_K3S_NAME=runwasi sh -
-
-.PHONY: bin/k3s/clean
-bin/k3s/clean:
-	bin/k3s-runwasi-uninstall.sh
-
 .PHONY: test/k3s-%
-test/k3s-%: dist/img.tar bin/k3s dist-%
-	sudo bash -c -- 'while ! timeout 40 test/k3s/bootstrap.sh "$*"; do $(MAKE) bin/k3s/clean bin/k3s; done'
-	sudo bin/k3s kubectl get pods --all-namespaces
-	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
-	sudo bin/k3s kubectl get pods --all-namespaces
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s
-	# verify that we are still running after some time	
-	sleep 5s
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
-	sudo bin/k3s kubectl get pods -o wide
-
-.PHONY: test/k3s/clean
-test/k3s/clean: bin/k3s/clean;
+test/k3s-%: dist/img.tar dist-%
+	cargo run -p e2e-k3s-runner --quiet -- "$*" $(E2ELOGS:%=--logs %)
 
 .PHONY: clean
 clean:

@@ -1,0 +1,4 @@
+{{{{ template "base" . }}}}
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes."wasm"]
+    runtime_type = "/shim/{shim_name}"
