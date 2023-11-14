@@ -14,7 +14,7 @@ Included in the repository is a PoC for running a plain wasi host (ie. no extra 
 - If you haven't joined the CNCF slack yet, you can do so [here](https://slack.cncf.io/).
 - Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V)
 on the CNCF slack.
-- Public Community Call on Tuesdays at 9:00 AM PT: [Zoom](https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09), [Meeting Notes](https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing)
+- Public Community Call on Tuesdays every other week at 9:00 AM PT: [Zoom](https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09), [Meeting Notes](https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing)
 
 ### Usage
 
