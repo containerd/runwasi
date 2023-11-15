@@ -15,6 +15,7 @@ use super::error::Result;
 pub struct WasmLayer {
     pub config: Descriptor,
     pub layer: Vec<u8>,
+    pub precompiled: bool,
 }
 
 fn parse_env(envs: &[String]) -> HashMap<String, String> {

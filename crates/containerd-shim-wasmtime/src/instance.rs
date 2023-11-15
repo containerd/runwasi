@@ -9,6 +9,8 @@ use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Module, Store};
 use wasmtime_wasi::preview2::{self as wasi_preview2};
 use wasmtime_wasi::{self as wasi_preview1, Dir};
+use wasmtime::{Linker, Module, Precompiled, Store};
+use wasmtime_wasi::{Dir, WasiCtxBuilder};
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine>;
 
@@ -61,6 +63,8 @@ impl Engine for WasmtimeEngine {
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+        let _config = wasmtime::Config::new();
+
         log::info!("setting up wasi");
         let envs: Vec<_> = std::env::vars().collect();
         let Entrypoint {
@@ -95,6 +99,32 @@ impl Engine for WasmtimeEngine {
         })?;
 
         Ok(status)
+    }
+
+    fn precompile(&self, layers: &[Vec<u8>]) -> Result<Vec<u8>> {
+        match layers {
+            [layer] => self.engine.precompile_module(layer),
+            _ => bail!("only a single module is supported when when precompiling"),
+        }
+    }
+
+    fn can_precompile() -> bool {
+        true
+    }
+}
+
+fn load_precompiled(engine: &wasmtime::Engine, bytes: &Vec<u8>) -> Result<Module> {
+    match engine.detect_precompiled(bytes) {
+        Some(Precompiled::Module) => {
+            log::info!("using precompiled module");
+            unsafe { Module::deserialize(engine, bytes) }
+        }
+        Some(Precompiled::Component) => {
+            bail!("components not supported")
+        }
+        None => {
+            bail!("invalid precompiled module")
+        }
     }
 }
 

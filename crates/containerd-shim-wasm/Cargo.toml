@@ -32,6 +32,9 @@ wat = { workspace = true }
 tokio = { version = "1.35.1", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.121.0"
+tokio-stream = { version = "0.1" }
+prost-types = "0.11" # should match version in containerd-shim
+sha256 = "1.4.0"
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"

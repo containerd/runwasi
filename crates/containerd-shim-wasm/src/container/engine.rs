@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
@@ -26,6 +26,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
         let path = match source {
             Source::File(path) => path,
             Source::Oci(_) => return Ok(()),
+            Source::Precompiled(_) => return Ok(()),
         };
 
         path.resolve_in_path_or_cwd()
@@ -51,5 +52,15 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// such as lays that contain runtime specific configuration
     fn supported_layers_types() -> &'static [&'static str] {
         &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
+    }
+
+    /// Precomiple a module
+    fn precompile(&self, _layers: &[Vec<u8>]) -> Result<Vec<u8>> {
+        bail!("precompilation not supported for this runtime")
+    }
+
+    /// Precomiple a module
+    fn can_precompile() -> bool {
+        false
     }
 }
