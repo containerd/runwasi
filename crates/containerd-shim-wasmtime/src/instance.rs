@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint,
+    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiLoadingStrategy,
 };
 use wasi_common::I32Exit;
 use wasmtime::{Linker, Module, Store};
@@ -35,11 +35,9 @@ impl Engine for WasmtimeEngine {
         let wctx = wasi_builder.build();
 
         log::info!("wasi context ready");
-        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
-
-        let module = match ctx.wasm_layers() {
-            [] => {
-                log::info!("loading module from file");
+        let module = match ctx.wasi_loading_strategy() {
+            WasiLoadingStrategy::File(path) => {
+                log::info!("loading module from path {path:?}");
                 let path = path
                     .resolve_in_path_or_cwd()
                     .next()
@@ -47,11 +45,13 @@ impl Engine for WasmtimeEngine {
 
                 Module::from_file(&self.engine, path)?
             }
-            [module] => {
+            WasiLoadingStrategy::Oci([module]) => {
                 log::info!("loading module wasm OCI layers");
                 Module::from_binary(&self.engine, &module.layer)?
             }
-            [..] => bail!("only a single module is supported when using images with OCI layers"),
+            WasiLoadingStrategy::Oci(_modules) => {
+                bail!("only a single module is supported when using images with OCI layers")
+            }
         };
 
         let mut linker = Linker::new(&self.engine);
@@ -63,11 +63,12 @@ impl Engine for WasmtimeEngine {
         let instance: wasmtime::Instance = linker.instantiate(&mut store, &module)?;
 
         log::info!("getting start function");
+        let func = ctx.entrypoint().func;
         let start_func = instance
             .get_func(&mut store, &func)
             .context("module does not have a WASI start function")?;
 
-        log::debug!("running {path:?} with start function {func:?}");
+        log::debug!("running with start function {func:?}");
 
         let status = start_func.call(&mut store, &[], &mut []);
         let status = status.map(|_| 0).or_else(|err| {

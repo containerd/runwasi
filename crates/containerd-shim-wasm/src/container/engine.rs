@@ -20,7 +20,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// * a parsable `wat` file.
     fn can_handle(&self, ctx: &impl RuntimeContext) -> Result<()> {
         let path = ctx
-            .wasi_entrypoint()
+            .entrypoint()
             .path
             .resolve_in_path_or_cwd()
             .next()
@@ -35,5 +35,9 @@ pub trait Engine: Clone + Send + Sync + 'static {
         }
 
         Ok(())
+    }
+
+    fn supported_layers_types() -> &'static [&'static str] {
+        &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
     }
 }

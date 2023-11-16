@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint,
+    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint, WasiLoadingStrategy,
 };
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
@@ -21,7 +21,11 @@ impl Engine for WasmerEngine {
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
         let envs = std::env::vars();
-        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
+        let WasiEntrypoint {
+            path,
+            func,
+            arg0: _,
+        } = ctx.entrypoint();
 
         let mod_name = match path.file_stem() {
             Some(name) => name.to_string_lossy().to_string(),
@@ -31,8 +35,8 @@ impl Engine for WasmerEngine {
         log::info!("Create a Store");
         let mut store = Store::new(self.engine.clone());
 
-        let module = match ctx.wasm_layers() {
-            [] => {
+        let module = match ctx.wasi_loading_strategy() {
+            WasiLoadingStrategy::File(path) => {
                 log::info!("loading module from file {path:?}");
                 let path = path
                     .resolve_in_path_or_cwd()
@@ -41,11 +45,14 @@ impl Engine for WasmerEngine {
 
                 Module::from_file(&store, path)?
             }
-            [module] => {
+            WasiLoadingStrategy::Oci([module]) => {
+                log::info!("loading module wasm OCI layers");
                 log::info!("loading module wasm OCI layers");
                 Module::from_binary(&store, &module.layer)?
             }
-            [..] => bail!("only a single module is supported when using images with OCI layers"),
+            WasiLoadingStrategy::Oci(_modules) => {
+                bail!("only a single module is supported when using images with OCI layers")
+            }
         };
 
         let runtime = tokio::runtime::Builder::new_multi_thread()

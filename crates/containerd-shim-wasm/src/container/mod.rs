@@ -15,7 +15,7 @@ mod engine;
 mod path;
 
 pub(crate) use context::WasiContext;
-pub use context::{RuntimeContext, WasiEntrypoint};
+pub use context::{RuntimeContext, WasiEntrypoint, WasiLoadingStrategy};
 pub use engine::Engine;
 pub use instance::Instance;
 pub use path::PathResolve;

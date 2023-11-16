@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint,
+    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint, WasiLoadingStrategy,
 };
 use log::debug;
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
@@ -38,7 +38,8 @@ impl Engine for WasmEdgeEngine {
         let WasiEntrypoint {
             path: entrypoint_path,
             func,
-        } = ctx.wasi_entrypoint();
+            arg0: _,
+        } = ctx.entrypoint();
 
         let mut vm = self.vm.clone();
         vm.wasi_module_mut()
@@ -57,10 +58,10 @@ impl Engine for WasmEdgeEngine {
         PluginManager::load(None)?;
         let vm = vm.auto_detect_plugins()?;
 
-        let vm = match ctx.wasm_layers() {
-            [] => {
-                debug!("loading module from file");
-                let path = entrypoint_path
+        let vm = match ctx.wasi_loading_strategy() {
+            WasiLoadingStrategy::File(path) => {
+                debug!("loading module from file {path:?}");
+                let path = path
                     .resolve_in_path_or_cwd()
                     .next()
                     .context("module not found")?;
@@ -68,17 +69,19 @@ impl Engine for WasmEdgeEngine {
                 vm.register_module_from_file(&mod_name, path)
                     .context("registering module")?
             }
-            [module] => {
+            WasiLoadingStrategy::Oci([module]) => {
                 log::info!("loading module from wasm OCI layers");
                 vm.register_module_from_bytes(&mod_name, &module.layer)
                     .context("registering module")?
             }
-            [..] => bail!("only a single module is supported when using images with OCI layers"),
+            WasiLoadingStrategy::Oci(_modules) => {
+                bail!("only a single module is supported when using images with OCI layers")
+            }
         };
 
         stdio.redirect()?;
 
-        log::debug!("running {entrypoint_path:?} with method {func:?}");
+        log::debug!("running with method {func:?}");
         vm.run_func(Some(&mod_name), func, vec![])?;
 
         let status = vm

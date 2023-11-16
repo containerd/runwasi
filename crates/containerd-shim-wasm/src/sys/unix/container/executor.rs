@@ -105,6 +105,7 @@ impl<E: Engine> Executor<E> {
 fn is_linux_container(ctx: &impl RuntimeContext) -> Result<()> {
     let executable = ctx
         .entrypoint()
+        .arg0
         .context("no entrypoint provided")?
         .resolve_in_path()
         .find_map(|p| -> Option<PathBuf> {
