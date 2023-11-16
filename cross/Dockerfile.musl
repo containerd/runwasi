@@ -15,6 +15,9 @@ RUN apk-${MARCH} add g++
 ENV WASMEDGE_DEP_STDCXX_LINK_TYPE="static"
 ENV WASMEDGE_DEP_STDCXX_LIB_PATH="${CROSS_SYSROOT}/lib"
 
+# install zstd-static
+RUN apk-${MARCH} add --upgrade zstd-static
+
 # wasmedge (through llvm) needs some symbols defined in libgcc
 RUN mkdir /.cargo && cat <<'EOF' > /.cargo/config.toml
 [target.'cfg(target_env = "musl")']
