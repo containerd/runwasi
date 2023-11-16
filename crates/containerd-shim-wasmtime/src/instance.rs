@@ -23,7 +23,8 @@ impl Engine for WasmtimeEngine {
         let path = Dir::from_std_file(std::fs::File::open("/")?);
         let envs: Vec<_> = std::env::vars().collect();
 
-        let wasi_builder = WasiCtxBuilder::new()
+        let mut wasi_builder = WasiCtxBuilder::new();
+        wasi_builder
             .args(ctx.args())?
             .envs(envs.as_slice())?
             .inherit_stdio()
