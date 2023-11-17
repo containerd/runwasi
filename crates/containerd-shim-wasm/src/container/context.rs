@@ -18,22 +18,34 @@ pub trait RuntimeContext {
     //   "/app/app.wasm#entry" -> { path: "/app/app.wasm", func: "entry" }
     //   "my_module.wat" -> { path: "my_module.wat", func: "_start" }
     //   "#init" -> { path: "", func: "init" }
-    fn entrypoint(&self) -> WasiEntrypoint;
+    fn entrypoint(&self) -> Entrypoint;
 
-    fn wasi_loading_strategy(&self) -> WasiLoadingStrategy;
-
+    // the platform for the container using the struct defined on the OCI spec definition
+    // https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
     fn platform(&self) -> &Platform;
 }
 
-pub enum WasiLoadingStrategy<'a> {
+/// The source for a WASI module / components.
+pub enum Source<'a> {
+    // The WASI module is a file in the file system.
     File(PathBuf),
+    // The WASI module / component is provided as a layer in the OCI spec.
+    // For a WASI preview 1 module this is usually a single element array.
+    // For a WASI preview 2 component this is an array of one or more
+    // elements, where each element is a component.
+    // Runtimes can additionally provide a list of layer types they support,
+    // and they will be included in this array, e.g., a `toml` file with the
+    // runtime configuration.
     Oci(&'a [WasmLayer]),
 }
 
-pub struct WasiEntrypoint<'a> {
-    pub path: PathBuf,
+/// The entrypoint for a WASI module / component.
+///
+pub struct Entrypoint<'a> {
     pub func: String,
+    pub name: Option<String>,
     pub arg0: Option<&'a Path>,
+    pub source: Source<'a>,
 }
 
 pub(crate) struct WasiContext<'a> {
@@ -52,25 +64,29 @@ impl RuntimeContext for WasiContext<'_> {
             .unwrap_or_default()
     }
 
-    fn entrypoint(&self) -> WasiEntrypoint {
+    fn entrypoint(&self) -> Entrypoint {
         let arg0 = self.args().first();
 
         let entry_point = arg0.map(String::as_str).unwrap_or("");
         let (path, func) = entry_point
             .split_once('#')
             .unwrap_or((entry_point, "_start"));
-        WasiEntrypoint {
-            path: PathBuf::from(path),
+
+        let source = if self.wasm_layers.is_empty() {
+            Source::File(PathBuf::from(path))
+        } else {
+            Source::Oci(self.wasm_layers)
+        };
+
+        let module_name = PathBuf::from(path)
+            .file_stem()
+            .map(|name| name.to_string_lossy().to_string());
+
+        Entrypoint {
             func: func.to_string(),
             arg0: arg0.map(Path::new),
-        }
-    }
-
-    fn wasi_loading_strategy(&self) -> WasiLoadingStrategy {
-        if self.wasm_layers.is_empty() {
-            WasiLoadingStrategy::File(self.entrypoint().path.clone())
-        } else {
-            WasiLoadingStrategy::Oci(self.wasm_layers)
+            source,
+            name: module_name,
         }
     }
 
@@ -175,8 +191,11 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let path = ctx.entrypoint().path;
-        assert!(path.as_os_str().is_empty());
+        let path = ctx.entrypoint().source;
+        assert!(matches!(
+            path,
+            Source::File(p) if p.as_os_str().is_empty()
+        ));
 
         Ok(())
     }
@@ -203,10 +222,20 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let WasiEntrypoint { path, func, arg0 } = ctx.entrypoint();
-        assert_eq!(path, Path::new("hello.wat"));
+        let expected_path = PathBuf::from("hello.wat");
+        let Entrypoint {
+            name,
+            func,
+            arg0,
+            source,
+        } = ctx.entrypoint();
+        assert_eq!(name, Some("hello".to_string()));
         assert_eq!(func, "foo");
         assert_eq!(arg0, Some(Path::new("hello.wat#foo")));
+        assert!(matches!(
+            source,
+            Source::File(p) if p == expected_path
+        ));
 
         Ok(())
     }
@@ -233,10 +262,20 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let WasiEntrypoint { path, func, arg0 } = ctx.entrypoint();
-        assert_eq!(path, Path::new("/root/hello.wat"));
+        let expected_path = PathBuf::from("/root/hello.wat");
+        let Entrypoint {
+            name,
+            func,
+            arg0,
+            source,
+        } = ctx.entrypoint();
+        assert_eq!(name, Some("hello".to_string()));
         assert_eq!(func, "_start");
         assert_eq!(arg0, Some(Path::new("/root/hello.wat")));
+        assert!(matches!(
+            source,
+            Source::File(p) if p == expected_path
+        ));
 
         Ok(())
     }
@@ -265,8 +304,8 @@ mod tests {
 
         let expected_path = PathBuf::from("/root/hello.wat");
         assert!(matches!(
-            ctx.wasi_loading_strategy(),
-            WasiLoadingStrategy::File(p) if p == expected_path
+            ctx.entrypoint().source,
+            Source::File(p) if p == expected_path
         ));
 
         Ok(())
@@ -297,10 +336,7 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        assert!(matches!(
-            ctx.wasi_loading_strategy(),
-            WasiLoadingStrategy::Oci(_)
-        ));
+        assert!(matches!(ctx.entrypoint().source, Source::Oci(_)));
 
         Ok(())
     }

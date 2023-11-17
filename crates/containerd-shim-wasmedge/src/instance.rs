@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiEntrypoint, WasiLoadingStrategy,
+    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, Source, Stdio,
 };
 use log::debug;
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
@@ -35,10 +35,11 @@ impl Engine for WasmEdgeEngine {
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
         let envs: Vec<_> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
-        let WasiEntrypoint {
-            path: entrypoint_path,
+        let Entrypoint {
+            source,
             func,
             arg0: _,
+            name,
         } = ctx.entrypoint();
 
         let mut vm = self.vm.clone();
@@ -50,16 +51,13 @@ impl Engine for WasmEdgeEngine {
                 Some(vec!["/:/"]),
             );
 
-        let mod_name = match entrypoint_path.file_stem() {
-            Some(name) => name.to_string_lossy().to_string(),
-            None => "main".to_string(),
-        };
+        let mod_name = name.unwrap_or_else(|| "main".to_string());
 
         PluginManager::load(None)?;
         let vm = vm.auto_detect_plugins()?;
 
-        let vm = match ctx.wasi_loading_strategy() {
-            WasiLoadingStrategy::File(path) => {
+        let vm = match source {
+            Source::File(path) => {
                 debug!("loading module from file {path:?}");
                 let path = path
                     .resolve_in_path_or_cwd()
@@ -69,12 +67,12 @@ impl Engine for WasmEdgeEngine {
                 vm.register_module_from_file(&mod_name, path)
                     .context("registering module")?
             }
-            WasiLoadingStrategy::Oci([module]) => {
+            Source::Oci([module]) => {
                 log::info!("loading module from wasm OCI layers");
                 vm.register_module_from_bytes(&mod_name, &module.layer)
                     .context("registering module")?
             }
-            WasiLoadingStrategy::Oci(_modules) => {
+            Source::Oci(_modules) => {
                 bail!("only a single module is supported when using images with OCI layers")
             }
         };

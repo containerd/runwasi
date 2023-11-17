@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Stdio, WasiLoadingStrategy,
+    Engine, Instance, PathResolve, RuntimeContext, Source, Stdio,
 };
 use wasi_common::I32Exit;
 use wasmtime::{Linker, Module, Store};
@@ -20,14 +20,14 @@ impl Engine for WasmtimeEngine {
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         log::info!("setting up wasi");
-        let path = Dir::from_std_file(std::fs::File::open("/")?);
+        let root_path = Dir::from_std_file(std::fs::File::open("/")?);
         let envs: Vec<_> = std::env::vars().collect();
 
         let wasi_builder = WasiCtxBuilder::new()
             .args(ctx.args())?
             .envs(envs.as_slice())?
             .inherit_stdio()
-            .preopened_dir(path, "/")?;
+            .preopened_dir(root_path, "/")?;
 
         stdio.redirect()?;
 
@@ -35,8 +35,8 @@ impl Engine for WasmtimeEngine {
         let wctx = wasi_builder.build();
 
         log::info!("wasi context ready");
-        let module = match ctx.wasi_loading_strategy() {
-            WasiLoadingStrategy::File(path) => {
+        let module = match ctx.entrypoint().source {
+            Source::File(path) => {
                 log::info!("loading module from path {path:?}");
                 let path = path
                     .resolve_in_path_or_cwd()
@@ -45,11 +45,11 @@ impl Engine for WasmtimeEngine {
 
                 Module::from_file(&self.engine, path)?
             }
-            WasiLoadingStrategy::Oci([module]) => {
+            Source::Oci([module]) => {
                 log::info!("loading module wasm OCI layers");
                 Module::from_binary(&self.engine, &module.layer)?
             }
-            WasiLoadingStrategy::Oci(_modules) => {
+            Source::Oci(_modules) => {
                 bail!("only a single module is supported when using images with OCI layers")
             }
         };
