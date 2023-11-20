@@ -18,7 +18,7 @@ containerd-shim = { workspace = true }
 containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 crossbeam = { workspace = true }
 env_logger = { workspace = true, optional = true }
-git-version = "0.3.5"
+git-version = "0.3.8"
 libc = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true }
