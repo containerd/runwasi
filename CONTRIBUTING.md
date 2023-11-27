@@ -135,6 +135,30 @@ Most features will likely have most of the code in the `containerd-shim-wasm` pr
 
 A tip for developing a new feature is to implement it and test it with one runtime you are familiar with then add it to all the runtimes.  This makes it easier to test and iterate before making changes across all the runtimes.
 
+## Adding new shims
+
+We welcome new shims, though you can also host them in your own repositories as well and use the `coantainerd-shim-wasm` crate.  We recognize that the project is moving fast and having them in this repository can reduce the need for changes as well for discoverability.  
+
+Please open an issue before submitting a PR for discussion to make sure it is a good fit.  As a general rule, we want shims to be adopting WASI spec (this is after all called run*wasi* :-)). In the future we may require shims in the repository to pass WASI compliance tests when the standards mature more. See https://github.com/containerd/runwasi/issues/338 for more discussion.
+
+Since we are not experts in every runtime we also need a commitment from the runtime owners to contribute to maintenance of the shim.
+
+## Removing Shims
+
+This is a fast moving space, with lots of innovation happening and some shims may eventually need to be removed.
+
+A Shim implementation maybe subject to removal if:
+ - If a shim runtime its self has not maintained for 6 months it will be subject to removal.  
+ - If required changes to the runtime can't be merged or not supported by runtime maintainers.
+ - If it falls behind in new features added to the `coantainerd-shim-wasm` due to lack of maintainance
+
+Before removal:
+- We will create an issue in the repository, pinned to the top. 
+- Send notification in our slack channel 
+- make best effort to contact the maintainers (agreed to when adding the shim)
+
+After 1 month of the issue being up, if not maintainer is found we will remove the shim from the project.
+
 ## Getting in touch
 
 There is a lot going on in the project. If you get lost, stop by our [slack and ask questions](./README.md#community)!
