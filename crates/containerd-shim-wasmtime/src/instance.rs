@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Instance, PathResolve, RuntimeContext, Source, Stdio,
+    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, Source, Stdio,
 };
 use wasi_common::I32Exit;
 use wasmtime::{Linker, Module, Store};
@@ -34,8 +34,15 @@ impl Engine for WasmtimeEngine {
         log::info!("building wasi context");
         let wctx = wasi_builder.build();
 
+        let Entrypoint {
+            source,
+            func,
+            arg0: _,
+            name: _,
+        } = ctx.entrypoint();
+
         log::info!("wasi context ready");
-        let module = match ctx.entrypoint().source {
+        let module = match source {
             Source::File(path) => {
                 log::info!("loading module from path {path:?}");
                 let path = path
@@ -63,7 +70,6 @@ impl Engine for WasmtimeEngine {
         let instance: wasmtime::Instance = linker.instantiate(&mut store, &module)?;
 
         log::info!("getting start function");
-        let func = ctx.entrypoint().func;
         let start_func = instance
             .get_func(&mut store, &func)
             .context("module does not have a WASI start function")?;

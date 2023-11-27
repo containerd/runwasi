@@ -10,14 +10,19 @@ pub trait RuntimeContext {
     // path to the entrypoint executable.
     fn args(&self) -> &[String];
 
-    // ctx.wasi_entrypoint() returns a `WasiEntrypoint` with the path to the module to use
-    // as an entrypoint and the name of the exported function to call, obtained from the
+    // ctx.entrypoint() returns a `Entrypoint` with the following fields obtained from the first argument in the OCI spec for entrypoint:
+    //   - `arg0` - raw entrypoint from the OCI spec
+    //   - `name` - provided as the file name of the module in the entrypoint without the extension
+    //   - `func` - name of the exported function to call, obtained from the
     // arguments on process OCI spec.
-    // The girst argument in the spec is specified as `path#func` where `func` is optional
+    //  - `Source` - either a `File(PathBuf)` or `Oci(WasmLayer)`. When a `File` source the `PathBuf`` is provided by entrypoint in OCI spec.
+    //     If the image contains custom OCI Wasm layers, the source is provided as an array of `WasmLayer` structs.
+    //
+    // The first argument in the OCI spec for entrypoint is specified as `path#func` where `func` is optional
     // and defaults to _start, e.g.:
-    //   "/app/app.wasm#entry" -> { path: "/app/app.wasm", func: "entry" }
-    //   "my_module.wat" -> { path: "my_module.wat", func: "_start" }
-    //   "#init" -> { path: "", func: "init" }
+    //   "/app/app.wasm#entry" -> { source: File("/app/app.wasm"), func: "entry", name: "Some(app)", arg0: "/app/app.wasm#entry" }
+    //   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
+    //   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
     fn entrypoint(&self) -> Entrypoint;
 
     // the platform for the container using the struct defined on the OCI spec definition
