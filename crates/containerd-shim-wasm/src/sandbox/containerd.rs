@@ -119,6 +119,7 @@ impl Client {
     pub fn load_modules(
         &self,
         containerd_id: impl ToString,
+        supported_layer_types: &[&str],
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let image_name = self.get_image(containerd_id.to_string())?;
         let digest = self.get_image_content_sha(image_name)?;
@@ -141,7 +142,7 @@ impl Client {
         let layers = manifest
             .layers()
             .iter()
-            .filter(|x| !is_image_layer_type(x.media_type()))
+            .filter(|x| is_wasm_layer(x.media_type(), supported_layer_types))
             .map(|config| {
                 self.read_content(config.digest()).map(|module| WasmLayer {
                     config: config.clone(),
@@ -153,20 +154,6 @@ impl Client {
     }
 }
 
-fn is_image_layer_type(media_type: &MediaType) -> bool {
-    match media_type {
-        MediaType::ImageLayer
-        | MediaType::ImageLayerGzip
-        | MediaType::ImageLayerNonDistributable
-        | MediaType::ImageLayerNonDistributableGzip
-        | MediaType::ImageLayerNonDistributableZstd
-        | MediaType::ImageLayerZstd => true,
-        MediaType::Other(s)
-            if s.as_str()
-                .starts_with("application/vnd.docker.image.rootfs.") =>
-        {
-            true
-        }
-        _ => false,
-    }
+fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
+    supported_layer_types.contains(&media_type.to_string().as_str())
 }

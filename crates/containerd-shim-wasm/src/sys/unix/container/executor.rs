@@ -13,7 +13,7 @@ use libcontainer::workload::{
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::{Engine, PathResolve, RuntimeContext, Stdio, WasiContext};
+use crate::container::{Engine, PathResolve, RuntimeContext, Source, Stdio, WasiContext};
 use crate::sandbox::oci::WasmLayer;
 
 #[derive(Clone)]
@@ -88,10 +88,7 @@ impl<E: Engine> Executor<E> {
 
     fn inner(&self, spec: &Spec) -> &InnerExecutor {
         self.inner.get_or_init(|| {
-            // if the spec has oci annotations we know it is wasm so short circuit checks
-            if !self.wasm_layers.is_empty() {
-                InnerExecutor::Wasm
-            } else if is_linux_container(&self.ctx(spec)).is_ok() {
+            if is_linux_container(&self.ctx(spec)).is_ok() {
                 InnerExecutor::Linux
             } else if self.engine.can_handle(&self.ctx(spec)).is_ok() {
                 InnerExecutor::Wasm
@@ -103,8 +100,13 @@ impl<E: Engine> Executor<E> {
 }
 
 fn is_linux_container(ctx: &impl RuntimeContext) -> Result<()> {
+    if let Source::Oci(_) = ctx.entrypoint().source {
+        bail!("the entry point contains wasm layers")
+    };
+
     let executable = ctx
         .entrypoint()
+        .arg0
         .context("no entrypoint provided")?
         .resolve_in_path()
         .find_map(|p| -> Option<PathBuf> {

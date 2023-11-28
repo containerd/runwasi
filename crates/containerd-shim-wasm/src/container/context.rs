@@ -10,28 +10,47 @@ pub trait RuntimeContext {
     // path to the entrypoint executable.
     fn args(&self) -> &[String];
 
-    // ctx.entrypoint() returns the entrypoint path from arguments on the runtime
-    // spec process field.
-    fn entrypoint(&self) -> Option<&Path>;
-
-    // ctx.wasi_entrypoint() returns a `WasiEntrypoint` with the path to the module to use
-    // as an entrypoint and the name of the exported function to call, obtained from the
+    // ctx.entrypoint() returns a `Entrypoint` with the following fields obtained from the first argument in the OCI spec for entrypoint:
+    //   - `arg0` - raw entrypoint from the OCI spec
+    //   - `name` - provided as the file name of the module in the entrypoint without the extension
+    //   - `func` - name of the exported function to call, obtained from the
     // arguments on process OCI spec.
-    // The girst argument in the spec is specified as `path#func` where `func` is optional
+    //  - `Source` - either a `File(PathBuf)` or `Oci(WasmLayer)`. When a `File` source the `PathBuf`` is provided by entrypoint in OCI spec.
+    //     If the image contains custom OCI Wasm layers, the source is provided as an array of `WasmLayer` structs.
+    //
+    // The first argument in the OCI spec for entrypoint is specified as `path#func` where `func` is optional
     // and defaults to _start, e.g.:
-    //   "/app/app.wasm#entry" -> { path: "/app/app.wasm", func: "entry" }
-    //   "my_module.wat" -> { path: "my_module.wat", func: "_start" }
-    //   "#init" -> { path: "", func: "init" }
-    fn wasi_entrypoint(&self) -> WasiEntrypoint;
+    //   "/app/app.wasm#entry" -> { source: File("/app/app.wasm"), func: "entry", name: "Some(app)", arg0: "/app/app.wasm#entry" }
+    //   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
+    //   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
+    fn entrypoint(&self) -> Entrypoint;
 
-    fn wasm_layers(&self) -> &[WasmLayer];
-
+    // the platform for the container using the struct defined on the OCI spec definition
+    // https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
     fn platform(&self) -> &Platform;
 }
 
-pub struct WasiEntrypoint {
-    pub path: PathBuf,
+/// The source for a WASI module / components.
+pub enum Source<'a> {
+    // The WASI module is a file in the file system.
+    File(PathBuf),
+    // The WASI module / component is provided as a layer in the OCI spec.
+    // For a WASI preview 1 module this is usually a single element array.
+    // For a WASI preview 2 component this is an array of one or more
+    // elements, where each element is a component.
+    // Runtimes can additionally provide a list of layer types they support,
+    // and they will be included in this array, e.g., a `toml` file with the
+    // runtime configuration.
+    Oci(&'a [WasmLayer]),
+}
+
+/// The entrypoint for a WASI module / component.
+///
+pub struct Entrypoint<'a> {
     pub func: String,
+    pub name: Option<String>,
+    pub arg0: Option<&'a Path>,
+    pub source: Source<'a>,
 }
 
 pub(crate) struct WasiContext<'a> {
@@ -50,21 +69,30 @@ impl RuntimeContext for WasiContext<'_> {
             .unwrap_or_default()
     }
 
-    fn entrypoint(&self) -> Option<&Path> {
-        self.args().first().map(Path::new)
-    }
+    fn entrypoint(&self) -> Entrypoint {
+        let arg0 = self.args().first();
 
-    fn wasi_entrypoint(&self) -> WasiEntrypoint {
-        let arg0 = self.args().first().map(String::as_str).unwrap_or("");
-        let (path, func) = arg0.split_once('#').unwrap_or((arg0, "_start"));
-        WasiEntrypoint {
-            path: PathBuf::from(path),
+        let entry_point = arg0.map(String::as_str).unwrap_or("");
+        let (path, func) = entry_point
+            .split_once('#')
+            .unwrap_or((entry_point, "_start"));
+
+        let source = if self.wasm_layers.is_empty() {
+            Source::File(PathBuf::from(path))
+        } else {
+            Source::Oci(self.wasm_layers)
+        };
+
+        let module_name = PathBuf::from(path)
+            .file_stem()
+            .map(|name| name.to_string_lossy().to_string());
+
+        Entrypoint {
             func: func.to_string(),
+            arg0: arg0.map(Path::new),
+            source,
+            name: module_name,
         }
-    }
-
-    fn wasm_layers(&self) -> &[WasmLayer] {
-        self.wasm_layers
     }
 
     fn platform(&self) -> &Platform {
@@ -75,6 +103,7 @@ impl RuntimeContext for WasiContext<'_> {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use oci_spec::image::Descriptor;
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
 
     use super::*;
@@ -167,8 +196,11 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let path = ctx.wasi_entrypoint().path;
-        assert!(path.as_os_str().is_empty());
+        let path = ctx.entrypoint().source;
+        assert!(matches!(
+            path,
+            Source::File(p) if p.as_os_str().is_empty()
+        ));
 
         Ok(())
     }
@@ -195,9 +227,20 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
-        assert_eq!(path, Path::new("hello.wat"));
+        let expected_path = PathBuf::from("hello.wat");
+        let Entrypoint {
+            name,
+            func,
+            arg0,
+            source,
+        } = ctx.entrypoint();
+        assert_eq!(name, Some("hello".to_string()));
         assert_eq!(func, "foo");
+        assert_eq!(arg0, Some(Path::new("hello.wat#foo")));
+        assert!(matches!(
+            source,
+            Source::File(p) if p == expected_path
+        ));
 
         Ok(())
     }
@@ -224,9 +267,81 @@ mod tests {
             platform: &Platform::default(),
         };
 
-        let WasiEntrypoint { path, func } = ctx.wasi_entrypoint();
-        assert_eq!(path, Path::new("/root/hello.wat"));
+        let expected_path = PathBuf::from("/root/hello.wat");
+        let Entrypoint {
+            name,
+            func,
+            arg0,
+            source,
+        } = ctx.entrypoint();
+        assert_eq!(name, Some("hello".to_string()));
         assert_eq!(func, "_start");
+        assert_eq!(arg0, Some(Path::new("/root/hello.wat")));
+        assert!(matches!(
+            source,
+            Source::File(p) if p == expected_path
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_loading_strategy_is_file_when_no_layers() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec![
+                        "/root/hello.wat#foo".to_string(),
+                        "echo".to_string(),
+                        "hello".to_string(),
+                    ])
+                    .build()?,
+            )
+            .build()?;
+
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let expected_path = PathBuf::from("/root/hello.wat");
+        assert!(matches!(
+            ctx.entrypoint().source,
+            Source::File(p) if p == expected_path
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_loading_strategy_is_oci_when_layers_present() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args(vec![
+                        "/root/hello.wat".to_string(),
+                        "echo".to_string(),
+                        "hello".to_string(),
+                    ])
+                    .build()?,
+            )
+            .build()?;
+
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[WasmLayer {
+                layer: vec![],
+                config: Descriptor::new(oci_spec::image::MediaType::Other("".to_string()), 10, ""),
+            }],
+            platform: &Platform::default(),
+        };
+
+        assert!(matches!(ctx.entrypoint().source, Source::Oci(_)));
 
         Ok(())
     }
