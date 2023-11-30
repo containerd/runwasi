@@ -189,64 +189,9 @@ The Wasmedge / Wasmtime / Wasmer engine is shared between all sandboxes in the s
 To use this shim, specify `io.containerd.[ wasmedge | wasmtime | wasmer ]d.v1` as the runtime to use.
 You will need to make sure the `containerd-[ wasmedge | wasmtime | wasmer ]d` daemon has already been started.
 
-### Contributing
+## Contributing
 
-#### Building
-
-1. Install dependencies
-
-If on ubuntu/debian you can use the following script. Refer to [youki's](https://github.com/containers/youki#dependencies) documentation for other systems.
-
-```
-./scripts/setup-linux.sh
-```
-
-If on Windows use (use [git BASH](https://gitforwindows.org/) terminal which has shell emulator)
-
-```
-./scripts/setup-windows.sh
-```
-
-2. Build
-
-```
-make build
-make check
-```
-
-### Running unit tests
-
-```terminal
-make test
-```
-
-You should see some output like:
-```terminal
-running 3 tests
-test instance::tests::test_maybe_open_stdio ... ok
-test instance::wasitest::test_delete_after_create ... ok
-test instance::wasitest::test_wasi ... ok
-```
-
-### Building the test image
-
-This builds a [wasm application](crates/wasi-demo-app/) and packages it in an OCI format:
-
-```
-make test-image
-```
-
-### Running integration tests with k3s
-
-```
-make test/k3s-[ wasmedge | wasmer ]
-```
-
-### Running integration tests with kind
-
-```
-make test/k8s
-```
+To begin contributing, learn to build and test the project or to add a new shim please read our [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Demo
 
@@ -323,7 +268,7 @@ To kill the process from demo 2, you can run in other session: `sudo ctr task ki
 
 The test binary supports commands for different type of functionality, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to try it out.
 
-## Demo 3 using OCI Images with custom WASM layers
+#### Demo 4 using OCI Images with custom WASM layers
 
 The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits.
 
