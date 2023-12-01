@@ -157,7 +157,7 @@ Before removal:
 - Send notification in our slack channel 
 - make best effort to contact the maintainers (agreed to when adding the shim)
 
-After 1 month of the issue being up, if not maintainer is found we will remove the shim from the project.
+After 1 month of the issue being up, if no maintainer is found we will remove the shim from the project.
 
 ## Getting in touch
 
