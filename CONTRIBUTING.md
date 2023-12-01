@@ -148,7 +148,7 @@ Since we are not experts in every runtime we also need a commitment from the run
 This is a fast moving space, with lots of innovation happening and some shims may eventually need to be removed.
 
 A Shim implementation maybe subject to removal if:
- - If a shim runtime its self has not maintained for 6 months it will be subject to removal.  
+ - If a shim runtime has not been maintained for 6 months it will be subject for removal
  - If required changes to the runtime can't be merged or not supported by runtime maintainers.
  - If it falls behind in new features added to the `coantainerd-shim-wasm` due to lack of maintainance
 
