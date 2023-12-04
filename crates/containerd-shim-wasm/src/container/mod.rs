@@ -13,12 +13,14 @@
 mod context;
 mod engine;
 mod path;
+mod wasm;
 
 pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
 pub use engine::Engine;
 pub use instance::Instance;
 pub use path::PathResolve;
+pub use wasm::WasmBinaryType;
 
 pub use crate::sandbox::stdio::Stdio;
 use crate::sys::container::instance;

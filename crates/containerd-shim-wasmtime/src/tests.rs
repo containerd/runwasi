@@ -101,3 +101,18 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+#[serial]
+fn test_simple_component() -> anyhow::Result<()> {
+    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(SIMPLE_COMPONENT)?
+        .with_start_fn("thunk")?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 0);
+
+    Ok(())
+}

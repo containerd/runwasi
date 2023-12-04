@@ -11,3 +11,6 @@ The Initial Developer of some parts of the file
 crates/containerd-shim-wasm/src/sandbox/shim.rs, which are copied from,
 derived from, or inspired by Youki (https://github.com/containers/youki)
 Copyright 2021 - 2022 Youki. All Rights Reserved.
+
+The file crates/containerd-shim-wasm/src/container/wasm.rs is copied from,
+derivedd from, or inspied by wasm-tools (https://github.com/bytecodealliance/wasm-tools)
