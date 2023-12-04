@@ -11,7 +11,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-clap = { version = "4.4.8", features = ["derive"] }
+clap = { version = "4.4.10", features = ["derive"] }
 
 [lib]
 path = "src/lib.rs"
