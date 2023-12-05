@@ -37,6 +37,7 @@ fn main() -> Result<()> {
         {
             "rs" => compile_rust(&src)?,
             "wat" => compile_wat(&src)?,
+            "wasm" => move_wasm(&src)?,
             _ => bail!("unrecognized file format for source file {src:?}"),
         };
 
@@ -74,6 +75,15 @@ fn compile_wat(src: impl AsRef<Path>) -> Result<PathBuf> {
 
     let bytes = wat::parse_file(src)?;
     std::fs::write(&dst, bytes)?;
+
+    Ok(dst)
+}
+
+fn move_wasm(src: impl AsRef<Path>) -> Result<PathBuf> {
+    let src = src.as_ref();
+    let dst = output_for(src)?;
+
+    std::fs::copy(src, &dst)?;
 
     Ok(dst)
 }

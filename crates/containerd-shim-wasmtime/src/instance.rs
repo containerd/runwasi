@@ -30,14 +30,14 @@ impl Default for WasmtimeEngine {
 }
 
 /// Data that contains both wasi_preview1 and wasi_preview2 contexts.
-pub struct WasiData {
+pub struct WasiCtx {
     pub(crate) wasi_preview2: wasi_preview2::WasiCtx,
     pub(crate) wasi_preview1: wasi_preview1::WasiCtx,
     pub(crate) wasi_preview2_table: Table,
 }
 
 /// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
-impl wasmtime_wasi::preview2::WasiView for WasiData {
+impl wasmtime_wasi::preview2::WasiView for WasiCtx {
     fn table(&self) -> &Table {
         &self.wasi_preview2_table
     }
@@ -108,14 +108,14 @@ impl WasmtimeEngine {
     fn execute_module(
         &self,
         wasm_binary: &[u8],
-        mut store: Store<WasiData>,
+        mut store: Store<WasiCtx>,
         func: &String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm module");
         let module = Module::from_binary(&self.engine, wasm_binary)?;
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
-        wasi_preview1::add_to_linker(&mut module_linker, |s: &mut WasiData| &mut s.wasi_preview1)?;
+        wasi_preview1::add_to_linker(&mut module_linker, |s: &mut WasiCtx| &mut s.wasi_preview1)?;
 
         log::info!("instantiating instance");
         let instance: wasmtime::Instance = module_linker.instantiate(&mut store, &module)?;
@@ -137,7 +137,7 @@ impl WasmtimeEngine {
     fn execute_component(
         &self,
         wasm_binary: Vec<u8>,
-        mut store: Store<WasiData>,
+        mut store: Store<WasiCtx>,
         func: String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
@@ -164,7 +164,7 @@ impl WasmtimeEngine {
 fn prepare_wasi_ctx(
     ctx: &impl RuntimeContext,
     envs: Vec<(String, String)>,
-) -> Result<WasiData, anyhow::Error> {
+) -> Result<WasiCtx, anyhow::Error> {
     let mut wasi_preview1_builder = wasi_preview1::WasiCtxBuilder::new();
     wasi_preview1_builder
         .args(ctx.args())?
@@ -191,7 +191,7 @@ fn prepare_wasi_ctx(
             "/",
         );
     let wasi_preview2_ctx = wasi_preview2_builder.build();
-    let wasi_data = WasiData {
+    let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,
         wasi_preview2: wasi_preview2_ctx,
         wasi_preview2_table: wasi_preview2::Table::new(),
