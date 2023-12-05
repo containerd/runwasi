@@ -29,20 +29,28 @@ fn main() -> Result<()> {
 
         println!("cargo:rerun-if-changed={}", src.to_string_lossy());
 
+        writeln!(writer, "pub const {name}: TestModule = TestModule {{")?;
         let dst = match src
             .extension()
             .unwrap_or_default()
             .to_str()
             .unwrap_or_default()
         {
-            "rs" => compile_rust(&src)?,
-            "wat" => compile_wat(&src)?,
-            "wasm" => move_wasm(&src)?,
+            "rs" => {
+                writeln!(writer, "    source: Some(include_str!({src:?})),")?;
+                compile_rust(&src)?
+            }
+            "wat" => {
+                writeln!(writer, "    source: Some(include_str!({src:?})),")?;
+                compile_wat(&src)?
+            }
+            "wasm" => {
+                writeln!(writer, "    source: None,")?;
+                move_wasm(&src)?
+            }
             _ => bail!("unrecognized file format for source file {src:?}"),
         };
 
-        writeln!(writer, "pub const {name}: TestModule = TestModule {{")?;
-        writeln!(writer, "    source: include_str!({src:?}),")?;
         writeln!(writer, "    bytes: include_bytes!({dst:?}),")?;
         writeln!(writer, "}};")?;
     }

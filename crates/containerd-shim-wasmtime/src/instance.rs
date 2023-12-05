@@ -147,16 +147,29 @@ impl WasmtimeEngine {
         wasi_preview2::command::sync::add_to_linker(&mut linker)?;
 
         log::info!("instantiating component");
-        let instance: wasmtime_component::Instance = linker.instantiate(&mut store, &component)?;
 
-        log::info!("getting component exported function {func:?}");
-        let start_func = instance
-            .get_func(&mut store, &func)
-            .context("module does not have a WASI start function")?;
-
-        log::debug!("running exported function {func:?} {start_func:?}");
-        let status = start_func.call(&mut store, &[], &mut []);
-        Ok(status)
+        // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
+        //
+        // TODO: think about a better way to do this.
+        if func == "_start" {
+            let (command, _instance) = wasi_preview2::command::sync::Command::instantiate(
+                &mut store, &component, &linker,
+            )?;
+            let status = command
+                .wasi_cli_run()
+                .call_run(&mut store)?
+                .map_err(|_| anyhow::anyhow!("failed to run component"));
+            Ok(status)
+        } else {
+            let instance = linker.instantiate(&mut store, &component)?;
+            log::info!("getting component exported function {func:?}");
+            let start_func = instance
+                .get_func(&mut store, &func)
+                .context("component does not have exportec function")?;
+            log::debug!("running exported function {func:?} {start_func:?}");
+            let status = start_func.call(&mut store, &[], &mut []);
+            Ok(status)
+        }
     }
 }
 
