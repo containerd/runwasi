@@ -155,17 +155,19 @@ impl WasmtimeEngine {
             let (command, _instance) = wasi_preview2::command::sync::Command::instantiate(
                 &mut store, &component, &linker,
             )?;
-            let status = command
-                .wasi_cli_run()
-                .call_run(&mut store)?
-                .map_err(|_| anyhow::anyhow!("failed to run component"));
+
+            let status = command.wasi_cli_run().call_run(&mut store)?.map_err(|_| {
+                anyhow::anyhow!("failed to run component targeting `wasi:cli/command` world")
+            });
             Ok(status)
         } else {
             let instance = linker.instantiate(&mut store, &component)?;
+
             log::info!("getting component exported function {func:?}");
-            let start_func = instance
-                .get_func(&mut store, &func)
-                .context("component does not have exportec function")?;
+            let start_func = instance.get_func(&mut store, &func).context(format!(
+                "component does not have exported function {func:?}"
+            ))?;
+
             log::debug!("running exported function {func:?} {start_func:?}");
             let status = start_func.call(&mut store, &[], &mut []);
             Ok(status)
