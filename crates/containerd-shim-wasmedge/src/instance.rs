@@ -1,5 +1,10 @@
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
+use anyhow::{bail, Context, Result};
+use containerd_shim_wasm::container::{
+    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio,
+};
+use log::debug;
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::VmBuilder;
@@ -25,8 +30,11 @@ impl Default for WasmEdgeEngine {
 }
 
 impl Engine for WasmEdgeEngine {
-    fn name() -> &'static str {
-        "wasmedge"
+    fn info() -> &'static RuntimeInfo {
+        &RuntimeInfo {
+            name: "wasmedge",
+            version: env!("CARGO_PKG_VERSION"),
+        }
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {

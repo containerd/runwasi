@@ -2,8 +2,10 @@ use std::fs::File;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
+    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio, WasmBinaryType,
 };
+use std::sync::OnceLock;
+
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Module, Store};
@@ -57,9 +59,17 @@ impl wasmtime_wasi::preview2::WasiView for WasiCtx {
     }
 }
 
+fn version_info() -> &'static RuntimeInfo {
+    static INFO: OnceLock<RuntimeInfo> = OnceLock::new();
+    INFO.get_or_init(|| RuntimeInfo {
+        name: "wasmtime",
+        version: option_env!("WASMTIME_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION")),
+    })
+}
+
 impl Engine for WasmtimeEngine {
-    fn name() -> &'static str {
-        "wasmtime"
+    fn info() -> &'static RuntimeInfo {
+        version_info()
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {

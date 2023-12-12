@@ -1,5 +1,6 @@
 use anyhow::bail;
 
+use super::engine::RuntimeInfo;
 use crate::container::{Engine, RuntimeContext, Stdio};
 use crate::sys::container::instance::Instance;
 use crate::testing::WasiTest;
@@ -8,8 +9,11 @@ use crate::testing::WasiTest;
 struct EngineFailingValidation;
 
 impl Engine for EngineFailingValidation {
-    fn name() -> &'static str {
-        "wasi_instance"
+    fn info() -> &'static RuntimeInfo {
+        &RuntimeInfo {
+            name: "wasi_instance",
+            version: "0.0.0",
+        }
     }
     fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
         bail!("can't handle");

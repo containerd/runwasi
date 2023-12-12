@@ -39,12 +39,12 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let engine = cfg.get_engine();
         let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();
-        let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
+        let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::info().name);
         let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
         let stdio = Stdio::init_from_cfg(cfg)?;
 
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address(), &namespace)?
+        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace)?
             .load_modules(&id, engine.clone())
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");

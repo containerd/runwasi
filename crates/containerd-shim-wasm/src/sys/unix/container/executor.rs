@@ -36,7 +36,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
     fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
         // We can handle linux container. We delegate wasm container to the engine.
         match self.inner(spec) {
-            InnerExecutor::CantHandle => Err(ExecutorValidationError::CantHandle(E::name())),
+            InnerExecutor::CantHandle => Err(ExecutorValidationError::CantHandle(E::info().name)),
             _ => Ok(()),
         }
     }
@@ -45,7 +45,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
         // If it looks like a linux container, run it as a linux container.
         // Otherwise, run it as a wasm container
         match self.inner(spec) {
-            InnerExecutor::CantHandle => Err(LibcontainerExecutorError::CantHandle(E::name())),
+            InnerExecutor::CantHandle => Err(LibcontainerExecutorError::CantHandle(E::info().name)),
             InnerExecutor::Linux => {
                 log::info!("executing linux container");
                 self.stdio.take().redirect().unwrap();

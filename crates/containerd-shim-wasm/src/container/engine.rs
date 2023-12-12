@@ -7,9 +7,14 @@ use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
 use crate::sandbox::Stdio;
 
+pub struct RuntimeInfo {
+    pub name: &'static str,
+    pub version: &'static str,
+}
+
 pub trait Engine: Clone + Send + Sync + 'static {
     /// The name to use for this engine
-    fn name() -> &'static str;
+    fn info() -> &'static RuntimeInfo;
 
     /// Run a WebAssembly container
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32>;
