@@ -197,7 +197,7 @@ To begin contributing, learn to build and test the project or to add a new shim 
 
 ### Installing the shims for use with Containerd
 
-Make sure you have [installed dependencies](#Building) and install the shims:
+Make sure you have [installed dependencies](./CONTRIBUTING.md#setting-up-your-local-environment) and install the shims:
 
 ```terminal
 make build
