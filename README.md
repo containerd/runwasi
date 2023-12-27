@@ -176,7 +176,7 @@ This shim runs one per pod.
 A cli used to connect containerd to the `containerd-[ wasmedge | wasmtime | wasmer ]d` sandbox daemon.
 When containerd requests for a container to be created, it fires up this shim binary which will connect to the `containerd-[ wasmedge | wasmtime | wasmer ]d` service running on the host.
 The service will return a path to a unix socket which this shim binary will write back to containerd which containerd will use to connect to for shim requests.
-This binary does not serve requests, it is only responsible for sending requests to the `contianerd-[ wasmedge | wasmtime | wasmer ]d` daemon to create or destroy sandboxes.
+This binary does not serve requests, it is only responsible for sending requests to the `containerd-[ wasmedge | wasmtime | wasmer ]d` daemon to create or destroy sandboxes.
 
 - **containerd-[ wasmedge | wasmtime | wasmer ]d**
 
@@ -204,7 +204,7 @@ make build
 sudo make install
 ```
 
-Build the test image and load it into contianerd:
+Build the test image and load it into containerd:
 
 ```
 make test-image
