@@ -197,7 +197,7 @@ load/oci: dist/img-oci.tar
 .PHONY:
 target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
-	cargo run --bin oci-tar-builder -- --name wasi-demo-app --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
