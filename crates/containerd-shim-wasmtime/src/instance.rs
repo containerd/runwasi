@@ -94,7 +94,6 @@ impl Engine for WasmtimeEngine {
                 _ => Err(err),
             }
         })?;
-        log::info!("wasi context ready");
 
         Ok(status)
     }
