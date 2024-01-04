@@ -11,7 +11,7 @@ log = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 
-tokio = "1.35.0"
+tokio = "1.35.1"
 wasmer = { version = "4.1.2" }
 wasmer-compiler = { version = "4.1.2", features = ["compiler"] }
 wasmer-wasix = { version = "0.12.0" }
