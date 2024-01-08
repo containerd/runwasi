@@ -197,7 +197,7 @@ load/oci: dist/img-oci.tar
 .PHONY:
 target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
-	cargo run --bin oci-tar-builder -- --name wasi-demo-app --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
@@ -234,6 +234,13 @@ test/k8s-%: test/k8s/clean test/k8s/cluster-%
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
+.PHONY: test/k8s-oci-%
+test/k8s-oci-%: test/k8s/clean test/k8s/cluster-oci-%
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
+	# verify that we are still running after some time
+	sleep 5s
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
 .PHONY: test/k8s/clean
 test/k8s/clean: bin/kind
