@@ -637,7 +637,7 @@ dependencies = [
  "ttrpc",
  "ttrpc-codegen",
  "wat",
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
