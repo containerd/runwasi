@@ -8,7 +8,6 @@ use std::process;
 
 use anyhow::Context;
 use oci_spec::image::Descriptor;
-pub use oci_spec::runtime::Spec;
 
 use super::error::Result;
 
