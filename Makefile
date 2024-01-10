@@ -235,7 +235,7 @@ test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
 .PHONY: test/k8s/deploy-workload-oci-%
-test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-oci-%
+test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-oci-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 	# verify that we are still running after some time
