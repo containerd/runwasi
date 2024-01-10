@@ -1,10 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context};
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::PathResolve;
 use crate::sandbox::oci::WasmLayer;
 
 pub trait RuntimeContext {

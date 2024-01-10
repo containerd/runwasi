@@ -127,7 +127,7 @@ fn test_simple_component() -> anyhow::Result<()> {
 //
 // This is using the `wasi:cli/command` world to run the component.
 //
-// The wasm component is built and copied over from 
+// The wasm component is built and copied over from
 // https://github.com/Mossaka/wasm-component-hello-world. See
 // README.md for how to build the component.
 #[test]
