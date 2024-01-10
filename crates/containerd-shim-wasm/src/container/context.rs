@@ -46,35 +46,6 @@ pub enum Source<'a> {
     Oci(&'a [WasmLayer]),
 }
 
-impl<'a> Source<'a> {
-    /// Returns the raw bytes of the WASM binary.
-    ///
-    /// If the source is a file, the file is read from the file system.
-    /// If the source is an OCI layer, the layer is read from the OCI spec.
-    ///
-    /// At the moment, only a single module is supported when using images with OCI layers.
-    pub fn into_wasm_binary(self) -> Result<Vec<u8>, anyhow::Error> {
-        let data = match self {
-            Source::File(path) => {
-                log::info!("loading module from file");
-                let path = path
-                    .resolve_in_path_or_cwd()
-                    .next()
-                    .context("module not found")?;
-                std::fs::read(path)?
-            }
-            Source::Oci([module]) => {
-                log::info!("loading module wasm OCI layers");
-                module.layer.clone()
-            }
-            Source::Oci(_modules) => {
-                bail!("only a single module is supported when using images with OCI layers")
-            }
-        };
-        Ok(data)
-    }
-}
-
 /// The entrypoint for a WASI module / component.
 ///
 pub struct Entrypoint<'a> {
