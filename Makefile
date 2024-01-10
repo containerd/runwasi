@@ -234,6 +234,10 @@ test/k8s-%: test/k8s/clean test/k8s/cluster-%
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
+	# verify that we are able to delete the deployment
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) delete -f test/k8s/deploy.yaml
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for delete --timeout=60s
+
 .PHONY: test/k8s-oci-%
 test/k8s-oci-%: test/k8s/clean test/k8s/cluster-oci-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
@@ -241,6 +245,10 @@ test/k8s-oci-%: test/k8s/clean test/k8s/cluster-oci-%
 	# verify that we are still running after some time
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
+
+	# verify that we are able to delete the deployment
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) delete -f test/k8s/deploy.oci.yaml
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for delete --timeout=60s
 
 .PHONY: test/k8s/clean
 test/k8s/clean: bin/kind
