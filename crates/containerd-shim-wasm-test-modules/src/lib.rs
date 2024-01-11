@@ -1,5 +1,5 @@
 pub struct TestModule {
-    pub source: &'static str,
+    pub source: Option<&'static str>,
     pub bytes: &'static [u8],
 }
 

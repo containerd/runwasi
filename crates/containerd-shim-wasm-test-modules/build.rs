@@ -29,19 +29,28 @@ fn main() -> Result<()> {
 
         println!("cargo:rerun-if-changed={}", src.to_string_lossy());
 
+        writeln!(writer, "pub const {name}: TestModule = TestModule {{")?;
         let dst = match src
             .extension()
             .unwrap_or_default()
             .to_str()
             .unwrap_or_default()
         {
-            "rs" => compile_rust(&src)?,
-            "wat" => compile_wat(&src)?,
+            "rs" => {
+                writeln!(writer, "    source: Some(include_str!({src:?})),")?;
+                compile_rust(&src)?
+            }
+            "wat" => {
+                writeln!(writer, "    source: Some(include_str!({src:?})),")?;
+                compile_wat(&src)?
+            }
+            "wasm" => {
+                writeln!(writer, "    source: None,")?;
+                move_wasm(&src)?
+            }
             _ => bail!("unrecognized file format for source file {src:?}"),
         };
 
-        writeln!(writer, "pub const {name}: TestModule = TestModule {{")?;
-        writeln!(writer, "    source: include_str!({src:?}),")?;
         writeln!(writer, "    bytes: include_bytes!({dst:?}),")?;
         writeln!(writer, "}};")?;
     }
@@ -74,6 +83,15 @@ fn compile_wat(src: impl AsRef<Path>) -> Result<PathBuf> {
 
     let bytes = wat::parse_file(src)?;
     std::fs::write(&dst, bytes)?;
+
+    Ok(dst)
+}
+
+fn move_wasm(src: impl AsRef<Path>) -> Result<PathBuf> {
+    let src = src.as_ref();
+    let dst = output_for(src)?;
+
+    std::fs::copy(src, &dst)?;
 
     Ok(dst)
 }

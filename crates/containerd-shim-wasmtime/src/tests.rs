@@ -101,3 +101,46 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// Test that the shim can execute an named exported function
+// that is not the default _start function in a wasm component.
+// The current limitation is that there is no way to pass arguments
+// to the exported function.
+// Issue that tracks this: https://github.com/containerd/runwasi/issues/414
+#[test]
+#[serial]
+fn test_simple_component() -> anyhow::Result<()> {
+    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(SIMPLE_COMPONENT)?
+        .with_start_fn("thunk")?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 0);
+
+    Ok(())
+}
+
+// Test that the shim can execute a wasm component that is
+// compiled with wasip2.
+//
+// This is using the `wasi:cli/command` world to run the component.
+//
+// The wasm component is built and copied over from
+// https://github.com/Mossaka/wasm-component-hello-world. See
+// README.md for how to build the component.
+#[test]
+#[serial]
+fn test_wasip2_component() -> anyhow::Result<()> {
+    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(COMPONENT_HELLO_WORLD)?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 0);
+    assert_eq!(stdout, "Hello, world!\n");
+
+    Ok(())
+}
