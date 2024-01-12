@@ -14,7 +14,12 @@ impl Engine for EngineFailingValidation {
     fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
         bail!("can't handle");
     }
-    fn run_wasi(&self, _ctx: &impl RuntimeContext, _stdio: Stdio) -> anyhow::Result<i32> {
+    fn run_wasi(
+        &self,
+        _ctx: &impl RuntimeContext,
+        _wasm_bytes: &[u8],
+        _stdio: Stdio,
+    ) -> anyhow::Result<i32> {
         Ok(0)
     }
 }

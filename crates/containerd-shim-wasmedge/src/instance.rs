@@ -1,8 +1,5 @@
-use anyhow::{bail, Context, Result};
-use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, Source, Stdio,
-};
-use log::debug;
+use anyhow::{Context, Result};
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::VmBuilder;
@@ -32,11 +29,11 @@ impl Engine for WasmEdgeEngine {
         "wasmedge"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+    fn run_wasi(&self, ctx: &impl RuntimeContext, wasm_bytes: &[u8], stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
         let envs: Vec<_> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
         let Entrypoint {
-            source,
+            source: _,
             func,
             arg0: _,
             name,
@@ -56,26 +53,9 @@ impl Engine for WasmEdgeEngine {
         PluginManager::load(None)?;
         let vm = vm.auto_detect_plugins()?;
 
-        let vm = match source {
-            Source::File(path) => {
-                debug!("loading module from file {path:?}");
-                let path = path
-                    .resolve_in_path_or_cwd()
-                    .next()
-                    .context("module not found")?;
-
-                vm.register_module_from_file(&mod_name, path)
-                    .context("registering module")?
-            }
-            Source::Oci([module]) => {
-                log::info!("loading module from wasm OCI layers");
-                vm.register_module_from_bytes(&mod_name, &module.layer)
-                    .context("registering module")?
-            }
-            Source::Oci(_modules) => {
-                bail!("only a single module is supported when using images with OCI layers")
-            }
-        };
+        let vm = vm
+            .register_module_from_bytes(&mod_name, wasm_bytes)
+            .context("registering module")?;
 
         stdio.redirect()?;
 

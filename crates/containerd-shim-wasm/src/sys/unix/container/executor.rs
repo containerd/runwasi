@@ -53,7 +53,27 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             }
             InnerExecutor::Wasm => {
                 log::info!("calling start function");
-                match self.engine.run_wasi(&self.ctx(spec), self.stdio.take()) {
+                let ctx = self.ctx(spec);
+                let res = match ctx.entrypoint().source {
+                    Source::File(path) => {
+                        let path = path
+                            .resolve_in_path_or_cwd()
+                            .next()
+                            .context("module not found")
+                            .map_err(|err| LibcontainerExecutorError::Other(err.to_string()))?;
+                        let bytes = &std::fs::read(path)
+                            .map_err(|err| LibcontainerExecutorError::Other(err.to_string()))?;
+                        self.engine.run_wasi(&ctx, bytes, self.stdio.take())
+                    }
+                    Source::Oci([wasm_layer]) => {
+                        self.engine
+                            .run_wasi(&ctx, &wasm_layer.layer, self.stdio.take())
+                    }
+                    Source::Oci(_) => unreachable!(
+                        "only a single module is supported when using images with OCI layers"
+                    ),
+                };
+                match res {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");

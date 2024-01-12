@@ -12,7 +12,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     fn name() -> &'static str;
 
     /// Run a WebAssembly container
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32>;
+    fn run_wasi(&self, ctx: &impl RuntimeContext, wasm_bytes: &[u8], stdio: Stdio) -> Result<i32>;
 
     /// Check that the runtime can run the container.
     /// This checks runs after the container creation and before the container starts.
