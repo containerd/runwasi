@@ -31,7 +31,6 @@ pub trait Engine: Clone + Send + Sync + 'static {
         let path = match source {
             Source::File(path) => path,
             Source::Oci(_) => return Ok(()),
-            Source::Precompiled(_) => return Ok(()),
         };
 
         path.resolve_in_path_or_cwd()

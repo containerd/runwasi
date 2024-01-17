@@ -45,7 +45,6 @@ pub enum Source<'a> {
     // and they will be included in this array, e.g., a `toml` file with the
     // runtime configuration.
     Oci(&'a [WasmLayer]),
-    Precompiled(&'a WasmLayer),
 }
 
 impl<'a> Source<'a> {
@@ -101,8 +100,6 @@ impl RuntimeContext for WasiContext<'_> {
 
         let source = if self.wasm_layers.is_empty() {
             Source::File(PathBuf::from(path))
-        } else if self.wasm_layers.len() == 1 && self.wasm_layers[0].precompiled {
-            Source::Precompiled(&self.wasm_layers[0])
         } else {
             Source::Oci(self.wasm_layers)
         };
@@ -361,7 +358,6 @@ mod tests {
             wasm_layers: &[WasmLayer {
                 layer: vec![],
                 config: Descriptor::new(oci_spec::image::MediaType::Other("".to_string()), 10, ""),
-                precompiled: false,
             }],
             platform: &Platform::default(),
         };

@@ -93,7 +93,10 @@ impl Drop for LeaseGuard {
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
 impl Client {
     // wrapper around connection that will establish a connection and create a client
-    pub fn connect(address: impl AsRef<Path> + ToString, namespace: impl ToString) -> Result<Client> {
+    pub fn connect(
+        address: impl AsRef<Path> + ToString,
+        namespace: impl ToString,
+    ) -> Result<Client> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
@@ -448,7 +451,6 @@ impl Client {
                     vec![WasmLayer {
                         config: image_config_descriptor.clone(),
                         layer: precompiled,
-                        precompiled: true,
                     }],
                     platform,
                 ))
@@ -489,7 +491,6 @@ impl Client {
                     vec![WasmLayer {
                         config: image_config_descriptor.clone(),
                         layer: precompiled,
-                        precompiled: true,
                     }],
                     platform,
                 ))
@@ -504,7 +505,6 @@ impl Client {
                         self.read_content(config.digest()).map(|module| WasmLayer {
                             config: config.clone(),
                             layer: module,
-                            precompiled: false,
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;

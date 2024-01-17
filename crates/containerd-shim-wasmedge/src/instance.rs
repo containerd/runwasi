@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
-use anyhow::{bail, Context, Result};
+use anyhow::{bail};
 use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio,
 };
