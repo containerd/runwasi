@@ -73,8 +73,6 @@ impl Engine for WasmtimeEngine {
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
-        let _config = wasmtime::Config::new();
-
         log::info!("setting up wasi");
         let envs: Vec<_> = std::env::vars().collect();
         let Entrypoint {

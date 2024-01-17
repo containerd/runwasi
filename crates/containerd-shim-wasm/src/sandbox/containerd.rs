@@ -1,6 +1,7 @@
 #![cfg(unix)]
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use containerd_client;
 use containerd_client::services::v1::containers_client::ContainersClient;
@@ -83,7 +84,7 @@ impl Drop for LeaseGuard {
             let result = client.delete(req).await;
 
             if result.is_err() {
-                log::warn!("failed to remove lease.");
+                log::warn!("failed to remove lease");
             }
         });
     }
@@ -92,13 +93,13 @@ impl Drop for LeaseGuard {
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
 impl Client {
     // wrapper around connection that will establish a connection and create a client
-    pub fn connect(address: &str, namespace: impl ToString) -> Result<Client> {
+    pub fn connect(address: impl AsRef<Path> + ToString, namespace: impl ToString) -> Result<Client> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
 
         let inner = rt
-            .block_on(containerd_client::connect(address))
+            .block_on(containerd_client::connect(address.as_ref()))
             .map_err(|err| ShimError::Containerd(err.to_string()))?;
 
         Ok(Client {
@@ -146,13 +147,13 @@ impl Client {
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
-    fn lease(&self, r#ref: String) -> Result<LeaseGuard> {
+    fn lease(&self, reference: String) -> Result<LeaseGuard> {
         self.rt.block_on(async {
             let mut lease_labels = HashMap::new();
             let expire = chrono::Utc::now() + chrono::Duration::hours(24);
             lease_labels.insert("containerd.io/gc.expire".to_string(), expire.to_rfc3339());
             let lease_request = containerd_client::services::v1::CreateRequest {
-                id: r#ref.clone(),
+                id: reference.clone(),
                 labels: lease_labels,
             };
 
@@ -165,11 +166,11 @@ impl Client {
                 .into_inner()
                 .lease
                 .ok_or_else(|| {
-                    ShimError::Containerd(format!("unable to create lease for  {}", r#ref.clone()))
+                    ShimError::Containerd(format!("unable to create lease for  {}", reference))
                 })?;
 
             Ok(LeaseGuard {
-                lease_id: lease.id.clone(),
+                lease_id: lease.id,
                 address: self.address.clone(),
                 namespace: self.namespace.clone(),
             })
@@ -182,10 +183,9 @@ impl Client {
         original_digest: String,
         info: &RuntimeInfo,
     ) -> Result<WriteContent> {
-        let expected = digest(data.clone());
-        let expected = format!("sha256:{}", expected);
-        let r#ref = format!("precompile-{}-{}-{}", info.name, info.version, expected);
-        let lease = self.lease(r#ref.clone())?;
+        let expected = format!("sha256:{}", digest(data.clone()));
+        let reference = format!("precompile-{}-{}-{}", info.name, info.version, expected);
+        let lease = self.lease(reference.clone())?;
 
         let digest = self.rt.block_on(async {
             // create a channel to feed the stream; only sending one message at a time so we can set this to one
@@ -198,7 +198,7 @@ impl Client {
             // Send write request with Stat action to containerd to let it know that we are going to write content
             // if the content is already there, it will return early with AlreadyExists
             let req = WriteContentRequest {
-                r#ref: r#ref.clone(),
+                r#ref: reference.clone(),
                 action: WriteAction::Stat.into(),
                 total: len,
                 expected: expected.clone(),
@@ -225,7 +225,7 @@ impl Client {
                 .ok_or_else(|| {
                     ShimError::Containerd(format!(
                         "no response received after write request for {}",
-                        expected.clone()
+                        expected
                     ))
                 })?;
 
