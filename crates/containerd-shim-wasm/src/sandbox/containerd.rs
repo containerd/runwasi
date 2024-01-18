@@ -232,10 +232,11 @@ impl Client {
                     ))
                 })?;
 
+            let label = precompile_label(info);
             // Write and commit at same time
             let mut labels = HashMap::new();
             labels.insert(
-                "runwasi.io/precompiled".to_string(),
+                label,
                 original_digest.clone(),
             );
             let commit_request = WriteContentRequest {
@@ -438,11 +439,7 @@ impl Client {
         log::info!("found manifest with WASM OCI image format.");
         // This label is unique across runtimes and versions
         // a precompiled component/module will not work across different runtimes or versions
-        let label = format!(
-            "runwasi.io/precompiled/{}/{}",
-            T::info().name,
-            T::info().version
-        );
+        let label = precompile_label(T::info());
         match image.labels.get(&label) {
             Some(precompile_digest) if T::can_precompile() => {
                 log::info!("found precompiled image");
@@ -471,7 +468,7 @@ impl Client {
 
                 log::debug!("updating image with compiled content digest");
                 image.labels.insert(
-                    "runwasi.io/precompiled".to_string(),
+                    label,
                     precompiled_content.digest.clone(),
                 );
                 self.update_image(image)?;
@@ -514,9 +511,19 @@ impl Client {
     }
 }
 
+fn precompile_label(info: &RuntimeInfo) -> String {
+    let label = format!(
+        "runwasi.io/precompiled/{}/{}",
+        info.name,
+        info.version
+    );
+    label
+}
+
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
     supported_layer_types.contains(&media_type.to_string().as_str())
 }
+
 
 #[cfg(test)]
 mod tests {
