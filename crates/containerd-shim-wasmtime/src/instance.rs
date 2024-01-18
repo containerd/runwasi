@@ -2,7 +2,7 @@ use std::fs::File;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, Source, Stdio, WasmBinaryType,
+    Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component};
@@ -76,40 +76,11 @@ impl Engine for WasmtimeEngine {
         let wasi_ctx = prepare_wasi_ctx(ctx, envs)?;
         let store = Store::new(&self.engine, wasi_ctx);
 
-        let status = match source {
-            Source::File(path) => {
-                log::info!("loading module from path {path:?}");
-                let path = path
-                    .resolve_in_path_or_cwd()
-                    .next()
-                    .context("module not found")?;
-
-                let wasm_binary = std::fs::read(path)?;
-                match WasmBinaryType::from_bytes(&wasm_binary) {
-                    Some(WasmBinaryType::Module) => {
-                        self.execute_module(&wasm_binary, store, &func)?
-                    }
-                    Some(WasmBinaryType::Component) => {
-                        self.execute_component(&wasm_binary, store, func)?
-                    }
-                    None => bail!("not a valid wasm binary format"),
-                }
-            }
-            Source::Oci([module]) => {
-                log::info!("loading module wasm OCI layers");
-                match WasmBinaryType::from_bytes(&module.layer) {
-                    Some(WasmBinaryType::Module) => {
-                        self.execute_module(&module.layer, store, &func)?
-                    }
-                    Some(WasmBinaryType::Component) => {
-                        self.execute_component(&module.layer, store, func)?
-                    }
-                    None => bail!("not a valid wasm binary format"),
-                }
-            }
-            Source::Oci(_modules) => {
-                bail!("only a single module is supported when using images with OCI layers")
-            }
+        let wasm_bytes = &source.as_bytes()?;
+        let status = match WasmBinaryType::from_bytes(wasm_bytes) {
+            Some(WasmBinaryType::Module) => self.execute_module(wasm_bytes, store, &func)?,
+            Some(WasmBinaryType::Component) => self.execute_component(wasm_bytes, store, func)?,
+            None => bail!("not a valid wasm binary format"),
         };
 
         let status = status.map(|_| 0).or_else(|err| {

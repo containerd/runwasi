@@ -1,8 +1,11 @@
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
+use anyhow::{bail, Context};
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
+use crate::container::path::PathResolve;
 use crate::sandbox::oci::WasmLayer;
 
 pub trait RuntimeContext {
@@ -42,6 +45,24 @@ pub enum Source<'a> {
     // and they will be included in this array, e.g., a `toml` file with the
     // runtime configuration.
     Oci(&'a [WasmLayer]),
+}
+
+impl<'a> Source<'a> {
+    pub fn as_bytes(&self) -> anyhow::Result<Cow<'a, [u8]>> {
+        match self {
+            Source::File(path) => {
+                let path = path
+                    .resolve_in_path_or_cwd()
+                    .next()
+                    .context("module not found")?;
+                Ok(Cow::Owned(std::fs::read(path)?))
+            }
+            Source::Oci([module]) => Ok(Cow::Borrowed(&module.layer)),
+            Source::Oci(_modules) => {
+                bail!("only a single module is supported when using images with OCI layers")
+            }
+        }
+    }
 }
 
 /// The entrypoint for a WASI module / component.
