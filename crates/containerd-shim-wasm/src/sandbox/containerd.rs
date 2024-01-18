@@ -24,9 +24,13 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
 
+use self::lease::LeaseGuard;
 use crate::container::{Engine, RuntimeInfo};
 use crate::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
+use crate::with_lease;
+
+static PRECOMPILE_PREFIX: &str = "runwasi.io/precompiled";
 
 pub(crate) struct Client {
     inner: Channel,
@@ -35,59 +39,75 @@ pub(crate) struct Client {
     address: String,
 }
 
-// Adds lease info to grpc header
-// https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
-#[macro_export]
-macro_rules! with_lease {
-    ($req : ident, $ns: expr, $lease_id: expr) => {{
-        let mut req = Request::new($req);
-        let md = req.metadata_mut();
-        // https://github.com/containerd/containerd/blob/main/namespaces/grpc.go#L27
-        md.insert("containerd-namespace", $ns.parse().unwrap());
-        md.insert("containerd-lease", $lease_id.parse().unwrap());
-        req
-    }};
+mod lease {
+    use containerd_client::services::v1::leases_client::LeasesClient;
+    use containerd_client::with_namespace;
+
+    use super::*;
+
+    // Adds lease info to grpc header
+    // https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
+    #[macro_export]
+    macro_rules! with_lease {
+        ($req : ident, $ns: expr, $lease_id: expr) => {{
+            let mut req = Request::new($req);
+            let md = req.metadata_mut();
+            // https://github.com/containerd/containerd/blob/main/namespaces/grpc.go#L27
+            md.insert("containerd-namespace", $ns.parse().unwrap());
+            md.insert("containerd-lease", $lease_id.parse().unwrap());
+            req
+        }};
+    }
+
+    #[derive(Debug)]
+    pub(crate) struct LeaseGuard {
+        pub(crate) lease_id: String,
+        pub(crate) namespace: String,
+        pub(crate) address: String,
+    }
+
+    // Provides a best effort for dropping a lease of the content.  If the lease cannot be dropped, it will log a warning
+    impl Drop for LeaseGuard {
+        fn drop(&mut self) {
+            let id = self.lease_id.clone();
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            let client = rt.block_on(containerd_client::connect(self.address.clone()));
+
+            let channel = match client {
+                Ok(channel) => channel,
+                Err(e) => {
+                    log::error!(
+                        "failed to connect to containerd: {}. lease may not be deleted",
+                        e
+                    );
+                    return;
+                }
+            };
+
+            let mut client = LeasesClient::new(channel);
+
+            rt.block_on(async {
+                let req = containerd_client::services::v1::DeleteRequest { id, sync: false };
+                let req = with_namespace!(req, self.namespace);
+                let result = client.delete(req).await;
+
+                match result {
+                    Ok(_) => log::debug!("removed lease"),
+                    Err(e) => log::error!("failed to remove lease: {}", e),
+                }
+            });
+        }
+    }
 }
 
-struct LeaseGuard {
-    lease_id: String,
-    namespace: String,
-    address: String,
-}
-
+#[derive(Debug)]
 pub(crate) struct WriteContent {
     _lease: LeaseGuard,
     pub digest: String,
-}
-
-// Provides a best effort for dropping a lease of the content.  If the lease cannot be dropped, it will log a warning
-impl Drop for LeaseGuard {
-    fn drop(&mut self) {
-        let id = self.lease_id.clone();
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        let client = rt.block_on(containerd_client::connect(self.address.clone()));
-
-        if client.is_err() {
-            log::warn!("failed to connect to containerd. lease may not be deleted");
-            return;
-        }
-
-        let mut client = LeasesClient::new(client.unwrap());
-
-        rt.block_on(async {
-            let req = containerd_client::services::v1::DeleteRequest { id, sync: false };
-            let req = with_namespace!(req, self.namespace);
-            let result = client.delete(req).await;
-
-            if result.is_err() {
-                log::warn!("failed to remove lease");
-            }
-        });
-    }
 }
 
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
@@ -150,7 +170,7 @@ impl Client {
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
-    fn lease(&self, reference: String) -> Result<LeaseGuard> {
+    fn lease(&self, reference: String) -> Result<lease::LeaseGuard> {
         self.rt.block_on(async {
             let mut lease_labels = HashMap::new();
             let expire = chrono::Utc::now() + chrono::Duration::hours(24);
@@ -235,10 +255,7 @@ impl Client {
             let label = precompile_label(info);
             // Write and commit at same time
             let mut labels = HashMap::new();
-            labels.insert(
-                label,
-                original_digest.clone(),
-            );
+            labels.insert(label, original_digest.clone());
             let commit_request = WriteContentRequest {
                 action: WriteAction::Commit.into(),
                 total: len,
@@ -467,10 +484,9 @@ impl Client {
                     self.save_content(precompiled.clone(), image_digest.clone(), T::info())?;
 
                 log::debug!("updating image with compiled content digest");
-                image.labels.insert(
-                    label,
-                    precompiled_content.digest.clone(),
-                );
+                image
+                    .labels
+                    .insert(label, precompiled_content.digest.clone());
                 self.update_image(image)?;
 
                 // The original image is considered a root object, by adding a ref to the new compiled content
@@ -512,18 +528,12 @@ impl Client {
 }
 
 fn precompile_label(info: &RuntimeInfo) -> String {
-    let label = format!(
-        "runwasi.io/precompiled/{}/{}",
-        info.name,
-        info.version
-    );
-    label
+    format!("{}/{}/{}", PRECOMPILE_PREFIX, info.name, info.version)
 }
 
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
     supported_layer_types.contains(&media_type.to_string().as_str())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -556,7 +566,19 @@ mod tests {
         let data = client.read_content(returned.digest.clone()).unwrap();
         assert_eq!(data, b"hello world");
 
+        client
+            .save_content(
+                data.clone(),
+                "original".to_string(),
+                &RuntimeInfo {
+                    name: "test",
+                    version: "0.0.0",
+                },
+            )
+            .expect_err("Should not be able to save when lease is open");
+
         // need to drop the lease to be able to create a second one
+        // a second call should be successful since it already exists
         drop(returned);
 
         // a second call should be successful since it already exists

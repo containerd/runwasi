@@ -7,6 +7,8 @@ use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
 use crate::sandbox::Stdio;
 
+/// RuntimeInfo contains the name and version of the runtime that is running
+#[derive(Clone, Debug, Default)]
 pub struct RuntimeInfo {
     pub name: &'static str,
     pub version: &'static str,
