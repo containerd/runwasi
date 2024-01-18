@@ -190,7 +190,7 @@ load: dist/img.tar
 
 CTR_VERSION := $(shell sudo ctr version | sed -n -e '/Version/ {s/.*: *//p;q;}')
 load/oci: dist/img-oci.tar
-	@echo $(CTR_VERSION)\\nv1.7.7 | sort -crV || (echo "containerd version must be 1.7.7+ was $(CTR_VERSION)" && exit 1)
+	@echo $(CTR_VERSION)\\nv1.7.7 | sort -crV || @echo $(CTR_VERSION)\\nv1.6.25 | sort -crV || (echo "containerd version must be 1.7.7+ or 1.6.25+ was $(CTR_VERSION)" && exit 1)
 	@echo using containerd $(CTR_VERSION)
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
@@ -269,7 +269,7 @@ bin/k3s/clean:
 
 .PHONY: test/k3s-%
 test/k3s-%: dist/img.tar bin/k3s dist-%
-	sudo bash -c -- 'while ! timeout 40 test/k3s/bootstrap.sh "$*"; do $(MAKE) bin/k3s/clean bin/k3s; done'
+	sudo bash -c -- 'while ! timeout 40 test/k3s/bootstrap.sh "$*" dist/img.tar; do $(MAKE) bin/k3s/clean bin/k3s; done'
 	sudo bin/k3s kubectl get pods --all-namespaces
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
 	sudo bin/k3s kubectl get pods --all-namespaces
@@ -278,6 +278,22 @@ test/k3s-%: dist/img.tar bin/k3s dist-%
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	sudo bin/k3s kubectl get pods -o wide
+	sudo bin/k3s kubectl delete -f test/k8s/deploy.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for delete --timeout=60s
+
+.PHONY: test/k3s-oci-%
+test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
+	sudo bash -c -- 'while ! timeout 40 test/k3s/bootstrap.sh "$*" dist/img-oci.tar; do $(MAKE) bin/k3s/clean bin/k3s; done'
+	sudo bin/k3s kubectl get pods --all-namespaces
+	sudo bin/k3s kubectl apply -f test/k8s/deploy.oci.yaml
+	sudo bin/k3s kubectl get pods --all-namespaces
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=120s
+	# verify that we are still running after some time	
+	sleep 5s
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
+	sudo bin/k3s kubectl get pods -o wide
+	sudo bin/k3s kubectl delete -f test/k8s/deploy.oci.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for delete --timeout=60s
 
 .PHONY: test/k3s/clean
 test/k3s/clean: bin/k3s/clean;

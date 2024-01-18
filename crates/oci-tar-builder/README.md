@@ -25,32 +25,31 @@ There is an experimental executable that uses the library and can package a wasm
 To generate the package and import to a registry using a tool such as [regctl](https://github.com/regclient/regclient/blob/main/docs/regctl.md#image-commands): 
 
 ```
-cargo run --bin oci-tar-builder -- --name wasi-demo-app --repo localhost:5000 --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o ./bin
-regctl image import localhost:5000/wasi-demo-oci:module ./bin/wasi-demo-app.tar        
+cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o ./dist/img-oci.tar
+regctl image import localhost:5000/wasi-demo-oci:latest ./dist/img-oci.tar        
 ```
 
-View the manifest created, notice that the media types are `application/vnd.w3c.wasm.module.v1+wasm` which are subject to change.
+View the manifest created, notice that the media types for the layers are `application/vnd.bytecodealliance.wasm.component.layer.v0+wasm` which are subject to change.
 
 ```
-regctl manifest get localhost:5000/wasi-demo-oci:module
-Name:                                localhost:5000/wasi-demo-oci:module
+Name:                                localhost:5000/wasi-demo-oci:latest
 MediaType:                           application/vnd.oci.image.manifest.v1+json
-Digest:                              sha256:869fb6029e26713160d7626dce140f1275f591a694203509cb1e047e746daac8
+Digest:                              sha256:6c48b431d29a1ea1ece13fa50e9f33e4d164e07f6a501dbed668aed947002c5c
 Annotations:
-  io.containerd.image.name:          localhost:5000/wasi-demo-app
-  org.opencontainers.image.ref.name: 5000/wasi-demo-app
-Total Size:                          2.565MB
+  io.containerd.image.name:          ghcr.io/containerd/runwasi/wasi-demo-oci:latest
+  org.opencontainers.image.ref.name: latest
+Total Size:                          2.590MB
 
 Config:
-  Digest:                            sha256:707ef07a1143cfdf20af52979d835d5cfc86acc9634edb79d28b89a1edbdc452
+  Digest:                            sha256:beb7483682ae4ec45d02cd7cee8ee733f8dc610cb7e91070dc8f10567365bdd7
   MediaType:                         application/vnd.oci.image.config.v1+json
-  Size:                              118B
+  Size:                              138B
 
 Layers:
 
-  Digest:                            sha256:b434ff20f62697465e24a52e3573ee9c212e3a171e18e0821bbb464b14fdbbf9
-  MediaType:                         application/vnd.w3c.wasm.module.v1+wasm
-  Size:                              2.565MB
+  Digest:                            sha256:656e978ae0c37156a6abe06052a588e5c700346650765859981ebd2089cffd42
+  MediaType:                         application/vnd.bytecodealliance.wasm.component.layer.v0+wasm
+  Size:                              2.590MB
 ```
 
 ### Spec

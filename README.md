@@ -270,11 +270,11 @@ The test binary supports commands for different type of functionality, check [cr
 
 #### Demo 4 using OCI Images with custom WASM layers
 
-The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits.
+The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits. To build OCI images using your own images you can use the [oci-tar-builder](./crates/oci-tar-builder/README.md)
 
-To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).
+To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).  
 
-> **Note**: This requires containerd 1.7.7+ and 1.6.25+ (not yet released).  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps.
+> **Note**: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps. Latest versions of k3s have the necessary containerd versions. Kind doesn't not have these versions but we have a docker file for a [kind image that does work](test/k8s/Dockerfile.oci).  See the MAKE file for how to use with kind.
 
 Build and import the OCI image with WASM layers image:
 

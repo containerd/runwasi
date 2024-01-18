@@ -7,7 +7,7 @@ ARG GO_VERSION="1.21.3-bullseye"
 # modified from https://github.com/kubernetes-sigs/kind/blob/main/images/base/Dockerfile
 # stage for building containerd
 FROM golang:${GO_VERSION} as build-containerd
-ARG CONTAINERD_VERSION="v1.7.7"
+ARG CONTAINERD_VERSION="v1.7.12"
 ARG CONTAINERD_CLONE_URL="https://github.com/containerd/containerd"
 # we don't build with optional snapshotters, we never select any of these
 # they're not ideal inside kind anyhow, and we save some disk space
