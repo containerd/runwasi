@@ -278,6 +278,8 @@ test/k3s-%: dist/img.tar bin/k3s dist-%
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	sudo bin/k3s kubectl get pods -o wide
+	sudo bin/k3s kubectl delete -f test/k8s/deploy.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for delete --timeout=60s
 
 .PHONY: test/k3s-oci-%
 test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
@@ -290,6 +292,8 @@ test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	sudo bin/k3s kubectl get pods -o wide
+	sudo bin/k3s kubectl delete -f test/k8s/deploy.oci.yaml
+	sudo bin/k3s kubectl wait deployment wasi-demo --for delete --timeout=60s
 
 .PHONY: test/k3s/clean
 test/k3s/clean: bin/k3s/clean;
