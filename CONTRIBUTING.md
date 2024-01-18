@@ -148,9 +148,9 @@ Since we are not experts in every runtime we also need a commitment from the run
 This is a fast moving space, with lots of innovation happening and some shims may eventually need to be removed.
 
 A Shim implementation maybe subject to removal if:
- - If a shim runtime has not been maintained for 6 months it will be subject for removal
+ - If a shim runtime has not been maintained for 6 months it will be subject to removal.  
  - If required changes to the runtime can't be merged or not supported by runtime maintainers.
- - If it falls behind in new features added to the `coantainerd-shim-wasm` due to lack of maintainance
+ - If it falls behind in new features added to the `containerd-shim-wasm` due to lack of maintainance
 
 Before removal:
 - We will create an issue in the repository, pinned to the top. 
@@ -158,6 +158,8 @@ Before removal:
 - make best effort to contact the maintainers (agreed to when adding the shim)
 
 After 1 month of the issue being up, if no maintainer is found we will remove the shim from the project.
+
+In the case where immediate actions are required we may remove a shim from the CI signal to unblock progress on a feature or bug.  This will be done on a case by case basis when needing to resolve an issue immediately. We will open an issue to track the removal from CI and if we are not able to resolved (or make progress on resolving) with in the next two weeks we will start the steps for removal.
 
 ## Getting in touch
 
