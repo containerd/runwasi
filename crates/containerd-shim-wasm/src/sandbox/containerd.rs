@@ -454,76 +454,72 @@ impl Client {
         };
 
         log::info!("found manifest with WASM OCI image format.");
-        // This label is unique across runtimes and versions
+        // This label is unique across runtimes and version of the shim running
         // a precompiled component/module will not work across different runtimes or versions
         let label = precompile_label(T::info());
         match image.labels.get(&label) {
             Some(precompile_digest) if T::can_precompile() => {
-                log::info!("found precompiled image");
+                log::info!("found precompiled module in cache");
                 let precompiled = self.read_content(precompile_digest)?;
-                Ok((
+                return Ok((
                     vec![WasmLayer {
                         config: image_config_descriptor.clone(),
                         layer: precompiled,
                     }],
                     platform,
-                ))
+                ));
             }
-            None if T::can_precompile() => {
-                log::info!("precompiling module");
-                let layers = manifest
-                    .layers()
-                    .iter()
-                    .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
-                    .map(|config| self.read_content(config.digest()))
-                    .collect::<Result<Vec<_>>>()?;
-
-                log::debug!("precompile complete and saving content");
-                let precompiled = engine.precompile(layers.as_slice())?;
-                let precompiled_content =
-                    self.save_content(precompiled.clone(), image_digest.clone(), T::info())?;
-
-                log::debug!("updating image with compiled content digest");
-                image
-                    .labels
-                    .insert(label, precompiled_content.digest.clone());
-                self.update_image(image)?;
-
-                // The original image is considered a root object, by adding a ref to the new compiled content
-                // We tell to containerd to not garbage collect the new content until this image is removed from the system
-                // this ensures that we keep the content around after the lease is dropped
-                log::debug!("updating content with precompile digest to avoid garbage collection");
-                let mut image_content = self.get_info(image_digest.clone())?;
-                image_content.labels.insert(
-                    "containerd.io/gc.ref.content.precompile".to_string(),
-                    precompiled_content.digest.clone(),
-                );
-                self.update_info(image_content)?;
-
-                Ok((
-                    vec![WasmLayer {
-                        config: image_config_descriptor.clone(),
-                        layer: precompiled,
-                    }],
-                    platform,
-                ))
-            }
-            _ => {
-                log::info!("using module from OCI layers");
-                let layers = manifest
-                    .layers()
-                    .iter()
-                    .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
-                    .map(|config| {
-                        self.read_content(config.digest()).map(|module| WasmLayer {
-                            config: config.clone(),
-                            layer: module,
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                Ok((layers, platform))
-            }
+            _ => {}
         }
+
+        let layers = manifest
+            .layers()
+            .iter()
+            .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
+            .map(|config| self.read_content(config.digest()))
+            .collect::<Result<Vec<_>>>()?;
+
+        if T::can_precompile() {
+            log::info!("precompiling module");
+            let precompiled = engine.precompile(layers.as_slice())?;
+            let precompiled_content =
+                self.save_content(precompiled.clone(), image_digest.clone(), T::info())?;
+
+            log::debug!("updating image with compiled content digest");
+            image
+                .labels
+                .insert(label, precompiled_content.digest.clone());
+            self.update_image(image)?;
+
+            // The original image is considered a root object, by adding a ref to the new compiled content
+            // We tell to containerd to not garbage collect the new content until this image is removed from the system
+            // this ensures that we keep the content around after the lease is dropped
+            log::debug!("updating content with precompile digest to avoid garbage collection");
+            let mut image_content = self.get_info(image_digest.clone())?;
+            image_content.labels.insert(
+                "containerd.io/gc.ref.content.precompile".to_string(),
+                precompiled_content.digest.clone(),
+            );
+            self.update_info(image_content)?;
+
+            return Ok((
+                vec![WasmLayer {
+                    config: image_config_descriptor.clone(),
+                    layer: precompiled,
+                }],
+                platform,
+            ));
+        }
+
+        log::info!("using module from OCI layers");
+        let layers = layers
+            .into_iter()
+            .map(|module| WasmLayer {
+                config: image_config_descriptor.clone(),
+                layer: module,
+            })
+            .collect::<Vec<_>>();
+        Ok((layers, platform))
     }
 }
 
