@@ -1,7 +1,5 @@
-use anyhow::{bail, Context, Result};
-use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, Source, Stdio,
-};
+use anyhow::Result;
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
@@ -33,25 +31,8 @@ impl Engine for WasmerEngine {
         log::info!("Create a Store");
         let mut store = Store::new(self.engine.clone());
 
-        let module = match source {
-            Source::File(path) => {
-                log::info!("loading module from file {path:?}");
-                let path = path
-                    .resolve_in_path_or_cwd()
-                    .next()
-                    .context("module not found")?;
-
-                Module::from_file(&store, path)?
-            }
-            Source::Oci([module]) => {
-                log::info!("loading module wasm OCI layers");
-                log::info!("loading module wasm OCI layers");
-                Module::from_binary(&store, &module.layer)?
-            }
-            Source::Oci(_modules) => {
-                bail!("only a single module is supported when using images with OCI layers")
-            }
-        };
+        let wasm_bytes = source.as_bytes()?;
+        let module = Module::from_binary(&store, &wasm_bytes)?;
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
