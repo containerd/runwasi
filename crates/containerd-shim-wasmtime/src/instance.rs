@@ -1,11 +1,9 @@
-use std::borrow::Cow;
 use std::fs::File;
 use std::sync::OnceLock;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio,
-    WasmBinaryType,
+    Engine, Entrypoint, Instance, RuntimeContext, RuntimeInfo, Stdio, WasmBinaryType,
 };
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
@@ -190,7 +188,7 @@ impl WasmtimeEngine {
 
     fn execute(
         &self,
-        wasm_binary: &Cow<'_, [u8]>,
+        wasm_binary: &[u8],
         store: Store<WasiCtx>,
         func: String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {

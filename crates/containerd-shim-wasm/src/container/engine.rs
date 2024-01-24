@@ -60,7 +60,10 @@ pub trait Engine: Clone + Send + Sync + 'static {
         &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
     }
 
-    /// Precomiple a module
+    /// Precomiples a module that in in the WASM OCI layer format
+    /// This is used to precompile a module before it is run and will be called if can_precompile returns true.
+    /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
+    /// The cached, precompiled module will be reloaded on subsequent runs.
     fn precompile(&self, _layers: &[Vec<u8>]) -> Result<Vec<u8>> {
         bail!("precompilation not supported for this runtime")
     }

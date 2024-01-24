@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
-use anyhow::{bail};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio,
+    Engine, Entrypoint, Instance, RuntimeContext, RuntimeInfo, Stdio,
 };
-use log::debug;
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::VmBuilder;

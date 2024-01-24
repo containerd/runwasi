@@ -24,7 +24,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
 
-use self::lease::LeaseGuard;
+use super::lease::LeaseGuard;
 use crate::container::{Engine, RuntimeInfo};
 use crate::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
@@ -32,76 +32,11 @@ use crate::with_lease;
 
 static PRECOMPILE_PREFIX: &str = "runwasi.io/precompiled";
 
-pub(crate) struct Client {
+pub struct Client {
     inner: Channel,
     rt: Runtime,
     namespace: String,
     address: String,
-}
-
-mod lease {
-    use containerd_client::services::v1::leases_client::LeasesClient;
-    use containerd_client::with_namespace;
-
-    use super::*;
-
-    // Adds lease info to grpc header
-    // https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
-    #[macro_export]
-    macro_rules! with_lease {
-        ($req : ident, $ns: expr, $lease_id: expr) => {{
-            let mut req = Request::new($req);
-            let md = req.metadata_mut();
-            // https://github.com/containerd/containerd/blob/main/namespaces/grpc.go#L27
-            md.insert("containerd-namespace", $ns.parse().unwrap());
-            md.insert("containerd-lease", $lease_id.parse().unwrap());
-            req
-        }};
-    }
-
-    #[derive(Debug)]
-    pub(crate) struct LeaseGuard {
-        pub(crate) lease_id: String,
-        pub(crate) namespace: String,
-        pub(crate) address: String,
-    }
-
-    // Provides a best effort for dropping a lease of the content.  If the lease cannot be dropped, it will log a warning
-    impl Drop for LeaseGuard {
-        fn drop(&mut self) {
-            let id = self.lease_id.clone();
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-
-            let client = rt.block_on(containerd_client::connect(self.address.clone()));
-
-            let channel = match client {
-                Ok(channel) => channel,
-                Err(e) => {
-                    log::error!(
-                        "failed to connect to containerd: {}. lease may not be deleted",
-                        e
-                    );
-                    return;
-                }
-            };
-
-            let mut client = LeasesClient::new(channel);
-
-            rt.block_on(async {
-                let req = containerd_client::services::v1::DeleteRequest { id, sync: false };
-                let req = with_namespace!(req, self.namespace);
-                let result = client.delete(req).await;
-
-                match result {
-                    Ok(_) => log::debug!("removed lease"),
-                    Err(e) => log::error!("failed to remove lease: {}", e),
-                }
-            });
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -134,7 +69,7 @@ impl Client {
     }
 
     // wrapper around read that will read the entire content file
-    pub fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
+    fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
         self.rt.block_on(async {
             let req = ReadContentRequest {
                 digest: digest.to_string(),
@@ -170,7 +105,7 @@ impl Client {
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
-    fn lease(&self, reference: String) -> Result<lease::LeaseGuard> {
+    fn lease(&self, reference: String) -> Result<LeaseGuard> {
         self.rt.block_on(async {
             let mut lease_labels = HashMap::new();
             let expire = chrono::Utc::now() + chrono::Duration::hours(24);
@@ -200,7 +135,7 @@ impl Client {
         })
     }
 
-    pub fn save_content(
+    fn save_content(
         &self,
         data: Vec<u8>,
         original_digest: String,
@@ -301,7 +236,7 @@ impl Client {
         })
     }
 
-    pub fn get_info(&self, content_digest: String) -> Result<Info> {
+    fn get_info(&self, content_digest: String) -> Result<Info> {
         self.rt.block_on(async {
             let req = InfoRequest {
                 digest: content_digest.clone(),
@@ -323,7 +258,7 @@ impl Client {
         })
     }
 
-    pub fn update_info(&self, info: Info) -> Result<Info> {
+    fn update_info(&self, info: Info) -> Result<Info> {
         self.rt.block_on(async {
             let req = UpdateRequest {
                 info: Some(info.clone()),
@@ -348,7 +283,7 @@ impl Client {
         })
     }
 
-    pub fn get_image(&self, image_name: impl ToString) -> Result<Image> {
+    fn get_image(&self, image_name: impl ToString) -> Result<Image> {
         self.rt.block_on(async {
             let name = image_name.to_string();
             let req = GetImageRequest { name };
@@ -369,7 +304,7 @@ impl Client {
         })
     }
 
-    pub fn update_image(&self, image: Image) -> Result<Image> {
+    fn update_image(&self, image: Image) -> Result<Image> {
         self.rt.block_on(async {
             let req = UpdateImageRequest {
                 image: Some(image.clone()),
@@ -391,7 +326,7 @@ impl Client {
         })
     }
 
-    pub fn extract_image_content_sha(&self, image: &Image) -> Result<String> {
+    fn extract_image_content_sha(&self, image: &Image) -> Result<String> {
         let digest = image
             .target
             .as_ref()
@@ -406,7 +341,7 @@ impl Client {
         Ok(digest)
     }
 
-    pub fn get_container(&self, container_name: impl ToString) -> Result<Container> {
+    fn get_container(&self, container_name: impl ToString) -> Result<Container> {
         self.rt.block_on(async {
             let id = container_name.to_string();
             let req = GetContainerRequest { id };
@@ -478,6 +413,11 @@ impl Client {
             .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
             .map(|config| self.read_content(config.digest()))
             .collect::<Result<Vec<_>>>()?;
+
+        if layers.is_empty() {
+            log::info!("no WASM modules found in OCI layers");
+            return Ok((vec![], platform));
+        }
 
         if T::can_precompile() {
             log::info!("precompiling module");

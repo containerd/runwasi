@@ -1,8 +1,6 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
-use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, PathResolve, RuntimeContext, RuntimeInfo, Source, Stdio,
+    Engine, Entrypoint, Instance, RuntimeContext, RuntimeInfo, Stdio,
 };
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
