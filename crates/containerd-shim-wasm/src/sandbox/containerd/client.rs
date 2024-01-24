@@ -395,14 +395,21 @@ impl Client {
         match image.labels.get(&label) {
             Some(precompile_digest) if T::can_precompile() => {
                 log::info!("found precompiled module in cache");
-                let precompiled = self.read_content(precompile_digest)?;
-                return Ok((
-                    vec![WasmLayer {
-                        config: image_config_descriptor.clone(),
-                        layer: precompiled,
-                    }],
-                    platform,
-                ));
+                match self.read_content(precompile_digest) {
+                    Ok(precompiled) => {
+                        return Ok((
+                            vec![WasmLayer {
+                                config: image_config_descriptor.clone(),
+                                layer: precompiled,
+                            }],
+                            platform,
+                        ));
+                    }
+                    Err(e) => {
+                        // log and continue
+                        log::warn!("failed to read precompiled module from cache: {}. Content may have been removed manually, will attempt to recompile", e);
+                    }
+                }
             }
             _ => {}
         }
