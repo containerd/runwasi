@@ -1,3 +1,5 @@
+#![cfg(unix)]
+
 mod client;
 mod lease;
 
