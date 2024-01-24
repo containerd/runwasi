@@ -29,7 +29,10 @@ jobs:
         shell: bash
         run: ./scripts/parse_ref.sh ${{ github.ref }} >> ${GITHUB_OUTPUT}
 
-  build:
+  build-and-sign:
+    permissions:
+      # cosign uses the GitHub OIDC token
+      id-token: write
     needs:
       - parse
     strategy:
@@ -38,30 +41,70 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup build env
         run: ./scripts/setup-linux.sh
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      
+      - name: Setup rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
           RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.parse.outputs.crate }}-${{ matrix.arch }}
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      
       - name: Setup cross-rs
         run: ./scripts/setup-cross.sh ${{ matrix.arch }}-unknown-linux-musl
+      
       - name: Setup build profile
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
+      
+      - name: Setup cosign for signing
+        uses: sigstore/cosign-installer@v3.3.0
+        with:
+          cosign-release: 'v2.2.2'
+      
       - name: Build
         timeout-minutes: 20
         run: make build-${{ needs.parse.outputs.runtime }}
+
       - name: Test
         if: ${{ matrix.arch == 'x86_64' }}
         timeout-minutes: 10
         run: make test-${{ needs.parse.outputs.runtime }}
+
+      - name: Sign the binary
+        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        run: |
+          make dist-${{ needs.parse.outputs.runtime }}
+          # Check if there's any files to archive as tar fails otherwise
+          if stat dist/bin/* >/dev/null 2>&1; then
+            cosign sign-blob --yes \
+              --output-certificate containerd-shim-${{ needs.parse.outputs.runtime }}-v1-crt.pem \
+              --output-signature containerd-shim-${{ needs.parse.outputs.runtime }}-v1.sig \
+              dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1
+            
+            cosign sign-blob --yes \
+              --output-certificate containerd-shim-${{ needs.parse.outputs.runtime }}d-v1-crt.pem \
+              --output-signature containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.sig \
+              dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1
+
+            cosign sign-blob --yes \
+              --output-certificate containerd-${{ needs.parse.outputs.runtime }}d-v1-crt.pem \
+              --output-signature containerd-${{ needs.parse.outputs.runtime }}d-v1.sig \
+              dist/bin/containerd-${{ needs.parse.outputs.runtime }}d
+          else
+            echo "No files to sign"
+          fi
+
+          # Copy the certs to the dist/bin folder
+          cp *.sig dist/bin/
+          cp *.pem dist/bin/
+
       - name: Package artifacts
         if: ${{ needs.parse.outputs.runtime != 'wasm' }}
         shell: bash
         run: |
-          make dist-${{ needs.parse.outputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
@@ -79,7 +122,7 @@ jobs:
     permissions:
       contents: write
     needs:
-      - build
+      - build-and-sign
       - parse
     runs-on: ubuntu-latest
     steps:
