@@ -8,5 +8,5 @@ updates:
       wasmtime-deps:
         patterns:
           - "wasmtime"
-          - "wasmtime-common"
+          - "wasmtime-wasi"
           - "wasi-common"
