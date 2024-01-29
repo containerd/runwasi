@@ -90,8 +90,8 @@ jobs:
               dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1
 
             cosign sign-blob --yes \
-              --output-certificate containerd-${{ needs.parse.outputs.runtime }}d-v1-crt.pem \
-              --output-signature containerd-${{ needs.parse.outputs.runtime }}d-v1.sig \
+              --output-certificate containerd-${{ needs.parse.outputs.runtime }}d-crt.pem \
+              --output-signature containerd-${{ needs.parse.outputs.runtime }}d.sig \
               dist/bin/containerd-${{ needs.parse.outputs.runtime }}d
           else
             echo "No files to sign"
