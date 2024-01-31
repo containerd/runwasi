@@ -5,9 +5,9 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use wasi_common::I32Exit;
-use wasmtime::component::{self as wasmtime_component, Component};
+use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Module, Store};
-use wasmtime_wasi::preview2::{self as wasi_preview2, Table};
+use wasmtime_wasi::preview2::{self as wasi_preview2};
 use wasmtime_wasi::{self as wasi_preview1, Dir};
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine>;
@@ -33,17 +33,17 @@ impl Default for WasmtimeEngine {
 pub struct WasiCtx {
     pub(crate) wasi_preview2: wasi_preview2::WasiCtx,
     pub(crate) wasi_preview1: wasi_preview1::WasiCtx,
-    pub(crate) wasi_preview2_table: Table,
+    pub(crate) resource_table: ResourceTable,
 }
 
 /// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
 impl wasmtime_wasi::preview2::WasiView for WasiCtx {
-    fn table(&self) -> &Table {
-        &self.wasi_preview2_table
+    fn table(&self) -> &ResourceTable {
+        &self.resource_table
     }
 
-    fn table_mut(&mut self) -> &mut Table {
-        &mut self.wasi_preview2_table
+    fn table_mut(&mut self) -> &mut ResourceTable {
+        &mut self.resource_table
     }
 
     fn ctx(&self) -> &wasi_preview2::WasiCtx {
@@ -207,7 +207,7 @@ fn prepare_wasi_ctx(
     let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,
         wasi_preview2: wasi_preview2_ctx,
-        wasi_preview2_table: wasi_preview2::Table::new(),
+        resource_table: ResourceTable::default(),
     };
     Ok(wasi_data)
 }

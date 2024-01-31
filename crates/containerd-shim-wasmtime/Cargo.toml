@@ -16,7 +16,7 @@ ttrpc = { workspace = true }
 # 2. Because it pulls in a lot of dependencies that we don't need
 # 3. Because that dependency (wasmtime-fiber) links to native code
 # 4. The wasmedge shim also uses wasmtime-fiber... which means those transative dependencies need to be the same or compilation fails
-wasmtime = { version = "16.0", default-features = false, features = [
+wasmtime = { version = "17.0", default-features = false, features = [
     "cache",
     "wat",
     "profiling",
@@ -29,8 +29,8 @@ wasmtime = { version = "16.0", default-features = false, features = [
     "debug-builtins",
     'component-model',
 ]}
-wasmtime-wasi = { version = "16.0", features = ["exit"] }
-wasi-common = "16.0"
+wasmtime-wasi = { version = "17.0", features = ["exit"] }
+wasi-common = "17.0"
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
