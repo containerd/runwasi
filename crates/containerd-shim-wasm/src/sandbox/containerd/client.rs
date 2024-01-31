@@ -150,11 +150,12 @@ impl Client {
             let (tx, rx) = mpsc::channel(1);
 
             let len = data.len() as i64;
-
+            log::debug!("Writing {} bytes to content store", len);
             let mut client = ContentClient::new(self.inner.clone());
 
             // Send write request with Stat action to containerd to let it know that we are going to write content
             // if the content is already there, it will return early with AlreadyExists
+            log::debug!("Sending stat request to containerd");
             let req = WriteContentRequest {
                 r#ref: reference.clone(),
                 action: WriteAction::Stat.into(),
@@ -187,6 +188,13 @@ impl Client {
                     ))
                 })?;
 
+            // There is a scenario where the content might have been removed manually
+            // but the content isn't removed from the containerd file system yet.
+            // In this case if we re-add it at before its removed from file system
+            // we don't need to copy the content again.  Container tells us it found the blob
+            // by returning the offset of the content that was found.
+            let data_to_write = data[response.offset as usize..].to_vec();
+
             let label = precompile_label(info);
             // Write and commit at same time
             let mut labels = HashMap::new();
@@ -197,16 +205,20 @@ impl Client {
                 offset: response.offset,
                 expected: expected.clone(),
                 labels,
-                data,
+                data: data_to_write,
                 ..Default::default()
             };
+            log::debug!(
+                "Sending commit request to containerd with response: {:?}",
+                response
+            );
             tx.send(commit_request)
                 .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?;
+                .map_err(|err| ShimError::Containerd(format!("commit request error: {}", err)))?;
             let response = response_stream
                 .message()
                 .await
-                .map_err(|e| ShimError::Containerd(e.to_string()))?
+                .map_err(|err| ShimError::Containerd(format!("response stream error: {}", err)))?
                 .ok_or_else(|| {
                     ShimError::Containerd(format!(
                         "no response received after write request for {}",
@@ -214,6 +226,7 @@ impl Client {
                     ))
                 })?;
 
+            log::debug!("Validating response");
             // client should validate that all bytes were written and that the digest matches
             if response.offset != len {
                 return Err(ShimError::Containerd(format!(
@@ -312,6 +325,7 @@ impl Client {
                     paths: vec!["labels".to_string()],
                 }),
             };
+
             let req = with_namespace!(req, self.namespace);
             let image = ImagesClient::new(self.inner.clone())
                 .update(req)
@@ -394,9 +408,10 @@ impl Client {
         let label = precompile_label(T::info());
         match image.labels.get(&label) {
             Some(precompile_digest) if T::can_precompile() => {
-                log::info!("found precompiled module in cache");
+                log::info!("found precompiled label: {} ", &label);
                 match self.read_content(precompile_digest) {
                     Ok(precompiled) => {
+                        log::info!("found precompiled module in cache: {} ", &precompile_digest);
                         return Ok((
                             vec![WasmLayer {
                                 config: image_config_descriptor.clone(),
@@ -429,6 +444,7 @@ impl Client {
         if T::can_precompile() {
             log::info!("precompiling module");
             let precompiled = engine.precompile(layers.as_slice())?;
+            log::info!("precompiling module: {}", image_digest.clone());
             let precompiled_content =
                 self.save_content(precompiled.clone(), image_digest.clone(), T::info())?;
 
