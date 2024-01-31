@@ -80,26 +80,23 @@ jobs:
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             cosign sign-blob --yes \
-              --output-certificate containerd-shim-${{ needs.parse.outputs.runtime }}-v1-crt.pem \
-              --output-signature containerd-shim-${{ needs.parse.outputs.runtime }}-v1.sig \
+              --bundle containerd-shim-${{ needs.parse.outputs.runtime }}-v1.bundle \
               dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1
             
             cosign sign-blob --yes \
-              --output-certificate containerd-shim-${{ needs.parse.outputs.runtime }}d-v1-crt.pem \
-              --output-signature containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.sig \
+              --bundle containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.bundle \
               dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1
 
             cosign sign-blob --yes \
-              --output-certificate containerd-${{ needs.parse.outputs.runtime }}d-crt.pem \
-              --output-signature containerd-${{ needs.parse.outputs.runtime }}d.sig \
+              --bundle containerd-${{ needs.parse.outputs.runtime }}d.bundle \
               dist/bin/containerd-${{ needs.parse.outputs.runtime }}d
+            
+            # Copy the certs to the dist/bin folder
+            cp *.sig dist/bin/
+            cp *.pem dist/bin/
           else
             echo "No files to sign"
           fi
-
-          # Copy the certs to the dist/bin folder
-          cp *.sig dist/bin/
-          cp *.pem dist/bin/
 
       - name: Package artifacts
         if: ${{ needs.parse.outputs.runtime != 'wasm' }}
