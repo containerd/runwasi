@@ -105,7 +105,7 @@ impl Engine for WasmtimeEngine {
     fn precompile(&self, layers: &[Vec<u8>]) -> Result<Vec<u8>> {
         match layers {
             [layer] => self.engine.precompile_module(layer),
-            _ => bail!("only a single module is supported when when precompiling"),
+            _ => bail!("only a single module is supported when precompiling"),
         }
     }
 
@@ -209,7 +209,7 @@ impl WasmtimeEngine {
                     self.execute_module(module, store, &func)
                 }
                 Some(Precompiled::Component) => {
-                    log::info!("using precompiled module");
+                    log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
                     self.execute_component(component, store, func)
                 }

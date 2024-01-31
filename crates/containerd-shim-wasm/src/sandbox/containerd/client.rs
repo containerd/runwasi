@@ -455,7 +455,7 @@ impl Client {
             self.update_image(image)?;
 
             // The original image is considered a root object, by adding a ref to the new compiled content
-            // We tell to containerd to not garbage collect the new content until this image is removed from the system
+            // We tell containerd to not garbage collect the new content until this image is removed from the system
             // this ensures that we keep the content around after the lease is dropped
             log::debug!("updating content with precompile digest to avoid garbage collection");
             let mut image_content = self.get_info(image_digest.clone())?;

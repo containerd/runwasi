@@ -44,7 +44,6 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 #[test]
 #[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
