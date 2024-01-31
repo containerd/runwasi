@@ -31,6 +31,22 @@ fn test_hello_world() -> anyhow::Result<()> {
 
 #[test]
 #[serial]
+fn test_hello_world_oci() -> anyhow::Result<()> {
+    let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(HELLO_WORLD)?
+        .as_oci_image(None, None)?;
+
+    let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 0);
+    assert_eq!(stdout, "hello world\n");
+
+    Ok(())
+}
+
+
+#[test]
+#[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
         .with_start_fn("foo")?
