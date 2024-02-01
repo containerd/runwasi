@@ -34,6 +34,7 @@ pub trait RuntimeContext {
 }
 
 /// The source for a WASI module / components.
+#[derive(Debug)]
 pub enum Source<'a> {
     // The WASI module is a file in the file system.
     File(PathBuf),

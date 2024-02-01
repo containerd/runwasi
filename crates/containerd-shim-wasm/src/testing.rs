@@ -283,13 +283,14 @@ pub mod oci_helpers {
 
     impl Drop for OCICleanup {
         fn drop(&mut self) {
-            log::trace!("dropping OCIGuard");
-            clean_image(self.image_name.clone()).unwrap();
+            log::debug!("dropping OCIGuard");
             clean_container(self.container_name.clone()).unwrap();
+            clean_image(self.image_name.clone()).unwrap();
         }
     }
 
     pub fn clean_container(container_name: String) -> Result<()> {
+        log::debug!("deleting container '{}'", container_name);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -308,6 +309,7 @@ pub mod oci_helpers {
     }
 
     pub fn clean_image(image_name: String) -> Result<()> {
+        log::debug!("deleting image '{}'", image_name);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -343,7 +345,7 @@ pub mod oci_helpers {
                 bail!("timed out waiting for content to be removed");
             }
 
-            log::debug!("waiting for content to be removed");
+            log::trace!("waiting for content to be removed");
         }
 
         Ok(())
@@ -380,7 +382,7 @@ pub mod oci_helpers {
     }
 
     pub fn remove_content(digest: String) -> Result<()> {
-        log::info!("cleaning content '{}'", digest);
+        log::debug!("cleaning content '{}'", digest);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)

@@ -382,7 +382,7 @@ impl Client {
     pub fn load_modules<T: Engine>(
         &self,
         containerd_id: impl ToString,
-        engine: T,
+        engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id.to_string())?;
         let mut image = self.get_image(container.image)?;

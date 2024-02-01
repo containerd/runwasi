@@ -11,7 +11,7 @@ use oci_spec::image::Descriptor;
 
 use super::error::Result;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WasmLayer {
     pub config: Descriptor,
     pub layer: Vec<u8>,
