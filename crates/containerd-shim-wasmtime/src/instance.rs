@@ -8,7 +8,7 @@ use containerd_shim_wasm::container::{
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Module, Precompiled, Store};
-use wasmtime_wasi::preview2::{self as wasi_preview2, Table};
+use wasmtime_wasi::preview2::{self as wasi_preview2};
 use wasmtime_wasi::{self as wasi_preview1, Dir};
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine>;
