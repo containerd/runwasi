@@ -274,7 +274,7 @@ The previous demos run with an OCI Container image containing the wasm module in
 
 To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).  
 
-> **Note**: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps. Latest versions of k3s have the necessary containerd versions. Kind doesn't not have these versions but we have a docker file for a [kind image that does work](test/k8s/Dockerfile.oci).  See the MAKE file for how to use with kind.
+> **Note**: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps. Latest versions of k3s and kind have the necessary containerd versions.
 
 Build and import the OCI image with WASM layers image:
 
