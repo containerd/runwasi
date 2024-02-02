@@ -21,6 +21,7 @@ pub struct WasmtimeEngine {
 impl Default for WasmtimeEngine {
     fn default() -> Self {
         let mut config = wasmtime::Config::new();
+        config.parallel_compilation(false);
         config.wasm_component_model(true); // enable component linking
         Self {
             engine: wasmtime::Engine::new(&config)
