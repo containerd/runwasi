@@ -221,13 +221,9 @@ test/k8s/cluster-%: dist/img.tar bin/kind test/k8s/_out/img-%
 	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img-$*)" && \
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
-.PHONY: test/k8s/cluster-oci-%
-test/k8s/cluster-oci-%: dist/img-oci.tar bin/kind test/k8s/_out/img-oci-%
-	bin/kind create cluster --name $(KIND_CLUSTER_NAME) --image="$(shell cat test/k8s/_out/img-oci-$*)" && \
-	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) $(<)
 
 .PHONY: test/k8s/deploy-workload-%
-test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-%
+test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-% 
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 	# verify that we are still running after some time	
@@ -235,7 +231,8 @@ test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
 .PHONY: test/k8s/deploy-workload-oci-%
-test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-oci-%
+test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.tar
+	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) dist/img-oci.tar
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 	# verify that we are still running after some time
