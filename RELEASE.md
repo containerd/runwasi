@@ -38,12 +38,25 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 2. PR can be merged after 2 LGTMs
 3. Tag the release with the format `<crate>/v<version>` (e.g. `containerd-shim-wasm/v0.2.0`)
 4. Wait for the release workflow to complete
-5. Manually verify the release on crates.io and on the GitHub releases page.
+5. Manually verify the release on crates.io and on the GitHub releases page (See [Verify signing](#Verify-signing) section for more details on verifying the release on GitHub releases page.)
 6. If this is the first time publishing this crate, see the [First release of a crate](#First-release-of-a-crate) section.
 
 > Note: If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.
 >
 > For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.
+
+## Verify signing
+
+The release pipeline uses `cosign` to sign the release blobs, if any. It uses Github's OIDC token to authenticate with Sigstore to prove identity and outputs a `.bundle` file, which contains a signature and a key. This file can be verified using `cosign verify-blob` command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):
+
+```sh
+cosign verify-blob --bundle containerd-shim-wasmtime-v1.bundle \
+--certificate-identity https://github.com/containerd/runwasi/.github/workflows/release.yml@refs/tags/containerd-shim-wasmtime/<tag> \ 
+--certificate-oidc-issuer https://token.actions.githubusercontent.com \
+containerd-shim-wasmtime-v1
+```
+
+In the Github release page, please provide the above command in the instructions for the consumer to verify the release.
 
 ## First release of a crate
 
