@@ -354,7 +354,7 @@ pub mod oci_helpers {
     pub fn get_image_label() -> Result<(String, String)> {
         let mut grep = Command::new("grep")
             .arg("-ohE")
-            .arg("runwasi.io/precompiled/wasmtime/0.3.1=.*")
+            .arg("runwasi.io/precompiled/.*")
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
             .spawn()?;

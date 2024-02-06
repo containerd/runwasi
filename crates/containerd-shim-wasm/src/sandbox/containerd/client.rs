@@ -25,7 +25,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
 
 use super::lease::LeaseGuard;
-use crate::container::{Engine, RuntimeInfo};
+use crate::container::Engine;
 use crate::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
 use crate::with_lease;
@@ -139,10 +139,10 @@ impl Client {
         &self,
         data: Vec<u8>,
         original_digest: String,
-        info: &RuntimeInfo,
+        label: &str,
     ) -> Result<WriteContent> {
         let expected = format!("sha256:{}", digest(data.clone()));
-        let reference = format!("precompile-{}-{}-{}", info.name, info.version, expected);
+        let reference = format!("precompile-{}", label);
         let lease = self.lease(reference.clone())?;
 
         let digest = self.rt.block_on(async {
@@ -195,10 +195,9 @@ impl Client {
             // by returning the offset of the content that was found.
             let data_to_write = data[response.offset as usize..].to_vec();
 
-            let label = precompile_label(info);
             // Write and commit at same time
             let mut labels = HashMap::new();
-            labels.insert(label, original_digest.clone());
+            labels.insert(label.to_string(), original_digest.clone());
             let commit_request = WriteContentRequest {
                 action: WriteAction::Commit.into(),
                 total: len,
@@ -405,10 +404,14 @@ impl Client {
         log::info!("found manifest with WASM OCI image format.");
         // This label is unique across runtimes and version of the shim running
         // a precompiled component/module will not work across different runtimes or versions
-        let label = precompile_label(T::info());
-        match image.labels.get(&label) {
-            Some(precompile_digest) if T::can_precompile() => {
-                log::info!("found precompiled label: {} ", &label);
+        let (can_precompile, precompile_id) = match engine.can_precompile() {
+            Some(precompile_id) => (true, precompile_label(T::name(), &precompile_id)),
+            None => (false, "".to_string()),
+        };
+
+        match image.labels.get(&precompile_id) {
+            Some(precompile_digest) if can_precompile => {
+                log::info!("found precompiled label: {} ", &precompile_id);
                 match self.read_content(precompile_digest) {
                     Ok(precompiled) => {
                         log::info!("found precompiled module in cache: {} ", &precompile_digest);
@@ -441,17 +444,17 @@ impl Client {
             return Ok((vec![], platform));
         }
 
-        if T::can_precompile() {
+        if can_precompile {
             log::info!("precompiling module");
             let precompiled = engine.precompile(layers.as_slice())?;
             log::info!("precompiling module: {}", image_digest.clone());
             let precompiled_content =
-                self.save_content(precompiled.clone(), image_digest.clone(), T::info())?;
+                self.save_content(precompiled.clone(), image_digest.clone(), &precompile_id)?;
 
             log::debug!("updating image with compiled content digest");
             image
                 .labels
-                .insert(label, precompiled_content.digest.clone());
+                .insert(precompile_id, precompiled_content.digest.clone());
             self.update_image(image)?;
 
             // The original image is considered a root object, by adding a ref to the new compiled content
@@ -486,8 +489,8 @@ impl Client {
     }
 }
 
-fn precompile_label(info: &RuntimeInfo) -> String {
-    format!("{}/{}/{}", PRECOMPILE_PREFIX, info.name, info.version)
+fn precompile_label(name: &str, version: &str) -> String {
+    format!("{}/{}/{}", PRECOMPILE_PREFIX, name, version)
 }
 
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
@@ -510,15 +513,9 @@ mod tests {
         let expected = digest(data.clone());
         let expected = format!("sha256:{}", expected);
 
+        let label = precompile_label("test", "hasdfh");
         let returned = client
-            .save_content(
-                data,
-                "original".to_string(),
-                &RuntimeInfo {
-                    name: "test",
-                    version: "0.0.0",
-                },
-            )
+            .save_content(data, "original".to_string(), &label)
             .unwrap();
         assert_eq!(expected, returned.digest.clone());
 
@@ -526,14 +523,7 @@ mod tests {
         assert_eq!(data, b"hello world");
 
         client
-            .save_content(
-                data.clone(),
-                "original".to_string(),
-                &RuntimeInfo {
-                    name: "test",
-                    version: "0.0.0",
-                },
-            )
+            .save_content(data.clone(), "original".to_string(), &label)
             .expect_err("Should not be able to save when lease is open");
 
         // need to drop the lease to be able to create a second one
@@ -542,14 +532,7 @@ mod tests {
 
         // a second call should be successful since it already exists
         let returned = client
-            .save_content(
-                data,
-                "original".to_string(),
-                &RuntimeInfo {
-                    name: "test",
-                    version: "0.0.0",
-                },
-            )
+            .save_content(data, "original".to_string(), &label)
             .unwrap();
         assert_eq!(expected, returned.digest);
 

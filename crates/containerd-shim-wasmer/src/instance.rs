@@ -1,7 +1,5 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, RuntimeInfo, Stdio,
-};
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
@@ -14,11 +12,8 @@ pub struct WasmerEngine {
 }
 
 impl Engine for WasmerEngine {
-    fn info() -> &'static RuntimeInfo {
-        &RuntimeInfo {
-            name: "wasmer",
-            version: env!("CARGO_PKG_VERSION"),
-        }
+    fn name() -> &'static str {
+        "wasmer"
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {

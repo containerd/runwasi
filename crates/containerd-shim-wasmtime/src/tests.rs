@@ -1,11 +1,31 @@
 use std::time::Duration;
 
-//use containerd_shim_wasm::sandbox::Instance;
+use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::testing::modules::*;
 use containerd_shim_wasm::testing::{oci_helpers, WasiTest};
 use serial_test::serial;
+use wasmtime::Config;
+use WasmtimeTestInstance as WasiInstance;
 
-use crate::instance::WasmtimeInstance as WasiInstance;
+use crate::instance::{WasiConfig, WasmtimeEngine};
+
+// use test configuration to avoid dead locks when running tests
+type WasmtimeTestInstance = Instance<WasmtimeEngine<WasiTestConfig>>;
+
+#[derive(Clone)]
+struct WasiTestConfig {}
+
+impl WasiConfig for WasiTestConfig {
+    fn new_config() -> Config {
+        let mut config = wasmtime::Config::new();
+        // Disable Wasmtime parallel compilation for the
+        // https://github.com/containerd/runwasi/issues/357
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(false);
+        config.wasm_component_model(true); // enable component linking
+        config
+    }
+}
 
 #[test]
 #[serial]
@@ -56,8 +76,13 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
 
-    let (label, _id) = oci_helpers::get_image_label()?;
-    assert!(label.starts_with("runwasi.io/precompiled/wasmtime/"));
+    let (label, id) = oci_helpers::get_image_label()?;
+    assert!(
+        label.starts_with("runwasi.io/precompiled/wasmtime/"),
+        "was {}={}",
+        label,
+        id
+    );
 
     // run second time, it should succeed without recompiling
     let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?

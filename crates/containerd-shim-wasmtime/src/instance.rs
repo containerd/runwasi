@@ -1,32 +1,49 @@
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
-use std::sync::OnceLock;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, RuntimeInfo, Stdio, WasmBinaryType,
+    Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
-use wasmtime::{Module, Precompiled, Store};
+use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview2::{self as wasi_preview2};
 use wasmtime_wasi::{self as wasi_preview1, Dir};
 
-pub type WasmtimeInstance = Instance<WasmtimeEngine>;
+pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
 
 #[derive(Clone)]
-pub struct WasmtimeEngine {
+pub struct WasmtimeEngine<T: WasiConfig + Clone + Send + Sync> {
     engine: wasmtime::Engine,
+    config_type: PhantomData<T>,
 }
 
-impl Default for WasmtimeEngine {
-    fn default() -> Self {
+#[derive(Clone)]
+pub struct DefaultConfig {}
+
+impl WasiConfig for DefaultConfig {
+    fn new_config() -> Config {
         let mut config = wasmtime::Config::new();
-        config.parallel_compilation(false);
         config.wasm_component_model(true); // enable component linking
+        config
+    }
+}
+
+pub trait WasiConfig {
+    fn new_config() -> Config;
+}
+
+impl<T: WasiConfig + Clone + Sync + Send> Default for WasmtimeEngine<T> {
+    fn default() -> Self {
+        let config = T::new_config();
         Self {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
                 .unwrap(),
+            config_type: PhantomData,
         }
     }
 }
@@ -57,17 +74,9 @@ impl wasmtime_wasi::preview2::WasiView for WasiCtx {
     }
 }
 
-fn version_info() -> &'static RuntimeInfo {
-    static INFO: OnceLock<RuntimeInfo> = OnceLock::new();
-    INFO.get_or_init(|| RuntimeInfo {
-        name: "wasmtime",
-        version: option_env!("WASMTIME_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION")),
-    })
-}
-
-impl Engine for WasmtimeEngine {
-    fn info() -> &'static RuntimeInfo {
-        version_info()
+impl<T: WasiConfig + Clone + Sync + Send + 'static> Engine for WasmtimeEngine<T> {
+    fn name() -> &'static str {
+        "wasmtime"
     }
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
@@ -110,12 +119,16 @@ impl Engine for WasmtimeEngine {
         }
     }
 
-    fn can_precompile() -> bool {
-        true
+    fn can_precompile(&self) -> Option<String> {
+        let mut hasher = DefaultHasher::new();
+        self.engine
+            .precompile_compatibility_hash()
+            .hash(&mut hasher);
+        Some(hasher.finish().to_string())
     }
 }
 
-impl WasmtimeEngine {
+impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T> {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized

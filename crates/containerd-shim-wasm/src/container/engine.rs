@@ -7,16 +7,9 @@ use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
 use crate::sandbox::Stdio;
 
-/// RuntimeInfo contains the name and version of the runtime that is running
-#[derive(Clone, Debug, Default)]
-pub struct RuntimeInfo {
-    pub name: &'static str,
-    pub version: &'static str,
-}
-
 pub trait Engine: Clone + Send + Sync + 'static {
     /// The name to use for this engine
-    fn info() -> &'static RuntimeInfo;
+    fn name() -> &'static str;
 
     /// Run a WebAssembly container
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32>;
@@ -68,8 +61,18 @@ pub trait Engine: Clone + Send + Sync + 'static {
         bail!("precompilation not supported for this runtime")
     }
 
-    /// Precompile a module
-    fn can_precompile() -> bool {
-        false
+    /// Can_precompile lets the shim know if the runtime supports precompilation.
+    /// When it returns Some(unique_string) the `unique_string` will be used as a cache key for the precompiled module.
+    ///
+    /// `unique_string` should at least include the version of the shim running but could include other information such as a hash
+    /// of the version and cpu type and other important information in the validation of being able to use precompiled module.  
+    /// If the string doesn't match then the module will be recompiled and cached with the new `unique_string`.
+    ///
+    /// This string will be used in the following way:
+    /// "runwasi.io/precompiled/<Engine.name()>/<unique_string>"
+    ///
+    /// When it returns None the runtime will not be asked to precompile the module.  This is the default value.
+    fn can_precompile(&self) -> Option<String> {
+        None
     }
 }

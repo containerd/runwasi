@@ -39,7 +39,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let engine = cfg.get_engine();
         let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();
-        let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::info().name);
+        let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
         let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
         let stdio = Stdio::init_from_cfg(cfg)?;
 
