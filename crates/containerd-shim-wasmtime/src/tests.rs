@@ -10,6 +10,7 @@ use WasmtimeTestInstance as WasiInstance;
 use crate::instance::{WasiConfig, WasmtimeEngine};
 
 // use test configuration to avoid dead locks when running tests
+// https://github.com/containerd/runwasi/issues/357
 type WasmtimeTestInstance = Instance<WasmtimeEngine<WasiTestConfig>>;
 
 #[derive(Clone)]
@@ -18,8 +19,7 @@ struct WasiTestConfig {}
 impl WasiConfig for WasiTestConfig {
     fn new_config() -> Config {
         let mut config = wasmtime::Config::new();
-        // Disable Wasmtime parallel compilation for the
-        // https://github.com/containerd/runwasi/issues/357
+        // Disable Wasmtime parallel compilation for the tests
         // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
         config.parallel_compilation(false);
         config.wasm_component_model(true); // enable component linking

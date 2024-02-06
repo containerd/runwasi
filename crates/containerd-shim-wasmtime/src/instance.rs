@@ -16,7 +16,7 @@ use wasmtime_wasi::{self as wasi_preview1, Dir};
 pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
 
 #[derive(Clone)]
-pub struct WasmtimeEngine<T: WasiConfig + Clone + Send + Sync> {
+pub struct WasmtimeEngine<T: WasiConfig> {
     engine: wasmtime::Engine,
     config_type: PhantomData<T>,
 }
@@ -32,11 +32,11 @@ impl WasiConfig for DefaultConfig {
     }
 }
 
-pub trait WasiConfig {
+pub trait WasiConfig: Clone + Sync + Send + 'static {
     fn new_config() -> Config;
 }
 
-impl<T: WasiConfig + Clone + Sync + Send> Default for WasmtimeEngine<T> {
+impl<T: WasiConfig> Default for WasmtimeEngine<T> {
     fn default() -> Self {
         let config = T::new_config();
         Self {
@@ -74,7 +74,7 @@ impl wasmtime_wasi::preview2::WasiView for WasiCtx {
     }
 }
 
-impl<T: WasiConfig + Clone + Sync + Send + 'static> Engine for WasmtimeEngine<T> {
+impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     fn name() -> &'static str {
         "wasmtime"
     }
