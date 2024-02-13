@@ -82,6 +82,12 @@ test instance::wasitest::test_delete_after_create ... ok
 test instance::wasitest::test_wasi ... ok
 ```
 
+Run individual test via cargo adding `RUST_LOG=trace` (adjust the level of logging as needed) to see shim output. Also adjust the test name as needed.
+
+```
+RUST_LOG=DEBUG cargo test --package containerd-shim-wasmtime --lib -- wasmtime_tests::test_hello_world --exact --nocapture
+```
+
 ### End to End tests
 
 The e2e test run on [k3s](https://k3s.io/) and [kind](https://kind.sigs.k8s.io/).  A test image is built using [oci-tar-builder](./crates/oci-tar-builder/) and is loaded onto the clusters.  This test image is not pushed to an external registry so be sure to use the Makefile targets to build the image and load it on the cluster.

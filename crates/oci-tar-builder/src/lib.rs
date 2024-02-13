@@ -41,6 +41,9 @@ struct DockerManifest {
     layers: Vec<String>,
 }
 
+pub const WASM_LAYER_MEDIA_TYPE: &str =
+    "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
+
 impl Builder {
     pub fn add_config(&mut self, config: ImageConfiguration, name: String) -> &mut Self {
         self.configs.push((config, name));

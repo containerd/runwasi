@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
@@ -51,5 +51,28 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// such as lays that contain runtime specific configuration
     fn supported_layers_types() -> &'static [&'static str] {
         &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
+    }
+
+    /// Precompiles a module that is in the WASM OCI layer format
+    /// This is used to precompile a module before it is run and will be called if can_precompile returns true.
+    /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
+    /// The cached, precompiled module will be reloaded on subsequent runs.
+    fn precompile(&self, _layers: &[Vec<u8>]) -> Result<Vec<u8>> {
+        bail!("precompilation not supported for this runtime")
+    }
+
+    /// Can_precompile lets the shim know if the runtime supports precompilation.
+    /// When it returns Some(unique_string) the `unique_string` will be used as a cache key for the precompiled module.
+    ///
+    /// `unique_string` should at least include the version of the shim running but could include other information such as a hash
+    /// of the version and cpu type and other important information in the validation of being able to use precompiled module.  
+    /// If the string doesn't match then the module will be recompiled and cached with the new `unique_string`.
+    ///
+    /// This string will be used in the following way:
+    /// "runwasi.io/precompiled/<Engine.name()>/<unique_string>"
+    ///
+    /// When it returns None the runtime will not be asked to precompile the module.  This is the default value.
+    fn can_precompile(&self) -> Option<String> {
+        None
     }
 }

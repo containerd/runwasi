@@ -1,4 +1,7 @@
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
@@ -6,25 +9,41 @@ use containerd_shim_wasm::container::{
 };
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
-use wasmtime::{Module, Store};
+use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview2::{self as wasi_preview2};
 use wasmtime_wasi::{self as wasi_preview1, Dir};
 
-pub type WasmtimeInstance = Instance<WasmtimeEngine>;
+pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
 
 #[derive(Clone)]
-pub struct WasmtimeEngine {
+pub struct WasmtimeEngine<T: WasiConfig> {
     engine: wasmtime::Engine,
+    config_type: PhantomData<T>,
 }
 
-impl Default for WasmtimeEngine {
-    fn default() -> Self {
+#[derive(Clone)]
+pub struct DefaultConfig {}
+
+impl WasiConfig for DefaultConfig {
+    fn new_config() -> Config {
         let mut config = wasmtime::Config::new();
         config.wasm_component_model(true); // enable component linking
+        config
+    }
+}
+
+pub trait WasiConfig: Clone + Sync + Send + 'static {
+    fn new_config() -> Config;
+}
+
+impl<T: WasiConfig> Default for WasmtimeEngine<T> {
+    fn default() -> Self {
+        let config = T::new_config();
         Self {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
                 .unwrap(),
+            config_type: PhantomData,
         }
     }
 }
@@ -55,7 +74,7 @@ impl wasmtime_wasi::preview2::WasiView for WasiCtx {
     }
 }
 
-impl Engine for WasmtimeEngine {
+impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     fn name() -> &'static str {
         "wasmtime"
     }
@@ -77,11 +96,7 @@ impl Engine for WasmtimeEngine {
         let store = Store::new(&self.engine, wasi_ctx);
 
         let wasm_bytes = &source.as_bytes()?;
-        let status = match WasmBinaryType::from_bytes(wasm_bytes) {
-            Some(WasmBinaryType::Module) => self.execute_module(wasm_bytes, store, &func)?,
-            Some(WasmBinaryType::Component) => self.execute_component(wasm_bytes, store, func)?,
-            None => bail!("not a valid wasm binary format"),
-        };
+        let status = self.execute(wasm_bytes, store, func)?;
 
         let status = status.map(|_| 0).or_else(|err| {
             match err.downcast_ref::<I32Exit>() {
@@ -96,21 +111,34 @@ impl Engine for WasmtimeEngine {
 
         Ok(status)
     }
+
+    fn precompile(&self, layers: &[Vec<u8>]) -> Result<Vec<u8>> {
+        match layers {
+            [layer] => self.engine.precompile_module(layer),
+            _ => bail!("only a single module is supported when precompiling"),
+        }
+    }
+
+    fn can_precompile(&self) -> Option<String> {
+        let mut hasher = DefaultHasher::new();
+        self.engine
+            .precompile_compatibility_hash()
+            .hash(&mut hasher);
+        Some(hasher.finish().to_string())
+    }
 }
 
-impl WasmtimeEngine {
+impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T> {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
     /// to execute a wasm module that uses wasi_preview1.
     fn execute_module(
         &self,
-        wasm_binary: &[u8],
+        module: Module,
         mut store: Store<WasiCtx>,
         func: &String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
-        log::debug!("loading wasm module");
-        let module = Module::from_binary(&self.engine, wasm_binary)?;
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
         wasi_preview1::add_to_linker(&mut module_linker, |s: &mut WasiCtx| &mut s.wasi_preview1)?;
@@ -134,12 +162,12 @@ impl WasmtimeEngine {
     /// to execute a wasm component that uses wasi_preview2.
     fn execute_component(
         &self,
-        wasm_binary: &[u8],
+        component: Component,
         mut store: Store<WasiCtx>,
         func: String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
-        let component = Component::from_binary(&self.engine, wasm_binary)?;
+
         let mut linker = wasmtime_component::Linker::new(&self.engine);
 
         wasi_preview2::command::sync::add_to_linker(&mut linker)?;
@@ -169,6 +197,40 @@ impl WasmtimeEngine {
             log::debug!("running exported function {func:?} {start_func:?}");
             let status = start_func.call(&mut store, &[], &mut []);
             Ok(status)
+        }
+    }
+
+    fn execute(
+        &self,
+        wasm_binary: &[u8],
+        store: Store<WasiCtx>,
+        func: String,
+    ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
+        match WasmBinaryType::from_bytes(wasm_binary) {
+            Some(WasmBinaryType::Module) => {
+                log::debug!("loading wasm module");
+                let module = Module::from_binary(&self.engine, wasm_binary)?;
+                self.execute_module(module, store, &func)
+            }
+            Some(WasmBinaryType::Component) => {
+                let component = Component::from_binary(&self.engine, wasm_binary)?;
+                self.execute_component(component, store, func)
+            }
+            None => match &self.engine.detect_precompiled(wasm_binary) {
+                Some(Precompiled::Module) => {
+                    log::info!("using precompiled module");
+                    let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
+                    self.execute_module(module, store, &func)
+                }
+                Some(Precompiled::Component) => {
+                    log::info!("using precompiled component");
+                    let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
+                    self.execute_component(component, store, func)
+                }
+                None => {
+                    bail!("invalid precompiled module")
+                }
+            },
         }
     }
 }

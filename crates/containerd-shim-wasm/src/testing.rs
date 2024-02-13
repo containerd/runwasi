@@ -1,22 +1,28 @@
 //! Testing utilities used across different modules
 
 use std::collections::HashMap;
-use std::fs::{create_dir, read_to_string, write, File};
+use std::fs::{self, create_dir, read_to_string, write, File};
 use std::marker::PhantomData;
 use std::ops::Add;
+use std::process::Command;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
+use oci_spec::image::{self as spec, Arch};
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
 
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
+
+const TEST_NAMESPACE: &str = "runwasi-test";
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
     WasiInstance::Engine: Default + Send + Sync + Clone,
 {
+    container_name: String,
     tempdir: tempfile::TempDir,
     _phantom: PhantomData<WasiInstance>,
 }
@@ -55,6 +61,7 @@ where
         write(dir.join("stderr"), "")?;
 
         let builder = Self {
+            container_name: "test".to_string(),
             tempdir,
             _phantom: Default::default(),
         }
@@ -114,6 +121,85 @@ where
         Ok(self)
     }
 
+    pub fn as_oci_image(
+        mut self,
+        image_name: Option<String>,
+        container_name: Option<String>,
+    ) -> Result<(Self, oci_helpers::OCICleanup)> {
+        let mut builder = Builder::default();
+
+        let dir = self.tempdir.path();
+        let wasm_path = dir.join("rootfs").join("hello.wasm");
+        builder.add_layer_with_media_type(&wasm_path, WASM_LAYER_MEDIA_TYPE.to_string());
+
+        let config = spec::ConfigBuilder::default()
+            .entrypoint(vec!["_start".to_string()])
+            .build()
+            .unwrap();
+
+        let img = spec::ImageConfigurationBuilder::default()
+            .config(config)
+            .os("wasip1")
+            .architecture(Arch::Wasm)
+            .rootfs(
+                spec::RootFsBuilder::default()
+                    .diff_ids(vec![])
+                    .build()
+                    .unwrap(),
+            )
+            .build()?;
+
+        let image_name = image_name.unwrap_or("localhost/hello:latest".to_string());
+        builder.add_config(img, image_name.clone());
+
+        let img = dir.join("img.tar");
+        let f = File::create(img.clone())?;
+        builder.build(f)?;
+
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("image")
+            .arg("import")
+            .arg("--all-platforms")
+            .arg(img)
+            .spawn()?
+            .wait()?
+            .success();
+
+        if !success {
+            // if the container still exists try cleaning it up
+            bail!(" failed to import image");
+        }
+
+        fs::remove_file(&wasm_path)?;
+
+        let container_name = container_name.unwrap_or("test".to_string());
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("c")
+            .arg("create")
+            .arg(&image_name)
+            .arg(&container_name)
+            .spawn()?
+            .wait()?
+            .success();
+
+        if !success {
+            bail!(" failed to create container for image");
+        }
+
+        self.container_name = container_name.clone();
+        Ok((
+            self,
+            oci_helpers::OCICleanup {
+                image_name,
+                container_name,
+            },
+        ))
+    }
+
     pub fn build(self) -> Result<WasiTest<WasiInstance>> {
         let tempdir = self.tempdir;
         let dir = tempdir.path();
@@ -122,7 +208,7 @@ where
 
         let mut cfg = InstanceConfig::new(
             WasiInstance::Engine::default(),
-            "test_namespace",
+            TEST_NAMESPACE,
             "/run/containerd/containerd.sock",
         );
         cfg.set_bundle(dir)
@@ -130,7 +216,7 @@ where
             .set_stderr(dir.join("stderr"))
             .set_stdin(dir.join("stdin"));
 
-        let instance = WasiInstance::new("test".to_string(), Some(&cfg))?;
+        let instance = WasiInstance::new(self.container_name, Some(&cfg))?;
         Ok(WasiTest { instance, tempdir })
     }
 }
@@ -179,5 +265,138 @@ where
         log::info!("wasi test status is {status}");
 
         Ok((status, stdout, stderr))
+    }
+}
+
+pub mod oci_helpers {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    use anyhow::{bail, Result};
+
+    use super::TEST_NAMESPACE;
+
+    pub struct OCICleanup {
+        pub image_name: String,
+        pub container_name: String,
+    }
+
+    impl Drop for OCICleanup {
+        fn drop(&mut self) {
+            log::debug!("dropping OCIGuard");
+            clean_container(self.container_name.clone()).unwrap();
+            clean_image(self.image_name.clone()).unwrap();
+        }
+    }
+
+    pub fn clean_container(container_name: String) -> Result<()> {
+        log::debug!("deleting container '{}'", container_name);
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("c")
+            .arg("rm")
+            .arg(container_name)
+            .spawn()?
+            .wait()?
+            .success();
+
+        if !success {
+            bail!("failed to clean container")
+        }
+
+        Ok(())
+    }
+
+    pub fn clean_image(image_name: String) -> Result<()> {
+        log::debug!("deleting image '{}'", image_name);
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("rm")
+            .arg(image_name)
+            .spawn()?
+            .wait()?
+            .success();
+
+        if !success {
+            bail!("failed to clean image");
+        }
+
+        // the content isn't removed immediately, so we need to wait for it to be removed
+        // otherwise the next test will not behave as expected
+        let start = Instant::now();
+        let timeout = Duration::from_secs(300);
+        loop {
+            let output = Command::new("ctr")
+                .arg("-n")
+                .arg(TEST_NAMESPACE)
+                .arg("content")
+                .arg("ls")
+                .arg("-q")
+                .output()?;
+
+            if output.stdout.is_empty() {
+                break;
+            }
+
+            if start.elapsed() > timeout {
+                bail!("timed out waiting for content to be removed");
+            }
+
+            log::trace!("waiting for content to be removed");
+        }
+
+        Ok(())
+    }
+
+    pub fn get_image_label() -> Result<(String, String)> {
+        let mut grep = Command::new("grep")
+            .arg("-ohE")
+            .arg("runwasi.io/precompiled/.*")
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()?;
+
+        Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("ls")
+            .stdout(grep.stdin.take().unwrap())
+            .spawn()?;
+
+        let output = grep.wait_with_output()?;
+
+        let stdout = String::from_utf8(output.stdout)?;
+
+        log::info!("stdout: {}", stdout);
+
+        let label: Vec<&str> = stdout.split('=').collect();
+
+        Ok((
+            label.first().unwrap().trim().to_string(),
+            label.last().unwrap().trim().to_string(),
+        ))
+    }
+
+    pub fn remove_content(digest: String) -> Result<()> {
+        log::debug!("cleaning content '{}'", digest);
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("content")
+            .arg("rm")
+            .arg(digest)
+            .spawn()?
+            .wait()?
+            .success();
+
+        if !success {
+            bail!("failed to remove content");
+        }
+
+        Ok(())
     }
 }

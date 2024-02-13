@@ -5,10 +5,7 @@ use std::{env, fs};
 use anyhow::Context;
 use clap::Parser;
 use oci_spec::image::{self as spec, Arch};
-use oci_tar_builder::Builder;
-
-pub const WASM_LAYER_MEDIA_TYPE: &str =
-    "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
+use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
 
 pub fn main() {
     let args = Args::parse();

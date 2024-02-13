@@ -238,6 +238,13 @@ test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.t
 	# verify that we are still running after some time
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
+	@if [ "$*" = "wasmtime" ]; then \
+		set -e; \
+		echo "checking for pre-compiled label and ensuring can scale"; \
+		docker exec $(KIND_CLUSTER_NAME)-control-plane ctr -n k8s.io i ls | grep "runwasi.io/precompiled"; \
+		kubectl --context=kind-$(KIND_CLUSTER_NAME) scale deployment wasi-demo --replicas=4; \
+		kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s; \
+	fi
 
 .PHONY: test/k8s-%
 test/k8s-%: test/k8s/deploy-workload-%
@@ -289,6 +296,13 @@ test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	sudo bin/k3s kubectl get pods -o wide
+	@if [ "$*" = "wasmtime" ]; then \
+		set -e; \
+		echo "checking for pre-compiled label and ensuring can scale"; \
+		sudo bin/k3s ctr -n k8s.io i ls | grep "runwasi.io/precompiled"; \
+		sudo bin/k3s kubectl scale deployment wasi-demo --replicas=4; \
+		sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s; \
+	fi
 	sudo bin/k3s kubectl delete -f test/k8s/deploy.oci.yaml
 	sudo bin/k3s kubectl wait deployment wasi-demo --for delete --timeout=60s
 
@@ -299,6 +313,7 @@ test/k3s/clean: bin/k3s/clean;
 clean:
 	-rm -rf dist
 	-rm -rf bin
+	-rm -rf test/k8s/_out
 	-$(MAKE) test-image/clean
 	-$(MAKE) test/k8s/clean
 	-$(MAKE) test/k3s/clean
