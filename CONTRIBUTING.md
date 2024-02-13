@@ -127,14 +127,6 @@ You can auto-fix most styles using
 make fix
 ```
 
-## Updating protobuf files
-
-Ensure protoc and dev tools have been installed.  Run `make build` or to just generate the protos:
-
-```
-cargo build -p containerd-shim-wasm --no-default-features --features generate_bindings
-```
-
 ## Adding new features
 
 Most features will likely have most of the code in the `containerd-shim-wasm` project and a few runtime specific addtions to each runtime shim.  The general expectation is that the feature should be added to all runtimes. We will evaluate on a case by case basis exceptions, where runtimes may not be able to support a given feature or requires changes that make it hard to review.  In those cases we it may make sense to implement in follow up PR's for other runtimes.

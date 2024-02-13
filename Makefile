@@ -69,7 +69,6 @@ build: build-wasm $(RUNTIMES:%=build-%);
 
 build-common: build-wasm;
 build-wasm:
-	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm --no-default-features --features generate_bindings $(RELEASE_FLAG)
 	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
 
 build-%:

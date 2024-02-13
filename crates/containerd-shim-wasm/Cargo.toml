@@ -49,7 +49,7 @@ containerd-client = "0.4.0"
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
 [build-dependencies]
-ttrpc-codegen = { version = "0.4.2", optional = true }
+ttrpc-codegen = { version = "0.4.2" }
 
 [dev-dependencies]
 containerd-shim-wasm-test-modules = { workspace = true }
@@ -59,4 +59,3 @@ oci-tar-builder = { workspace = true}
 
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
-generate_bindings = ["ttrpc-codegen"]
