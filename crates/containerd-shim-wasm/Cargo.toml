@@ -55,4 +55,3 @@ tempfile = { workspace = true }
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile"]
 generate_bindings = ["ttrpc-codegen"]
-generate_doc = []

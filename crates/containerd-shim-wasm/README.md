@@ -1,4 +1,4 @@
-![runwasi logo](../../art/logo/runwasi_logo_icon.svg)
+![runwasi logo](https://raw.githubusercontent.com/containerd/runwasi/e251de3307bbdc8bf3229020ea2ae2711f31aafa/art/logo/runwasi_logo_icon.svg)
 
 # containerd-shim-wasm
 
