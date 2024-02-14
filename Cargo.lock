@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "caps",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm-test-modules"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -662,7 +662,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmedge"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
@@ -677,7 +677,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmer"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
@@ -694,7 +694,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmtime"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
@@ -2484,7 +2484,7 @@ dependencies = [
 
 [[package]]
 name = "oci-tar-builder"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4605,7 +4605,7 @@ dependencies = [
 
 [[package]]
 name = "wasi-demo-app"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "env_logger",
