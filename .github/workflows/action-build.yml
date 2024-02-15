@@ -37,9 +37,6 @@ jobs:
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Build
         run: make build-${{ inputs.runtime }}
-      - name: Validate docs
-        if: ${{ inputs.runtime == 'common' }}
-        run: ./scripts/validate-docs.sh
       - name: Run tests
         timeout-minutes: 5
         run: |

@@ -5,18 +5,7 @@ use std::fs;
 use ttrpc_codegen::{Codegen, ProtobufCustomize};
 
 #[cfg(not(feature = "generate_bindings"))]
-#[cfg(not(feature = "generate_doc"))]
 fn main() {}
-
-#[cfg(feature = "generate_doc")]
-fn main() {
-    use std::io::Write;
-    println!("cargo:rerun-if-changed=doc");
-    println!("cargo:rerun-if-missing=README.md");
-    let mut f = std::fs::File::create("README.md").unwrap();
-    f.write_all(include_bytes!("doc/header.md")).unwrap();
-    f.write_all(include_bytes!("doc/doc.md")).unwrap();
-}
 
 #[cfg(feature = "generate_bindings")]
 fn main() {

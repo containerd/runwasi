@@ -60,4 +60,3 @@ oci-tar-builder = { workspace = true}
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
 generate_bindings = ["ttrpc-codegen"]
-generate_doc = []
