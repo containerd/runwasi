@@ -5,6 +5,7 @@ use anyhow::{bail, Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
+use crate::sandbox::oci::WasmLayer;
 use crate::sandbox::Stdio;
 
 pub trait Engine: Clone + Send + Sync + 'static {
@@ -57,8 +58,8 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// This is used to precompile a module before it is run and will be called if can_precompile returns true.
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
     /// The cached, precompiled module will be reloaded on subsequent runs.
-    fn precompile(&self, _layers: &[Vec<u8>]) -> Result<Vec<u8>> {
-        bail!("precompilation not supported for this runtime")
+    fn precompile(&self, _layer: &WasmLayer) -> Option<Result<Vec<u8>>> {
+        None
     }
 
     /// Can_precompile lets the shim know if the runtime supports precompilation.

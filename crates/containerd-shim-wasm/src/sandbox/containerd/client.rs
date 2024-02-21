@@ -409,34 +409,26 @@ impl Client {
             None => (false, "".to_string()),
         };
 
-        match image.labels.get(&precompile_id) {
-            Some(precompile_digest) if can_precompile => {
-                log::info!("found precompiled label: {} ", &precompile_id);
-                match self.read_content(precompile_digest) {
-                    Ok(precompiled) => {
-                        log::info!("found precompiled module in cache: {} ", &precompile_digest);
-                        return Ok((
-                            vec![WasmLayer {
-                                config: image_config_descriptor.clone(),
-                                layer: precompiled,
-                            }],
-                            platform,
-                        ));
-                    }
-                    Err(e) => {
-                        // log and continue
-                        log::warn!("failed to read precompiled module from cache: {}. Content may have been removed manually, will attempt to recompile", e);
-                    }
-                }
-            }
-            _ => {}
-        }
-
+        let needs_precompile = can_precompile && !image.labels.contains_key(&precompile_id);
         let layers = manifest
             .layers()
             .iter()
             .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
-            .map(|config| self.read_content(config.digest()))
+            .map(|config| {
+                
+                let mut digest = config.digest().clone();
+                if can_precompile {
+                    let info = self.get_info(config.digest().clone())?;
+                    if info.labels.contains_key(&precompile_id) {
+                        log::info!("found precompiled layer in cache: {} ", &precompile_id);
+                        digest = info.labels.get(&precompile_id).unwrap().clone();
+                    }
+                }
+                self.read_content(digest).map(|module| WasmLayer {
+                    config: config.clone(),
+                    layer: module,
+                })
+            })
             .collect::<Result<Vec<_>>>()?;
 
         if layers.is_empty() {
@@ -444,47 +436,53 @@ impl Client {
             return Ok((vec![], platform));
         }
 
-        if can_precompile {
-            log::info!("precompiling module");
-            let precompiled = engine.precompile(layers.as_slice())?;
-            log::info!("precompiling module: {}", image_digest.clone());
-            let precompiled_content =
-                self.save_content(precompiled.clone(), image_digest.clone(), &precompile_id)?;
+        if needs_precompile {
+            log::info!("precompiling layers for image: {}", image.name);
+            
+            let mut precompiled_layers = Vec::new();
+            for (i, layer) in layers.iter().enumerate() {
+                let precompiled_layer = match engine.precompile(layer) {
+                    Some(it) => {
+                        let precompiled_layer = it?;
+                        precompiled_layers.push(WasmLayer {
+                            config: layer.config.clone(),
+                            layer: precompiled_layer.clone(),
+                        });
+                        precompiled_layer
+                    },
+                    None =>{
+                        // skip layers that don't support precompilation, and add them to the list of precompiled layers
+                         precompiled_layers.push(layer.clone()); 
+                         continue
+                        } 
+                };
 
-            log::debug!("updating image with compiled content digest");
-            image
-                .labels
-                .insert(precompile_id, precompiled_content.digest.clone());
-            self.update_image(image)?;
+                let precompiled_content = self.save_content(precompiled_layer, image_digest.clone(), &precompile_id)?;
 
-            // The original image is considered a root object, by adding a ref to the new compiled content
-            // We tell containerd to not garbage collect the new content until this image is removed from the system
-            // this ensures that we keep the content around after the lease is dropped
-            log::debug!("updating content with precompile digest to avoid garbage collection");
-            let mut image_content = self.get_info(image_digest.clone())?;
-            image_content.labels.insert(
-                "containerd.io/gc.ref.content.precompile".to_string(),
-                precompiled_content.digest.clone(),
-            );
-            self.update_info(image_content)?;
+                log::debug!("updating image with indicator that precompiled content is available");
+                image.labels
+                    .insert(precompile_id.clone(), "true".to_string());
+                self.update_image(image.clone())?;
+
+                // The original image is considered a root object, by adding a ref to the new compiled content
+                // We tell containerd to not garbage collect the new content until this image is removed from the system
+                // this ensures that we keep the content around after the lease is dropped
+                log::debug!("updating content with precompile digest to avoid garbage collection");
+                let mut image_content = self.get_info(image_digest.clone())?;
+                image_content.labels.insert(
+                    format!("containerd.io/gc.ref.content.precompile.{}",i),
+                    precompiled_content.digest.clone(),
+                );
+                self.update_info(image_content)?;
+            }
 
             return Ok((
-                vec![WasmLayer {
-                    config: image_config_descriptor.clone(),
-                    layer: precompiled,
-                }],
+                precompiled_layers,
                 platform,
             ));
         }
 
         log::info!("using module from OCI layers");
-        let layers = layers
-            .into_iter()
-            .map(|module| WasmLayer {
-                config: image_config_descriptor.clone(),
-                layer: module,
-            })
-            .collect::<Vec<_>>();
         Ok((layers, platform))
     }
 }

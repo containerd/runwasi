@@ -84,6 +84,8 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
         id
     );
 
+    std::thread::sleep(std::time::Duration::from_secs(30));
+
     // run second time, it should succeed without recompiling
     let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?

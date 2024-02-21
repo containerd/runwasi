@@ -7,6 +7,7 @@ use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
+use containerd_shim_wasm::sandbox::WasmLayer;
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
@@ -112,11 +113,8 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         Ok(status)
     }
 
-    fn precompile(&self, layers: &[Vec<u8>]) -> Result<Vec<u8>> {
-        match layers {
-            [layer] => self.engine.precompile_module(layer),
-            _ => bail!("only a single module is supported when precompiling"),
-        }
+    fn precompile(&self, layer: &WasmLayer) -> Option<Result<Vec<u8>>> {
+         Some(self.engine.precompile_module(&layer.layer))
     }
 
     fn can_precompile(&self) -> Option<String> {
