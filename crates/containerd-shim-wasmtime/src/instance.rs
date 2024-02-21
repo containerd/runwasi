@@ -114,7 +114,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     }
 
     fn precompile(&self, layer: &WasmLayer) -> Option<Result<Vec<u8>>> {
-         Some(self.engine.precompile_module(&layer.layer))
+        Some(self.engine.precompile_module(&layer.layer))
     }
 
     fn can_precompile(&self) -> Option<String> {

@@ -79,12 +79,16 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     let (label, id) = oci_helpers::get_image_label()?;
     assert!(
         label.starts_with("runwasi.io/precompiled/wasmtime/"),
-        "was {}={}",
-        label,
-        id
+        "was {}",
+        label
     );
-
-    std::thread::sleep(std::time::Duration::from_secs(30));
+    assert_eq!(id, "true");
+    let (label, _id) = oci_helpers::get_content_label()?;
+    assert!(
+        label.starts_with("runwasi.io/precompiled/wasmtime/"),
+        "was {}",
+        label
+    );
 
     // run second time, it should succeed without recompiling
     let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
@@ -112,9 +116,16 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
     assert_eq!(stdout, "hello world\n");
 
     let (label, id) = oci_helpers::get_image_label()?;
+    assert!(label.starts_with("runwasi.io/precompiled/wasmtime/"));
+    assert_eq!(id, "true");
 
     // remove the compiled content from the cache
-    assert!(label.starts_with("runwasi.io/precompiled/wasmtime/"));
+    let (label, id) = oci_helpers::get_content_label()?;
+    assert!(
+        label.starts_with("runwasi.io/precompiled/wasmtime/"),
+        "was {}",
+        label
+    );
     oci_helpers::remove_content(id)?;
 
     // run second time, it should succeed

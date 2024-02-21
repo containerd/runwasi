@@ -381,6 +381,36 @@ pub mod oci_helpers {
         ))
     }
 
+    pub fn get_content_label() -> Result<(String, String)> {
+        let mut grep = Command::new("grep")
+            .arg("-ohE")
+            .arg("runwasi.io/precompiled/[[:alpha:]]*/[0-9]+=.*")
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()?;
+
+        Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("content")
+            .arg("ls")
+            .stdout(grep.stdin.take().unwrap())
+            .spawn()?;
+
+        let output = grep.wait_with_output()?;
+
+        let stdout = String::from_utf8(output.stdout)?;
+
+        log::info!("stdout: {}", stdout);
+
+        let label: Vec<&str> = stdout.split('=').collect();
+
+        Ok((
+            label.first().unwrap().trim().to_string(),
+            label.last().unwrap().trim().to_string(),
+        ))
+    }
+
     pub fn remove_content(digest: String) -> Result<()> {
         log::debug!("cleaning content '{}'", digest);
         let success = Command::new("ctr")

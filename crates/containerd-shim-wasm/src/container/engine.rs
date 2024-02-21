@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
