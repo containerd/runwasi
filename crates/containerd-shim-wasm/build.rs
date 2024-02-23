@@ -1,36 +1,35 @@
-#[cfg(feature = "generate_bindings")]
-use std::fs;
+use std::env::var_os;
+use std::path::Path;
 
-#[cfg(feature = "generate_bindings")]
 use ttrpc_codegen::{Codegen, ProtobufCustomize};
 
-#[cfg(not(feature = "generate_bindings"))]
-fn main() {}
-
-#[cfg(feature = "generate_bindings")]
 fn main() {
-    println!("cargo:rerun-if-changed=protos");
-    fs::metadata("src/services/sandbox.rs").unwrap_or_else(|_| {
-        fs::create_dir_all("src/services").unwrap();
-        // always rerun if the directory doesn't exist
-        println!("cargo:rerun-if-changed=src/services");
-        fs::metadata("src/services").unwrap()
-    });
-    fs::metadata("src/services/sandbox_ttrpc.rs").unwrap_or_else(|_| {
-        fs::create_dir_all("src/services").unwrap();
-        // always rerun if the directory doesn't exist
-        println!("cargo:rerun-if-changed=src/services/sandbox_ttrpc.rs");
-        fs::metadata("src/services").unwrap()
-    });
+    let protos = ["protos/sandbox.proto"];
+    println!("cargo:rerun-if-changed=protos/sandbox.proto");
 
-    let protos = vec!["protos/sandbox.proto"];
+    let out_dir = var_os("OUT_DIR").unwrap();
+    let out_dir = Path::new(&out_dir);
 
     Codegen::new()
-        .out_dir("src/services")
-        .inputs(&protos)
+        .out_dir(out_dir)
+        .inputs(protos)
         .include("protos")
         .rust_protobuf()
         .rust_protobuf_customize(ProtobufCustomize::default().gen_mod_rs(false))
         .run()
         .expect("failed to generate code");
+
+    let sanbox_rs = out_dir.join("sandbox.rs");
+    let sanbox_ttrpc_rs = out_dir.join("sandbox_ttrpc.rs");
+
+    std::fs::write(
+        out_dir.join("mod.rs"),
+        format!(
+            r#"
+#[path = {sanbox_rs:?}] pub mod sandbox;
+#[path = {sanbox_ttrpc_rs:?}] pub mod sandbox_ttrpc;
+"#,
+        ),
+    )
+    .expect("failed to generate module");
 }
