@@ -8,6 +8,7 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
+use sha256::digest;
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
@@ -113,8 +114,23 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         Ok(status)
     }
 
-    fn precompile(&self, layer: &WasmLayer) -> Option<Result<Vec<u8>>> {
-        Some(self.engine.precompile_module(&layer.layer))
+    fn precompile(&self, layers: &[WasmLayer]) -> Option<Result<Vec<WasmLayer>>> {
+        let mut v = Vec::<WasmLayer>::with_capacity(layers.len());
+
+        for layer in layers {
+            let compiled_layer = match self.engine.precompile_module(&layer.layer) {
+                Ok(compiled_layer) => compiled_layer,
+                Err(err) => return Some(Err(err)),
+            };
+            let mut config = layer.config.clone();
+            config.set_digest(digest(&compiled_layer));
+            v.push(WasmLayer {
+                layer: compiled_layer,
+                config,
+            });
+        }
+
+        Some(Ok(v))
     }
 
     fn can_precompile(&self) -> Option<String> {

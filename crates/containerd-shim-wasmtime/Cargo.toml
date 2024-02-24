@@ -10,6 +10,7 @@ containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
+sha256 = { workspace = true }
 
 # We are not including the `async` feature here:
 # 1. Because we don't even use it

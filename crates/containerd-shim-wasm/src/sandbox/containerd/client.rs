@@ -415,26 +415,26 @@ impl Client {
             .iter()
             .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
             .map(|original_config| {
-                let mut digest = original_config.digest().clone();
+                let mut digest_to_load = original_config.digest().clone();
                 if can_precompile {
-                    let info = self.get_info(digest.clone())?;
+                    let info = self.get_info(digest_to_load.clone())?;
                     if info.labels.contains_key(&precompile_id) {
-                        digest = info.labels.get(&precompile_id).unwrap().clone();
+                        digest_to_load = info.labels.get(&precompile_id).unwrap().clone();
                         log::info!(
                             "layer {} has pre-compiled content: {} ",
                             info.digest,
-                            &digest
+                            &digest_to_load
                         );
                     }
                 }
-                log::debug!("loading digest: {} ", &digest);
-                self.read_content(digest.clone())
+                log::debug!("loading digest: {} ", &digest_to_load);
+                self.read_content(digest_to_load.clone())
                     .map(|module| WasmLayer {
                         config: original_config.clone(),
                         layer: module,
                     })
                     .or_else(|e| {
-                        if digest != *original_config.digest() {
+                        if digest_to_load != *original_config.digest() {
                             log::error!("failed to load precompiled layer: {}", e);
                             log::error!("falling back to original layer and marking for recompile");
                             needs_precompile = true;
@@ -453,62 +453,55 @@ impl Client {
         if needs_precompile {
             log::info!("precompiling layers for image: {}", image.name);
 
-            let mut precompiled_layers = Vec::new();
-            for (i, layer) in layers.iter().enumerate() {
-                let precompiled_layer = match engine.precompile(layer) {
-                    Some(it) => {
-                        let precompiled_layer = it?;
-                        precompiled_layers.push(WasmLayer {
-                            config: layer.config.clone(),
-                            layer: precompiled_layer.clone(),
-                        });
-                        precompiled_layer
+            match engine.precompile(&layers) {
+                Some(compiled_layer_result) => {
+                    let compiled_layers = compiled_layer_result?;
+
+                    for (i, precompiled_layer) in compiled_layers.iter().enumerate() {
+                        let layer = &layers[i];
+
+                        let precompiled_content = self.save_content(
+                            precompiled_layer.layer.clone(),
+                            layer.config.digest().clone(),
+                            &precompile_id,
+                        )?;
+
+                        log::debug!("updating image with indicator that precompiled content is available using pre-compile id {}", &precompile_id);
+                        image
+                            .labels
+                            .insert(precompile_id.clone(), "true".to_string());
+                        self.update_image(image.clone())?;
+
+                        log::debug!(
+                            "updating original layer {} with compiled layer {}",
+                            layer.config.digest().clone(),
+                            precompiled_content.digest.clone()
+                        );
+                        let mut original_layer = self.get_info(layer.config.digest().clone())?;
+                        original_layer
+                            .labels
+                            .insert(precompile_id.clone(), precompiled_content.digest.clone());
+                        self.update_info(original_layer)?;
+
+                        // The original image is considered a root object, by adding a ref to the new compiled content
+                        // We tell containerd to not garbage collect the new content until this image is removed from the system
+                        // this ensures that we keep the content around after the lease is dropped
+                        log::debug!(
+                            "updating image content with precompile digest to avoid garbage collection"
+                        );
+                        let mut image_content = self.get_info(image_digest.clone())?;
+                        image_content.labels.insert(
+                            format!("containerd.io/gc.ref.content.precompile.{}", i),
+                            precompiled_content.digest.clone(),
+                        );
+                        self.update_info(image_content)?;
                     }
-                    None => {
-                        // skip layers that don't support precompilation, and add them to the list of precompiled layers
-                        precompiled_layers.push(layer.clone());
-                        continue;
-                    }
-                };
-
-                let precompiled_content = self.save_content(
-                    precompiled_layer,
-                    layer.config.digest().clone(),
-                    &precompile_id,
-                )?;
-
-                log::debug!("updating image with indicator that precompiled content is available using pre-compile id {}", &precompile_id);
-                image
-                    .labels
-                    .insert(precompile_id.clone(), "true".to_string());
-                self.update_image(image.clone())?;
-
-                log::debug!(
-                    "updating original layer {} with compiled layer {}",
-                    layer.config.digest().clone(),
-                    precompiled_content.digest.clone()
-                );
-                let mut original_layer = self.get_info(layer.config.digest().clone())?;
-                original_layer
-                    .labels
-                    .insert(precompile_id.clone(), precompiled_content.digest.clone());
-                self.update_info(original_layer)?;
-
-                // The original image is considered a root object, by adding a ref to the new compiled content
-                // We tell containerd to not garbage collect the new content until this image is removed from the system
-                // this ensures that we keep the content around after the lease is dropped
-                log::debug!(
-                    "updating image content with precompile digest to avoid garbage collection"
-                );
-                let mut image_content = self.get_info(image_digest.clone())?;
-                image_content.labels.insert(
-                    format!("containerd.io/gc.ref.content.precompile.{}", i),
-                    precompiled_content.digest.clone(),
-                );
-                self.update_info(image_content)?;
-            }
-
-            return Ok((precompiled_layers, platform));
+                    return Ok((compiled_layers, platform));
+                }
+                None => {
+                    log::error!("Nothing to use precompiled layers");
+                }
+            };
         }
 
         if layers.is_empty() {
@@ -526,7 +519,13 @@ fn precompile_label(name: &str, version: &str) -> String {
 }
 
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
-    supported_layer_types.contains(&media_type.to_string().as_str())
+    let supported = supported_layer_types.contains(&media_type.to_string().as_str());
+    log::debug!(
+        "layer type {} is supported: {}",
+        media_type.to_string().as_str(),
+        supported
+    );
+    supported
 }
 
 #[cfg(test)]

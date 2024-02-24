@@ -58,7 +58,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// This is used to precompile a module before it is run and will be called if can_precompile returns true.
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
     /// The cached, precompiled module will be reloaded on subsequent runs.
-    fn precompile(&self, _layer: &WasmLayer) -> Option<Result<Vec<u8>>> {
+    fn precompile(&self, _layers: &[WasmLayer]) -> Option<Result<Vec<WasmLayer>>> {
         None
     }
 

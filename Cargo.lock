@@ -702,6 +702,7 @@ dependencies = [
  "log",
  "oci-spec",
  "serial_test",
+ "sha256",
  "ttrpc",
  "wasi-common",
  "wasmtime",

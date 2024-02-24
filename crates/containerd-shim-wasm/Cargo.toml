@@ -35,7 +35,7 @@ futures = { version = "0.3.30" }
 wasmparser = "0.200.0"
 tokio-stream = { version = "0.1" }
 prost-types = "0.11" # should match version in containerd-shim
-sha256 = "1.4.0"
+sha256 = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
