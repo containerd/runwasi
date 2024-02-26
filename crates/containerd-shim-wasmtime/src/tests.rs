@@ -76,13 +76,6 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
 
-    let (label, id) = oci_helpers::get_image_label()?;
-    assert!(
-        label.starts_with("runwasi.io/precompiled/wasmtime/"),
-        "was {}",
-        label
-    );
-    assert_eq!(id, "true");
     let (label, _id) = oci_helpers::get_content_label()?;
     assert!(
         label.starts_with("runwasi.io/precompiled/wasmtime/"),
@@ -114,10 +107,6 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
-
-    let (label, id) = oci_helpers::get_image_label()?;
-    assert!(label.starts_with("runwasi.io/precompiled/wasmtime/"));
-    assert_eq!(id, "true");
 
     // remove the compiled content from the cache
     let (label, id) = oci_helpers::get_content_label()?;

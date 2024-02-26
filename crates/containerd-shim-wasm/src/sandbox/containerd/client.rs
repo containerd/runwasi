@@ -10,8 +10,7 @@ use containerd_client::services::v1::images_client::ImagesClient;
 use containerd_client::services::v1::leases_client::LeasesClient;
 use containerd_client::services::v1::{
     Container, DeleteContentRequest, GetContainerRequest, GetImageRequest, Image, Info,
-    InfoRequest, ReadContentRequest, UpdateImageRequest, UpdateRequest, WriteAction,
-    WriteContentRequest,
+    InfoRequest, ReadContentRequest, UpdateRequest, WriteAction, WriteContentRequest,
 };
 use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
@@ -316,29 +315,6 @@ impl Client {
         })
     }
 
-    fn update_image(&self, image: Image) -> Result<Image> {
-        self.rt.block_on(async {
-            let req = UpdateImageRequest {
-                image: Some(image.clone()),
-                update_mask: Some(FieldMask {
-                    paths: vec!["labels".to_string()],
-                }),
-            };
-
-            let req = with_namespace!(req, self.namespace);
-            let image = ImagesClient::new(self.inner.clone())
-                .update(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .image
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!("failed to update image {}", image.name))
-                })?;
-            Ok(image)
-        })
-    }
-
     fn extract_image_content_sha(&self, image: &Image) -> Result<String> {
         let digest = image
             .target
@@ -384,7 +360,7 @@ impl Client {
         engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id.to_string())?;
-        let mut image = self.get_image(container.image)?;
+        let image = self.get_image(container.image)?;
         let image_digest = self.extract_image_content_sha(&image)?;
         let manifest = self.read_content(image_digest.clone())?;
         let manifest = manifest.as_slice();
@@ -409,7 +385,9 @@ impl Client {
             None => (false, "".to_string()),
         };
 
-        let mut needs_precompile = can_precompile && !image.labels.contains_key(&precompile_id);
+        let image_info = self.get_info(image_digest.clone())?;
+        let mut needs_precompile =
+            can_precompile && !image_info.labels.contains_key(&precompile_id);
         let layers = manifest
             .layers()
             .iter()
@@ -466,12 +444,6 @@ impl Client {
                             &precompile_id,
                         )?;
 
-                        log::debug!("updating image with indicator that precompiled content is available using pre-compile id {}", &precompile_id);
-                        image
-                            .labels
-                            .insert(precompile_id.clone(), "true".to_string());
-                        self.update_image(image.clone())?;
-
                         log::debug!(
                             "updating original layer {} with compiled layer {}",
                             layer.config.digest().clone(),
@@ -494,6 +466,9 @@ impl Client {
                             format!("containerd.io/gc.ref.content.precompile.{}", i),
                             precompiled_content.digest.clone(),
                         );
+                        image_content
+                            .labels
+                            .insert(precompile_id.clone(), "true".to_string());
                         self.update_info(image_content)?;
                     }
                     return Ok((compiled_layers, platform));
