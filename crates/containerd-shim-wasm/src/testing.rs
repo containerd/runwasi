@@ -127,52 +127,54 @@ where
         container_name: Option<String>,
     ) -> Result<(Self, oci_helpers::OCICleanup)> {
         let mut builder = Builder::default();
-
-        let dir = self.tempdir.path();
-        let wasm_path = dir.join("rootfs").join("hello.wasm");
-        builder.add_layer_with_media_type(&wasm_path, WASM_LAYER_MEDIA_TYPE.to_string());
-
-        let config = spec::ConfigBuilder::default()
-            .entrypoint(vec!["_start".to_string()])
-            .build()
-            .unwrap();
-
-        let img = spec::ImageConfigurationBuilder::default()
-            .config(config)
-            .os("wasip1")
-            .architecture(Arch::Wasm)
-            .rootfs(
-                spec::RootFsBuilder::default()
-                    .diff_ids(vec![])
-                    .build()
-                    .unwrap(),
-            )
-            .build()?;
-
         let image_name = image_name.unwrap_or("localhost/hello:latest".to_string());
-        builder.add_config(img, image_name.clone());
 
-        let img = dir.join("img.tar");
-        let f = File::create(img.clone())?;
-        builder.build(f)?;
+        if !oci_helpers::image_exists(&image_name) {
+            let dir = self.tempdir.path();
+            let wasm_path = dir.join("rootfs").join("hello.wasm");
+            builder.add_layer_with_media_type(&wasm_path, WASM_LAYER_MEDIA_TYPE.to_string());
 
-        let success = Command::new("ctr")
-            .arg("-n")
-            .arg(TEST_NAMESPACE)
-            .arg("image")
-            .arg("import")
-            .arg("--all-platforms")
-            .arg(img)
-            .spawn()?
-            .wait()?
-            .success();
+            let config = spec::ConfigBuilder::default()
+                .entrypoint(vec!["_start".to_string()])
+                .build()
+                .unwrap();
 
-        if !success {
-            // if the container still exists try cleaning it up
-            bail!(" failed to import image");
+            let img = spec::ImageConfigurationBuilder::default()
+                .config(config)
+                .os("wasip1")
+                .architecture(Arch::Wasm)
+                .rootfs(
+                    spec::RootFsBuilder::default()
+                        .diff_ids(vec![])
+                        .build()
+                        .unwrap(),
+                )
+                .build()?;
+
+            builder.add_config(img, image_name.clone());
+
+            let img = dir.join("img.tar");
+            let f = File::create(img.clone())?;
+            builder.build(f)?;
+
+            let success = Command::new("ctr")
+                .arg("-n")
+                .arg(TEST_NAMESPACE)
+                .arg("image")
+                .arg("import")
+                .arg("--all-platforms")
+                .arg(img)
+                .spawn()?
+                .wait()?
+                .success();
+
+            if !success {
+                // if the container still exists try cleaning it up
+                bail!(" failed to import image");
+            }
+
+            fs::remove_file(&wasm_path)?;
         }
-
-        fs::remove_file(&wasm_path)?;
 
         let container_name = container_name.unwrap_or("test".to_string());
         let success = Command::new("ctr")
@@ -328,6 +330,7 @@ pub mod oci_helpers {
         // otherwise the next test will not behave as expected
         let start = Instant::now();
         let timeout = Duration::from_secs(300);
+        log::trace!("waiting for content to be removed");
         loop {
             let output = Command::new("ctr")
                 .arg("-n")
@@ -344,8 +347,6 @@ pub mod oci_helpers {
             if start.elapsed() > timeout {
                 bail!("timed out waiting for content to be removed");
             }
-
-            log::trace!("waiting for content to be removed");
         }
 
         Ok(())
@@ -371,7 +372,7 @@ pub mod oci_helpers {
 
         let stdout = String::from_utf8(output.stdout)?;
 
-        log::info!("stdout: {}", stdout);
+        log::debug!("stdout: {}", stdout);
 
         let label: Vec<&str> = stdout.split('=').collect();
 
@@ -379,6 +380,20 @@ pub mod oci_helpers {
             label.first().unwrap().trim().to_string(),
             label.last().unwrap().trim().to_string(),
         ))
+    }
+
+    pub fn image_exists(image_name: &str) -> bool {
+        let output = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("ls")
+            .arg("--quiet")
+            .output()
+            .expect("failed to get output of image list");
+
+        let stdout = String::from_utf8(output.stdout).expect("failed to parse stdout");
+        stdout.contains(image_name)
     }
 
     pub fn get_content_label() -> Result<(String, String)> {
@@ -401,7 +416,7 @@ pub mod oci_helpers {
 
         let stdout = String::from_utf8(output.stdout)?;
 
-        log::info!("stdout: {}", stdout);
+        log::debug!("stdout: {}", stdout);
 
         let label: Vec<&str> = stdout.split('=').collect();
 
