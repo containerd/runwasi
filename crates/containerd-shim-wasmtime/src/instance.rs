@@ -118,6 +118,12 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         let mut v = Vec::<WasmLayer>::with_capacity(layers.len());
 
         for layer in layers {
+            if self.engine.detect_precompiled(&layer.layer).is_some() {
+                log::info!("Already precompiled");
+                v.push(layer.clone());
+                continue;
+            }
+
             let compiled_layer = match self.engine.precompile_module(&layer.layer) {
                 Ok(compiled_layer) => compiled_layer,
                 Err(err) => return Some(Err(err)),

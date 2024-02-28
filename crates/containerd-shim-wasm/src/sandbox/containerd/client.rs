@@ -137,7 +137,7 @@ impl Client {
     fn save_content(
         &self,
         data: Vec<u8>,
-        original_digest: String,
+        original_digest: &str,
         label: &str,
     ) -> Result<WriteContent> {
         let expected = format!("sha256:{}", digest(data.clone()));
@@ -196,7 +196,7 @@ impl Client {
 
             // Write and commit at same time
             let mut labels = HashMap::new();
-            labels.insert(format!("{}/original", label), original_digest.clone());
+            labels.insert(format!("{}/original", label), original_digest.to_string());
             let commit_request = WriteContentRequest {
                 action: WriteAction::Commit.into(),
                 total: len,
@@ -247,10 +247,10 @@ impl Client {
         })
     }
 
-    fn get_info(&self, content_digest: String) -> Result<Info> {
+    fn get_info(&self, content_digest: &str) -> Result<Info> {
         self.rt.block_on(async {
             let req = InfoRequest {
-                digest: content_digest.clone(),
+                digest: content_digest.to_string(),
             };
             let req = with_namespace!(req, self.namespace);
             let info = ContentClient::new(self.inner.clone())
@@ -385,7 +385,7 @@ impl Client {
             None => (false, "".to_string()),
         };
 
-        let image_info = self.get_info(image_digest.clone())?;
+        let image_info = self.get_info(&image_digest)?;
         let mut needs_precompile =
             can_precompile && !image_info.labels.contains_key(&precompile_id);
         let layers = manifest
@@ -395,8 +395,9 @@ impl Client {
             .map(|original_config| {
                 let mut digest_to_load = original_config.digest().clone();
                 if can_precompile {
-                    let info = self.get_info(digest_to_load.clone())?;
+                    let info = self.get_info(&digest_to_load)?;
                     if info.labels.contains_key(&precompile_id) {
+                        // Safe to unwrap here since we already checked for the label's existence
                         digest_to_load = info.labels.get(&precompile_id).unwrap().clone();
                         log::info!(
                             "layer {} has pre-compiled content: {} ",
@@ -406,17 +407,18 @@ impl Client {
                     }
                 }
                 log::debug!("loading digest: {} ", &digest_to_load);
-                self.read_content(digest_to_load.clone())
+                self.read_content(&digest_to_load)
                     .map(|module| WasmLayer {
                         config: original_config.clone(),
                         layer: module,
                     })
                     .or_else(|e| {
+                        // handle content being removed from the content store out of band
                         if digest_to_load != *original_config.digest() {
                             log::error!("failed to load precompiled layer: {}", e);
                             log::error!("falling back to original layer and marking for recompile");
-                            needs_precompile = true;
-                            self.read_content(original_config.digest().clone())
+                            needs_precompile = can_precompile; // only mark for recompile if engine is capable
+                            self.read_content(original_config.digest())
                                 .map(|module| WasmLayer {
                                     config: original_config.clone(),
                                     layer: module,
@@ -430,26 +432,25 @@ impl Client {
 
         if needs_precompile {
             log::info!("precompiling layers for image: {}", image.name);
-
             match engine.precompile(&layers) {
                 Some(compiled_layer_result) => {
                     let compiled_layers = compiled_layer_result?;
 
                     for (i, precompiled_layer) in compiled_layers.iter().enumerate() {
-                        let layer = &layers[i];
+                        let original_layer = &layers[i];
 
                         let precompiled_content = self.save_content(
                             precompiled_layer.layer.clone(),
-                            layer.config.digest().clone(),
+                            original_layer.config.digest(),
                             &precompile_id,
                         )?;
 
                         log::debug!(
                             "updating original layer {} with compiled layer {}",
-                            layer.config.digest().clone(),
-                            precompiled_content.digest.clone()
+                            original_layer.config.digest(),
+                            precompiled_content.digest
                         );
-                        let mut original_layer = self.get_info(layer.config.digest().clone())?;
+                        let mut original_layer = self.get_info(original_layer.config.digest())?;
                         original_layer
                             .labels
                             .insert(precompile_id.clone(), precompiled_content.digest.clone());
@@ -458,13 +459,14 @@ impl Client {
                         // The original image is considered a root object, by adding a ref to the new compiled content
                         // We tell containerd to not garbage collect the new content until this image is removed from the system
                         // this ensures that we keep the content around after the lease is dropped
+                        // We also save the precompiled flag here since the image labels can be mutated containerd, for example if the image is pulled twice
                         log::debug!(
                             "updating image content with precompile digest to avoid garbage collection"
                         );
-                        let mut image_content = self.get_info(image_digest.clone())?;
+                        let mut image_content = self.get_info(&image_digest)?;
                         image_content.labels.insert(
                             format!("containerd.io/gc.ref.content.precompile.{}", i),
-                            precompiled_content.digest.clone(),
+                            precompiled_content.digest,
                         );
                         image_content
                             .labels
@@ -520,16 +522,14 @@ mod tests {
         let expected = format!("sha256:{}", expected);
 
         let label = precompile_label("test", "hasdfh");
-        let returned = client
-            .save_content(data, "original".to_string(), &label)
-            .unwrap();
+        let returned = client.save_content(data, "original", &label).unwrap();
         assert_eq!(expected, returned.digest.clone());
 
         let data = client.read_content(returned.digest.clone()).unwrap();
         assert_eq!(data, b"hello world");
 
         client
-            .save_content(data.clone(), "original".to_string(), &label)
+            .save_content(data.clone(), "original", &label)
             .expect_err("Should not be able to save when lease is open");
 
         // need to drop the lease to be able to create a second one
@@ -537,9 +537,7 @@ mod tests {
         drop(returned);
 
         // a second call should be successful since it already exists
-        let returned = client
-            .save_content(data, "original".to_string(), &label)
-            .unwrap();
+        let returned = client.save_content(data, "original", &label).unwrap();
         assert_eq!(expected, returned.digest);
 
         client.delete_content(expected.clone()).unwrap();
