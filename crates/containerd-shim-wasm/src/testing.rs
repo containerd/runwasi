@@ -1,22 +1,21 @@
 //! Testing utilities used across different modules
 
 use std::collections::HashMap;
-use std::fs::{self, create_dir, read_to_string, write, File};
+use std::fs::{self, create_dir, read, read_to_string, write, File};
 use std::marker::PhantomData;
 use std::ops::Add;
-use std::process::Command;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
-use oci_spec::image::{self as spec, Arch};
+
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
+
 
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
 
-const TEST_NAMESPACE: &str = "runwasi-test";
+pub const TEST_NAMESPACE: &str = "runwasi-test";
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
@@ -126,71 +125,23 @@ where
         image_name: Option<String>,
         container_name: Option<String>,
     ) -> Result<(Self, oci_helpers::OCICleanup)> {
-        let mut builder = Builder::default();
         let image_name = image_name.unwrap_or("localhost/hello:latest".to_string());
 
         if !oci_helpers::image_exists(&image_name) {
-            let dir = self.tempdir.path();
-            let wasm_path = dir.join("rootfs").join("hello.wasm");
-            builder.add_layer_with_media_type(&wasm_path, WASM_LAYER_MEDIA_TYPE.to_string());
+            let wasm_path = self.tempdir.path().join("rootfs").join("hello.wasm");
+            let bytes = read(&wasm_path)?;
+            let wasm_content = oci_helpers::ImageContent {
+                bytes: bytes,
+                media_type: oci_tar_builder::WASM_LAYER_MEDIA_TYPE.to_string(),
+            };
+            oci_helpers::import_image(&image_name, &[&wasm_content])?;
 
-            let config = spec::ConfigBuilder::default()
-                .entrypoint(vec!["_start".to_string()])
-                .build()
-                .unwrap();
-
-            let img = spec::ImageConfigurationBuilder::default()
-                .config(config)
-                .os("wasip1")
-                .architecture(Arch::Wasm)
-                .rootfs(
-                    spec::RootFsBuilder::default()
-                        .diff_ids(vec![])
-                        .build()
-                        .unwrap(),
-                )
-                .build()?;
-
-            builder.add_config(img, image_name.clone());
-
-            let img = dir.join("img.tar");
-            let f = File::create(img.clone())?;
-            builder.build(f)?;
-
-            let success = Command::new("ctr")
-                .arg("-n")
-                .arg(TEST_NAMESPACE)
-                .arg("image")
-                .arg("import")
-                .arg("--all-platforms")
-                .arg(img)
-                .spawn()?
-                .wait()?
-                .success();
-
-            if !success {
-                // if the container still exists try cleaning it up
-                bail!(" failed to import image");
-            }
-
+            // remove the file from the rootfs so it doesn't get treated like a regular container
             fs::remove_file(&wasm_path)?;
         }
 
         let container_name = container_name.unwrap_or("test".to_string());
-        let success = Command::new("ctr")
-            .arg("-n")
-            .arg(TEST_NAMESPACE)
-            .arg("c")
-            .arg("create")
-            .arg(&image_name)
-            .arg(&container_name)
-            .spawn()?
-            .wait()?
-            .success();
-
-        if !success {
-            bail!(" failed to create container for image");
-        }
+        oci_helpers::create_container(&container_name, &image_name)?;
 
         self.container_name = container_name.clone();
         Ok((
@@ -222,6 +173,10 @@ where
         Ok(WasiTest { instance, tempdir })
     }
 }
+
+
+
+
 
 impl<WasiInstance: Instance> WasiTest<WasiInstance>
 where
@@ -271,12 +226,17 @@ where
 }
 
 pub mod oci_helpers {
+    use std::fs::File;
+    use std::path::PathBuf;
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
 
     use anyhow::{bail, Result};
+    use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
+    use oci_spec::image::{self as spec, Arch};
 
     use super::TEST_NAMESPACE;
+use std::fs::write;
 
     pub struct OCICleanup {
         pub image_name: String,
@@ -308,6 +268,77 @@ pub mod oci_helpers {
         }
 
         Ok(())
+    }
+
+    pub fn create_container(container_name: &str, image_name: &str) -> Result<(), anyhow::Error> {
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("c")
+            .arg("create")
+            .arg(image_name)
+            .arg(&container_name)
+            .spawn()?
+            .wait()?
+            .success();
+        if !success {
+            bail!(" failed to create container for image");
+        }
+        Ok(())
+    }
+
+    pub struct ImageContent {
+        pub bytes: Vec<u8>,
+        pub media_type: String,
+    }
+
+    pub fn import_image(image_name: &str, wasm_content: &[&ImageContent]) -> Result<(), anyhow::Error> {
+        let tempdir = tempfile::tempdir()?;
+        let dir = tempdir.path();
+        
+        let mut builder = Builder::default();
+
+        for (i, content) in wasm_content.iter().enumerate() {
+            let path = tempdir.path().join(format!("{}.wasm", i));
+            write(path.clone(), content.bytes.clone())?;
+            builder.add_layer_with_media_type(&path, content.media_type.clone());
+        }
+
+        let config = spec::ConfigBuilder::default()
+            .entrypoint(vec!["_start".to_string()])
+            .build()
+            .unwrap();
+        let img = spec::ImageConfigurationBuilder::default()
+            .config(config)
+            .os("wasip1")
+            .architecture(Arch::Wasm)
+            .rootfs(
+                spec::RootFsBuilder::default()
+                    .diff_ids(vec![])
+                    .build()
+                    .unwrap(),
+            )
+            .build()?;
+        builder.add_config(img, image_name.to_string());
+        let img_path = dir.join("img.tar");
+        let f = File::create(img_path.clone())?;
+        builder.build(f)?;
+
+
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("image")
+            .arg("import")
+            .arg("--all-platforms")
+            .arg(img_path)
+            .spawn()?
+            .wait()?
+            .success();
+        Ok(if !success {
+            // if the container still exists try cleaning it up
+            bail!(" failed to import image");
+        })
     }
 
     pub fn clean_image(image_name: String) -> Result<()> {

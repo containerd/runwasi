@@ -56,6 +56,7 @@ containerd-shim-wasm-test-modules = { workspace = true }
 env_logger = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true}
+rand= "0.8" 
 
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
