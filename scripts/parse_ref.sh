@@ -35,6 +35,7 @@ TOMLVER="$(./scripts/version.sh "${CRATE}")"
 echo "CRATE=${CRATE}"
 echo "VERSION=${VERSION}"
 echo "RUNTIME=${RUNTIME}"
+echo "REF=${REF}"
 
 if [ -z "${CRATE}" ]; then
 echo "::error::Could not determine crate name from ref '${REF}'" >&2

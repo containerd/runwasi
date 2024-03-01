@@ -8,9 +8,24 @@ on:
   push:
     tags:
       - '**/v[0-9]+.[0-9]+.*'
+  schedule:
+    - cron: '0 0 * * *' # run every night at midnight
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "run the workflow without publishing any artifacts"
+        required: true
+        default: true
+        type: boolean
+      crate:
+        description: "the crate to run the dry run release"
+        default: containerd-shim-wasmtime
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
+  DRY_RUN: ${{ inputs.dryRun ||  github.event.schedule }}
 
 jobs:
   parse:
@@ -21,13 +36,29 @@ jobs:
       version: ${{ steps.parse.outputs.version }}
       runtime: ${{ steps.parse.outputs.runtime }}
     steps:
-      - uses: actions/checkout@v3
+      - name: checkout HEAD
+        uses: actions/checkout@v4
+        if: ${{ env.DRY_RUN }}
         with:
-          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - name: check out tag
+        uses: actions/checkout@v4
+        if: ${{ !env.DRY_RUN }}
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
       - id: parse
         name: Parse ref
         shell: bash
-        run: ./scripts/parse_ref.sh ${{ github.ref }} >> ${GITHUB_OUTPUT}
+        run: |
+          if [[ "${DRY_RUN}" == 'true' ]]
+          then
+            CRATE="${{ inputs.crate || 'containerd-shim-wasmtime' }}"
+            echo "CRATE=${CRATE}"  >> ${GITHUB_OUTPUT}
+            echo "VERSION=${{ github.sha }}-dirty" >> ${GITHUB_OUTPUT}
+            echo "RUNTIME=${CRATE#containerd-shim-}" >> ${GITHUB_OUTPUT}
+          else
+            ./scripts/parse_ref.sh ${{ github.ref }} >> ${GITHUB_OUTPUT}
+          fi
 
   build-and-sign:
     permissions:
@@ -40,30 +71,30 @@ jobs:
         arch: ["x86_64", "aarch64"]
     runs-on: "ubuntu-22.04"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup build env
         run: ./scripts/setup-linux.sh
-      
+
       - name: Setup rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
           RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.parse.outputs.crate }}-${{ matrix.arch }}
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      
+
       - name: Setup cross-rs
         run: ./scripts/setup-cross.sh ${{ matrix.arch }}-unknown-linux-musl
-      
+
       - name: Setup build profile
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
-      
+
       - name: Setup cosign for signing
         uses: sigstore/cosign-installer@v3.3.0
         with:
           cosign-release: 'v2.2.2'
-      
+
       - name: Build
         timeout-minutes: 20
         run: make build-${{ needs.parse.outputs.runtime }}
@@ -81,19 +112,21 @@ jobs:
           if stat dist/bin/* >/dev/null 2>&1; then
             cosign sign-blob --yes \
               --bundle containerd-shim-${{ needs.parse.outputs.runtime }}-v1.bundle \
+              --output-signature dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1.sig \
+              --output-cert dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1.pem \
               dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1
-            
+
             cosign sign-blob --yes \
               --bundle containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.bundle \
+              --output-signature dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.sig \
+              --output-cert dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.pem \
               dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1
 
             cosign sign-blob --yes \
               --bundle containerd-${{ needs.parse.outputs.runtime }}d.bundle \
+              --output-signature dist/bin/containerd-${{ needs.parse.outputs.runtime }}d.sig \
+              --output-cert dist/bin/containerd-${{ needs.parse.outputs.runtime }}d.pem \
               dist/bin/containerd-${{ needs.parse.outputs.runtime }}d
-            
-            # Copy the certs to the dist/bin folder
-            cp *.sig dist/bin/
-            cp *.pem dist/bin/
           else
             echo "No files to sign"
           fi
@@ -109,7 +142,7 @@ jobs:
             tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && !env.DRY_RUN}}
         uses: actions/upload-artifact@master
         with:
           name: containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}
@@ -123,7 +156,7 @@ jobs:
       - parse
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Download artifacts
@@ -132,13 +165,14 @@ jobs:
         with:
           path: release
       - name: Create release
+        if: ${{ !env.DRY_RUN }}
         run: |
           gh release create ${{ github.ref }} --generate-notes --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
       - name: Upload release artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && !env.DRY_RUN }}
         run: |
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
@@ -147,10 +181,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
       - name: Cargo publish
+        if: ${{ !env.DRY_RUN }}
         run: cargo publish --package ${{ needs.parse.outputs.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
       - name: Check crates.io ownership
+        if: ${{ !env.DRY_RUN }}
         run: |
           cargo owner --add github:containerd:runwasi-committers ${{ needs.parse.outputs.crate }}
           cargo owner --list ${{ needs.parse.outputs.crate }} | grep github:containerd:runwasi-committers
