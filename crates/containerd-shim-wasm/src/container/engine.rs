@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
@@ -58,10 +58,10 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// This is used to precompile the layers before they are run and will be called if can_precompile returns true.
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
     /// The cached, precompiled layers will be reloaded on subsequent runs.
-    /// The runtime is expected to runtime the same number of layers passed in.
-    /// In some cases it is possible in some edge cases that the layers may already be precompiled and the runtime can return the layers as is.  
-    fn precompile(&self, _layers: &[WasmLayer]) -> Option<Result<Vec<WasmLayer>>> {
-        None
+    /// The runtime is expected to runtime the same number of layers passed in, if the layer cannot be precompiled it should return None for that layer.
+    /// In some cases it is possible in some edge cases that the layers may already be precompiled and None should be returned in this case.
+    fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<WasmLayer>>> {
+        bail!("precompile not supported");
     }
 
     /// Can_precompile lets the shim know if the runtime supports precompilation.

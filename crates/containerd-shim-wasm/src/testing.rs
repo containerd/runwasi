@@ -8,9 +8,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
-
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-
 
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
@@ -131,7 +129,7 @@ where
             let wasm_path = self.tempdir.path().join("rootfs").join("hello.wasm");
             let bytes = read(&wasm_path)?;
             let wasm_content = oci_helpers::ImageContent {
-                bytes: bytes,
+                bytes,
                 media_type: oci_tar_builder::WASM_LAYER_MEDIA_TYPE.to_string(),
             };
             oci_helpers::import_image(&image_name, &[&wasm_content])?;
@@ -173,10 +171,6 @@ where
         Ok(WasiTest { instance, tempdir })
     }
 }
-
-
-
-
 
 impl<WasiInstance: Instance> WasiTest<WasiInstance>
 where
@@ -226,17 +220,15 @@ where
 }
 
 pub mod oci_helpers {
-    use std::fs::File;
-    use std::path::PathBuf;
+    use std::fs::{write, File};
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
 
     use anyhow::{bail, Result};
-    use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
     use oci_spec::image::{self as spec, Arch};
+    use oci_tar_builder::Builder;
 
     use super::TEST_NAMESPACE;
-use std::fs::write;
 
     pub struct OCICleanup {
         pub image_name: String,
@@ -277,7 +269,7 @@ use std::fs::write;
             .arg("c")
             .arg("create")
             .arg(image_name)
-            .arg(&container_name)
+            .arg(container_name)
             .spawn()?
             .wait()?
             .success();
@@ -292,10 +284,13 @@ use std::fs::write;
         pub media_type: String,
     }
 
-    pub fn import_image(image_name: &str, wasm_content: &[&ImageContent]) -> Result<(), anyhow::Error> {
+    pub fn import_image(
+        image_name: &str,
+        wasm_content: &[&ImageContent],
+    ) -> Result<(), anyhow::Error> {
         let tempdir = tempfile::tempdir()?;
         let dir = tempdir.path();
-        
+
         let mut builder = Builder::default();
 
         for (i, content) in wasm_content.iter().enumerate() {
@@ -324,7 +319,6 @@ use std::fs::write;
         let f = File::create(img_path.clone())?;
         builder.build(f)?;
 
-
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -335,10 +329,11 @@ use std::fs::write;
             .spawn()?
             .wait()?
             .success();
-        Ok(if !success {
+        if !success {
             // if the container still exists try cleaning it up
             bail!(" failed to import image");
-        })
+        };
+        Ok(())
     }
 
     pub fn clean_image(image_name: String) -> Result<()> {

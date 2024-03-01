@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fs::metadata;
 use std::io::Write;
 use std::path::PathBuf;
@@ -65,7 +65,7 @@ impl Builder {
         let mut tb = tar::Builder::new(w);
         let mut manifests = Vec::new();
         // use IndexMap in order to keep layers in order they were added.
-        let mut layer_digests = IndexMap::new(); 
+        let mut layer_digests = IndexMap::new();
 
         if self.configs.len() > 1 {
             anyhow::bail!("only one config is supported");

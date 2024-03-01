@@ -114,29 +114,29 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         Ok(status)
     }
 
-    fn precompile(&self, layers: &[WasmLayer]) -> Option<Result<Vec<WasmLayer>>> {
-        let mut v = Vec::<WasmLayer>::with_capacity(layers.len());
+    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<WasmLayer>>> {
+        let mut compiled_layers = Vec::<Option<WasmLayer>>::with_capacity(layers.len());
 
         for layer in layers {
             if self.engine.detect_precompiled(&layer.layer).is_some() {
                 log::info!("Already precompiled");
-                v.push(layer.clone());
+                compiled_layers.push(None);
                 continue;
             }
 
             let compiled_layer = match self.engine.precompile_module(&layer.layer) {
                 Ok(compiled_layer) => compiled_layer,
-                Err(err) => return Some(Err(err)),
+                Err(err) => return Err(err),
             };
             let mut config = layer.config.clone();
             config.set_digest(digest(&compiled_layer));
-            v.push(WasmLayer {
+            compiled_layers.push(Some(WasmLayer {
                 layer: compiled_layer,
                 config,
-            });
+            }));
         }
 
-        Some(Ok(v))
+        Ok(compiled_layers)
     }
 
     fn can_precompile(&self) -> Option<String> {
