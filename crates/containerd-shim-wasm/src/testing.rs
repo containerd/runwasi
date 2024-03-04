@@ -337,6 +337,11 @@ pub mod oci_helpers {
     }
 
     pub fn clean_image(image_name: String) -> Result<()> {
+        let image_sha = match get_image_sha(&image_name) {
+            Ok(sha) => sha,
+            Err(_) => return Ok(()), // doesn't exist
+        };
+
         log::debug!("deleting image '{}'", image_name);
         let success = Command::new("ctr")
             .arg("-n")
@@ -352,18 +357,24 @@ pub mod oci_helpers {
             bail!("failed to clean image");
         }
 
-        // the content isn't removed immediately, so we need to wait for it to be removed
-        // otherwise the next test will not behave as expected
+        // the content is not removed immediately, so we need to wait for it to be removed
+        // otherwise some tests will not behave as expected
+        wait_for_content_removal(&image_sha)?;
+
+        Ok(())
+    }
+
+    pub fn wait_for_content_removal(content_sha: &str) -> Result<(), anyhow::Error> {
         let start = Instant::now();
-        let timeout = Duration::from_secs(300);
-        log::trace!("waiting for content to be removed");
+        let timeout = Duration::from_secs(60);
+        log::info!("waiting for content to be removed: {}", &content_sha);
         loop {
             let output = Command::new("ctr")
                 .arg("-n")
                 .arg(TEST_NAMESPACE)
                 .arg("content")
-                .arg("ls")
-                .arg("-q")
+                .arg("get")
+                .arg(content_sha)
                 .output()?;
 
             if output.stdout.is_empty() {
@@ -371,11 +382,40 @@ pub mod oci_helpers {
             }
 
             if start.elapsed() > timeout {
-                bail!("timed out waiting for content to be removed");
+                log::warn!("didn't clean content fully");
+                break;
             }
         }
-
         Ok(())
+    }
+
+    fn get_image_sha(image_name: &str) -> Result<String> {
+        log::info!("getting image sha for '{}'", image_name);
+        let mut grep = Command::new("grep")
+            .arg(image_name)
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()?;
+
+        Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("ls")
+            .stdout(grep.stdin.take().unwrap())
+            .spawn()?;
+
+        let output = grep.wait_with_output()?;
+        let stdout = String::from_utf8(output.stdout)?;
+        log::warn!("stdout: {}", stdout);
+
+        let parts: Vec<&str> = stdout.trim().split(' ').collect();
+        if parts.len() < 3 {
+            bail!("failed to get image sha");
+        }
+        let sha = parts[2];
+        log::warn!("sha: {}", sha);
+        Ok(sha.to_string())
     }
 
     pub fn get_image_label() -> Result<(String, String)> {
@@ -395,11 +435,8 @@ pub mod oci_helpers {
             .spawn()?;
 
         let output = grep.wait_with_output()?;
-
         let stdout = String::from_utf8(output.stdout)?;
-
         log::debug!("stdout: {}", stdout);
-
         let label: Vec<&str> = stdout.split('=').collect();
 
         Ok((
