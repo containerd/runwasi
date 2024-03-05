@@ -74,7 +74,7 @@ jobs:
         run: make test-${{ needs.parse.outputs.runtime }}
 
       - name: Sign the binary
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' }}
         run: |
           make dist-${{ needs.parse.outputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
@@ -99,7 +99,7 @@ jobs:
           fi
 
       - name: Package artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' }}
         shell: bash
         run: |
           # Check if there's any files to archive as tar fails otherwise
@@ -109,7 +109,7 @@ jobs:
             tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' }}
         uses: actions/upload-artifact@master
         with:
           name: containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}
@@ -127,7 +127,7 @@ jobs:
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Download artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' }}
         uses: actions/download-artifact@master
         with:
           path: release
@@ -138,7 +138,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
       - name: Upload release artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' }}
+        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' }}
         run: |
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
