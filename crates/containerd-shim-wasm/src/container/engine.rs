@@ -59,7 +59,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
     /// The cached, precompiled layers will be reloaded on subsequent runs.
     /// The runtime is expected to runtime the same number of layers passed in, if the layer cannot be precompiled it should return None for that layer.
-    /// In some cases it is possible in some edge cases that the layers may already be precompiled and None should be returned in this case.
+    /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
     fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<WasmLayer>>> {
         bail!("precompile not supported");
     }
