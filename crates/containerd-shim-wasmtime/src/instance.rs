@@ -8,7 +8,6 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use sha256::digest;
 use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
@@ -114,8 +113,8 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         Ok(status)
     }
 
-    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<WasmLayer>>> {
-        let mut compiled_layers = Vec::<Option<WasmLayer>>::with_capacity(layers.len());
+    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+        let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
             if self.engine.detect_precompiled(&layer.layer).is_some() {
@@ -124,16 +123,8 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
                 continue;
             }
 
-            let compiled_layer = match self.engine.precompile_module(&layer.layer) {
-                Ok(compiled_layer) => compiled_layer,
-                Err(err) => return Err(err),
-            };
-            let mut config = layer.config.clone();
-            config.set_digest(digest(&compiled_layer));
-            compiled_layers.push(Some(WasmLayer {
-                layer: compiled_layer,
-                config,
-            }));
+            let compiled_layer = self.engine.precompile_module(&layer.layer)?;
+            compiled_layers.push(Some(compiled_layer));
         }
 
         Ok(compiled_layers)

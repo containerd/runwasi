@@ -137,11 +137,11 @@ impl Client {
     fn save_content(
         &self,
         data: Vec<u8>,
-        original_digest: &str,
-        label: &str,
+        unique_id: &str,
+        labels: HashMap<String, String>,
     ) -> Result<WriteContent> {
         let expected = format!("sha256:{}", digest(data.clone()));
-        let reference = format!("precompile-{}", label);
+        let reference = format!("precompile-{}", unique_id);
         let lease = self.lease(reference.clone())?;
 
         let digest = self.rt.block_on(async {
@@ -193,10 +193,6 @@ impl Client {
             // we don't need to copy the content again.  Container tells us it found the blob
             // by returning the offset of the content that was found.
             let data_to_write = data[response.offset as usize..].to_vec();
-
-            // Write and commit at same time
-            let mut labels = HashMap::new();
-            labels.insert(format!("{}/original", label), original_digest.to_string());
             let commit_request = WriteContentRequest {
                 action: WriteAction::Commit.into(),
                 total: len,
@@ -439,31 +435,38 @@ impl Client {
             log::info!("precompiling layers for image: {}", container.image);
             match engine.precompile(&layers) {
                 Ok(compiled_layers) => {
+                    if compiled_layers.len() != layers.len() {
+                        return Err(ShimError::FailedPrecondition(
+                            "precompile returned wrong number of layers".to_string(),
+                        ));
+                    }
+
                     let mut layers_for_runtime = Vec::with_capacity(compiled_layers.len());
-                    for (i, precompiled_layer) in compiled_layers.iter().enumerate() {
-                        if precompiled_layer.is_none() {
-                            log::debug!("no precompiled layer using original");
+                    for (i, compiled_layer) in compiled_layers.iter().enumerate() {
+                        if compiled_layer.is_none() {
+                            log::debug!("no compiled layer using original");
                             layers_for_runtime.push(layers[i].clone());
                             continue;
                         }
 
-                        let precompiled_layer = precompiled_layer.as_ref().unwrap();
-                        let original_layer = &layers[i];
-                        let precompiled_content = self.save_content(
-                            precompiled_layer.layer.clone(),
-                            original_layer.config.digest(),
-                            &precompile_id,
-                        )?;
+                        let compiled_layer = compiled_layer.as_ref().unwrap();
+                        let original_config = &layers[i].config;
+                        let labels = HashMap::from([(
+                            format!("{precompile_id}/original"),
+                            original_config.digest().to_string(),
+                        )]);
+                        let precompiled_content =
+                            self.save_content(compiled_layer.clone(), &precompile_id, labels)?;
 
                         log::debug!(
                             "updating original layer {} with compiled layer {}",
-                            original_layer.config.digest(),
+                            original_config.digest(),
                             precompiled_content.digest
                         );
                         // We add two labels here:
                         // - one with cache key per engine instance
                         // - one with a gc ref flag so it doesn't get cleaned up as long as the original layer exists
-                        let mut original_layer = self.get_info(original_layer.config.digest())?;
+                        let mut original_layer = self.get_info(original_config.digest())?;
                         original_layer
                             .labels
                             .insert(precompile_id.clone(), precompiled_content.digest.clone());
@@ -489,7 +492,11 @@ impl Client {
                             .labels
                             .insert(precompile_id.clone(), "true".to_string());
                         self.update_info(image_content)?;
-                        layers_for_runtime.push(precompiled_layer.clone());
+
+                        layers_for_runtime.push(WasmLayer {
+                            config: original_config.clone(),
+                            layer: compiled_layer.clone(),
+                        });
                     }
                     return Ok((layers_for_runtime, platform));
                 }
@@ -529,7 +536,6 @@ mod tests {
     use std::sync::atomic::{AtomicI32, Ordering};
     use std::sync::Arc;
 
-    use oci_spec::image::Descriptor;
     use oci_tar_builder::WASM_LAYER_MEDIA_TYPE;
     use rand::prelude::*;
 
@@ -549,15 +555,15 @@ mod tests {
         let expected = digest(data.clone());
         let expected = format!("sha256:{}", expected);
 
-        let label = precompile_label("test", "hasdfh");
-        let returned = client.save_content(data, "original", &label).unwrap();
+        let label = HashMap::from([(precompile_label("test", "hasdfh"), "original".to_string())]);
+        let returned = client.save_content(data, "test", label.clone()).unwrap();
         assert_eq!(expected, returned.digest.clone());
 
         let data = client.read_content(returned.digest.clone()).unwrap();
         assert_eq!(data, b"hello world");
 
         client
-            .save_content(data.clone(), "original", &label)
+            .save_content(data.clone(), "test", label.clone())
             .expect_err("Should not be able to save when lease is open");
 
         // need to drop the lease to be able to create a second one
@@ -565,7 +571,7 @@ mod tests {
         drop(returned);
 
         // a second call should be successful since it already exists
-        let returned = client.save_content(data, "original", &label).unwrap();
+        let returned = client.save_content(data, "test", label.clone()).unwrap();
         assert_eq!(expected, returned.digest);
 
         client.delete_content(expected.clone()).unwrap();
@@ -856,7 +862,7 @@ mod tests {
     #[derive(Clone)]
     struct FakePrecomiplerEngine {
         precompile_id: Option<String>,
-        precompiled_layers: HashMap<String, WasmLayer>,
+        precompiled_layers: HashMap<String, Vec<u8>>,
         precompile_called: Arc<AtomicI32>,
         layers_compiled_per_call: Arc<AtomicI32>,
     }
@@ -884,18 +890,8 @@ mod tests {
             precompiled_content: &oci_helpers::ImageContent,
         ) {
             let key = digest(original);
-
-            self.precompiled_layers.insert(
-                key,
-                WasmLayer {
-                    config: Descriptor::new(
-                        MediaType::Other(precompiled_content.media_type.clone()),
-                        precompiled_content.bytes.len() as i64,
-                        digest(precompiled_content.bytes.clone()),
-                    ),
-                    layer: precompiled_content.bytes.clone(),
-                },
-            );
+            self.precompiled_layers
+                .insert(key, precompiled_content.bytes.clone());
         }
     }
 
@@ -920,10 +916,7 @@ mod tests {
             &[WASM_LAYER_MEDIA_TYPE, "textfile"]
         }
 
-        fn precompile(
-            &self,
-            layers: &[WasmLayer],
-        ) -> Result<Vec<Option<WasmLayer>>, anyhow::Error> {
+        fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>, anyhow::Error> {
             self.layers_compiled_per_call.store(0, Ordering::SeqCst);
             self.precompile_called.fetch_add(1, Ordering::SeqCst);
             let mut compiled_layers = vec![];
@@ -935,11 +928,7 @@ mod tests {
                 }
 
                 let key = digest(layer.layer.clone());
-                if self
-                    .precompiled_layers
-                    .values()
-                    .any(|l| l.config.digest() == &key)
-                {
+                if self.precompiled_layers.values().any(|l| digest(l) == key) {
                     // simulate scenario were one of the layers is already compiled
                     compiled_layers.push(None);
                     continue;
