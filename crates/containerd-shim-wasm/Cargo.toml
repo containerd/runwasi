@@ -34,7 +34,7 @@ tokio = { version = "1.36.0", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.200.0"
 tokio-stream = { version = "0.1" }
-prost-types = "0.11" # should match version in containerd-shim
+prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
