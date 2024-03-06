@@ -1,22 +1,19 @@
 //! Testing utilities used across different modules
 
 use std::collections::HashMap;
-use std::fs::{self, create_dir, read_to_string, write, File};
+use std::fs::{self, create_dir, read, read_to_string, write, File};
 use std::marker::PhantomData;
 use std::ops::Add;
-use std::process::Command;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
-use oci_spec::image::{self as spec, Arch};
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
-use oci_tar_builder::{Builder, WASM_LAYER_MEDIA_TYPE};
 
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
 
-const TEST_NAMESPACE: &str = "runwasi-test";
+pub const TEST_NAMESPACE: &str = "runwasi-test";
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
@@ -126,69 +123,23 @@ where
         image_name: Option<String>,
         container_name: Option<String>,
     ) -> Result<(Self, oci_helpers::OCICleanup)> {
-        let mut builder = Builder::default();
-
-        let dir = self.tempdir.path();
-        let wasm_path = dir.join("rootfs").join("hello.wasm");
-        builder.add_layer_with_media_type(&wasm_path, WASM_LAYER_MEDIA_TYPE.to_string());
-
-        let config = spec::ConfigBuilder::default()
-            .entrypoint(vec!["_start".to_string()])
-            .build()
-            .unwrap();
-
-        let img = spec::ImageConfigurationBuilder::default()
-            .config(config)
-            .os("wasip1")
-            .architecture(Arch::Wasm)
-            .rootfs(
-                spec::RootFsBuilder::default()
-                    .diff_ids(vec![])
-                    .build()
-                    .unwrap(),
-            )
-            .build()?;
-
         let image_name = image_name.unwrap_or("localhost/hello:latest".to_string());
-        builder.add_config(img, image_name.clone());
 
-        let img = dir.join("img.tar");
-        let f = File::create(img.clone())?;
-        builder.build(f)?;
+        if !oci_helpers::image_exists(&image_name) {
+            let wasm_path = self.tempdir.path().join("rootfs").join("hello.wasm");
+            let bytes = read(&wasm_path)?;
+            let wasm_content = oci_helpers::ImageContent {
+                bytes,
+                media_type: oci_tar_builder::WASM_LAYER_MEDIA_TYPE.to_string(),
+            };
+            oci_helpers::import_image(&image_name, &[&wasm_content])?;
 
-        let success = Command::new("ctr")
-            .arg("-n")
-            .arg(TEST_NAMESPACE)
-            .arg("image")
-            .arg("import")
-            .arg("--all-platforms")
-            .arg(img)
-            .spawn()?
-            .wait()?
-            .success();
-
-        if !success {
-            // if the container still exists try cleaning it up
-            bail!(" failed to import image");
+            // remove the file from the rootfs so it doesn't get treated like a regular container
+            fs::remove_file(&wasm_path)?;
         }
-
-        fs::remove_file(&wasm_path)?;
 
         let container_name = container_name.unwrap_or("test".to_string());
-        let success = Command::new("ctr")
-            .arg("-n")
-            .arg(TEST_NAMESPACE)
-            .arg("c")
-            .arg("create")
-            .arg(&image_name)
-            .arg(&container_name)
-            .spawn()?
-            .wait()?
-            .success();
-
-        if !success {
-            bail!(" failed to create container for image");
-        }
+        oci_helpers::create_container(&container_name, &image_name)?;
 
         self.container_name = container_name.clone();
         Ok((
@@ -269,10 +220,13 @@ where
 }
 
 pub mod oci_helpers {
+    use std::fs::{write, File};
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
 
     use anyhow::{bail, Result};
+    use oci_spec::image::{self as spec, Arch};
+    use oci_tar_builder::Builder;
 
     use super::TEST_NAMESPACE;
 
@@ -308,7 +262,86 @@ pub mod oci_helpers {
         Ok(())
     }
 
+    pub fn create_container(container_name: &str, image_name: &str) -> Result<(), anyhow::Error> {
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("c")
+            .arg("create")
+            .arg(image_name)
+            .arg(container_name)
+            .spawn()?
+            .wait()?
+            .success();
+        if !success {
+            bail!(" failed to create container for image");
+        }
+        Ok(())
+    }
+
+    pub struct ImageContent {
+        pub bytes: Vec<u8>,
+        pub media_type: String,
+    }
+
+    pub fn import_image(
+        image_name: &str,
+        wasm_content: &[&ImageContent],
+    ) -> Result<(), anyhow::Error> {
+        let tempdir = tempfile::tempdir()?;
+        let dir = tempdir.path();
+
+        let mut builder = Builder::default();
+
+        for (i, content) in wasm_content.iter().enumerate() {
+            let path = tempdir.path().join(format!("{}.wasm", i));
+            write(path.clone(), content.bytes.clone())?;
+            builder.add_layer_with_media_type(&path, content.media_type.clone());
+        }
+
+        let config = spec::ConfigBuilder::default()
+            .entrypoint(vec!["_start".to_string()])
+            .build()
+            .unwrap();
+        let img = spec::ImageConfigurationBuilder::default()
+            .config(config)
+            .os("wasip1")
+            .architecture(Arch::Wasm)
+            .rootfs(
+                spec::RootFsBuilder::default()
+                    .diff_ids(vec![])
+                    .build()
+                    .unwrap(),
+            )
+            .build()?;
+        builder.add_config(img, image_name.to_string());
+        let img_path = dir.join("img.tar");
+        let f = File::create(img_path.clone())?;
+        builder.build(f)?;
+
+        let success = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("image")
+            .arg("import")
+            .arg("--all-platforms")
+            .arg(img_path)
+            .spawn()?
+            .wait()?
+            .success();
+        if !success {
+            // if the container still exists try cleaning it up
+            bail!(" failed to import image");
+        };
+        Ok(())
+    }
+
     pub fn clean_image(image_name: String) -> Result<()> {
+        let image_sha = match get_image_sha(&image_name) {
+            Ok(sha) => sha,
+            Err(_) => return Ok(()), // doesn't exist
+        };
+
         log::debug!("deleting image '{}'", image_name);
         let success = Command::new("ctr")
             .arg("-n")
@@ -324,17 +357,24 @@ pub mod oci_helpers {
             bail!("failed to clean image");
         }
 
-        // the content isn't removed immediately, so we need to wait for it to be removed
-        // otherwise the next test will not behave as expected
+        // the content is not removed immediately, so we need to wait for it to be removed
+        // otherwise some tests will not behave as expected
+        wait_for_content_removal(&image_sha)?;
+
+        Ok(())
+    }
+
+    pub fn wait_for_content_removal(content_sha: &str) -> Result<(), anyhow::Error> {
         let start = Instant::now();
-        let timeout = Duration::from_secs(300);
+        let timeout = Duration::from_secs(60);
+        log::info!("waiting for content to be removed: {}", &content_sha);
         loop {
             let output = Command::new("ctr")
                 .arg("-n")
                 .arg(TEST_NAMESPACE)
                 .arg("content")
-                .arg("ls")
-                .arg("-q")
+                .arg("get")
+                .arg(content_sha)
                 .output()?;
 
             if output.stdout.is_empty() {
@@ -342,13 +382,40 @@ pub mod oci_helpers {
             }
 
             if start.elapsed() > timeout {
-                bail!("timed out waiting for content to be removed");
+                log::warn!("didn't clean content fully");
+                break;
             }
-
-            log::trace!("waiting for content to be removed");
         }
-
         Ok(())
+    }
+
+    fn get_image_sha(image_name: &str) -> Result<String> {
+        log::info!("getting image sha for '{}'", image_name);
+        let mut grep = Command::new("grep")
+            .arg(image_name)
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()?;
+
+        Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("ls")
+            .stdout(grep.stdin.take().unwrap())
+            .spawn()?;
+
+        let output = grep.wait_with_output()?;
+        let stdout = String::from_utf8(output.stdout)?;
+        log::warn!("stdout: {}", stdout);
+
+        let parts: Vec<&str> = stdout.trim().split(' ').collect();
+        if parts.len() < 3 {
+            bail!("failed to get image sha");
+        }
+        let sha = parts[2];
+        log::warn!("sha: {}", sha);
+        Ok(sha.to_string())
     }
 
     pub fn get_image_label() -> Result<(String, String)> {
@@ -368,10 +435,51 @@ pub mod oci_helpers {
             .spawn()?;
 
         let output = grep.wait_with_output()?;
+        let stdout = String::from_utf8(output.stdout)?;
+        log::debug!("stdout: {}", stdout);
+        let label: Vec<&str> = stdout.split('=').collect();
+
+        Ok((
+            label.first().unwrap().trim().to_string(),
+            label.last().unwrap().trim().to_string(),
+        ))
+    }
+
+    pub fn image_exists(image_name: &str) -> bool {
+        let output = Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("i")
+            .arg("ls")
+            .arg("--quiet")
+            .output()
+            .expect("failed to get output of image list");
+
+        let stdout = String::from_utf8(output.stdout).expect("failed to parse stdout");
+        stdout.contains(image_name)
+    }
+
+    pub fn get_content_label() -> Result<(String, String)> {
+        let mut grep = Command::new("grep")
+            .arg("-ohE")
+            .arg("runwasi.io/precompiled/[[:alpha:]]*/[0-9]+=.*")
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()?;
+
+        Command::new("ctr")
+            .arg("-n")
+            .arg(TEST_NAMESPACE)
+            .arg("content")
+            .arg("ls")
+            .stdout(grep.stdin.take().unwrap())
+            .spawn()?;
+
+        let output = grep.wait_with_output()?;
 
         let stdout = String::from_utf8(output.stdout)?;
 
-        log::info!("stdout: {}", stdout);
+        log::debug!("stdout: {}", stdout);
 
         let label: Vec<&str> = stdout.split('=').collect();
 

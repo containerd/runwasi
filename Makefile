@@ -239,8 +239,8 @@ test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.t
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 	@if [ "$*" = "wasmtime" ]; then \
 		set -e; \
-		echo "checking for pre-compiled label and ensuring can scale"; \
-		docker exec $(KIND_CLUSTER_NAME)-control-plane ctr -n k8s.io i ls | grep "runwasi.io/precompiled"; \
+		echo "checking for pre-compiled labels and ensuring can scale after pre-compile"; \
+		docker exec $(KIND_CLUSTER_NAME)-control-plane ctr -n k8s.io content ls | grep "runwasi.io/precompiled"; \
 		kubectl --context=kind-$(KIND_CLUSTER_NAME) scale deployment wasi-demo --replicas=4; \
 		kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s; \
 	fi
@@ -297,8 +297,8 @@ test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
 	sudo bin/k3s kubectl get pods -o wide
 	@if [ "$*" = "wasmtime" ]; then \
 		set -e; \
-		echo "checking for pre-compiled label and ensuring can scale"; \
-		sudo bin/k3s ctr -n k8s.io i ls | grep "runwasi.io/precompiled"; \
+		echo "checking for pre-compiled labels and ensuring can scale"; \
+		sudo bin/k3s ctr -n k8s.io content ls | grep "runwasi.io/precompiled"; \
 		sudo bin/k3s kubectl scale deployment wasi-demo --replicas=4; \
 		sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s; \
 	fi

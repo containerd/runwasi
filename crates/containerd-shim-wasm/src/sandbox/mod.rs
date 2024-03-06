@@ -19,3 +19,4 @@ pub use stdio::Stdio;
 
 pub(crate) mod containerd;
 pub(crate) mod oci;
+pub use oci::WasmLayer;

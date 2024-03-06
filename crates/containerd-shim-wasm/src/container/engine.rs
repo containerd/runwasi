@@ -5,6 +5,7 @@ use anyhow::{bail, Context, Result};
 
 use super::Source;
 use crate::container::{PathResolve, RuntimeContext};
+use crate::sandbox::oci::WasmLayer;
 use crate::sandbox::Stdio;
 
 pub trait Engine: Clone + Send + Sync + 'static {
@@ -53,12 +54,14 @@ pub trait Engine: Clone + Send + Sync + 'static {
         &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
     }
 
-    /// Precompiles a module that is in the WASM OCI layer format
-    /// This is used to precompile a module before it is run and will be called if can_precompile returns true.
+    /// Precompile passes supported OCI layers to engine for compilation
+    /// This is used to precompile the layers before they are run and will be called if `can_precompile` returns `true`.
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
-    /// The cached, precompiled module will be reloaded on subsequent runs.
-    fn precompile(&self, _layers: &[Vec<u8>]) -> Result<Vec<u8>> {
-        bail!("precompilation not supported for this runtime")
+    /// The cached, precompiled layers will be reloaded on subsequent runs.
+    /// The runtime is expected to return the same number of layers passed in, if the layer cannot be precompiled it should return `None` for that layer.
+    /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
+    fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+        bail!("precompile not supported");
     }
 
     /// Can_precompile lets the shim know if the runtime supports precompilation.

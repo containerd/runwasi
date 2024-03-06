@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
+use indexmap::IndexMap;
 use log::{debug, warn};
 use oci_spec::image::{
     DescriptorBuilder, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder, MediaType,
@@ -63,7 +64,8 @@ impl Builder {
     pub fn build<W: Write>(&mut self, w: W) -> Result<(), Error> {
         let mut tb = tar::Builder::new(w);
         let mut manifests = Vec::new();
-        let mut layer_digests = HashMap::new();
+        // use IndexMap in order to keep layers in order they were added.
+        let mut layer_digests = IndexMap::new();
 
         if self.configs.len() > 1 {
             anyhow::bail!("only one config is supported");

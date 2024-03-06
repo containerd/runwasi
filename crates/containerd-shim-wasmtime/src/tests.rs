@@ -69,25 +69,30 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
 fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     let (builder, _oci_cleanup1) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
-        .as_oci_image(None, Some("c1".to_string()))?;
+        .as_oci_image(
+            Some("localhost/hello:latest".to_string()),
+            Some("c1".to_string()),
+        )?;
 
     let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
 
-    let (label, id) = oci_helpers::get_image_label()?;
+    let (label, _id) = oci_helpers::get_content_label()?;
     assert!(
         label.starts_with("runwasi.io/precompiled/wasmtime/"),
-        "was {}={}",
-        label,
-        id
+        "was {}",
+        label
     );
 
     // run second time, it should succeed without recompiling
     let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
-        .as_oci_image(None, Some("c2".to_string()))?;
+        .as_oci_image(
+            Some("localhost/hello:latest".to_string()),
+            Some("c2".to_string()),
+        )?;
 
     let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
 
@@ -102,23 +107,32 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
 fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Result<()> {
     let (builder, _oci_cleanup1) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
-        .as_oci_image(None, Some("c1".to_string()))?;
+        .as_oci_image(
+            Some("localhost/hello:latest".to_string()),
+            Some("c1".to_string()),
+        )?;
 
     let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
 
-    let (label, id) = oci_helpers::get_image_label()?;
-
     // remove the compiled content from the cache
-    assert!(label.starts_with("runwasi.io/precompiled/wasmtime/"));
+    let (label, id) = oci_helpers::get_content_label()?;
+    assert!(
+        label.starts_with("runwasi.io/precompiled/wasmtime/"),
+        "was {}",
+        label
+    );
     oci_helpers::remove_content(id)?;
 
     // run second time, it should succeed
     let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
-        .as_oci_image(None, Some("c2".to_string()))?;
+        .as_oci_image(
+            Some("localhost/hello:latest".to_string()),
+            Some("c2".to_string()),
+        )?;
 
     let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
 
