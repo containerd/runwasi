@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
         libc: ["musl", "gnu"]
     uses: ./.github/workflows/action-build.yml
     with:
@@ -56,7 +56,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
@@ -70,7 +70,7 @@ jobs:
       matrix:
         # 20.04 uses cgroupv1, 22.04 uses cgroupv2
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime:  ["wasmtime", "wasmedge", "wasmer"]
+        runtime:  ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-smoke.yml
     with:
       os: ${{ matrix.os }}
@@ -84,7 +84,7 @@ jobs:
       matrix:
         # 20.04 uses cgroupv1, 22.04 uses cgroupv2
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-kind.yml
     with:
       os: ${{ matrix.os }}
@@ -97,7 +97,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-kind.yml
     with:
       os: ${{ matrix.os }}
@@ -112,7 +112,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-20.04", "ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-k3s.yml
     with:
       os: ${{ matrix.os }}
