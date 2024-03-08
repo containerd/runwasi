@@ -369,12 +369,10 @@ impl Client {
         })
     }
 
-    fn get_image_manifest(&self, image_name: &str) -> Result<(ImageManifest, String)> {
+    fn get_image_manifest_and_digest(&self, image_name: &str) -> Result<(ImageManifest, String)> {
         let image = self.get_image(image_name)?;
         let image_digest = self.extract_image_content_sha(&image)?;
-        let manifest = self.read_content(&image_digest)?;
-        let manifest = manifest.as_slice();
-        let manifest = ImageManifest::from_reader(manifest)?;
+        let manifest = ImageManifest::from_reader(self.read_content(&image_digest)?.as_slice())?;
         Ok((manifest, image_digest))
     }
 
@@ -387,7 +385,7 @@ impl Client {
         engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id.to_string())?;
-        let (manifest, image_digest) = self.get_image_manifest(&container.image)?;
+        let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image)?;
 
         let image_config_descriptor = manifest.config();
         let image_config = self.read_content(image_config_descriptor.digest())?;
@@ -416,125 +414,142 @@ impl Client {
             .iter()
             .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
             .map(|original_config| {
-                let mut digest_to_load = original_config.digest().clone();
-                if can_precompile {
-                    let info = self.get_info(&digest_to_load)?;
-                    if info.labels.contains_key(&precompile_id) {
-                        // Safe to unwrap here since we already checked for the label's existence
-                        digest_to_load = info.labels.get(&precompile_id).unwrap().clone();
-                        log::info!(
-                            "layer {} has pre-compiled content: {} ",
-                            info.digest,
-                            &digest_to_load
-                        );
-                    }
-                }
-                log::debug!("loading digest: {} ", &digest_to_load);
-                self.read_content(&digest_to_load)
-                    .map(|module| WasmLayer {
-                        config: original_config.clone(),
-                        layer: module,
-                    })
-                    .or_else(|e| {
-                        // handle content being removed from the content store out of band
-                        if digest_to_load != *original_config.digest() {
-                            log::error!("failed to load precompiled layer: {}", e);
-                            log::error!("falling back to original layer and marking for recompile");
-                            needs_precompile = can_precompile; // only mark for recompile if engine is capable
-                            self.read_content(original_config.digest())
-                                .map(|module| WasmLayer {
-                                    config: original_config.clone(),
-                                    layer: module,
-                                })
-                        } else {
-                            Err(e)
-                        }
-                    })
+                self.read_wasm_layer(
+                    original_config,
+                    can_precompile,
+                    &precompile_id,
+                    &mut needs_precompile,
+                )
             })
             .collect::<Result<Vec<_>>>()?;
-
-        if needs_precompile {
-            log::info!("precompiling layers for image: {}", container.image);
-            match engine.precompile(&layers) {
-                Ok(compiled_layers) => {
-                    if compiled_layers.len() != layers.len() {
-                        return Err(ShimError::FailedPrecondition(
-                            "precompile returned wrong number of layers".to_string(),
-                        ));
-                    }
-
-                    let mut layers_for_runtime = Vec::with_capacity(compiled_layers.len());
-                    for (i, compiled_layer) in compiled_layers.iter().enumerate() {
-                        if compiled_layer.is_none() {
-                            log::debug!("no compiled layer using original");
-                            layers_for_runtime.push(layers[i].clone());
-                            continue;
-                        }
-
-                        let compiled_layer = compiled_layer.as_ref().unwrap();
-                        let original_config = &layers[i].config;
-                        let labels = HashMap::from([(
-                            format!("{precompile_id}/original"),
-                            original_config.digest().to_string(),
-                        )]);
-                        let precompiled_content =
-                            self.save_content(compiled_layer.clone(), &precompile_id, labels)?;
-
-                        log::debug!(
-                            "updating original layer {} with compiled layer {}",
-                            original_config.digest(),
-                            precompiled_content.digest
-                        );
-                        // We add two labels here:
-                        // - one with cache key per engine instance
-                        // - one with a gc ref flag so it doesn't get cleaned up as long as the original layer exists
-                        let mut original_layer = self.get_info(original_config.digest())?;
-                        original_layer
-                            .labels
-                            .insert(precompile_id.clone(), precompiled_content.digest.clone());
-                        original_layer.labels.insert(
-                            format!("containerd.io/gc.ref.content.precompile.{}", i),
-                            precompiled_content.digest.clone(),
-                        );
-                        self.update_info(original_layer)?;
-
-                        // The original image is considered a root object, by adding a ref to the new compiled content
-                        // We tell containerd to not garbage collect the new content until this image is removed from the system
-                        // this ensures that we keep the content around after the lease is dropped
-                        // We also save the precompiled flag here since the image labels can be mutated containerd, for example if the image is pulled twice
-                        log::debug!(
-                            "updating image content with precompile digest to avoid garbage collection"
-                        );
-                        let mut image_content = self.get_info(&image_digest)?;
-                        image_content.labels.insert(
-                            format!("containerd.io/gc.ref.content.precompile.{}", i),
-                            precompiled_content.digest,
-                        );
-                        image_content
-                            .labels
-                            .insert(precompile_id.clone(), "true".to_string());
-                        self.update_info(image_content)?;
-
-                        layers_for_runtime.push(WasmLayer {
-                            config: original_config.clone(),
-                            layer: compiled_layer.clone(),
-                        });
-                    }
-                    return Ok((layers_for_runtime, platform));
-                }
-                Err(e) => {
-                    log::error!("precompilation failed: {}", e);
-                }
-            };
-        }
 
         if layers.is_empty() {
             log::info!("no WASM layers found in OCI image");
             return Ok((vec![], platform));
         }
 
+        if needs_precompile {
+            log::info!("precompiling layers for image: {}", container.image);
+            let compiled_layers = match engine.precompile(&layers) {
+                Ok(compiled_layers) => {
+                    if compiled_layers.len() != layers.len() {
+                        return Err(ShimError::FailedPrecondition(
+                            "precompile returned wrong number of layers".to_string(),
+                        ));
+                    }
+                    compiled_layers
+                }
+                Err(e) => {
+                    log::error!("precompilation failed: {}", e);
+                    return Ok((layers, platform));
+                }
+            };
+
+            let mut layers_for_runtime = Vec::with_capacity(compiled_layers.len());
+            for (i, compiled_layer) in compiled_layers.iter().enumerate() {
+                if compiled_layer.is_none() {
+                    log::debug!("no compiled layer using original");
+                    layers_for_runtime.push(layers[i].clone());
+                    continue;
+                }
+
+                let compiled_layer = compiled_layer.as_ref().unwrap();
+                let original_config = &layers[i].config;
+                let labels = HashMap::from([(
+                    format!("{precompile_id}/original"),
+                    original_config.digest().to_string(),
+                )]);
+                let precompiled_content =
+                    self.save_content(compiled_layer.clone(), &precompile_id, labels)?;
+
+                log::debug!(
+                    "updating original layer {} with compiled layer {}",
+                    original_config.digest(),
+                    precompiled_content.digest
+                );
+                // We add two labels here:
+                // - one with cache key per engine instance
+                // - one with a gc ref flag so it doesn't get cleaned up as long as the original layer exists
+                let mut original_layer = self.get_info(original_config.digest())?;
+                original_layer
+                    .labels
+                    .insert(precompile_id.clone(), precompiled_content.digest.clone());
+                original_layer.labels.insert(
+                    format!("containerd.io/gc.ref.content.precompile.{}", i),
+                    precompiled_content.digest.clone(),
+                );
+                self.update_info(original_layer)?;
+
+                // The original image is considered a root object, by adding a ref to the new compiled content
+                // We tell containerd to not garbage collect the new content until this image is removed from the system
+                // this ensures that we keep the content around after the lease is dropped
+                // We also save the precompiled flag here since the image labels can be mutated containerd, for example if the image is pulled twice
+                log::debug!(
+                    "updating image content with precompile digest to avoid garbage collection"
+                );
+                let mut image_content = self.get_info(&image_digest)?;
+                image_content.labels.insert(
+                    format!("containerd.io/gc.ref.content.precompile.{}", i),
+                    precompiled_content.digest,
+                );
+                image_content
+                    .labels
+                    .insert(precompile_id.clone(), "true".to_string());
+                self.update_info(image_content)?;
+
+                layers_for_runtime.push(WasmLayer {
+                    config: original_config.clone(),
+                    layer: compiled_layer.clone(),
+                });
+            }
+            return Ok((layers_for_runtime, platform));
+        };
+
         log::info!("using OCI layers");
         Ok((layers, platform))
+    }
+
+    fn read_wasm_layer(
+        &self,
+        original_config: &oci_spec::image::Descriptor,
+        can_precompile: bool,
+        precompile_id: &String,
+        needs_precompile: &mut bool,
+    ) -> std::prelude::v1::Result<WasmLayer, ShimError> {
+        let mut digest_to_load = original_config.digest().clone();
+        if can_precompile {
+            let info = self.get_info(&digest_to_load)?;
+            if let Some(label) = info.labels.get(precompile_id) {
+                // Safe to unwrap here since we already checked for the label's existence
+                digest_to_load = label.clone();
+                log::info!(
+                    "layer {} has pre-compiled content: {} ",
+                    info.digest,
+                    &digest_to_load
+                );
+            }
+        }
+        log::debug!("loading digest: {} ", &digest_to_load);
+        self.read_content(&digest_to_load)
+            .map(|module| WasmLayer {
+                config: original_config.clone(),
+                layer: module,
+            })
+            .or_else(|e| {
+                // handle content being removed from the content store out of band
+                if digest_to_load != *original_config.digest() {
+                    log::error!("failed to load precompiled layer: {}", e);
+                    log::error!("falling back to original layer and marking for recompile");
+                    *needs_precompile = can_precompile; // only mark for recompile if engine is capable
+                    self.read_content(original_config.digest())
+                        .map(|module| WasmLayer {
+                            config: original_config.clone(),
+                            layer: module,
+                        })
+                } else {
+                    Err(e)
+                }
+            })
     }
 }
 
@@ -706,7 +721,7 @@ mod tests {
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
 
-        let (manifest, _) = client.get_image_manifest(&image_name).unwrap();
+        let (manifest, _) = client.get_image_manifest_and_digest(&image_name).unwrap();
         let original_config = manifest.layers().first().unwrap();
         let info = client.get_info(original_config.digest()).unwrap();
 
@@ -847,7 +862,7 @@ mod tests {
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
         assert_eq!(layers[1].layer, fake_precompiled_bytes2.bytes);
 
-        let (manifest, _) = client.get_image_manifest(&image_name).unwrap();
+        let (manifest, _) = client.get_image_manifest_and_digest(&image_name).unwrap();
 
         let original_config1 = manifest.layers().first().unwrap();
         let info1 = client.get_info(original_config1.digest()).unwrap();
