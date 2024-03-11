@@ -11,7 +11,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-clap = { version = "4.5.1", features = ["derive"] }
+clap = { version = "4.5.2", features = ["derive"] }
 indexmap = "2.2.5"
 
 [lib]
