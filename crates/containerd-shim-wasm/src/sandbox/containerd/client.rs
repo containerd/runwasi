@@ -113,7 +113,8 @@ impl Client {
     fn lease(&self, reference: String) -> Result<LeaseGuard> {
         self.rt.block_on(async {
             let mut lease_labels = HashMap::new();
-            let expire = chrono::Utc::now() + chrono::Duration::hours(24);
+            // Unwrap is safe here since 24 hours is a valid time
+            let expire = chrono::Utc::now() + chrono::Duration::try_hours(24).unwrap();
             lease_labels.insert("containerd.io/gc.expire".to_string(), expire.to_rfc3339());
             let lease_request = containerd_client::services::v1::CreateRequest {
                 id: reference.clone(),
