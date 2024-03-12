@@ -1,12 +1,6 @@
 [workspace]
 members = [
-    "crates/containerd-shim-wasm",
-    "crates/containerd-shim-wasm-test-modules",
-    "crates/wasi-demo-app",
-    "crates/oci-tar-builder",
-    "crates/containerd-shim-wasmedge",
-    "crates/containerd-shim-wasmtime",
-    "crates/containerd-shim-wasmer"
+    "crates/*",
 ]
 resolver = "2"
 
