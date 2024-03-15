@@ -34,7 +34,7 @@ tokio = { version = "1.36.0", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.200.0"
 tokio-stream = { version = "0.1" }
-prost-types = "0.11" # should match version in containerd-shim
+prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
@@ -43,7 +43,7 @@ caps = "0.5"
 dbus = { version = "0", features = ["vendored"] }
 libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
 nix = { workspace = true, features = ["sched", "mount"] }
-containerd-client = "0.4.0"
+containerd-client = "0.5.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
