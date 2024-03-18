@@ -601,8 +601,7 @@ dependencies = [
 [[package]]
 name = "containerd-shim"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6c4373db9e71697990f22f266aefb03d04204651df9d96c804bc6454afeee7d"
+source = "git+https://github.com/containerd/rust-extensions?rev=6b9e5b28be2870731a18ca83c13e63a98f35e149#6b9e5b28be2870731a18ca83c13e63a98f35e149"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -628,8 +627,7 @@ dependencies = [
 [[package]]
 name = "containerd-shim-protos"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e4ef8fa542cd6964b2705983d02de4f4bdaaac8d25feabcef5c43a87ac58291"
+source = "git+https://github.com/containerd/rust-extensions?rev=6b9e5b28be2870731a18ca83c13e63a98f35e149#6b9e5b28be2870731a18ca83c13e63a98f35e149"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
