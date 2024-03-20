@@ -676,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm-test-modules"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "env_logger",
