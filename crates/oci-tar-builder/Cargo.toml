@@ -1,7 +1,12 @@
 [package]
 name = "oci-tar-builder"
+description = "Library that can be used to build OCI tar archives"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+readme = "README.md"
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 tar = { workspace = true }
