@@ -5,3 +5,5 @@
 **/target/
 /release/
 /.vscode/
+
+**/node_modules

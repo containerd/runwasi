@@ -1,95 +1,100 @@
 name: release
 
-concurrency:
-  group: release-${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
 on:
-  push:
-    tags:
-      - '**/v[0-9]+.[0-9]+.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run the release without actually releasing bits"
+        type: boolean
+        default: true
+      crate:
+        description: "The crate to release. (containerd-shim-wasmtime)"
+        type: string
+      version:
+        description: "The version of the crate to release. (e.g., 1.2.3)"
+        type: string
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ inputs.crate }}-${{ inputs.version }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  parse:
-    runs-on: ubuntu-latest
-    name: Parse ref
-    outputs:
-      crate: ${{ steps.parse.outputs.crate }}
-      version: ${{ steps.parse.outputs.version }}
-      runtime: ${{ steps.parse.outputs.runtime }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
-      - id: parse
-        name: Parse ref
-        shell: bash
-        run: ./scripts/parse_ref.sh ${{ github.ref }} >> ${GITHUB_OUTPUT}
-
   build-and-sign:
     permissions:
       # cosign uses the GitHub OIDC token
       id-token: write
-    needs:
-      - parse
     strategy:
       matrix:
         arch: ["x86_64", "aarch64"]
     runs-on: "ubuntu-22.04"
     steps:
-      - uses: actions/checkout@v3
-
+      # - name: Fail if branch is not main
+      #   if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+      #   run: |
+      #     echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
+      #     exit 1
+      - name: substring runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const crate = "${{ inputs.crate }}";
+            core.exportVariable("RUNTIME", crate.replace(/^containerd-shim-/, ""));
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
-      
       - name: Setup rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
-          RUST_CACHE_KEY_OS: rust-release-cache-${{ needs.parse.outputs.crate }}-${{ matrix.arch }}
+          RUST_CACHE_KEY_OS: rust-release-cache-${{ inputs.crate }}-${{ matrix.arch }}
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      
       - name: Setup cross-rs
         run: ./scripts/setup-cross.sh ${{ matrix.arch }}-unknown-linux-musl
-      
       - name: Setup build profile
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
-      
       - name: Setup cosign for signing
         uses: sigstore/cosign-installer@v3.3.0
         with:
           cosign-release: 'v2.2.2'
-      
+
+###
+###   update the crate version, commit the change to main, then proceed with the release.
+###   (not on dry-run)
+###
+
+
       - name: Build
         timeout-minutes: 20
-        run: make build-${{ needs.parse.outputs.runtime }}
-
+        run: make build-${{ env.RUNTIME }}
       - name: Test
         if: ${{ matrix.arch == 'x86_64' }}
         timeout-minutes: 10
-        run: make test-${{ needs.parse.outputs.runtime }}
-
+        run: make test-${{ env.RUNTIME }}
       - name: Sign the binary
-        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' && needs.parse.outputs.runtime != 'oci-tar-builder'}}
+        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
         run: |
-          make dist-${{ needs.parse.outputs.runtime }}
+          make dist-${{ env.RUNTIME }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             cosign sign-blob --yes \
-              --bundle containerd-shim-${{ needs.parse.outputs.runtime }}-v1.bundle \
-              dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}-v1
+              --output-signature containerd-shim-${{ env.RUNTIME }}-v1.sig \
+              --bundle containerd-shim-${{ env.RUNTIME }}-v1.bundle \
+              dist/bin/containerd-shim-${{ env.RUNTIME }}-v1
             
             cosign sign-blob --yes \
-              --bundle containerd-shim-${{ needs.parse.outputs.runtime }}d-v1.bundle \
-              dist/bin/containerd-shim-${{ needs.parse.outputs.runtime }}d-v1
+              --output-signature containerd-shim-${{ env.RUNTIME }}d-v1.sig \
+              --bundle containerd-shim-${{ env.RUNTIME }}d-v1.bundle \
+              dist/bin/containerd-shim-${{ env.RUNTIME }}d-v1
 
             cosign sign-blob --yes \
-              --bundle containerd-${{ needs.parse.outputs.runtime }}d.bundle \
-              dist/bin/containerd-${{ needs.parse.outputs.runtime }}d
+              --output-signature containerd-${{ env.RUNTIME }}d.sig \
+              --output-signature containerd-${{ env.RUNTIME }}d.sig \
+              --bundle containerd-${{ env.RUNTIME }}d.bundle \
+              dist/bin/containerd-${{ env.RUNTIME }}d
             
             # Copy the certs to the dist/bin folder
             cp *.sig dist/bin/
@@ -97,62 +102,72 @@ jobs:
           else
             echo "No files to sign"
           fi
-
       - name: Package artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' && needs.parse.outputs.runtime != 'oci-tar-builder'}}
+        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
         shell: bash
         run: |
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
+            tar -czf dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
+            tar -czf dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' && needs.parse.outputs.runtime != 'oci-tar-builder'}}
+        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}
-          path: dist/containerd-shim-${{ needs.parse.outputs.runtime }}-${{ matrix.arch }}.tar.gz
+          name: containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}
+          path: dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz
 
   release:
     permissions:
       contents: write
     needs:
       - build-and-sign
-      - parse
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: substring runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const crate = "${{ inputs.crate }}";
+            core.exportVariable("RUNTIME", crate.replace(/^containerd-shim-/, ""));
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Download artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' && needs.parse.outputs.runtime != 'oci-tar-builder'}}
+        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
         uses: actions/download-artifact@master
         with:
           path: release
+      - name: Tag the the release
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git tag "${{inputs.crate}}/v${{inputs.version}}"
+          git push origin "${{inputs.crate}}/v${{inputs.version}}"
       - name: Create release
+        if: ${{ !inputs.dry_run }}
         run: |
           gh release create ${{ github.ref }} --generate-notes --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
+          RELEASE_NAME: ${{ inputs.crate }}/${{ inputs.version }}
       - name: Upload release artifacts
-        if: ${{ needs.parse.outputs.runtime != 'wasm' && needs.parse.outputs.runtime != 'wasm-test-modules' && needs.parse.outputs.runtime != 'oci-tar-builder'}}
+        if: ${{ (env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder') && !inputs.dry_run }}
         run: |
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
           done
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/${{ needs.parse.outputs.version }}
-      - name: Cargo publish
-        run: cargo publish --package ${{ needs.parse.outputs.crate }} --verbose --locked
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+          RELEASE_NAME: ${{ inputs.crate }}/${{ inputs.version }}
       - name: Check crates.io ownership
         run: |
-          cargo owner --add github:containerd:runwasi-committers ${{ needs.parse.outputs.crate }}
-          cargo owner --list ${{ needs.parse.outputs.crate }} | grep github:containerd:runwasi-committers
+          cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
+          cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+      - name: Cargo publish
+        run: cargo publish ${{ inputs.dry_run && '--dry_run' || '' }} --package ${{ inputs.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
