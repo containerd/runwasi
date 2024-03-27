@@ -29,7 +29,7 @@ jobs:
       crate: ${{ inputs.crate }}
       runtime: ${{ steps.runtime_sub.outputs.runtime }}
       version: ${{ inputs.version }}
-      is_shim: ${{ steps.runtime_sub.outputs.is_shim }}
+      is_shim: ${{ steps.runtime_sub.outputs.is_shim == 'true' }}
     steps:
       ### Determine the name of the runtime and if it is a binary release or crates.io
       - name: substring runtime
@@ -38,13 +38,13 @@ jobs:
         with:
           script: |
             const crate = '${{ inputs.crate }}';
-            let runtime = crate.replace(/^containerd-shim-/, '').trim();
+            let runtime = crate.replace(/^containerd-shim-/, '');
             core.setOutput('runtime', runtime);
             const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
             core.setOutput('is_shim', !non_shim_crates.includes(runtime));
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
       - name: Check crates.io ownership
-        if: ${{ !steps.runtime_sub.outputs.is_shim }}
+        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
         run: |
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers
