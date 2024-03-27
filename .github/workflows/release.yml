@@ -29,7 +29,8 @@ jobs:
       crate: ${{ inputs.crate }}
       runtime: ${{ steps.runtime_sub.outputs.runtime }}
       version: ${{ inputs.version }}
-      is_shim: ${{ steps.runtime_sub.outputs.is_shim == 'true' }}
+      ### is_shim is a string, not a boolean, so use: is_shim == 'true'
+      is_shim: ${{ steps.runtime_sub.outputs.is_shim }}
     steps:
       ### Determine the name of the runtime and if it is a binary release or crates.io
       - name: substring runtime
@@ -66,7 +67,7 @@ jobs:
     steps:
       - name: matrix description
         run: |
-          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_bin: '${{ matrix.is_bin }}."
+          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
       # - name: Fail if branch is not main
       #   if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
       #   run: |
@@ -168,7 +169,7 @@ jobs:
     steps:
       - name: matrix description
         run: |
-          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_bin: '${{ matrix.is_bin }}."
+          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
       - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
