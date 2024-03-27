@@ -63,6 +63,9 @@ jobs:
           - ${{ needs.pre-release.outputs }}
     runs-on: "ubuntu-22.04"
     steps:
+      - name: matrix description
+        run: |
+          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_bin: '${{ matrix.is_bin }}."
       # - name: Fail if branch is not main
       #   if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
       #   run: |
@@ -84,6 +87,7 @@ jobs:
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Setup cosign for signing
+        if: ${{ matrix.is_bin }}
         uses: sigstore/cosign-installer@v3.3.0
         with:
           cosign-release: 'v2.2.2'
@@ -109,17 +113,19 @@ jobs:
           if stat dist/bin/* >/dev/null 2>&1; then
             cosign sign-blob --yes \
               --output-signature containerd-shim-${{ matrix.runtime }}-v1.sig \
+              --output-certificate containerd-shim-${{ matrix.runtime }}-v1.pem \
               --bundle containerd-shim-${{ matrix.runtime }}-v1.bundle \
               dist/bin/containerd-shim-${{ matrix.runtime }}-v1
             
             cosign sign-blob --yes \
               --output-signature containerd-shim-${{ matrix.runtime }}d-v1.sig \
+              --output-certificate containerd-shim-${{ matrix.runtime }}d-v1.pem \
               --bundle containerd-shim-${{ matrix.runtime }}d-v1.bundle \
               dist/bin/containerd-shim-${{ matrix.runtime }}d-v1
 
             cosign sign-blob --yes \
               --output-signature containerd-${{ matrix.runtime }}d.sig \
-              --output-signature containerd-${{ matrix.runtime }}d.sig \
+              --output-certificate containerd-${{ matrix.runtime }}d.pem \
               --bundle containerd-${{ matrix.runtime }}d.bundle \
               dist/bin/containerd-${{ matrix.runtime }}d
             
@@ -158,6 +164,9 @@ jobs:
         include: ${{ needs.pre-release.outputs }}
     runs-on: ${{ matrix.os }}
     steps:
+      - name: matrix description
+        run: |
+          echo "Running job with crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_bin: '${{ matrix.is_bin }}."
       - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
