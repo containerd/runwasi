@@ -161,7 +161,8 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        include: ${{ needs.pre-release.outputs }}
+        include: 
+          - ${{ needs.pre-release.outputs }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: matrix description
