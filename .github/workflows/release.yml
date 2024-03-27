@@ -37,7 +37,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const crate = '${{ inputs.crate }}'';
+            const crate = '${{ inputs.crate }}';
             let runtime = crate.replace(/^containerd-shim-/, '').trim();
             core.setOutput('runtime', runtime);
             const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
