@@ -200,6 +200,6 @@ jobs:
           RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
       - name: Cargo publish
         if: ${{ matrix.is_shim  != 'true' }}
-        run: cargo publish ${{ inputs.dry_run && '--dry_run' || '' }} --package ${{ matrix.crate }} --verbose --locked
+        run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
