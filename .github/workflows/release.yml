@@ -59,7 +59,8 @@ jobs:
     strategy:
       matrix:
         arch: ["x86_64", "aarch64"]
-        include: ${{ needs.pre-release.outputs }}
+        include: 
+          - ${{ needs.pre-release.outputs }}
     runs-on: "ubuntu-22.04"
     steps:
       # - name: Fail if branch is not main
