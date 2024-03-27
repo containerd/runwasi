@@ -22,13 +22,42 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  pre-release:
+    name: pre-release checks
+    runs-on: "ubuntu-latest"
+    outputs:
+      crate: ${{ inputs.crate }}
+      runtime: ${{ steps.runtime_sub.outputs.runtime }}
+      version: ${{ inputs.version }}
+    steps:
+      - name: substring runtime
+        id: runtime_sub
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const crate = "${{ inputs.crate }}";
+            core.setOutput("runtime", crate.replace(/^containerd-shim-/, ""));
+      - name: Check crates.io ownership
+        run: |
+          cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
+          cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+
   build-and-sign:
     permissions:
       # cosign uses the GitHub OIDC token
       id-token: write
+    needs:
+      - pre-release
     strategy:
       matrix:
         arch: ["x86_64", "aarch64"]
+        include:
+          - crate: ${{ needs.pre-release.outputs.crate }}
+          - runtime: ${{ needs.pre-release.outputs.runtime }}
+          - version: ${{ needs.pre-release.outputs.version }}
+          - is_bin: ${{ needs.pre-release.outputs.runtime != 'wasm' && needs.pre-release.outputs.runtime != 'wasm-test-modules' && needs.pre-release.outputs.runtime != 'oci-tar-builder' }}
     runs-on: "ubuntu-22.04"
     steps:
       # - name: Fail if branch is not main
@@ -36,19 +65,14 @@ jobs:
       #   run: |
       #     echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
       #     exit 1
-      - name: substring runtime
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const crate = "${{ inputs.crate }}";
-            core.exportVariable("RUNTIME", crate.replace(/^containerd-shim-/, ""));
+
       - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Setup rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
-          RUST_CACHE_KEY_OS: rust-release-cache-${{ inputs.crate }}-${{ matrix.arch }}
+          RUST_CACHE_KEY_OS: rust-release-cache-${{ matrix.crate }}-${{ matrix.arch }}
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup cross-rs
@@ -69,32 +93,32 @@ jobs:
 
       - name: Build
         timeout-minutes: 20
-        run: make build-${{ env.RUNTIME }}
+        run: make build-${{ matrix.runtime }}
       - name: Test
         if: ${{ matrix.arch == 'x86_64' }}
         timeout-minutes: 10
-        run: make test-${{ env.RUNTIME }}
+        run: make test-${{ matrix.runtime }}
       - name: Sign the binary
-        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
+        if: ${{ matrix.is_bin }}
         run: |
-          make dist-${{ env.RUNTIME }}
+          make dist-${{ matrix.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ env.RUNTIME }}-v1.sig \
-              --bundle containerd-shim-${{ env.RUNTIME }}-v1.bundle \
-              dist/bin/containerd-shim-${{ env.RUNTIME }}-v1
+              --output-signature containerd-shim-${{ matrix.runtime }}-v1.sig \
+              --bundle containerd-shim-${{ matrix.runtime }}-v1.bundle \
+              dist/bin/containerd-shim-${{ matrix.runtime }}-v1
             
             cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ env.RUNTIME }}d-v1.sig \
-              --bundle containerd-shim-${{ env.RUNTIME }}d-v1.bundle \
-              dist/bin/containerd-shim-${{ env.RUNTIME }}d-v1
+              --output-signature containerd-shim-${{ matrix.runtime }}d-v1.sig \
+              --bundle containerd-shim-${{ matrix.runtime }}d-v1.bundle \
+              dist/bin/containerd-shim-${{ matrix.runtime }}d-v1
 
             cosign sign-blob --yes \
-              --output-signature containerd-${{ env.RUNTIME }}d.sig \
-              --output-signature containerd-${{ env.RUNTIME }}d.sig \
-              --bundle containerd-${{ env.RUNTIME }}d.bundle \
-              dist/bin/containerd-${{ env.RUNTIME }}d
+              --output-signature containerd-${{ matrix.runtime }}d.sig \
+              --output-signature containerd-${{ matrix.runtime }}d.sig \
+              --bundle containerd-${{ matrix.runtime }}d.bundle \
+              dist/bin/containerd-${{ matrix.runtime }}d
             
             # Copy the certs to the dist/bin folder
             cp *.sig dist/bin/
@@ -103,71 +127,68 @@ jobs:
             echo "No files to sign"
           fi
       - name: Package artifacts
-        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
+        if: ${{ matrix.is_bin }}
         shell: bash
         run: |
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz -C dist/bin .
+            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz -T /dev/null
+            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
-        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
+        if: ${{ matrix.is_bin }}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}
-          path: dist/containerd-shim-${{ env.RUNTIME }}-${{ matrix.arch }}.tar.gz
+          name: containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}
+          path: dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz
 
   release:
     permissions:
       contents: write
     needs:
+      - pre-release
       - build-and-sign
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        include:
+          - crate: ${{ needs.pre-release.outputs.crate }}
+          - runtime: ${{ needs.pre-release.outputs.runtime }}
+          - version: ${{ needs.pre-release.outputs.version }}
+          - is_bin: ${{ needs.pre-release.outputs.runtime != 'wasm' && needs.pre-release.outputs.runtime != 'wasm-test-modules' && needs.pre-release.outputs.runtime != 'oci-tar-builder' }}
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: substring runtime
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const crate = "${{ inputs.crate }}";
-            core.exportVariable("RUNTIME", crate.replace(/^containerd-shim-/, ""));
       - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
       - name: Download artifacts
-        if: ${{ env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder'}}
+        if: ${{ matrix.is_bin }}
         uses: actions/download-artifact@master
         with:
           path: release
       - name: Tag the the release
         if: ${{ !inputs.dry_run }}
         run: |
-          git tag "${{inputs.crate}}/v${{inputs.version}}"
-          git push origin "${{inputs.crate}}/v${{inputs.version}}"
+          git tag "${{matrix.crate}}/v${{matrix.version}}"
+          git push origin "${{matrix.crate}}/v${{matrix.version}}"
       - name: Create release
         if: ${{ !inputs.dry_run }}
         run: |
-          gh release create ${{ github.ref }} --generate-notes --prerelease
+          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ inputs.crate }}/${{ inputs.version }}
+          RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
       - name: Upload release artifacts
-        if: ${{ (env.RUNTIME != 'wasm' && env.RUNTIME != 'wasm-test-modules' && env.RUNTIME != 'oci-tar-builder') && !inputs.dry_run }}
+        if: ${{ matrix.is_bin && !inputs.dry_run }}
         run: |
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
           done
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ inputs.crate }}/${{ inputs.version }}
-      - name: Check crates.io ownership
-        run: |
-          cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
-          cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+          RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
       - name: Cargo publish
-        run: cargo publish ${{ inputs.dry_run && '--dry_run' || '' }} --package ${{ inputs.crate }} --verbose --locked
+        run: cargo publish ${{ inputs.dry_run && '--dry_run' || '' }} --package ${{ matrix.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
