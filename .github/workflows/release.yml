@@ -38,6 +38,7 @@ jobs:
             const crate = "${{ inputs.crate }}";
             core.setOutput("runtime", crate.replace(/^containerd-shim-/, ""));
       - name: Check crates.io ownership
+        if: ${{ steps.runtime_sub.outputs.runtime != 'wasm' && steps.runtime_sub.outputs.runtime != 'wasm-test-modules' && steps.runtime_sub.outputs.runtime != 'oci-tar-builder' }}
         run: |
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers
