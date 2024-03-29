@@ -32,11 +32,11 @@ jobs:
       ### is_shim is a string, not a boolean, so use: is_shim == 'true'
       is_shim: ${{ steps.runtime_sub.outputs.is_shim }}
     steps:
-      # - name: Fail if branch is not main
-      #   if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
-      #   run: |
-      #     echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
-      #     exit 1
+      - name: Fail if branch is not main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
+          exit 1
 
       - uses: actions/checkout@v4
       ### Determine the name of the runtime and if it is a binary release or crates.io
