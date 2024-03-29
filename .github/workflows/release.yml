@@ -1,4 +1,5 @@
 name: release
+run-name: Release ${{ inputs.crate }} with v@${{ inputs.version }} (DryRun - ${{ inputs.dry_run }})
 
 on:
   workflow_dispatch:
@@ -77,7 +78,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           # replace the version inline in the Cargo.toml
-          sed -i '' -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
+          sed -i -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
           git commit -s -am 'update version of ${{ inputs.crate }} to v${{ inputs.version }}'
           git push origin main
 
