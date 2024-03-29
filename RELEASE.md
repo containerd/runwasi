@@ -4,21 +4,33 @@ This document describes the steps to release a new version of the crate.
 
 ## Overview
 
-To create a new release, push a new tag following the format `<crate>/v<version>`. 
-This triggers the [release](.github/workflows/release.yml) GitHub Actions workflow.
+To create a new release, either run the release.yml workflow as a workload_dispatch trigger through the GitHub UI, or via the following command substituting the proper values for crate and version.
+```bash
+gh workflow run release.yml -f dry_run=true -f crate=containerd-shim-wasm -f version=0.4.0
+```
 
-In the future we may include a workflow for tagging the release but for now this is manual.
+### Input Values for Release.yml
+- `crate:` [string] the name of the crate within the runwasi project. It should be a directory under `./crates`.
+- `version:` [string] the version of the crate to stamp, tag, and release (e.g., 1.0.0, 0.6.0-rc1)
+- `dry_run:` [boolean] a flag that causes the workflow to run all step except ones that would tag or push artifacts.
 
 The workflow performs the following steps:
+- Verifies inputs
+- Verifies ability to push crates
+- Updates the version of the crate to the version specified in the workflow input
 - Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)
 - Run the tests for that crate (and only that crate!)
+- Publishes to the crates.io
+- Tags the repository for the release
 - Creates a GitHub release for that crate (attaching any artifacts)
-- Publish the crate to crates.io
 
 ### Crate Release Sequence
+
+Must release the creates in this order due to dependencies:
 1. `containerd-shim-wasm-test-modules`
-2. `containerd-shim-wasm`
-3. All runtime-related crates.
+2. `oci-tar-builder`
+3. `containerd-shim-wasm`
+4. All runtime-related crates.
 
 The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
 
@@ -36,7 +48,7 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 
 1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate
 2. PR can be merged after 2 LGTMs
-3. Tag the release with the format `<crate>/v<version>` (e.g. `containerd-shim-wasm/v0.2.0`)
+3. Run the release workflow for the dependent crate. (e.g. `containerd-shim-wasm/v0.2.0` where `crate=containerd-shim-wasm` and `version=0.2.0`)
 4. Wait for the release workflow to complete
 5. Manually verify the release on crates.io and on the GitHub releases page (See [Verify signing](#Verify-signing) section for more details on verifying the release on GitHub releases page.)
 6. If this is the first time publishing this crate, see the [First release of a crate](#First-release-of-a-crate) section.
@@ -62,7 +74,7 @@ In the Github release page, please provide the above command in the instructions
 
 If the crate has never been published to crates.io before then ownership of the crate will need to be configured.
 The containerd/runwasi-committers team will need to be added as an owner of the crate.
-The release workflow will automatically invite the person who triggered the worrkflow run to be an owner of the crate.
+The release workflow will automatically invite the person who triggered the workflow run to be an owner of the crate.
 That person will need to accept the invite to be an owner of the crate and then manually add the containerd/runwasi-committers team as an owner of the crate.
 
 ```

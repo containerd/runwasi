@@ -210,7 +210,7 @@ jobs:
           gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
+          RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
       - name: Upload release artifacts
         if: ${{ matrix.is_shim == 'true' && !inputs.dry_run }}
         run: |
@@ -219,4 +219,4 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
+          RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
