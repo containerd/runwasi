@@ -25,6 +25,8 @@ env:
 jobs:
   pre-release:
     name: pre-release checks
+    permissions:
+      contents: write
     runs-on: "ubuntu-latest"
     outputs:
       crate: ${{ inputs.crate }}
@@ -74,13 +76,19 @@ jobs:
             cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
-      - name: Update crate version and commit change to main
-        if: ${{ !inputs.dry_run }}
+      - name: Update crate version
         run: |
           # replace the version inline in the Cargo.toml
           sed -i -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
-          git commit -s -am 'update version of ${{ inputs.crate }} to v${{ inputs.version }}'
-          git push origin main
+      - name: Git diff
+        run: |
+          # see the diff of the inline crate version update
+          git diff
+      - name: Commit the crate version update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        if: ${{ !inputs.dry_run }}
+        with:
+          commit_message: update version of ${{ inputs.crate }} to v${{ inputs.version }}
 
   build-and-sign:
     permissions:
