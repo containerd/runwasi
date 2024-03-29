@@ -1,5 +1,5 @@
-name: release
-run-name: Release ${{ inputs.crate }} with v@${{ inputs.version }} (DryRun - ${{ inputs.dry_run }})
+name: Release
+run-name: ${{ inputs.crate }}@${{ inputs.version }} (DryRun:${{ inputs.dry_run }})
 
 on:
   workflow_dispatch:
@@ -9,11 +9,21 @@ on:
         type: boolean
         default: true
       crate:
-        description: "The crate to release. (containerd-shim-wasmtime)"
-        type: string
+        description: "The crate to release"
+        required: true
+        type: choice
+        options:
+          - containerd-shim-wasm-test-modules
+          - oci-tar-builder
+          - containerd-shim-wasm
+          # shims
+          - containerd-shim-wasmer
+          - containerd-shim-wasmedge
+          - containerd-shim-wasmtime
       version:
         description: "The version of the crate to release. (e.g., 1.2.3)"
         type: string
+        required: true
 
 concurrency:
   group: release-${{ github.workflow }}-${{ inputs.crate }}-${{ inputs.version }}
@@ -26,6 +36,8 @@ jobs:
   pre-release:
     name: pre-release checks
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
     outputs:
       crate: ${{ inputs.crate }}
       runtime: ${{ steps.runtime_sub.outputs.runtime }}
@@ -38,7 +50,6 @@ jobs:
         run: |
           echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
           exit 1
-
       - uses: actions/checkout@v4
       ### Determine the name of the runtime and if it is a binary release or crates.io
       - name: verify version input
@@ -49,13 +60,6 @@ jobs:
             if(!version.match(/^[0-9]+.[0-9]+.*/)) {
               core.setFailed(`The version '${version}' does not match regex /^[0-9]+.[0-9]+.*/.`);
             }
-      - name: verify crate name input
-        run: |
-          echo 'Checking to see if crate: "${{ inputs.crate }}" matches any of the following directories in ./crates'
-          ls -d -- crates/* | sed 's/crates\///'
-
-          # List and then check that one matches exactly. If not, step will fail due to grep exit 1.
-          ls -d -- crates/* | sed 's/crates\///' | grep '^${{ inputs.crate }}$'
       - name: substring runtime
         id: runtime_sub
         uses: actions/github-script@v7
@@ -79,7 +83,10 @@ jobs:
         run: |
           # replace the version inline in the Cargo.toml
           sed -i -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
-          git commit -s -am 'update version of ${{ inputs.crate }} to v${{ inputs.version }}'
+          git diff
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git commit -am 'Update version of ${{ inputs.crate }} to v${{ inputs.version }}'
           git push origin main
 
   build-and-sign:
