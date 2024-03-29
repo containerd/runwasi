@@ -38,7 +38,23 @@ jobs:
       #     echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
       #     exit 1
 
+      - uses: actions/checkout@v4
       ### Determine the name of the runtime and if it is a binary release or crates.io
+      - name: verify version input
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ inputs.version }}';
+            if(!version.match(/^[0-9]+.[0-9]+.*/)) {
+              core.setFailed(`The version '${version}' does not match regex /^[0-9]+.[0-9]+.*/.`);
+            }
+      - name: verify crate name input
+        run: |
+          echo 'Checking to see if crate: "${{ inputs.crate }}" matches any of the following directories in ./crates'
+          ls -d -- crates/* | sed 's/crates\///'
+
+          # List and then check that one matches exactly. If not, step will fail due to grep exit 1.
+          ls -d -- crates/* | sed 's/crates\///' | grep '^${{ inputs.crate }}$'
       - name: substring runtime
         id: runtime_sub
         uses: actions/github-script@v7
@@ -178,6 +194,11 @@ jobs:
         uses: actions/download-artifact@master
         with:
           path: release
+      - name: Cargo publish
+        if: ${{ matrix.is_shim  != 'true' }}
+        run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
       - name: Tag the the release
         if: ${{ !inputs.dry_run }}
         run: |
@@ -199,8 +220,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ matrix.crate }}/${{ matrix.version }}
-      - name: Cargo publish
-        if: ${{ matrix.is_shim  != 'true' }}
-        run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
