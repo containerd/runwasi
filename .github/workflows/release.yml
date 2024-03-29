@@ -36,8 +36,6 @@ jobs:
   pre-release:
     name: pre-release checks
     runs-on: "ubuntu-latest"
-    permissions:
-      contents: write
     outputs:
       crate: ${{ inputs.crate }}
       runtime: ${{ steps.runtime_sub.outputs.runtime }}
@@ -78,16 +76,12 @@ jobs:
             cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
-      - name: Update crate version and commit change to main
-        if: ${{ !inputs.dry_run }}
+      - name: Verify version matches
         run: |
-          # replace the version inline in the Cargo.toml
-          sed -i -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
-          git diff
-          git config user.name "${GITHUB_ACTOR}"
-          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git commit -am 'Update version of ${{ inputs.crate }} to v${{ inputs.version }}'
-          git push origin main
+          if [ "$(grep -c "version = \"${{ inputs.version }}\"" crates/${{ inputs.crate }}/Cargo.toml)" -ne 1 ]; then
+            echo "Version in Cargo.toml does not match the version input"
+            exit 1
+          fi
 
   build-and-sign:
     permissions:
