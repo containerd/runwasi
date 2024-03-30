@@ -72,7 +72,7 @@ jobs:
       - name: Check crates.io ownership
         if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
         run: |
-          cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
+            cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
             cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}

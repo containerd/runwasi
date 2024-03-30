@@ -1,26 +1,26 @@
 # Releasing a new crate version
 
-This document describes the steps to release a new version of the crate.
+This document describes the steps to release a new version of a crate.
 
 ## Overview
 
-To create a new release, either run the release.yml workflow as a workload_dispatch trigger through the GitHub UI, or via the following command substituting the proper values for crate and version.
+To create a new release, either run the `release.yml` workflow as a workload_dispatch trigger through the GitHub UI, or via the following command substituting the proper values for crate and version.
 ```bash
 gh workflow run release.yml -f dry_run=true -f crate=containerd-shim-wasm -f version=0.4.0
 ```
 
 ### Input Values for Release.yml
-- `crate:` [string] the name of the crate within the runwasi project. It should be a directory under `./crates`.
-- `version:` [string] the version of the crate to stamp, tag, and release (e.g., 1.0.0, 0.6.0-rc1)
-- `dry_run:` [boolean] a flag that causes the workflow to run all step except ones that would tag or push artifacts.
+- `crate:` [string] the name of the crate within the runwasi project. It should be a directory under `./crates`, required.
+- `version:` [string] the version of the crate to stamp, tag, and release (e.g., 1.0.0, 0.6.0-rc1), required.
+- `dry_run:` [boolean] a flag that causes the workflow to run all step except ones that would tag or push artifacts. Defaults to `true`.
 
 The workflow performs the following steps:
-- Verifies inputs
+- Verifies the inputs
 - Verifies ability to push crates
 - Updates the version of the crate to the version specified in the workflow input
-- Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)
+- Build the crate to be released (determined by the `crate` input value), including any artifacts (e.g. associated binaries)
 - Run the tests for that crate (and only that crate!)
-- Publishes to the crates.io
+- Publishes to the crates.io if the crate is not a shim binary (e.g. `containerd-shim-wasmtime`).
 - Tags the repository for the release
 - Creates a GitHub release for that crate (attaching any artifacts)
 
@@ -46,12 +46,10 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 
 ## Steps
 
-1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate
-2. PR can be merged after 2 LGTMs
-3. Run the release workflow for the dependent crate. (e.g. `containerd-shim-wasm/v0.2.0` where `crate=containerd-shim-wasm` and `version=0.2.0`)
-4. Wait for the release workflow to complete
-5. Manually verify the release on crates.io and on the GitHub releases page (See [Verify signing](#Verify-signing) section for more details on verifying the release on GitHub releases page.)
-6. If this is the first time publishing this crate, see the [First release of a crate](#First-release-of-a-crate) section.
+1. Run the release workflow for the dependent crate. (e.g. `containerd-shim-wasm/v0.2.0` where `crate=containerd-shim-wasm` and `version=0.2.0`)
+2. Wait for the release workflow to complete
+3. Manually verify the release on crates.io and on the GitHub releases page (See [Verify signing](#Verify-signing) section for more details on verifying the release on GitHub releases page.)
+4. If this is the first time publishing this crate, see the [First release of a crate](#First-release-of-a-crate) section.
 
 > Note: If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.
 >
