@@ -30,7 +30,7 @@ tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
-tokio = { version = "1.36.0", features = [ "full" ] }
+tokio = { version = "1.37.0", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.201.0"
 tokio-stream = { version = "0.1" }
