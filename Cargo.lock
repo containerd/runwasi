@@ -669,7 +669,7 @@ dependencies = [
  "tokio-stream",
  "ttrpc",
  "ttrpc-codegen",
- "wasmparser 0.201.0",
+ "wasmparser 0.202.0",
  "wat",
  "windows-sys 0.52.0",
 ]
@@ -5066,9 +5066,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.201.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84e5df6dba6c0d7fafc63a450f1738451ed7a0b52295d83e868218fa286bf708"
+checksum = "d6998515d3cf3f8b980ef7c11b29a9b1017d4cf86b99ae93b546992df9931413"
 dependencies = [
  "bitflags 2.4.2",
  "indexmap 2.2.6",
