@@ -96,7 +96,7 @@ jobs:
       os: "ubuntu-22.04"
       runtime: ${{ matrix.runtime }}
       target: "${{ matrix.arch }}-unknown-linux-musl"
-      slug: "linux-musl"
+      slug: "${{ matrix.arch }}-linux-musl"
       arch: ${{ matrix.arch }}
 
   release:

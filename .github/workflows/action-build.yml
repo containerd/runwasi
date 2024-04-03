@@ -45,7 +45,7 @@ jobs:
         if: runner.os == 'Linux'
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Setup cosign for signing
-        if: ${{ matrix.is_shim == 'true' }}
+        if: ${{ inputs.runtime != 'common' }}
         uses: sigstore/cosign-installer@v3.3.0
         with:
           cosign-release: 'v2.2.2'
@@ -97,13 +97,13 @@ jobs:
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz -C dist/bin .
+            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz -T /dev/null
+            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
         if: ${{ inputs.runtime != 'common' }}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}
-          path: dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz
+          name: containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}
+          path: dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz

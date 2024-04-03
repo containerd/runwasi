@@ -50,7 +50,7 @@ jobs:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
       target: "${{ matrix.arch }}-unknown-linux-${{ matrix.libc }}"
-      slug: "linux-${{ matrix.libc }}"
+      slug: "${{ matrix.arch }}-linux-${{ matrix.libc }}"
       arch: ${{ matrix.arch }}
 
   build-windows:
