@@ -84,9 +84,6 @@ jobs:
           fi
 
   build-and-sign:
-    permissions:
-      # cosign uses the GitHub OIDC token
-      id-token: write
     needs:
       - pre-release
     strategy:
@@ -94,83 +91,13 @@ jobs:
         arch: ["x86_64", "aarch64"]
         include: 
           - ${{ needs.pre-release.outputs }}
-    runs-on: "ubuntu-22.04"
-    steps:
-      - name: Matrix description
-        run: |
-          echo "Running job with dry_run: '${{ inputs.dry_run }}' crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
-      - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-      - name: Setup rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        env:
-          RUST_CACHE_KEY_OS: rust-release-cache-${{ matrix.crate }}-${{ matrix.arch }}
-        with:
-          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup cross-rs
-        run: ./scripts/setup-cross.sh ${{ matrix.arch }}-unknown-linux-musl
-      - name: Setup build profile
-        shell: bash
-        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
-      - name: Setup cosign for signing
-        if: ${{ matrix.is_shim == 'true' }}
-        uses: sigstore/cosign-installer@v3.3.0
-        with:
-          cosign-release: 'v2.2.2'
-      - name: Build
-        timeout-minutes: 20
-        run: make build-${{ matrix.runtime }}
-      - name: Test
-        if: ${{ matrix.arch == 'x86_64' }}
-        timeout-minutes: 10
-        run: make test-${{ matrix.runtime }}
-      - name: Sign the binary
-        if: ${{ matrix.is_shim == 'true' }}
-        run: |
-          make dist-${{ matrix.runtime }}
-          # Check if there's any files to archive as tar fails otherwise
-          if stat dist/bin/* >/dev/null 2>&1; then
-            cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ matrix.runtime }}-v1.sig \
-              --output-certificate containerd-shim-${{ matrix.runtime }}-v1.pem \
-              --bundle containerd-shim-${{ matrix.runtime }}-v1.bundle \
-              dist/bin/containerd-shim-${{ matrix.runtime }}-v1
-            
-            cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ matrix.runtime }}d-v1.sig \
-              --output-certificate containerd-shim-${{ matrix.runtime }}d-v1.pem \
-              --bundle containerd-shim-${{ matrix.runtime }}d-v1.bundle \
-              dist/bin/containerd-shim-${{ matrix.runtime }}d-v1
-
-            cosign sign-blob --yes \
-              --output-signature containerd-${{ matrix.runtime }}d.sig \
-              --output-certificate containerd-${{ matrix.runtime }}d.pem \
-              --bundle containerd-${{ matrix.runtime }}d.bundle \
-              dist/bin/containerd-${{ matrix.runtime }}d
-            
-            # Copy the certs to the dist/bin folder
-            cp *.sig dist/bin/
-            cp *.pem dist/bin/
-          else
-            echo "No files to sign"
-          fi
-      - name: Package artifacts
-        if: ${{ matrix.is_shim == 'true' }}
-        shell: bash
-        run: |
-          # Check if there's any files to archive as tar fails otherwise
-          if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz -C dist/bin .
-          else
-            tar -czf dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz -T /dev/null
-          fi
-      - name: Upload artifacts
-        if: ${{ matrix.is_shim == 'true' }}
-        uses: actions/upload-artifact@master
-        with:
-          name: containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}
-          path: dist/containerd-shim-${{ matrix.runtime }}-${{ matrix.arch }}.tar.gz
+    uses: ./.github/workflows/action-build.yml
+    with:
+      os: "ubuntu-22.04"
+      runtime: ${{ matrix.runtime }}
+      target: "${{ matrix.arch }}-unknown-linux-musl"
+      slug: "linux-musl"
+      arch: ${{ matrix.arch }}
 
   release:
     permissions:

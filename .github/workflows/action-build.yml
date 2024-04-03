@@ -15,13 +15,22 @@ on:
       slug:
         required: true
         type: string
+      arch:
+        required: false
+        type: string
 
 jobs:
-  build:
+  build-sign-upload:
+    permissions:
+      # cosign uses the GitHub OIDC token
+      id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v3
+      - name: describe runner
+        run: |
+          echo "Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: |
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
@@ -35,12 +44,52 @@ jobs:
       - name: Setup cross-rs
         if: runner.os == 'Linux'
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
+      - name: Setup cosign for signing
+        if: ${{ matrix.is_shim == 'true' }}
+        uses: sigstore/cosign-installer@v3.3.0
+        with:
+          cosign-release: 'v2.2.2'
+      - name: Setup build profile
+        shell: bash
+        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
       - name: Run tests
         timeout-minutes: 5
         run: |
           make test-${{ inputs.runtime }}
+        if: ${{ inputs.arch == 'x86_64' }}
+      - name: Sign the binary
+        shell: bash
+        if: ${{ inputs.runtime != 'common' }}
+        run: |
+          make dist-${{ inputs.runtime }}
+          # Check if there's any files to archive as tar fails otherwise
+          if stat dist/bin/* >/dev/null 2>&1; then
+            cosign sign-blob --yes \
+              --output-signature containerd-shim-${{ inputs.runtime }}-v1.sig \
+              --output-certificate containerd-shim-${{ inputs.runtime }}-v1.pem \
+              --bundle containerd-shim-${{ inputs.runtime }}-v1.bundle \
+              dist/bin/containerd-shim-${{ inputs.runtime }}-v1
+            
+            cosign sign-blob --yes \
+              --output-signature containerd-shim-${{ inputs.runtime }}d-v1.sig \
+              --output-certificate containerd-shim-${{ inputs.runtime }}d-v1.pem \
+              --bundle containerd-shim-${{ inputs.runtime }}d-v1.bundle \
+              dist/bin/containerd-shim-${{ inputs.runtime }}d-v1
+
+            cosign sign-blob --yes \
+              --output-signature containerd-${{ inputs.runtime }}d.sig \
+              --output-certificate containerd-${{ inputs.runtime }}d.pem \
+              --bundle containerd-${{ inputs.runtime }}d.bundle \
+              dist/bin/containerd-${{ inputs.runtime }}d
+            
+            # Copy the certs to the dist/bin folder
+            cp *.sig dist/bin/
+            cp *.pem dist/bin/
+          else
+            echo "No files to sign"
+          fi
       - name: Package artifacts
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
@@ -48,13 +97,13 @@ jobs:
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
+            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -T /dev/null
+            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
         if: ${{ inputs.runtime != 'common' }}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}
-          path: dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz
+          name: containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}
+          path: dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.arch }}-${{ inputs.slug }}.tar.gz
