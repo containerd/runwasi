@@ -1,6 +1,9 @@
 # this action will require write permission to id-token
 name: Build shims
 
+permissions:
+  id-token: write
+
 on:
   workflow_call:
     inputs:
