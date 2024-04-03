@@ -22,13 +22,13 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@master
         with:
-          name: containerd-shim-${{ inputs.runtime }}-linux-musl
+          name: containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl
           path: dist
       - name: Unpack artifats
         shell: bash
         run: |
           mkdir -p dist/bin
-          tar -xzf dist/containerd-shim-${{ inputs.runtime }}-linux-musl.tar.gz -C dist/bin
+          tar -xzf dist/containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl.tar.gz -C dist/bin
       - name: Download test image
         uses: actions/download-artifact@master
         with:
