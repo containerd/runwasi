@@ -61,7 +61,7 @@ jobs:
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
         shell: bash
-        if: ${{ inputs.runtime != 'common' }}
+        if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' }}
         run: |
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
