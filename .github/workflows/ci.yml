@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr", "oci-tar-builder"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
         libc: ["musl", "gnu"]
         arch: ["x86_64", "aarch64"]
     uses: ./.github/workflows/action-build.yml
@@ -71,12 +71,21 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "oci-tar-builder"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
       slug: "windows"
+  
+  build-oci-tar-builder:
+    name: oci-tar-builder-${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-22.04", "windows-latest", "macos-latest"]
+    uses: ./.github/workflows/action-build-oci-tar-builder.yml
+    with:
+      os: ${{ matrix.os }}
 
   smoke-tests:
     name: ${{ matrix.runtime }}
