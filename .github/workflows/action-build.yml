@@ -45,7 +45,7 @@ jobs:
         if: runner.os == 'Linux'
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Setup cosign for signing
-        if: ${{ matrix.is_shim == 'true' }}
+        if: ${{ inputs.runtime != 'common' }}
         uses: sigstore/cosign-installer@v3.3.0
         with:
           cosign-release: 'v2.2.2'
