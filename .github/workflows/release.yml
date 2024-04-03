@@ -84,6 +84,8 @@ jobs:
           fi
 
   build-and-sign:
+    permissions:
+      id-token: write
     needs:
       - pre-release
     strategy:

@@ -38,10 +38,9 @@ jobs:
       image: img-oci
 
   build-ubuntu:
-    permissions:
-      # cosign uses the GitHub OIDC token
-      id-token: write
     name: ${{ matrix.runtime }}
+    permissions:
+      id-token: write
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
@@ -57,10 +56,9 @@ jobs:
       arch: ${{ matrix.arch }}
 
   build-windows:
-    permissions:
-      # cosign uses the GitHub OIDC token
-      id-token: write
     name: ${{ matrix.runtime }}
+    permissions:
+      id-token: write
     strategy:
       matrix:
         os: ["windows-latest"]

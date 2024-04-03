@@ -1,3 +1,4 @@
+# this action will require write permission to id-token
 name: Build shims
 
 on:
@@ -21,9 +22,6 @@ on:
 
 jobs:
   build-sign-upload:
-    permissions:
-      # cosign uses the GitHub OIDC token
-      id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
     steps:
