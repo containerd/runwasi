@@ -1,3 +1,4 @@
+# this action will require write permission to id-token
 name: Build shims
 
 on:
@@ -22,7 +23,7 @@ on:
 jobs:
   build-sign-upload:
     permissions:
-      # cosign uses the GitHub OIDC token
+      contents: write
       id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
@@ -60,7 +61,6 @@ jobs:
           make test-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
-        shell: bash
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' }}
         run: |
           make dist-${{ inputs.runtime }}

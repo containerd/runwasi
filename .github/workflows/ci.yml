@@ -39,6 +39,9 @@ jobs:
 
   build-ubuntu:
     name: ${{ matrix.runtime }}
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
@@ -55,6 +58,9 @@ jobs:
 
   build-windows:
     name: ${{ matrix.runtime }}
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       matrix:
         os: ["windows-latest"]
