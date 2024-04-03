@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr", "oci-tar-builder"]
         libc: ["musl", "gnu"]
         arch: ["x86_64", "aarch64"]
     uses: ./.github/workflows/action-build.yml
@@ -71,7 +71,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "oci-tar-builder"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
