@@ -1,9 +1,6 @@
 # this action will require write permission to id-token
 name: Build shims
 
-permissions:
-  id-token: write
-
 on:
   workflow_call:
     inputs:
@@ -25,6 +22,9 @@ on:
 
 jobs:
   build-sign-upload:
+    permissions:
+      contents: write
+      id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
     steps:
@@ -61,7 +61,6 @@ jobs:
           make test-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
-        shell: bash
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' }}
         run: |
           make dist-${{ inputs.runtime }}

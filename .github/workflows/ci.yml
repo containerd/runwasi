@@ -40,6 +40,7 @@ jobs:
   build-ubuntu:
     name: ${{ matrix.runtime }}
     permissions:
+      contents: write
       id-token: write
     strategy:
       matrix:
@@ -58,6 +59,7 @@ jobs:
   build-windows:
     name: ${{ matrix.runtime }}
     permissions:
+      contents: write
       id-token: write
     strategy:
       matrix:
