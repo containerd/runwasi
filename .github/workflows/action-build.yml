@@ -23,7 +23,6 @@ on:
 jobs:
   build-sign-upload:
     permissions:
-      contents: write
       id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
