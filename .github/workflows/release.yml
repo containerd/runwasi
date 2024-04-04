@@ -83,79 +83,46 @@ jobs:
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
-      - name: Verify version matches
+      - name: Update crate version and make a PR
+        if: ${{ !inputs.dry_run }}
         run: |
-          if [ "$(grep -c "version = \"${{ inputs.version }}\"" crates/${{ inputs.crate }}/Cargo.toml)" -ne 1 ]; then
-            echo "::error::Version in Cargo.toml does not match the version input"
-            exit 1
+          # replace the version inline in the Cargo.toml
+          set -ex
+          git fetch origin
+
+          sed -i -E 's/^version.+=.+".+"/version = "${{ inputs.version }}"/' crates/${{ inputs.crate }}/Cargo.toml
+          git diff
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          
+          if [ "${{ inputs.dry_run }}" = true ]; then
+            TITLE="[dry-run] Release ${{ inputs.crate }} v${{ inputs.version }}"
+          else
+            TITLE="Release ${{ inputs.crate }} v${{ inputs.version }}"
           fi
 
-  build-and-sign:
-    permissions:
-      id-token: write
-    needs:
-      - pre-release
-    strategy:
-      matrix:
-        arch: ["x86_64", "aarch64"]
-        include: 
-          - ${{ needs.pre-release.outputs }}
-    uses: ./.github/workflows/action-build.yml
-    with:
-      os: "ubuntu-22.04"
-      runtime: ${{ matrix.runtime }}
-      target: "${{ matrix.arch }}-unknown-linux-musl"
-      slug: "${{ matrix.arch }}-linux-musl"
-      arch: ${{ matrix.arch }}
-      sign: true
+          git commit --allow-empty -a -F-<<EOF
+          $TITLE
 
-  release:
-    permissions:
-      contents: write
-    needs:
-      - pre-release
-      - build-and-sign
-    strategy:
-      matrix:
-        os: ["ubuntu-latest"]
-        include: 
-          - ${{ needs.pre-release.outputs }}
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Matrix description
-        run: |
-          echo "::notice::Running job with dry_run: '${{ inputs.dry_run }}', crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
-      - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-      - name: Download artifacts
-        if: ${{ matrix.is_shim == 'true' }}
-        uses: actions/download-artifact@master
-        with:
-          path: release
-      - name: Cargo publish
-        if: ${{ matrix.is_shim  != 'true' }}
-        run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
+          [automatically-tag-and-release-this-commit]
+          EOF
+
+          git push origin HEAD:ci/release-${{ inputs.crate }}-${{ inputs.version }}
+          
+          echo "PR_HEAD=ci/release-${{ inputs.crate }}-${{ inputs.version }}" >> $GITHUB_ENV
+          echo "PR_TITLE=$TITLE" >> $GITHUB_ENV
+          echo "PR_BASE=main" >> $GITHUB_ENV
+          cat > pr-body <<-EOF
+          This is an automated pull request from CI to release
+          ${{ inputs.crate }} v${{ inputs.version }} when merged. The commit
+          message for this PR has a marker that is detected by CI to create
+          tags and publish crate artifacts.
+
+          When first opened this PR will not have CI run because it is generated
+          by a bot. A maintainer should close this PR and then reopen it to
+          trigger CI to execute which will then enable merging this PR.
+          EOF
+      - name: Make a PR
+        run: gh pr create -B "$PR_BASE" -H "$PR_HEAD" --title "$PR_TITLE" --body "$(cat ./pr-body)"
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
-      - name: Tag the the release
-        if: ${{ !inputs.dry_run }}
-        run: |
-          git tag "${{matrix.crate}}/v${{matrix.version}}"
-          git push origin "${{matrix.crate}}/v${{matrix.version}}"
-      - name: Create release
-        if: ${{ !inputs.dry_run }}
-        run: |
-          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
-      - name: Upload release artifacts
-        if: ${{ matrix.is_shim == 'true' && !inputs.dry_run }}
-        run: |
-          for i in release/*/*; do
-            gh release upload ${RELEASE_NAME} $i
-          done
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
