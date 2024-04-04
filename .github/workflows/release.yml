@@ -38,12 +38,6 @@ jobs:
   pre-release:
     name: pre-release checks
     runs-on: "ubuntu-latest"
-    outputs:
-      crate: ${{ inputs.crate }}
-      runtime: ${{ steps.runtime_sub.outputs.runtime }}
-      version: ${{ inputs.version }}
-      ### is_shim is a string, not a boolean, so use: is_shim == 'true'
-      is_shim: ${{ steps.runtime_sub.outputs.is_shim }}
     steps:
       - name: Fail if branch is not main
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
@@ -51,15 +45,6 @@ jobs:
           echo "::error::This workflow should not be triggered with workflow_dispatch on a branch other than main"
           exit 1
       - uses: actions/checkout@v4
-      ### Determine the name of the runtime and if it is a binary release or crates.io
-      - name: verify version input
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const version = '${{ inputs.version }}';
-            if(!version.match(/^[0-9]+.[0-9]+.*/)) {
-              core.setFailed(`The version '${version}' does not match regex /^[0-9]+.[0-9]+.*/.`);
-            }
       - name: substring runtime
         id: runtime_sub
         uses: actions/github-script@v7

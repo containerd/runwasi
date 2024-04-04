@@ -1,0 +1,101 @@
+
+name: Publish Artifacts
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+    contents: write
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    outputs:
+      push_tag: ${{ steps.tag.outputs.push_tag }}
+      dry_run: ${{ steps.parse.outputs.dry_run }}
+      crate: ${{ steps.parse.outputs.crate }}
+      version: ${{ steps.parse.outputs.version }}
+      is_binary: ${{ steps.parse_crate.outputs.is_binary }}
+      is_crate: ${{ steps.parse_crate.outputs.is_crate }}
+    steps:
+      - name: Test if tag is needed
+        id: tag
+        run: |
+          git log ${{ github.event.before }}...${{ github.event.after }} | tee main.log
+          if grep -q "automatically-tag-and-release-this-commit" main.log; then
+            echo push-tag
+            echo "push_tag=yes" >> $GITHUB_OUTPUT
+          else
+            echo no-push-tag
+            echo "push_tag=no" >> $GITHUB_OUTPUT
+          fi
+      - name: Parse commit message
+        id: parse
+        if: steps.tag.outputs.push_tag == 'yes'
+        run: |
+          dry_run=false
+          crate=$(grep 'Release ' main.log | sed 's/.*Release \([a-zA-Z0-9_-]*\).*/\1/')
+          version=$(grep 'Release ' main.log | sed 's/.* v\(.*\)/\1/')
+          if grep -q '\[dry-run\]' main.log; then
+              dry_run=true
+          fi
+
+          echo "dry_run: $dry_run"
+          echo "crate: $crate"
+          echo "version: $version"
+          
+          echo "dry_run:$dry_run" >> $GITHUB_OUTPUT
+          echo "crate:$crate" >> $GITHUB_OUTPUT
+          echo "version:$version" >> $GITHUB_OUTPUT
+        
+      - name: parse crate
+        id: parse_crate
+        if: steps.tag.outputs.push_tag == 'yes'
+        run: |
+          ./scripts/parse-crate.sh ${{ steps.parse.outputs.crate }} >> $GITHUB_OUTPUT
+        
+  release:
+    runs-on: "ubuntu-latest"
+    needs: parse
+    if: needs.parse.outputs.push_tag == 'yes'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        if: needs.parse.outputs.is_binary == 'true'
+        uses: actions/download-artifact@master
+        with:
+          path: release
+      
+      - name: Cargo publish
+        if: needs.parse.outputs.is_crate == 'true'
+        run: |
+          echo "DRY_RUN_FLAG=$( [ '${{ needs.parse.outputs.dry_run }}' = 'true' ] && echo '--dry-run' || echo '' )" >> $GITHUB_ENV
+          cargo publish $DRY_RUN_FLAG --package ${{ needs.parse.outputs.crate }} --verbose --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
+
+      - name: Tag the the release
+        if: needs.parse.outputs.dry_run == 'false'
+        run: |
+          git tag "${{ needs.parse.outputs.crate }}/v${{ needs.parse.outputs.version }}"
+          git push origin "${{ needs.parse.outputs.crate }}/v${{ needs.parse.outputs.version }}"
+
+      - name: Create release
+        if: needs.parse.outputs.dry_run == 'false'
+        run: |
+          gh release create 'refs/tags/${{ needs.parse.outputs.crate }}/v${{ needs.parse.outputs.version }}' --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/v${{ needs.parse.outputs.version }}
+
+      - name: Upload release artifacts
+        if: needs.parse.outputs.dry_run == 'false'
+        run: |
+          for i in release/*/*; do
+            gh release upload ${RELEASE_NAME} $i
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ needs.parse.outputs.crate }}/v${{ needs.parse.outputs.version }}
