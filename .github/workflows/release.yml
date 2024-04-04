@@ -69,7 +69,6 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
       - name: Update crate version and make a PR
-        if: ${{ !inputs.dry_run }}
         run: |
           # replace the version inline in the Cargo.toml
           set -ex
