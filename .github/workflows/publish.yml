@@ -23,6 +23,7 @@ jobs:
       - name: Test if tag is needed
         id: tag
         run: |
+          git fetch origin
           git log ${{ github.event.before }}...${{ github.event.after }} | tee main.log
           if grep -q "automatically-tag-and-release-this-commit" main.log; then
             echo push-tag
