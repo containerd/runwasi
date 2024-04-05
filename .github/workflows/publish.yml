@@ -19,6 +19,7 @@ jobs:
       is_binary: ${{ steps.parse_crate.outputs.is_binary }}
       is_crate: ${{ steps.parse_crate.outputs.is_crate }}
     steps:
+      - uses: actions/checkout@v4
       - name: Test if tag is needed
         id: tag
         run: |
