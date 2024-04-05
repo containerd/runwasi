@@ -18,12 +18,16 @@ jobs:
       version: ${{ steps.parse.outputs.version }}
       is_binary: ${{ steps.parse_crate.outputs.is_binary }}
       is_crate: ${{ steps.parse_crate.outputs.is_crate }}
+      #  e0ef1cf000bfb3f12e5b8613977ac9d901e39fbd...1ab3eb4318fb824cc44e36530b48e600fe18f258
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
       - name: Test if tag is needed
         id: tag
         run: |
-          git fetch origin
+          git log -n 2 | cat
           git log ${{ github.event.before }}...${{ github.event.after }} | tee main.log
           if grep -q "automatically-tag-and-release-this-commit" main.log; then
             echo push-tag
