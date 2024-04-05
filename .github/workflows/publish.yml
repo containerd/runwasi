@@ -18,7 +18,6 @@ jobs:
       version: ${{ steps.parse.outputs.version }}
       is_binary: ${{ steps.parse_crate.outputs.is_binary }}
       is_crate: ${{ steps.parse_crate.outputs.is_crate }}
-      #  e0ef1cf000bfb3f12e5b8613977ac9d901e39fbd...1ab3eb4318fb824cc44e36530b48e600fe18f258
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,9 +50,9 @@ jobs:
           echo "crate: $crate"
           echo "version: $version"
           
-          echo "dry_run:$dry_run" >> $GITHUB_OUTPUT
-          echo "crate:$crate" >> $GITHUB_OUTPUT
-          echo "version:$version" >> $GITHUB_OUTPUT
+          echo "dry_run=$dry_run" >> $GITHUB_OUTPUT
+          echo "crate=$crate" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
         
       - name: parse crate
         id: parse_crate

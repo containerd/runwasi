@@ -1,7 +1,0 @@
-commit 2c0eaa5efdc37064480bc0400027eaf54054f137
-Author: jiaxiao zhou <jiazho@microsoft.com>
-Date:   Wed Apr 3 23:35:13 2024 +0000
-
-    remove permission for write contents in build action
-    
-    Signed-off-by: jiaxiao zhou <jiazho@microsoft.com>
