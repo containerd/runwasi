@@ -66,10 +66,15 @@ jobs:
         with:
           script: |
             const crate = '${{ inputs.crate }}';
-            let runtime = crate.replace(/^containerd-shim-/, '');
-            core.setOutput('runtime', runtime);
             const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
-            core.setOutput('is_shim', !non_shim_crates.includes(runtime));
+            if non_shim_crates.includes(runtime) {
+              core.setOutput('runtime', 'common');
+              core.setOutput('is_shim', false)
+            } else {
+              const runtime = crate.replace(/^containerd-shim-/, '');
+              core.setOutput('runtime', runtime);
+              core.setOutput('is_shim', true);
+            }
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
       - name: Check crates.io ownership
         if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
