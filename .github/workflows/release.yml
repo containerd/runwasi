@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
 name: Release
 run-name: ${{ inputs.crate }}@${{ inputs.version }} (DryRun:${{ inputs.dry_run }})
 
@@ -100,6 +102,7 @@ jobs:
       target: "${{ matrix.arch }}-unknown-linux-musl"
       slug: "${{ matrix.arch }}-linux-musl"
       arch: ${{ matrix.arch }}
+      sign: true
 
   release:
     permissions:
