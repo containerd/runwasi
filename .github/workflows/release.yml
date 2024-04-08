@@ -209,7 +209,7 @@ jobs:
       - name: Create release
         if: ${{ !inputs.dry_run }}
         run: |
-          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes --prerelease
+          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
