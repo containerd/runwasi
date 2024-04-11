@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: describe runner
         run: |
-          echo "Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
+          echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
       - uses: actions/checkout@v4
       - name: Setup build env
         run: |
@@ -71,6 +71,7 @@ jobs:
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
+            echo "::notice::Signing the binary"
             cosign sign-blob --yes \
               --output-signature containerd-shim-${{ inputs.runtime }}-v1.sig \
               --output-certificate containerd-shim-${{ inputs.runtime }}-v1.pem \
@@ -93,7 +94,7 @@ jobs:
             cp *.sig dist/bin/
             cp *.pem dist/bin/
           else
-            echo "No files to sign"
+            echo "::warning::No files to sign"
           fi
       - name: Package artifacts
         if: ${{ inputs.runtime != 'common' }}

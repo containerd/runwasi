@@ -48,7 +48,7 @@ jobs:
       - name: Fail if branch is not main
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: |
-          echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
+          echo "::error::This workflow should not be triggered with workflow_dispatch on a branch other than main"
           exit 1
       - uses: actions/checkout@v4
       ### Determine the name of the runtime and if it is a binary release or crates.io
@@ -80,13 +80,13 @@ jobs:
         if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
         run: |
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
-            cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
+          cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
       - name: Verify version matches
         run: |
           if [ "$(grep -c "version = \"${{ inputs.version }}\"" crates/${{ inputs.crate }}/Cargo.toml)" -ne 1 ]; then
-            echo "Version in Cargo.toml does not match the version input"
+            echo "::error::Version in Cargo.toml does not match the version input"
             exit 1
           fi
 
@@ -124,7 +124,7 @@ jobs:
     steps:
       - name: Matrix description
         run: |
-          echo "Running job with dry_run: '${{ inputs.dry_run }}', crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
+          echo "::notice::Running job with dry_run: '${{ inputs.dry_run }}', crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
       - uses: actions/checkout@v4
       - name: Setup build env
         run: ./scripts/setup-linux.sh
