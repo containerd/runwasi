@@ -50,11 +50,6 @@ jobs:
       - name: Setup cross-rs
         if: runner.os == 'Linux'
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
-      - name: Setup cosign for signing
-        if: ${{ inputs.runtime != 'common' && inputs.sign }}
-        uses: sigstore/cosign-installer@v3.3.0
-        with:
-          cosign-release: 'v2.2.2'
       - name: Setup build profile
         shell: bash
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
@@ -67,35 +62,10 @@ jobs:
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
-        run: |
-          make dist-${{ inputs.runtime }}
-          # Check if there's any files to archive as tar fails otherwise
-          if stat dist/bin/* >/dev/null 2>&1; then
-            echo "::notice::Signing the binary"
-            cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ inputs.runtime }}-v1.sig \
-              --output-certificate containerd-shim-${{ inputs.runtime }}-v1.pem \
-              --bundle containerd-shim-${{ inputs.runtime }}-v1.bundle \
-              dist/bin/containerd-shim-${{ inputs.runtime }}-v1
-            
-            cosign sign-blob --yes \
-              --output-signature containerd-shim-${{ inputs.runtime }}d-v1.sig \
-              --output-certificate containerd-shim-${{ inputs.runtime }}d-v1.pem \
-              --bundle containerd-shim-${{ inputs.runtime }}d-v1.bundle \
-              dist/bin/containerd-shim-${{ inputs.runtime }}d-v1
-
-            cosign sign-blob --yes \
-              --output-signature containerd-${{ inputs.runtime }}d.sig \
-              --output-certificate containerd-${{ inputs.runtime }}d.pem \
-              --bundle containerd-${{ inputs.runtime }}d.bundle \
-              dist/bin/containerd-${{ inputs.runtime }}d
-            
-            # Copy the certs to the dist/bin folder
-            cp *.sig dist/bin/
-            cp *.pem dist/bin/
-          else
-            echo "::warning::No files to sign"
-          fi
+        uses: ./.github/workflows/action-sign.yml
+        with:
+          runtime: ${{ inputs.runtime }}
+          os: ${{ inputs.os }}
       - name: Package artifacts
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
