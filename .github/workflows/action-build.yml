@@ -1,3 +1,7 @@
+
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+# this action will require write permission to id-token
 name: Build shims
 
 on:
@@ -15,13 +19,24 @@ on:
       slug:
         required: true
         type: string
+      arch:
+        required: false
+        type: string
+      sign:
+        default: false
+        type: boolean
 
 jobs:
-  build:
+  build-sign-upload:
+    permissions:
+      id-token: write
     name: build for ${{ inputs.slug }}
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v3
+      - name: describe runner
+        run: |
+          echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
+      - uses: actions/checkout@v4
       - name: Setup build env
         run: |
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
@@ -35,12 +50,22 @@ jobs:
       - name: Setup cross-rs
         if: runner.os == 'Linux'
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
+      - name: Setup build profile
+        shell: bash
+        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
       - name: Run tests
         timeout-minutes: 5
         run: |
           make test-${{ inputs.runtime }}
+        if: ${{ inputs.arch == 'x86_64' }}
+      - name: Sign the binary
+        if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
+        uses: ./.github/workflows/action-sign.yml
+        with:
+          runtime: ${{ inputs.runtime }}
+          os: ${{ inputs.os }}
       - name: Package artifacts
         if: ${{ inputs.runtime != 'common' }}
         shell: bash

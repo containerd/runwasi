@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
 name: CI
 
 on:
@@ -39,20 +41,26 @@ jobs:
 
   build-ubuntu:
     name: ${{ matrix.runtime }}
+    permissions:
+      id-token: write
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
         runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
         libc: ["musl", "gnu"]
+        arch: ["x86_64", "aarch64"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
-      target: "x86_64-unknown-linux-${{ matrix.libc }}"
-      slug: "linux-${{ matrix.libc }}"
+      target: "${{ matrix.arch }}-unknown-linux-${{ matrix.libc }}"
+      slug: "${{ matrix.arch }}-linux-${{ matrix.libc }}"
+      arch: ${{ matrix.arch }}
 
   build-windows:
     name: ${{ matrix.runtime }}
+    permissions:
+      id-token: write
     strategy:
       matrix:
         os: ["windows-latest"]
