@@ -45,24 +45,13 @@ jobs:
           echo "::error::This workflow should not be triggered with workflow_dispatch on a branch other than main"
           exit 1
       - uses: actions/checkout@v4
-      - name: substring runtime
-        id: runtime_sub
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const crate = '${{ inputs.crate }}';
-            const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
-            if non_shim_crates.includes(runtime) {
-              core.setOutput('runtime', 'common');
-              core.setOutput('is_shim', false)
-            } else {
-              const runtime = crate.replace(/^containerd-shim-/, '');
-              core.setOutput('runtime', runtime);
-              core.setOutput('is_shim', true);
-            }
+      - name: parse crate
+        id: parse_crate
+        run: |
+          ./scripts/parse-crate.sh ${{ steps.parse.outputs.crate }} >> $GITHUB_OUTPUT
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
       - name: Check crates.io ownership
-        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
+        if: steps.parse_crate.outputs.is_crate == 'true'
         run: |
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}

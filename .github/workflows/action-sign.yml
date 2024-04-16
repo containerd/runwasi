@@ -8,14 +8,15 @@ on:
       runtime:
         required: true
         type: string
-      os:
+      path: 
         required: true
         type: string
 jobs:
   sign:
-    name: Sign the binaries on ${{ inputs.os }}
-    runs-on: ${{ inputs.os }}
+    name: Sign the binaries
+    runs-on: "ubuntu-latest"
     steps:
+    - uses: actions/checkout@v4
     - name: Setup cosign for signing
       uses: sigstore/cosign-installer@v3.3.0
       with:
@@ -24,29 +25,29 @@ jobs:
       run: |
         make dist-${{ inputs.runtime }}
         # Check if there's any files to archive as tar fails otherwise
-        if stat dist/bin/* >/dev/null 2>&1; then
+        if stat ${{ inputs.path }}/* >/dev/null 2>&1; then
           echo "::notice::Signing the binary"
           cosign sign-blob --yes \
             --output-signature containerd-shim-${{ inputs.runtime }}-v1.sig \
             --output-certificate containerd-shim-${{ inputs.runtime }}-v1.pem \
             --bundle containerd-shim-${{ inputs.runtime }}-v1.bundle \
-            dist/bin/containerd-shim-${{ inputs.runtime }}-v1
+            ${{ inputs.path }}/containerd-shim-${{ inputs.runtime }}-v1
           
           cosign sign-blob --yes \
             --output-signature containerd-shim-${{ inputs.runtime }}d-v1.sig \
             --output-certificate containerd-shim-${{ inputs.runtime }}d-v1.pem \
             --bundle containerd-shim-${{ inputs.runtime }}d-v1.bundle \
-            dist/bin/containerd-shim-${{ inputs.runtime }}d-v1
+            ${{ inputs.path }}/containerd-shim-${{ inputs.runtime }}d-v1
 
           cosign sign-blob --yes \
             --output-signature containerd-${{ inputs.runtime }}d.sig \
             --output-certificate containerd-${{ inputs.runtime }}d.pem \
             --bundle containerd-${{ inputs.runtime }}d.bundle \
-            dist/bin/containerd-${{ inputs.runtime }}d
+            ${{ inputs.path }}/containerd-${{ inputs.runtime }}d
           
           # Copy the certs to the dist/bin folder
-          cp *.sig dist/bin/
-          cp *.pem dist/bin/
+          cp *.sig ${{ inputs.path }}/
+          cp *.pem ${{ inputs.path }}/
         else
           echo "::warning::No files to sign"
         fi
