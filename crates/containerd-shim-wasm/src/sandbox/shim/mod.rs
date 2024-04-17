@@ -7,7 +7,10 @@ mod events;
 mod instance_data;
 mod instance_option;
 mod local;
+mod otel;
 mod task_state;
 
 pub use cli::Cli;
 pub(crate) use local::Local;
+#[cfg(feature = "opentelemetry")]
+pub use otel::init_tracer;
