@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use tracing::{instrument, Span};
 
 use super::error::Error;
 use super::sync::WaitableCell;
@@ -136,6 +137,7 @@ pub trait Instance: 'static {
 
     /// Waits for the instance to finish and retunrs its exit code
     /// This is a blocking call.
+    #[instrument(skip_all, parent = Span::current(), level= "Info")]
     fn wait(&self) -> (u32, DateTime<Utc>) {
         self.wait_timeout(None).unwrap()
     }
