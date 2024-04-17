@@ -229,8 +229,6 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             .context("could not spawn thread to wait exit")
             .map_err(Error::from)?;
 
-        debug!("started: {:?}", req);
-
         Ok(StartResponse {
             pid,
             ..Default::default()

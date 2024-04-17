@@ -100,6 +100,10 @@ impl<T> WaitableCell<T> {
         let timeout = timeout.into();
         let cvar = &self.inner.cvar;
         let guard = self.inner.mutex.lock().unwrap();
+
+        let span = tracing::span!(tracing::Level::INFO, "wait_timeout");
+        let _enter = span.enter();
+
         let _guard = match timeout {
             None => cvar
                 .wait_while(guard, |_| self.inner.cell.get().is_none())
@@ -110,6 +114,9 @@ impl<T> WaitableCell<T> {
                 .map(|(guard, _)| guard)
                 .unwrap(),
         };
+
+        let _re_enter = span.enter();
+
         self.inner.cell.get()
     }
 }

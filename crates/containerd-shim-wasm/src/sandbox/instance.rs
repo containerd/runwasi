@@ -136,7 +136,7 @@ pub trait Instance: 'static {
 
     /// Waits for the instance to finish and retunrs its exit code
     /// This is a blocking call.
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), parent = tracing::Span::current(), level = "Info"))]
     fn wait(&self) -> (u32, DateTime<Utc>) {
         self.wait_timeout(None).unwrap()
     }
