@@ -207,7 +207,7 @@ make build
 sudo make install
 ```
 
-> Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH three times with different names for each component described above. 
+> Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH and uses symlinks to create all the component described above. 
 
 Build the test image and load it into containerd:
 
