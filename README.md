@@ -1,7 +1,7 @@
 ![runwasi logo light mode](./art/logo/runwasi_icon1.svg#gh-light-mode-only)
 ![runwasi logo dark mode](./art/logo/runwasi_icon3.svg#gh-dark-mode-only)
 
-## runwasi
+# runwasi
 
 > Warning: Alpha quality software, do not use in production.
 
@@ -9,14 +9,14 @@ This is a project to facilitate running wasm workloads managed by containerd eit
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
 Included in the repository is a PoC for running a plain wasi host (ie. no extra host functions except to support wasi system calls).
 
-### Community
+## Community
 
 - If you haven't joined the CNCF slack yet, you can do so [here](https://slack.cncf.io/).
 - Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V)
 on the CNCF slack.
 - Public Community Call on Tuesdays every other week at 9:00 AM PT: [Zoom](https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09), [Meeting Notes](https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing)
 
-### Usage
+## Usage
 
 runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation.
 
@@ -158,9 +158,12 @@ You can use the provided `containerd-shim-myshim-v1` binary as the shim to speci
 
 Shared mode requires precise control over real threads and as such should not be used with an async runtime.
 
-### Examples
+Check out these projects that build on top of runwasi:
+- [spinkube/containerd-shim-spin](https://github.com/spinkube/containerd-shim-spin)
+- [deislabs/containerd-wasm-shims](https://github.com/deislabs/containerd-wasm-shims)
 
-#### Components
+
+### Components
 
 - **containerd-shim-[ wasmedge | wasmtime | wasmer ]-v1**
 
@@ -204,6 +207,8 @@ make build
 sudo make install
 ```
 
+> Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH three times with different names for each component described above. 
+
 Build the test image and load it into containerd:
 
 ```
@@ -211,21 +216,9 @@ make test-image
 make load
 ```
 
-#### Demo 1 using wasmedge
+### Demo 1 using container image that contains a Wasm module.
 
-Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'`. You should see some output repeated like:
-
-```terminal
-sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
-
-hello
-exiting
-```
-
-#### Demo 2 using wasmtime
-
-Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
-You should see some output repeated like:
+Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'`. You should see some output repeated like:
 
 ```terminal
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
@@ -243,32 +236,11 @@ So they'll continue singing it forever just because...
 (...)
 ```
 
-#### Demo 3 using wasmer
-
-Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
-You should see some output repeated like:
-
-```terminal
-sudo ctr run --rm --runtime=io.containerd.wasmer.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
-
-This is a song that never ends.
-Yes, it goes on and on my friends.
-Some people started singing it not knowing what it was,
-So they'll continue singing it forever just because...
-
-This is a song that never ends.
-Yes, it goes on and on my friends.
-Some people started singing it not knowing what it was,
-So they'll continue singing it forever just because...
-
-(...)
-```
-
-To kill the process from demo 2, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. 
+To kill the process, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. 
 
 The test binary supports commands for different type of functionality, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to try it out.
 
-#### Demo 4 using OCI Images with custom WASM layers
+### Demo 2 using OCI Images with custom WASM layers
 
 The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits. To build OCI images using your own images you can use the [oci-tar-builder](./crates/oci-tar-builder/README.md)
 
