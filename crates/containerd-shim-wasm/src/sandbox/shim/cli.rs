@@ -1,4 +1,4 @@
-use std::env::current_dir;
+use std::env::{current_dir, set_current_dir};
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -64,7 +64,14 @@ where
     }
 
     fn wait(&mut self) {
+        let cwd = current_dir().unwrap_or_else(|e| {
+            log::error!("failed to get current working directory: {}", e);
+            std::path::PathBuf::new()
+        });
         self.exit.wait();
+        set_current_dir(cwd).unwrap_or_else(|e| {
+            log::error!("failed to restore current working directory: {}", e);
+        });
     }
 
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
