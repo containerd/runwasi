@@ -5,11 +5,12 @@ LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
 CONTAINERD_NAMESPACE ?= default
+RUSTC ?= rustc
 
 # We have a bit of fancy logic here to determine the target 
 # since we support building for gnu and musl
 # TARGET must evenutually match one of the values in the cross.toml
-HOST_TARGET = $(shell rustc --version -v | sed -En 's/host: (.*)/\1/p')
+HOST_TARGET = $(shell $(RUSTC) --version -v | sed -En 's/host: (.*)/\1/p')
 
 # if TARGET is not set and we are using cross
 # default to musl to facilitate easier use shim on other distros becuase of the static build
