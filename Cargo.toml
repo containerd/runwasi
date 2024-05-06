@@ -28,7 +28,7 @@ containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-m
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 crossbeam = { version = "0.8.4", default-features = false }
 env_logger = "0.10"
-libc = "0.2.153"
+libc = "0.2.154"
 libcontainer = { version = "0.3.2", default-features = false }
 log = "0.4"
 nix = "0.28"
