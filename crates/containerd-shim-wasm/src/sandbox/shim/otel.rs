@@ -24,7 +24,7 @@ pub fn init_tracer(
         .with_trace_config(
             sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",
-                name.to_string(),
+                format!("containerd-shim-{}", name),
             )])),
         )
         .install_batch(runtime::Tokio)
