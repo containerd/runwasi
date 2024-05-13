@@ -69,15 +69,7 @@ where
             .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
             .unwrap_or(&id);
 
-        let otel_endpoint = std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT")
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_string());
-
-        let (_child, address) = shim::spawn(
-            opts,
-            grouping,
-            vec![("OTEL_EXPORTER_OTLP_ENDPOINT", &otel_endpoint)],
-        )?;
+        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
 
         write_address(&address)?;
 

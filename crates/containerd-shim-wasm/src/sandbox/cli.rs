@@ -60,25 +60,26 @@ pub fn shim_main_with_otel<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
-    let otel_endpoint = std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT);
-    if otel_endpoint.is_err() || otel_endpoint.clone().unwrap().is_empty() {
-        shim_main::<I>(name, version, revision, shim_version, config);
-    } else {
-        let tracer =
-            init_tracer(&otel_endpoint.unwrap(), name).expect("Failed to initialize tracer.");
-        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-        set_text_map_propagator(TraceContextPropagator::new());
+    match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
+        Ok(otel_endpoint) => {
+            let tracer = init_tracer(&otel_endpoint, name).expect("Failed to initialize tracer.");
+            let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+            set_text_map_propagator(TraceContextPropagator::new());
 
-        // Create an environment filter
-        let filter = EnvFilter::try_new("info,h2=off") // Set default level to `info` and exclude all traces from `h2`
-            .expect("Invalid filter directive");
+            // Create an environment filter
+            let filter = EnvFilter::try_new("info,h2=off") // Set default level to `info` and exclude all traces from `h2`
+                .expect("Invalid filter directive");
 
-        let subscriber = Registry::default().with(telemetry).with(filter);
+            let subscriber = Registry::default().with(telemetry).with(filter);
 
-        tracing::subscriber::set_global_default(subscriber)
-            .expect("setting default subscriber failed");
-        shim_main::<I>(name, version, revision, shim_version, config);
-        shutdown_tracer_provider();
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("setting default subscriber failed");
+            shim_main::<I>(name, version, revision, shim_version, config);
+            shutdown_tracer_provider();
+        }
+        Err(_) => {
+            shim_main::<I>(name, version, revision, shim_version, config);
+        }
     }
 }
 
@@ -142,9 +143,7 @@ pub fn shim_main<'a, I>(
         }
         _ => {
             eprintln!("error: unrecognized binary name, expected one of {shim_cli}, {shim_client}, or {shim_daemon}.");
-            shutdown_tracer_provider();
             std::process::exit(1);
         }
     }
-    shutdown_tracer_provider();
 }
