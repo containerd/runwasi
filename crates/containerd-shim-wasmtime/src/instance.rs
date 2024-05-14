@@ -143,12 +143,15 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         func: &String,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         let mut module_linker = wasmtime::Linker::new(&self.engine);
-        
-        wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| &mut s.wasi_preview1)?;
+
+        wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| {
+            &mut s.wasi_preview1
+        })?;
 
         wasmtime_wasi::runtime::in_tokio(async move {
             log::info!("instantiating instance");
-            let instance: wasmtime::Instance = module_linker.instantiate_async(&mut store, &module).await?;
+            let instance: wasmtime::Instance =
+                module_linker.instantiate_async(&mut store, &module).await?;
 
             log::info!("getting start function");
             let start_func = instance
@@ -160,7 +163,7 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
             Ok(status)
         })
     }
-    
+
     /// Execute a wasm component.
     ///
     /// This function adds wasi_preview2 to the linker and can be utilized
@@ -186,20 +189,25 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         wasmtime_wasi::runtime::in_tokio(async move {
             if func == "_start" {
                 let pre = linker.instantiate_pre(&component)?;
-                let (command, _instance) = wasi_preview2::bindings::Command::instantiate_pre(
-                    &mut store, &pre,
-                ).await?;
+                let (command, _instance) =
+                    wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
 
-                let status = command.wasi_cli_run().call_run(&mut store).await?.map_err(|_| {
-                    anyhow::anyhow!("failed to run component targeting `wasi:cli/command` world")
-                });
-                
+                let status = command
+                    .wasi_cli_run()
+                    .call_run(&mut store)
+                    .await?
+                    .map_err(|_| {
+                        anyhow::anyhow!(
+                            "failed to run component targeting `wasi:cli/command` world"
+                        )
+                    });
+
                 Ok(status)
             } else {
                 let pre = linker.instantiate_pre(&component)?;
-        
+
                 let instance = pre.instantiate_async(&mut store).await?;
-                
+
                 log::info!("getting component exported function {func:?}");
                 let start_func = instance.get_func(&mut store, &func).context(format!(
                     "component does not have exported function {func:?}"
@@ -284,10 +292,6 @@ fn wasi_builder(
         .allow_tcp(true)
         .allow_udp(true)
         .allow_ip_name_lookup(true)
-        .preopened_dir("/",
-                       "/",
-                       dir_perms,
-                       file_perms,
-        )?;
+        .preopened_dir("/", "/", dir_perms, file_perms)?;
     Ok(builder)
 }
