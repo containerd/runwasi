@@ -3,18 +3,14 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use containerd_shim::{parse, run, Config};
-use opentelemetry::global::{set_text_map_propagator, shutdown_tracer_provider};
-use opentelemetry_sdk::propagation::TraceContextPropagator;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter, Registry};
 use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
-use crate::sandbox::shim::{init_tracer, Local};
+use crate::sandbox::shim::Local;
+#[cfg(feature = "opentelemetry")]
+use crate::sandbox::shim::{OtelConfig, OTEL_EXPORTER_OTLP_ENDPOINT};
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
-
-const OTEL_EXPORTER_OTLP_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
 
 pub mod r#impl {
     pub use git_version::git_version;
@@ -62,20 +58,15 @@ pub fn shim_main_with_otel<'a, I>(
 {
     match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
         Ok(otel_endpoint) => {
-            let tracer = init_tracer(&otel_endpoint, name).expect("Failed to initialize tracer.");
-            let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-            set_text_map_propagator(TraceContextPropagator::new());
-
-            // Create an environment filter
-            let filter = EnvFilter::try_new("info,h2=off") // Set default level to `info` and exclude all traces from `h2`
-                .expect("Invalid filter directive");
-
-            let subscriber = Registry::default().with(telemetry).with(filter);
-
-            tracing::subscriber::set_global_default(subscriber)
-                .expect("setting default subscriber failed");
+            let otel_config = OtelConfig::builder()
+                .otel_endpoint(otel_endpoint)
+                .name(name.to_string())
+                .build()
+                .expect("Failed to build OtelConfig.");
+            let _guard = otel_config
+                .init()
+                .expect("Failed to initialize OpenTelemetry.");
             shim_main::<I>(name, version, revision, shim_version, config);
-            shutdown_tracer_provider();
         }
         Err(_) => {
             shim_main::<I>(name, version, revision, shim_version, config);
