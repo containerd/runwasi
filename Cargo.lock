@@ -668,6 +668,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "tracing",
  "ttrpc",
  "ttrpc-codegen",
  "wasmparser 0.207.0",

@@ -2,7 +2,9 @@ use anyhow::Result;
 use containerd_shim::cgroup::collect_metrics;
 use containerd_shim::util::convert_to_any;
 use protobuf::well_known_types::any::Any;
+use tracing::{instrument, Span};
 
+#[instrument(skip_all, parent = Span::current(), level= "Info")]
 pub fn get_metrics(pid: u32) -> Result<Any> {
     let metrics = collect_metrics(pid)?;
 

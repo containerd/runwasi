@@ -1,4 +1,5 @@
 use std::env::current_dir;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -8,6 +9,7 @@ use containerd_shim::util::write_address;
 use containerd_shim::{self as shim, api, ExitSignal};
 use oci_spec::runtime::Spec;
 use shim::Flags;
+use tracing::{instrument, Span};
 
 use crate::sandbox::instance::Instance;
 use crate::sandbox::shim::events::{RemoteEventSender, ToTimestamp};
@@ -23,6 +25,20 @@ pub struct Cli<T: Instance + Sync + Send> {
     _id: String,
 }
 
+impl<I> Debug for Cli<I>
+where
+    I: Instance + Sync + Send,
+    <I as Instance>::Engine: Default,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Cli {{ namespace: {:?}, containerd_address: {:?}, _id: {:?} }}",
+            self.namespace, self.containerd_address, self._id
+        )
+    }
+}
+
 impl<I> shim::Shim for Cli<I>
 where
     I: Instance + Sync + Send,
@@ -30,6 +46,7 @@ where
 {
     type T = Local<I>;
 
+    #[instrument(skip_all, parent = Span::current(), level= "Info")]
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
             engine: Default::default(),
@@ -40,6 +57,7 @@ where
         }
     }
 
+    #[instrument(skip_all, parent = Span::current(), level= "Info")]
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
         let spec = Spec::load(dir.join("config.json")).map_err(|err| {
@@ -63,10 +81,12 @@ where
         Ok(address)
     }
 
+    #[instrument(skip_all, parent = Span::current(), level = "Info")]
     fn wait(&mut self) {
         self.exit.wait();
     }
 
+    #[instrument(skip_all, parent = Span::current(), level= "Info")]
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let events = RemoteEventSender::new(&self.namespace, publisher);
         let exit = self.exit.clone();
@@ -80,6 +100,7 @@ where
         )
     }
 
+    #[instrument(skip_all, parent = Span::current(), level= "Info")]
     fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
         Ok(api::DeleteResponse {
             exit_status: 137,
