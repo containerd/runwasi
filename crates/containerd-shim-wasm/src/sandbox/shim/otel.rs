@@ -24,12 +24,16 @@
 //! }
 //! ```
 
-use opentelemetry::global::set_text_map_propagator;
+use std::collections::HashMap;
+
+use opentelemetry::global::{self, set_text_map_propagator};
 use opentelemetry::trace::TraceError;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::{runtime, trace as sdktrace, Resource};
+use tracing::Span;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::{EnvFilter, Registry};
 
@@ -78,6 +82,23 @@ impl OtelConfig {
 
         tracing::subscriber::set_global_default(subscriber)?;
         Ok(ShutdownGuard)
+    }
+
+    pub fn get_trace_context() -> anyhow::Result<String> {
+        // propogate the context
+        let mut injector: HashMap<String, String> = HashMap::new();
+        global::get_text_map_propagator(|propagator| {
+            // retrieve the context from `tracing`
+            propagator.inject_context(&Span::current().context(), &mut injector);
+        });
+        Ok(serde_json::to_string(&injector)?)
+    }
+
+    pub fn set_trace_context(trace_context: &str) -> anyhow::Result<()> {
+        let extractor: HashMap<String, String> = serde_json::from_str(trace_context)?;
+        let context = global::get_text_map_propagator(|propagator| propagator.extract(&extractor));
+        Span::current().set_parent(context);
+        Ok(())
     }
 }
 
