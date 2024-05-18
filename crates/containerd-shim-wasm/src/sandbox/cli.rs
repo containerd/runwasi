@@ -85,6 +85,15 @@ pub fn shim_main<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
+    if cfg!(feature = "opentelemetry") {
+        // read TRACECONTEXT env var that's set by the parent process
+        if let Ok(ctx) = std::env::var("TRACECONTEXT") {
+            OtelConfig::set_trace_context(&ctx).unwrap();
+        } else {
+            let ctx = OtelConfig::get_trace_context().unwrap();
+            std::env::set_var("TRACECONTEXT", ctx);
+        }
+    }
     let os_args: Vec<_> = std::env::args_os().collect();
 
     let flags = parse(&os_args[1..]).unwrap();
