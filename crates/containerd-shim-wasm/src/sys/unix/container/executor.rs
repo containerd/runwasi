@@ -12,7 +12,7 @@ use libcontainer::workload::{
 };
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
-use tracing::{instrument, Span};
+use shim_instrument::shim_instrument as instrument;
 
 use crate::container::{Engine, PathResolve, RuntimeContext, Source, Stdio, WasiContext};
 use crate::sandbox::oci::WasmLayer;
@@ -34,7 +34,7 @@ pub(crate) struct Executor<E: Engine> {
 }
 
 impl<E: Engine> LibcontainerExecutor for Executor<E> {
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
         // We can handle linux container. We delegate wasm container to the engine.
         match self.inner(spec) {
@@ -43,7 +43,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
         }
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     fn exec(&self, spec: &Spec) -> Result<(), LibcontainerExecutorError> {
         // If it looks like a linux container, run it as a linux container.
         // Otherwise, run it as a wasm container

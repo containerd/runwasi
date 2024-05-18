@@ -1,4 +1,4 @@
-use tracing::{instrument, Span};
+use shim_instrument::shim_instrument as instrument;
 
 use crate::sandbox::Error::FailedPrecondition;
 use crate::sandbox::Result;
@@ -13,7 +13,7 @@ pub(super) enum TaskState {
 }
 
 impl TaskState {
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn start(&mut self) -> Result<()> {
         *self = match self {
             Self::Created => Ok(Self::Starting),
@@ -22,7 +22,7 @@ impl TaskState {
         Ok(())
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn kill(&mut self) -> Result<()> {
         *self = match self {
             Self::Started => Ok(Self::Started),
@@ -31,7 +31,7 @@ impl TaskState {
         Ok(())
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn delete(&mut self) -> Result<()> {
         *self = match self {
             Self::Created | Self::Exited => Ok(Self::Deleting),
@@ -40,7 +40,7 @@ impl TaskState {
         Ok(())
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn started(&mut self) -> Result<()> {
         *self = match self {
             Self::Starting => Ok(Self::Started),
@@ -49,7 +49,7 @@ impl TaskState {
         Ok(())
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn stop(&mut self) -> Result<()> {
         *self = match self {
             Self::Started | Self::Starting => Ok(Self::Exited),

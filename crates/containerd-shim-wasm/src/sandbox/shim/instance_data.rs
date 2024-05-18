@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock, RwLock};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use tracing::{instrument, Span};
+use shim_instrument::shim_instrument as instrument;
 
 use crate::sandbox::instance::Nop;
 use crate::sandbox::shim::instance_option::InstanceOption;
@@ -17,7 +17,7 @@ pub(super) struct InstanceData<T: Instance> {
 }
 
 impl<T: Instance> InstanceData<T> {
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn new_instance(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
         let id = id.as_ref().to_string();
         let instance = InstanceOption::Instance(T::new(id, Some(&cfg))?);
@@ -29,7 +29,7 @@ impl<T: Instance> InstanceData<T> {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn new_base(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
         let id = id.as_ref().to_string();
         let instance = InstanceOption::Nop(Nop::new(id, None)?);
@@ -41,17 +41,17 @@ impl<T: Instance> InstanceData<T> {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn pid(&self) -> Option<u32> {
         self.pid.get().copied()
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn config(&self) -> &InstanceConfig<T::Engine> {
         &self.cfg
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn start(&self) -> Result<u32> {
         let mut s = self.state.write().unwrap();
         s.start()?;
@@ -71,7 +71,7 @@ impl<T: Instance> InstanceData<T> {
         res
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn kill(&self, signal: u32) -> Result<()> {
         let mut s = self.state.write().unwrap();
         s.kill()?;
@@ -79,7 +79,7 @@ impl<T: Instance> InstanceData<T> {
         self.instance.kill(signal)
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn delete(&self) -> Result<()> {
         let mut s = self.state.write().unwrap();
         s.delete()?;
@@ -94,7 +94,7 @@ impl<T: Instance> InstanceData<T> {
         res
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn wait(&self) -> (u32, DateTime<Utc>) {
         let res = self.instance.wait();
         let mut s = self.state.write().unwrap();
@@ -102,7 +102,7 @@ impl<T: Instance> InstanceData<T> {
         res
     }
 
-    #[instrument(skip_all, parent = Span::current(), level= "Info")]
+    #[instrument(skip_all, level = "Info")]
     pub fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
         let res = self.instance.wait_timeout(t);
         if res.is_some() {

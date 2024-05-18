@@ -664,6 +664,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha256",
+ "shim-instrument",
  "tempfile",
  "thiserror",
  "tokio",
@@ -3662,6 +3663,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ccc8076840c4da029af4f87e4e8daeb0fca6b87bbb02e10cb60b791450e11e4"
 dependencies = [
  "dirs",
+]
+
+[[package]]
+name = "shim-instrument"
+version = "0.1.0"
+source = "git+https://github.com/Mossaka/shim-instrument?branch=main#26c9050d8aeefca10a16424a5a9364c32429f96f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "tracing",
 ]
 
 [[package]]
