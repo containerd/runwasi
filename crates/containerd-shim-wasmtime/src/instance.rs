@@ -28,7 +28,6 @@ impl WasiConfig for DefaultConfig {
     fn new_config() -> Config {
         let mut config = wasmtime::Config::new();
         config.wasm_component_model(true); // enable component linking
-        config.async_support(true);
         config
     }
 }
@@ -39,7 +38,8 @@ pub trait WasiConfig: Clone + Sync + Send + 'static {
 
 impl<T: WasiConfig> Default for WasmtimeEngine<T> {
     fn default() -> Self {
-        let config = T::new_config();
+        let mut config = T::new_config();
+        config.async_support(true); // must be on
         Self {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
@@ -82,14 +82,12 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
             name: _,
         } = ctx.entrypoint();
 
-        stdio.redirect()?;
-
         log::info!("building wasi context");
         let wasi_ctx = prepare_wasi_ctx(ctx, envs)?;
         let store = Store::new(&self.engine, wasi_ctx);
 
         let wasm_bytes = &source.as_bytes()?;
-        let status = self.execute(wasm_bytes, store, func)?;
+        let status = self.execute(wasm_bytes, store, func, stdio)?;
 
         let status = status.map(|_| 0).or_else(|err| {
             match err.downcast_ref::<I32Exit>() {
@@ -141,9 +139,13 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         module: Module,
         mut store: Store<WasiCtx>,
         func: &String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
+        log::debug!("execute module");
+
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
+        log::debug!("init linker");
         wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| {
             &mut s.wasi_preview1
         })?;
@@ -159,6 +161,9 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
                 .context("module does not have a WASI start function")?;
 
             log::debug!("running start function {func:?}");
+
+            stdio.redirect()?;
+
             let status = start_func.call_async(&mut store, &[], &mut []).await;
             Ok(status)
         })
@@ -173,13 +178,15 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         component: Component,
         mut store: Store<WasiCtx>,
         func: String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
 
         let mut linker = wasmtime_component::Linker::new(&self.engine);
 
-        //wasi_preview2::bindings::Command::add_to_linker(&mut linker, |t| t)?;
+        log::debug!("init linker");
         wasi_preview2::add_to_linker_async(&mut linker)?;
+        log::debug!("done init linker");
 
         log::info!("instantiating component");
 
@@ -191,6 +198,8 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
                 let pre = linker.instantiate_pre(&component)?;
                 let (command, _instance) =
                     wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
+
+                stdio.redirect()?;
 
                 let status = command
                     .wasi_cli_run()
@@ -214,6 +223,9 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
                 ))?;
 
                 log::debug!("running exported function {func:?} {start_func:?}");
+
+                stdio.redirect()?;
+
                 let status = start_func.call_async(&mut store, &[], &mut []).await;
                 Ok(status)
             }
@@ -225,27 +237,28 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         wasm_binary: &[u8],
         store: Store<WasiCtx>,
         func: String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
                 log::debug!("loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
-                self.execute_module(module, store, &func)
+                self.execute_module(module, store, &func, stdio)
             }
             Some(WasmBinaryType::Component) => {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
-                self.execute_component(component, store, func)
+                self.execute_component(component, store, func, stdio)
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_module(module, store, &func)
+                    self.execute_module(module, store, &func, stdio)
                 }
                 Some(Precompiled::Component) => {
                     log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_component(component, store, func)
+                    self.execute_component(component, store, func, stdio)
                 }
                 None => {
                     bail!("invalid precompiled module")
