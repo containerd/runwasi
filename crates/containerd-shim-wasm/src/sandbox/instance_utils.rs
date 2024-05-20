@@ -5,12 +5,14 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, Span};
 
 use super::Error;
 
 /// Return the root path for the instance.
 ///
 /// The root path is the path to the directory containing the container's state.
+#[instrument(skip_all, parent = Span::current(), level= "Info")]
 pub fn get_instance_root<P: AsRef<Path>>(
     root_path: P,
     instance_id: &str,
@@ -25,6 +27,7 @@ pub fn get_instance_root<P: AsRef<Path>>(
 /// Checks if the container exists.
 ///
 /// The root path is the path to the directory containing the container's state.
+#[instrument(skip_all, parent = Span::current(), level= "Info")]
 pub fn instance_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
     let instance_root = construct_instance_root(root_path, container_id)?;
     Ok(instance_root.exists())
@@ -35,6 +38,7 @@ struct Options {
     root: Option<PathBuf>,
 }
 
+#[instrument(skip_all, parent = Span::current(), level= "Info")]
 pub fn determine_rootdir(
     bundle: impl AsRef<Path>,
     namespace: &str,
@@ -53,6 +57,7 @@ pub fn determine_rootdir(
     Ok(path)
 }
 
+#[instrument(skip_all, parent = Span::current(), level= "Info")]
 fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
     let root_path = root_path.as_ref().canonicalize().with_context(|| {
         format!(
