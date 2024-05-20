@@ -536,7 +536,7 @@ impl Client {
             let info = self.get_info(&digest_to_load)?;
             if let Some(label) = info.labels.get(precompile_id) {
                 // Safe to unwrap here since we already checked for the label's existence
-                digest_to_load = label.clone();
+                digest_to_load.clone_from(label);
                 log::info!(
                     "layer {} has pre-compiled content: {} ",
                     info.digest,
