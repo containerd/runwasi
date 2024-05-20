@@ -14,7 +14,6 @@ sha256 = { workspace = true }
 
 wasmtime = { version = "20.0.2", features = ["async"] }
 wasmtime-wasi = { version = "20.0.2" }
-wasi-common = { version = "20.0.2", features = ["tokio"] }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }

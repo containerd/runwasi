@@ -7,7 +7,6 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview1::{self as wasi_preview1};
@@ -87,15 +86,12 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         let store = Store::new(&self.engine, wasi_ctx);
 
         let wasm_bytes = &source.as_bytes()?;
+
         let status = self.execute(wasm_bytes, store, func, stdio)?;
 
         let status = status.map(|_| 0).or_else(|err| {
-            match err.downcast_ref::<I32Exit>() {
-                // On Windows, exit status 3 indicates an abort (see below),
-                // so return 1 indicating a non-zero status to avoid ambiguity.
-                #[cfg(windows)]
-                Some(I32Exit(3..)) => Ok(1),
-                Some(I32Exit(status)) => Ok(*status),
+            match err.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                Some(value) => Ok(value.process_exit_code()),
                 _ => Err(err),
             }
         })?;
