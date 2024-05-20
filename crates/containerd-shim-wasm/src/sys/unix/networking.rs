@@ -5,9 +5,8 @@ use containerd_shim::error::Error as ShimError;
 use containerd_shim::{self as shim};
 use nix::sched::{setns, unshare, CloneFlags};
 use oci_spec::runtime;
-use shim_instrument::shim_instrument as instrument;
 
-#[instrument(skip_all, level = "Info")]
+#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
 pub fn setup_namespaces(spec: &runtime::Spec) -> Result<()> {
     let namespaces = spec
         .linux()

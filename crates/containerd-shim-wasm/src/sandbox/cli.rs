@@ -3,7 +3,6 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use containerd_shim::{parse, run, Config};
-use shim_instrument::shim_instrument as instrument;
 use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
@@ -37,7 +36,7 @@ macro_rules! revision {
     };
 }
 
-#[instrument(skip_all, level = "Info")]
+#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
 pub fn shim_main<'a, I>(
     name: &str,
     version: &str,

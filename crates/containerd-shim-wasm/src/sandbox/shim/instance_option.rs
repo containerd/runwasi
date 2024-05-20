@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use shim_instrument::shim_instrument as instrument;
 
 use crate::sandbox::instance::Nop;
 use crate::sandbox::{Instance, InstanceConfig, Result};
@@ -14,13 +13,13 @@ pub(super) enum InstanceOption<I: Instance> {
 impl<I: Instance> Instance for InstanceOption<I> {
     type Engine = ();
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self> {
         // this is never called
         unimplemented!();
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn start(&self) -> Result<u32> {
         match self {
             Self::Instance(i) => i.start(),
@@ -28,7 +27,7 @@ impl<I: Instance> Instance for InstanceOption<I> {
         }
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn kill(&self, signal: u32) -> Result<()> {
         match self {
             Self::Instance(i) => i.kill(signal),
@@ -36,7 +35,7 @@ impl<I: Instance> Instance for InstanceOption<I> {
         }
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete(&self) -> Result<()> {
         match self {
             Self::Instance(i) => i.delete(),
@@ -44,7 +43,7 @@ impl<I: Instance> Instance for InstanceOption<I> {
         }
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
         match self {
             Self::Instance(i) => i.wait_timeout(t),

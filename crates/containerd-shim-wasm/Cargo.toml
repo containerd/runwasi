@@ -38,7 +38,6 @@ prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 # tracing
-shim-instrument = { git = "https://github.com/Mossaka/shim-instrument", branch = "main" }
 tracing = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
@@ -64,4 +63,4 @@ rand= "0.8"
 
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
-tracing = ["dep:tracing", "shim-instrument/tracing"]
+tracing = ["dep:tracing"]

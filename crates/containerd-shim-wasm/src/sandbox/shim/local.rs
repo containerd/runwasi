@@ -21,7 +21,6 @@ use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
 use log::debug;
 use oci_spec::runtime::Spec;
-use shim_instrument::shim_instrument as instrument;
 
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
@@ -47,7 +46,7 @@ pub struct Local<T: Instance + Send + Sync, E: EventSender = RemoteEventSender> 
 
 impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     /// Creates a new local task service.
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     pub fn new(
         engine: T::Engine,
         events: E,
@@ -68,23 +67,23 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         }
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     pub(super) fn get_instance(&self, id: &str) -> Result<Arc<InstanceData<T>>> {
         let instance = self.instances.read().unwrap().get(id).cloned();
         instance.ok_or_else(|| Error::NotFound(id.to_string()))
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn has_instance(&self, id: &str) -> bool {
         self.instances.read().unwrap().contains_key(id)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn is_empty(&self) -> bool {
         self.instances.read().unwrap().is_empty()
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn instance_config(&self) -> InstanceConfig<T::Engine> {
         InstanceConfig::new(
             self.engine.clone(),
@@ -94,7 +93,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     }
 }
 
-#[instrument(skip_all, level = "Info")]
+#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
 fn is_cri_container(spec: &Spec) -> bool {
     spec.annotations()
         .as_ref()
@@ -103,7 +102,7 @@ fn is_cri_container(spec: &Spec) -> bool {
 
 // These are the same functions as in Task, but without the TtrcpContext, which is useful for testing
 impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_create(&self, req: CreateTaskRequest) -> Result<CreateTaskResponse> {
         if !req.checkpoint().is_empty() || !req.parent_checkpoint().is_empty() {
             return Err(ShimError::Unimplemented("checkpoint is not supported".to_string()).into());
@@ -195,7 +194,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_start(&self, req: StartRequest) -> Result<StartResponse> {
         if req.exec_id().is_empty().not() {
             return Err(ShimError::Unimplemented("exec is not supported".to_string()).into());
@@ -238,7 +237,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_kill(&self, req: KillRequest) -> Result<Empty> {
         if !req.exec_id().is_empty() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()));
@@ -247,7 +246,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         Ok(Empty::new())
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_delete(&self, req: DeleteRequest) -> Result<DeleteResponse> {
         if !req.exec_id().is_empty() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()));
@@ -279,7 +278,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_wait(&self, req: WaitRequest) -> Result<WaitResponse> {
         if !req.exec_id().is_empty() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()));
@@ -296,7 +295,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_state(&self, req: StateRequest) -> Result<StateResponse> {
         if !req.exec_id().is_empty() {
             return Err(Error::InvalidArgument("exec is not supported".to_string()));
@@ -328,7 +327,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn task_stats(&self, req: StatsRequest) -> Result<StatsResponse> {
         let i = self.get_instance(req.id())?;
         let pid = i
@@ -346,7 +345,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 
 impl<T: Instance + Sync + Send> SandboxService for Local<T, RemoteEventSender> {
     type Instance = T;
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn new(
         namespace: String,
         containerd_address: String,
@@ -361,37 +360,37 @@ impl<T: Instance + Sync + Send> SandboxService for Local<T, RemoteEventSender> {
 }
 
 impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn create(&self, _: &TtrpcContext, req: CreateTaskRequest) -> TtrpcResult<CreateTaskResponse> {
         debug!("create: {:?}", req);
         Ok(self.task_create(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn start(&self, _: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
         debug!("start: {:?}", req);
         Ok(self.task_start(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn kill(&self, _: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
         debug!("kill: {:?}", req);
         Ok(self.task_kill(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete(&self, _: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
         debug!("delete: {:?}", req);
         Ok(self.task_delete(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn wait(&self, _: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
         debug!("wait: {:?}", req);
         Ok(self.task_wait(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn connect(&self, _: &TtrpcContext, req: ConnectRequest) -> TtrpcResult<ConnectResponse> {
         debug!("connect: {:?}", req);
         let i = self.get_instance(req.id())?;
@@ -404,13 +403,13 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
         })
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn state(&self, _: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
         debug!("state: {:?}", req);
         Ok(self.task_state(req)?)
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn shutdown(&self, _: &TtrpcContext, _: ShutdownRequest) -> TtrpcResult<Empty> {
         debug!("shutdown");
         if self.is_empty() {
@@ -419,7 +418,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
         Ok(Empty::new())
     }
 
-    #[instrument(skip_all, level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
         debug!("stats: {:?}", req);
         Ok(self.task_stats(req)?)
