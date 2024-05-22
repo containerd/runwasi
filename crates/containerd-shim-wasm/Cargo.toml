@@ -36,7 +36,9 @@ wasmparser = "0.207.0"
 tokio-stream = { version = "0.1" }
 prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
-tracing = { workspace = true }
+
+# tracing
+tracing = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
@@ -61,3 +63,4 @@ rand= "0.8"
 
 [features]
 testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
+tracing = ["dep:tracing"]
