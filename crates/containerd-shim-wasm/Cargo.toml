@@ -1,7 +1,7 @@
 [package]
 name = "containerd-shim-wasm"
 description = "Library for building containerd shims for wasm"
-version = "0.5.0"
+version = "0.6.0"
 edition.workspace = true
 license.workspace = true
 readme = "README.md"
