@@ -67,7 +67,7 @@ jobs:
           script: |
             const crate = '${{ inputs.crate }}';
             const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
-            if non_shim_crates.includes(runtime) {
+            if (non_shim_crates.includes(runtime)) {
               core.setOutput('runtime', 'common');
               core.setOutput('is_shim', false)
             } else {
