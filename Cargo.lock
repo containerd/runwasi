@@ -640,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "caps",
@@ -694,7 +694,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmedge"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmtime"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "containerd-shim",
