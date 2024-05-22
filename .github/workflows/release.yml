@@ -66,12 +66,12 @@ jobs:
         with:
           script: |
             const crate = '${{ inputs.crate }}';
+            const runtime = crate.replace(/^containerd-shim-/, '');
             const non_shim_crates = ['wasm', 'wasm-test-modules', 'oci-tar-builder'];
             if (non_shim_crates.includes(runtime)) {
               core.setOutput('runtime', 'common');
               core.setOutput('is_shim', false)
             } else {
-              const runtime = crate.replace(/^containerd-shim-/, '');
               core.setOutput('runtime', runtime);
               core.setOutput('is_shim', true);
             }
