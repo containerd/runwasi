@@ -141,7 +141,7 @@ where
         let container_name = container_name.unwrap_or("test".to_string());
         oci_helpers::create_container(&container_name, &image_name)?;
 
-        self.container_name = container_name.clone();
+        self.container_name.clone_from(&container_name);
         Ok((
             self,
             oci_helpers::OCICleanup {

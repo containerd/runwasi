@@ -24,7 +24,6 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
-use tracing::{instrument, Span};
 
 use super::lease::LeaseGuard;
 use crate::container::Engine;
@@ -54,7 +53,7 @@ pub(crate) struct WriteContent {
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
 impl Client {
     // wrapper around connection that will establish a connection and create a client
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     pub fn connect(
         address: impl AsRef<Path> + ToString,
         namespace: impl ToString,
@@ -76,7 +75,7 @@ impl Client {
     }
 
     // wrapper around read that will read the entire content file
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
         self.rt.block_on(async {
             let req = ReadContentRequest {
@@ -98,7 +97,7 @@ impl Client {
 
     // used in tests to clean up content
     #[allow(dead_code)]
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete_content(&self, digest: impl ToString) -> Result<()> {
         self.rt.block_on(async {
             let req = DeleteContentRequest {
@@ -114,7 +113,7 @@ impl Client {
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn lease(&self, reference: String) -> Result<LeaseGuard> {
         self.rt.block_on(async {
             let mut lease_labels = HashMap::new();
@@ -146,7 +145,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn save_content(
         &self,
         data: Vec<u8>,
@@ -272,7 +271,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn get_info(&self, content_digest: &str) -> Result<Info> {
         self.rt.block_on(async {
             let req = InfoRequest {
@@ -295,7 +294,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn update_info(&self, info: Info) -> Result<Info> {
         self.rt.block_on(async {
             let req = UpdateRequest {
@@ -321,7 +320,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn get_image(&self, image_name: impl ToString) -> Result<Image> {
         self.rt.block_on(async {
             let name = image_name.to_string();
@@ -343,7 +342,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn extract_image_content_sha(&self, image: &Image) -> Result<String> {
         let digest = image
             .target
@@ -359,7 +358,7 @@ impl Client {
         Ok(digest)
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn get_container(&self, container_name: impl ToString) -> Result<Container> {
         self.rt.block_on(async {
             let id = container_name.to_string();
@@ -381,7 +380,7 @@ impl Client {
         })
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn get_image_manifest_and_digest(&self, image_name: &str) -> Result<(ImageManifest, String)> {
         let image = self.get_image(image_name)?;
         let image_digest = self.extract_image_content_sha(&image)?;
@@ -392,7 +391,7 @@ impl Client {
     // load module will query the containerd store to find an image that has an OS of type 'wasm'
     // If found it continues to parse the manifest and return the layers that contains the WASM modules
     // and possibly other configuration layers.
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     pub fn load_modules<T: Engine>(
         &self,
         containerd_id: impl ToString,
@@ -523,7 +522,7 @@ impl Client {
         Ok((layers, platform))
     }
 
-    #[instrument(skip_all, parent = Span::current(), level = "Info")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn read_wasm_layer(
         &self,
         original_config: &oci_spec::image::Descriptor,
@@ -536,7 +535,7 @@ impl Client {
             let info = self.get_info(&digest_to_load)?;
             if let Some(label) = info.labels.get(precompile_id) {
                 // Safe to unwrap here since we already checked for the label's existence
-                digest_to_load = label.clone();
+                digest_to_load.clone_from(label);
                 log::info!(
                     "layer {} has pre-compiled content: {} ",
                     info.digest,
