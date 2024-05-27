@@ -1,5 +1,4 @@
 use std::collections::hash_map::DefaultHasher;
-use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
@@ -8,11 +7,10 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use wasi_common::I32Exit;
 use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
-use wasmtime_wasi::preview2::{self as wasi_preview2};
-use wasmtime_wasi::{self as wasi_preview1, Dir};
+use wasmtime_wasi::preview1::{self as wasi_preview1};
+use wasmtime_wasi::{self as wasi_preview2};
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
 
@@ -39,7 +37,8 @@ pub trait WasiConfig: Clone + Sync + Send + 'static {
 
 impl<T: WasiConfig> Default for WasmtimeEngine<T> {
     fn default() -> Self {
-        let config = T::new_config();
+        let mut config = T::new_config();
+        config.async_support(true); // must be on
         Self {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
@@ -52,25 +51,17 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
 /// Data that contains both wasi_preview1 and wasi_preview2 contexts.
 pub struct WasiCtx {
     pub(crate) wasi_preview2: wasi_preview2::WasiCtx,
-    pub(crate) wasi_preview1: wasi_preview1::WasiCtx,
+    pub(crate) wasi_preview1: wasi_preview1::WasiP1Ctx,
     pub(crate) resource_table: ResourceTable,
 }
 
 /// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
-impl wasmtime_wasi::preview2::WasiView for WasiCtx {
-    fn table(&self) -> &ResourceTable {
-        &self.resource_table
-    }
-
-    fn table_mut(&mut self) -> &mut ResourceTable {
+impl wasi_preview2::WasiView for WasiCtx {
+    fn table(&mut self) -> &mut ResourceTable {
         &mut self.resource_table
     }
 
-    fn ctx(&self) -> &wasi_preview2::WasiCtx {
-        &self.wasi_preview2
-    }
-
-    fn ctx_mut(&mut self) -> &mut wasi_preview2::WasiCtx {
+    fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
         &mut self.wasi_preview2
     }
 }
@@ -90,22 +81,17 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
             name: _,
         } = ctx.entrypoint();
 
-        stdio.redirect()?;
-
         log::info!("building wasi context");
         let wasi_ctx = prepare_wasi_ctx(ctx, envs)?;
         let store = Store::new(&self.engine, wasi_ctx);
 
         let wasm_bytes = &source.as_bytes()?;
-        let status = self.execute(wasm_bytes, store, func)?;
+
+        let status = self.execute(wasm_bytes, store, func, stdio)?;
 
         let status = status.map(|_| 0).or_else(|err| {
-            match err.downcast_ref::<I32Exit>() {
-                // On Windows, exit status 3 indicates an abort (see below),
-                // so return 1 indicating a non-zero status to avoid ambiguity.
-                #[cfg(windows)]
-                Some(I32Exit(3..)) => Ok(1),
-                Some(I32Exit(status)) => Ok(*status),
+            match err.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                Some(value) => Ok(value.process_exit_code()),
                 _ => Err(err),
             }
         })?;
@@ -149,22 +135,34 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         module: Module,
         mut store: Store<WasiCtx>,
         func: &String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
+        log::debug!("execute module");
+
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
-        wasi_preview1::add_to_linker(&mut module_linker, |s: &mut WasiCtx| &mut s.wasi_preview1)?;
+        log::debug!("init linker");
+        wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| {
+            &mut s.wasi_preview1
+        })?;
 
-        log::info!("instantiating instance");
-        let instance: wasmtime::Instance = module_linker.instantiate(&mut store, &module)?;
+        wasmtime_wasi::runtime::in_tokio(async move {
+            log::info!("instantiating instance");
+            let instance: wasmtime::Instance =
+                module_linker.instantiate_async(&mut store, &module).await?;
 
-        log::info!("getting start function");
-        let start_func = instance
-            .get_func(&mut store, func)
-            .context("module does not have a WASI start function")?;
+            log::info!("getting start function");
+            let start_func = instance
+                .get_func(&mut store, func)
+                .context("module does not have a WASI start function")?;
 
-        log::debug!("running start function {func:?}");
-        let status = start_func.call(&mut store, &[], &mut []);
-        Ok(status)
+            log::debug!("running start function {func:?}");
+
+            stdio.redirect()?;
+
+            let status = start_func.call_async(&mut store, &[], &mut []).await;
+            Ok(status)
+        })
     }
 
     /// Execute a wasm component.
@@ -176,39 +174,58 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         component: Component,
         mut store: Store<WasiCtx>,
         func: String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
 
         let mut linker = wasmtime_component::Linker::new(&self.engine);
 
-        wasi_preview2::command::sync::add_to_linker(&mut linker)?;
+        log::debug!("init linker");
+        wasi_preview2::add_to_linker_async(&mut linker)?;
+        log::debug!("done init linker");
 
         log::info!("instantiating component");
 
         // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
         //
         // TODO: think about a better way to do this.
-        if func == "_start" {
-            let (command, _instance) = wasi_preview2::command::sync::Command::instantiate(
-                &mut store, &component, &linker,
-            )?;
+        wasmtime_wasi::runtime::in_tokio(async move {
+            if func == "_start" {
+                let pre = linker.instantiate_pre(&component)?;
+                let (command, _instance) =
+                    wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
 
-            let status = command.wasi_cli_run().call_run(&mut store)?.map_err(|_| {
-                anyhow::anyhow!("failed to run component targeting `wasi:cli/command` world")
-            });
-            Ok(status)
-        } else {
-            let instance = linker.instantiate(&mut store, &component)?;
+                stdio.redirect()?;
 
-            log::info!("getting component exported function {func:?}");
-            let start_func = instance.get_func(&mut store, &func).context(format!(
-                "component does not have exported function {func:?}"
-            ))?;
+                let status = command
+                    .wasi_cli_run()
+                    .call_run(&mut store)
+                    .await?
+                    .map_err(|_| {
+                        anyhow::anyhow!(
+                            "failed to run component targeting `wasi:cli/command` world"
+                        )
+                    });
 
-            log::debug!("running exported function {func:?} {start_func:?}");
-            let status = start_func.call(&mut store, &[], &mut []);
-            Ok(status)
-        }
+                Ok(status)
+            } else {
+                let pre = linker.instantiate_pre(&component)?;
+
+                let instance = pre.instantiate_async(&mut store).await?;
+
+                log::info!("getting component exported function {func:?}");
+                let start_func = instance.get_func(&mut store, &func).context(format!(
+                    "component does not have exported function {func:?}"
+                ))?;
+
+                log::debug!("running exported function {func:?} {start_func:?}");
+
+                stdio.redirect()?;
+
+                let status = start_func.call_async(&mut store, &[], &mut []).await;
+                Ok(status)
+            }
+        })
     }
 
     fn execute(
@@ -216,27 +233,28 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         wasm_binary: &[u8],
         store: Store<WasiCtx>,
         func: String,
+        stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
                 log::debug!("loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
-                self.execute_module(module, store, &func)
+                self.execute_module(module, store, &func, stdio)
             }
             Some(WasmBinaryType::Component) => {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
-                self.execute_component(component, store, func)
+                self.execute_component(component, store, func, stdio)
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_module(module, store, &func)
+                    self.execute_module(module, store, &func, stdio)
                 }
                 Some(Precompiled::Component) => {
                     log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_component(component, store, func)
+                    self.execute_component(component, store, func, stdio)
                 }
                 None => {
                     bail!("invalid precompiled module")
@@ -251,31 +269,10 @@ fn prepare_wasi_ctx(
     ctx: &impl RuntimeContext,
     envs: Vec<(String, String)>,
 ) -> Result<WasiCtx, anyhow::Error> {
-    let mut wasi_preview1_builder = wasi_preview1::WasiCtxBuilder::new();
-    wasi_preview1_builder
-        .args(ctx.args())?
-        .envs(envs.as_slice())?
-        .inherit_stdio()
-        .preopened_dir(Dir::from_std_file(File::open("/")?), "/")?;
-    let wasi_preview1_ctx = wasi_preview1_builder.build();
+    let mut wasi_preview1_builder = wasi_builder(ctx, &envs)?;
+    let wasi_preview1_ctx = wasi_preview1_builder.build_p1();
 
-    // TODO: make this more configurable (e.g. allow the user to specify the
-    // preopened directories and their permissions)
-    // https://github.com/containerd/runwasi/issues/413
-    let file_perms = wasi_preview2::FilePerms::all();
-    let dir_perms = wasi_preview2::DirPerms::all();
-
-    let mut wasi_preview2_builder = wasi_preview2::WasiCtxBuilder::new();
-    wasi_preview2_builder
-        .args(ctx.args())
-        .envs(envs.as_slice())
-        .inherit_stdio()
-        .preopened_dir(
-            Dir::from_std_file(File::open("/")?),
-            dir_perms,
-            file_perms,
-            "/",
-        );
+    let mut wasi_preview2_builder = wasi_builder(ctx, &envs)?;
     let wasi_preview2_ctx = wasi_preview2_builder.build();
     let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,
@@ -283,4 +280,27 @@ fn prepare_wasi_ctx(
         resource_table: ResourceTable::default(),
     };
     Ok(wasi_data)
+}
+
+fn wasi_builder(
+    ctx: &impl RuntimeContext,
+    envs: &[(String, String)],
+) -> Result<wasi_preview2::WasiCtxBuilder, anyhow::Error> {
+    // TODO: make this more configurable (e.g. allow the user to specify the
+    // preopened directories and their permissions)
+    // https://github.com/containerd/runwasi/issues/413
+    let file_perms = wasi_preview2::FilePerms::all();
+    let dir_perms = wasi_preview2::DirPerms::all();
+
+    let mut builder = wasi_preview2::WasiCtxBuilder::new();
+    builder
+        .args(ctx.args())
+        .envs(envs)
+        .inherit_stdio()
+        .inherit_network()
+        .allow_tcp(true)
+        .allow_udp(true)
+        .allow_ip_name_lookup(true)
+        .preopened_dir("/", "/", dir_perms, file_perms)?;
+    Ok(builder)
 }
