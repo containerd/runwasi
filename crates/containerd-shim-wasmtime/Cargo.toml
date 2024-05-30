@@ -12,8 +12,8 @@ oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 sha256 = { workspace = true }
 
-wasmtime = { version = "20.0.2", features = ["async"] }
-wasmtime-wasi = { version = "20.0.2" }
+wasmtime = { version = "21.0.1", features = ["async"] }
+wasmtime-wasi = { version = "21.0.1" }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
