@@ -12,7 +12,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 
 # may need to bump wasmedge version in scripts/setup-windows.sh
-wasmedge-sdk = { version = "0.13.2" }
+wasmedge-sdk = { version = "0.14.0" }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
