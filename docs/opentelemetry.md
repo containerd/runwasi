@@ -54,9 +54,9 @@ you can run a the wasmtime shim with OpenTelemetry tracing by running the follow
 sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm sleep 3
 ```
 
-![alt text](image.png)
+![A screenshot of the jeager UI for the wasmtime shim](wasmtime-shim-jeager.png)
 
-![alt text](image-1.png)
+![A screenshot of the jeager UI for traces of the main function call of the wasmtime shim](wasmtime-shim-tracing-main.png)
 
 ## Environment Variables
 
