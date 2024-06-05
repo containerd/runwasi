@@ -43,6 +43,8 @@ use tracing_subscriber::{EnvFilter, Registry};
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF: &str = "http/protobuf";
 const OTEL_EXPORTER_OTLP_PROTOCOL_GRPC: &str = "grpc";
 
+const OTEL_SERVICE_NAME: &str = "OTEL_SERVICE_NAME";
+
 /// Configuration struct for OpenTelemetry setup.
 pub struct OtelConfig {
     otel_endpoint: String,
@@ -118,9 +120,7 @@ impl OtelConfig {
         opentelemetry_otlp::new_pipeline()
             .tracing()
             .with_exporter(exporter)
-            .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
-                KeyValue::new("service.name", format!("containerd-shim-{}", self.name)),
-            ])))
+            .with_trace_config(sdktrace::config())
             .install_batch(runtime::Tokio)
     }
 }
