@@ -28,8 +28,9 @@ You may also use the `containerd_shim_wasm::sandbox::shim::OtelConfig` struct to
 You can run containerd with OpenTelemetry tracing by setting the following environment variables.
 
 ```sh
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# by default, Containerd uses the `http/protobuf` protocol
 ```
 
 `Runwasi` will automatically pick up the environment variables and start exporting traces to the specified endpoint.
@@ -61,7 +62,8 @@ sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/contai
 
 `Runwasi` uses the standard [OTLP environment variables](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/) to configure the OTLP exporter endpoint. The following environment variables are supported:
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` - The endpoint to send trace data to. This should be a URL with a scheme of `grpc`.
+`OTEL_EXPORTER_OTLP_ENDPOINT` - The endpoint to send trace data to.
+`OTEL_EXPORTER_OTLP_PROTOCOL` - The protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
 
 ## Context Propagation
 

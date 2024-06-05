@@ -8,7 +8,7 @@ use ttrpc::Server;
 use crate::sandbox::manager::Shim;
 use crate::sandbox::shim::Local;
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{OtelConfig, OTEL_EXPORTER_OTLP_ENDPOINT};
+use crate::sandbox::shim::{OtelConfig, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL};
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -58,12 +58,15 @@ pub fn shim_main_with_otel<'a, I>(
 {
     match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
         Ok(otel_endpoint) => {
-            let otel_config = OtelConfig::builder()
+            let mut otel_config = OtelConfig::builder()
                 .otel_endpoint(otel_endpoint)
-                .name(name.to_string())
-                .build()
-                .expect("Failed to build OtelConfig.");
+                .name(name.to_string());
+            if let Ok(protocol) = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL) {
+                otel_config = otel_config.otel_protocol(protocol);
+            }
             let _guard = otel_config
+                .build()
+                .expect("Failed to build OtelConfig.")
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
             shim_main::<I>(name, version, revision, shim_version, config);

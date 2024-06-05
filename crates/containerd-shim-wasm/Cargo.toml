@@ -43,7 +43,7 @@ tracing = { workspace = true, optional = true }
 # opentelemetry
 opentelemetry = { version = "0.22", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.15.0", features = [
-    "tonic",
+    "grpc-tonic", "http-proto", "reqwest-client"
 ], optional = true }
 opentelemetry_sdk = { version = "0.22", features = [
     "rt-tokio",
