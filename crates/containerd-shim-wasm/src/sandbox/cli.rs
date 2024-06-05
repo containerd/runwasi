@@ -8,7 +8,9 @@ use ttrpc::Server;
 use crate::sandbox::manager::Shim;
 use crate::sandbox::shim::Local;
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{OtelConfig, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL};
+use crate::sandbox::shim::{
+    Config as OTLPConfig, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL,
+};
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -58,9 +60,7 @@ pub fn shim_main_with_otel<'a, I>(
 {
     match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
         Ok(otel_endpoint) => {
-            let mut otel_config = OtelConfig::builder()
-                .otel_endpoint(otel_endpoint)
-                .name(name.to_string());
+            let mut otel_config = OTLPConfig::builder().otel_endpoint(otel_endpoint);
             if let Ok(protocol) = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL) {
                 otel_config = otel_config.otel_protocol(protocol);
             }
@@ -92,9 +92,9 @@ pub fn shim_main<'a, I>(
     {
         // read TRACECONTEXT env var that's set by the parent process
         if let Ok(ctx) = std::env::var("TRACECONTEXT") {
-            OtelConfig::set_trace_context(&ctx).unwrap();
+            OTLPConfig::set_trace_context(&ctx).unwrap();
         } else {
-            let ctx = OtelConfig::get_trace_context().unwrap();
+            let ctx = OTLPConfig::get_trace_context().unwrap();
             std::env::set_var("TRACECONTEXT", ctx);
         }
     }
