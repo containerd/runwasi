@@ -28,13 +28,12 @@ use std::collections::HashMap;
 
 use opentelemetry::global::{self, set_text_map_propagator};
 use opentelemetry::trace::TraceError;
-use opentelemetry::KeyValue;
 use opentelemetry_otlp::{
     SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
 };
 pub use opentelemetry_otlp::{OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::{runtime, trace as sdktrace, Resource};
+use opentelemetry_sdk::{runtime, trace as sdktrace};
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::layer::SubscriberExt as _;
@@ -43,13 +42,10 @@ use tracing_subscriber::{EnvFilter, Registry};
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF: &str = "http/protobuf";
 const OTEL_EXPORTER_OTLP_PROTOCOL_GRPC: &str = "grpc";
 
-const OTEL_SERVICE_NAME: &str = "OTEL_SERVICE_NAME";
-
 /// Configuration struct for OpenTelemetry setup.
-pub struct OtelConfig {
+pub struct Config {
     otel_endpoint: String,
     otel_protocol: String,
-    name: String,
 }
 
 /// Initializes a new OpenTelemetry tracer with the OTLP exporter.
@@ -57,10 +53,10 @@ pub struct OtelConfig {
 /// Returns a `Result` containing the initialized tracer or a `TraceError` if initialization fails.
 ///
 /// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#configuration-options
-impl OtelConfig {
+impl Config {
     /// Creates a new builder for `OtelConfig`.
-    pub fn builder() -> OtelConfigBuilder {
-        OtelConfigBuilder::default()
+    pub fn builder() -> ConfigBuilder {
+        ConfigBuilder::default()
     }
 
     /// Initializes the tracer, sets up the telemetry and subscriber layers, and sets the global subscriber.
@@ -137,13 +133,12 @@ impl Drop for ShutdownGuard {
 }
 
 #[derive(Default)]
-pub struct OtelConfigBuilder {
+pub struct ConfigBuilder {
     otel_endpoint: Option<String>,
     otel_protocol: Option<String>,
-    name: Option<String>,
 }
 
-impl OtelConfigBuilder {
+impl ConfigBuilder {
     /// Sets the OpenTelemetry endpoint.
     pub fn otel_endpoint(mut self, otel_endpoint: String) -> Self {
         self.otel_endpoint = Some(otel_endpoint);
@@ -155,23 +150,15 @@ impl OtelConfigBuilder {
         self
     }
 
-    /// Sets the service name.
-    pub fn name(mut self, name: String) -> Self {
-        self.name = Some(name);
-        self
-    }
-
     /// Builds the `OtelConfig` instance.
-    pub fn build(self) -> Result<OtelConfig, &'static str> {
+    pub fn build(self) -> Result<Config, &'static str> {
         let otel_endpoint = self.otel_endpoint.ok_or("otel_endpoint is required")?;
         let otel_protocol = self
             .otel_protocol
             .unwrap_or_else(|| OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT.to_owned());
-        let name = self.name.ok_or("name is required")?;
-        Ok(OtelConfig {
+        Ok(Config {
             otel_endpoint,
             otel_protocol,
-            name,
         })
     }
 }

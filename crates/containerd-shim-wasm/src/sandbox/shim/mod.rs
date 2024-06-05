@@ -14,6 +14,4 @@ mod task_state;
 pub use cli::Cli;
 pub(crate) use local::Local;
 #[cfg(feature = "opentelemetry")]
-pub use otel::{
-    OtelConfig, ShutdownGuard, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL,
-};
+pub use otel::{Config, ShutdownGuard, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL};
