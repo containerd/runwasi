@@ -315,6 +315,10 @@ test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
 .PHONY: test/k3s/clean
 test/k3s/clean: bin/k3s/clean;
 
+.PHONY: bench
+bench:
+	$(CARGO) bench
+
 .PHONY: clean
 clean:
 	-rm -rf dist
