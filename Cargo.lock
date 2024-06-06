@@ -690,6 +690,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "wasmtime",
 ]
 
 [[package]]

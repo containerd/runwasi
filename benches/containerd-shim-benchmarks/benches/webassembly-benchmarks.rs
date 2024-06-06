@@ -7,7 +7,7 @@ use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::sandbox::Error;
 use containerd_shim_wasm::testing::WasiTest;
 use containerd_shim_wasmedge::WasmEdgeInstance;
-use containerd_shim_wasmtime::instance::{DefaultConfig, WasmtimeEngine};
+use containerd_shim_wasmtime::instance::{WasiConfig, WasmtimeEngine};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 /*
@@ -55,7 +55,21 @@ use criterion::{criterion_group, criterion_main, Criterion};
     of a longer benchmarking time). Running the whole suite on a desktop
     computer takes now a bit over 10 minutes.
 */
-type WasmtimeTestInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+#[derive(Clone)]
+struct WasiTestConfig {}
+
+impl WasiConfig for WasiTestConfig {
+    fn new_config() -> wasmtime::Config {
+        let mut config = wasmtime::Config::new();
+        // Disable Wasmtime parallel compilation for the tests
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(false);
+        config.wasm_component_model(true); // enable component linking
+        config
+    }
+}
+
+type WasmtimeTestInstance = Instance<WasmtimeEngine<WasiTestConfig>>;
 type WasmedgeTestInstance = WasmEdgeInstance;
 
 fn get_external_benchmark_module(name: String) -> Result<Vec<u8>, Error> {
@@ -234,8 +248,34 @@ fn bench_stream4(b: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().sample_size(10).measurement_time(Duration::from_secs(100));
-    targets = bench_aead_chacha20poly13052, bench_aead_chacha20poly1305, bench_aead_xchacha20poly1305, bench_auth2, bench_auth3, bench_auth6, bench_auth, bench_box_seed, bench_generichash2, bench_generichash3, bench_hash3, bench_hash, bench_kdf, bench_keygen, bench_onetimeauth2, bench_onetimeauth, bench_scalarmult2, bench_scalarmult5, bench_scalarmult6, bench_secretbox2, bench_secretbox_easy, bench_secretbox, bench_secretstream_xchacha20poly1305, bench_shorthash, bench_siphashx24, bench_stream3, bench_stream4
+    config = Criterion::default().sample_size(10);
+    targets = bench_aead_chacha20poly13052,
+        bench_aead_chacha20poly1305,
+        bench_aead_xchacha20poly1305,
+        bench_auth2,
+        bench_auth3,
+        bench_auth6,
+        bench_auth,
+        bench_box_seed,
+        bench_generichash2,
+        bench_generichash3,
+        bench_hash3,
+        bench_hash,
+        bench_kdf,
+        bench_keygen,
+        bench_onetimeauth2,
+        bench_onetimeauth,
+        bench_scalarmult2,
+        bench_scalarmult5,
+        bench_scalarmult6,
+        bench_secretbox2,
+        bench_secretbox_easy,
+        bench_secretbox,
+        bench_secretstream_xchacha20poly1305,
+        bench_shorthash,
+        bench_siphashx24,
+        bench_stream3,
+        bench_stream4
 }
 
 criterion_main!(benches);

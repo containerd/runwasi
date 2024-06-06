@@ -14,6 +14,7 @@ oci-spec = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = "3.8"
+wasmtime = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
