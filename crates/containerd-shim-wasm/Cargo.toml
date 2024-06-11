@@ -37,17 +37,19 @@ tokio-stream = { version = "0.1" }
 prost-types = "0.12"                                                      # should match version in containerd-shim
 sha256 = { workspace = true }
 
-# opentelemetry
+# tracing
 tracing = { workspace = true, optional = true }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+], optional = true }
+
+# opentelemetry
 opentelemetry = { version = "0.22", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.15.0", features = [
     "grpc-tonic", "http-proto", "reqwest-client"
 ], optional = true }
 opentelemetry_sdk = { version = "0.22", features = [
     "rt-tokio",
-], optional = true }
-tracing-subscriber = { version = "0.3", features = [
-    "env-filter",
 ], optional = true }
 tracing-opentelemetry = { version = "0.23", optional = true }
 
@@ -89,10 +91,13 @@ testing = [
     "dep:oci-tar-builder",
 ]
 opentelemetry = [
-    "dep:tracing",
+    "tracing",
     "dep:opentelemetry",
     "dep:opentelemetry-otlp",
     "dep:opentelemetry_sdk",
-    "dep:tracing-subscriber",
     "dep:tracing-opentelemetry",
+]
+tracing = [
+    "dep:tracing",
+    "dep:tracing-subscriber",
 ]
