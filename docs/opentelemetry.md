@@ -62,7 +62,7 @@ sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/contai
 
 `Runwasi` uses the standard [OTLP environment variables](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/) to configure the OTLP exporter endpoint. The following environment variables are supported:
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` - The endpoint to send trace data to.
+`OTEL_EXPORTER_OTLP_ENDPOINT` - The endpoint to send trace data to. If the endpoint is not set or is empty, the OTLP exporter will not be used.
 `OTEL_EXPORTER_OTLP_PROTOCOL` - The protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
 
 ## Context Propagation

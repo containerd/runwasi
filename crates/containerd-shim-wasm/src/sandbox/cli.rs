@@ -60,6 +60,10 @@ pub fn shim_main_with_otel<'a, I>(
 {
     match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
         Ok(otel_endpoint) => {
+            if otel_endpoint.is_empty() {
+                shim_main::<I>(name, version, revision, shim_version, config);
+                return;
+            }
             let mut otel_config = OTLPConfig::builder().otel_endpoint(otel_endpoint);
             if let Ok(protocol) = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL) {
                 otel_config = otel_config.otel_protocol(protocol);
