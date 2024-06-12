@@ -2,9 +2,8 @@ name: Run Benchmarks
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Runs weekly on Sunday at midnight
+    - cron: '0 0 * * *'  # Runs daily at midnight
   pull_request:
-
     
 jobs:
   benchmark:
