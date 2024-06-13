@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::time::Duration;
 
-use anyhow::bail;
 use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::sandbox::Error;
 use containerd_shim_wasm::testing::WasiTest;
@@ -113,10 +112,11 @@ fn run_bench(c: &mut Criterion, name: &str) -> Result<(), Error> {
         b.iter(|| {
             let res = run_wasmtime_test_with_spec(&bytes);
             match res {
-                Err(e) => bail!("Error running Wasmtime benchmark: {}", e),
+                Err(e) => {
+                    panic!("Error running Wasmtime benchmark: {}", e);
+                }
                 Ok(status) => {
                     assert_eq!(status, 0);
-                    Ok(())
                 }
             }
         })
@@ -125,10 +125,11 @@ fn run_bench(c: &mut Criterion, name: &str) -> Result<(), Error> {
         b.iter(|| {
             let res = run_wasmedge_test_with_spec(&bytes);
             match res {
-                Err(e) => bail!("Error running WasmEdge benchmark: {}", e),
+                Err(e) => {
+                    panic!("Error running WasmEdge benchmark: {}", e);
+                }
                 Ok(status) => {
                     assert_eq!(status, 0);
-                    Ok(())
                 }
             }
         })
