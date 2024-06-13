@@ -682,7 +682,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "containerd-shim-wasm",
- "containerd-shim-wasmedge",
  "containerd-shim-wasmtime",
  "criterion",
  "libc",

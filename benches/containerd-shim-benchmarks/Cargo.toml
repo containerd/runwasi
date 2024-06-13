@@ -7,7 +7,6 @@ edition.workspace = true
 anyhow = { workspace = true }
 chrono = { workspace = true }
 containerd-shim-wasm = { path = "../../crates/containerd-shim-wasm", features = ["testing"] }
-containerd-shim-wasmedge = { path = "../../crates/containerd-shim-wasmedge" }
 containerd-shim-wasmtime = { path = "../../crates/containerd-shim-wasmtime" }
 libc = { workspace = true }
 oci-spec = { workspace = true }
@@ -20,5 +19,5 @@ wasmtime = { workspace = true }
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
-name = "webassembly-benchmarks"
+name = "wasmtime-benchmarks"
 harness = false
