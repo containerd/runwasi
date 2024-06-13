@@ -317,7 +317,7 @@ test/k3s/clean: bin/k3s/clean;
 
 .PHONY: bench
 bench:
-	$(CARGO) bench
+	$(CARGO) bench -p containerd-shim-benchmarks
 
 .PHONY: clean
 clean:
