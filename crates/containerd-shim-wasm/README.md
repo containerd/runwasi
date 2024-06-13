@@ -10,9 +10,7 @@ A library to help build containerd shims for wasm workloads.
 use containerd_shim as shim;
 use containerd_shim_wasm::sandbox::{ShimCli, Instance, Nop}
 
-fn main() {
-    shim::run::<ShimCli<Nop>>("io.containerd.nop.v1", opts);
-}
+shim::run::<ShimCli<Nop>>("io.containerd.nop.v1", opts);
 ```
 
 The above example uses the built-in `Nop` instance which does nothing.
@@ -30,9 +28,7 @@ impl Instance for MyInstance {
     // ...
 }
 
-fn main() {
-    shim::run::<ShimCli<MyInstance>>("io.containerd.myshim.v1", opts);
-}
+shim::run::<ShimCli<MyInstance>>("io.containerd.myshim.v1", opts);
 ```
 
 containerd expects the shim binary to be installed into `$PATH` (as seen by the containerd process) with a binary name like `containerd-shim-myshim-v1` which maps to the `io.containerd.myshim.v1` runtime which would need to be configured in containerd. It (containerd) also supports specifying a path to the shim binary but needs to be configured to do so.
