@@ -16,7 +16,7 @@ wasmtime = { version = "21.0.1", features = ["async"] }
 wasmtime-wasi = { version = "21.0.1" }
 
 # OpenTelemetry dependencies
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.38", features = ["rt", "macros"] }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
