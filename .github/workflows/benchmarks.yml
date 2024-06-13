@@ -36,11 +36,11 @@ jobs:
           name: Criterion.rs Benchmark
           tool: 'cargo'
           output-file-path: output.txt
-          # GitHub API token to make a commit comment
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Show alert with commit comment on detecting possible performance regression
-          alert-threshold: '150%'
-          comment-on-alert: true
+          # my experimental local benchmarking seems to have a 20% margin of error. 
+          # So I set the alert threshold to 130% of the previous benchmark result.
+          # If the current benchmark result is more than 130% of the previous benchmark result, it will fail.
+          alert-threshold: '130%'
           fail-on-alert: true
           alert-comment-cc-users: '@runwasi-committers'
           # Enable Job Summary
