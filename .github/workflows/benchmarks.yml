@@ -23,7 +23,9 @@ jobs:
           ./scripts/setup-$os.sh
         shell: bash
       - name: Run Benchmarks
-        run: cargo +nightly bench -p containerd-shim-benchmarks -- --output-format bencher  | tee output.txt
+        run: |
+          set -o pipefail
+          cargo +nightly bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
       # Download previous benchmark result from cache (if exists)
       - name: Cache benchmark data
         uses: actions/cache@v4
