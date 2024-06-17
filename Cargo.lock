@@ -681,7 +681,7 @@ dependencies = [
  "tracing",
  "ttrpc",
  "ttrpc-codegen",
- "wasmparser 0.209.1",
+ "wasmparser 0.210.0",
  "wat",
  "windows-sys 0.52.0",
 ]
@@ -2224,7 +2224,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if 1.0.0",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -5139,9 +5139,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.209.1"
+version = "0.210.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07035cc9a9b41e62d3bb3a3815a66ab87c993c06fe1cf6b2a3f2a18499d937db"
+checksum = "a7bbcd21e7581619d9f6ca00f8c4f08f1cacfe58bf63f83af57cd0476f1026f5"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.5.0",
