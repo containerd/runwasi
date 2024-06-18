@@ -1,3 +1,5 @@
+use std::env::current_exe;
+
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
@@ -20,6 +22,11 @@ impl Default for WasmEdgeEngine {
             .build()
             .unwrap();
         let vm = VmBuilder::new().with_config(config).build().unwrap();
+
+        let plugins_path = current_exe().unwrap().parent().unwrap().join("wasmedge");
+        PluginManager::load(Some(&plugins_path)).unwrap();
+        let vm = vm.auto_detect_plugins().unwrap();
+
         Self { vm }
     }
 }
@@ -49,9 +56,6 @@ impl Engine for WasmEdgeEngine {
             );
 
         let mod_name = name.unwrap_or_else(|| "main".to_string());
-
-        PluginManager::load(None)?;
-        let vm = vm.auto_detect_plugins()?;
 
         let wasm_bytes = source.as_bytes()?;
         let vm = vm
