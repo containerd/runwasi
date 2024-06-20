@@ -6,7 +6,8 @@ members = [
     "crates/oci-tar-builder",
     "crates/containerd-shim-wasmedge",
     "crates/containerd-shim-wasmtime",
-    "crates/containerd-shim-wasmer"
+    "crates/containerd-shim-wasmer",
+    "benches/containerd-shim-benchmarks",
 ]
 resolver = "2"
 
@@ -45,6 +46,10 @@ wat = "1.210"
 windows-sys = "0.52"
 serial_test = "2"
 tracing = "0.1"
+
+# wasmtime
+wasmtime = { version = "21.0.1", features = ["async"] }
+wasmtime-wasi = { version = "21.0.1" }
 
 [profile.release]
 panic = "abort"

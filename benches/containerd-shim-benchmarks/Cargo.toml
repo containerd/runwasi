@@ -6,18 +6,18 @@ edition.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-containerd-shim-wasm = { path = "../../crates/containerd-shim-wasm" }
-containerd-shim-wasmedge = { path = "../../crates/containerd-shim-wasmedge" }
+containerd-shim-wasm = { path = "../../crates/containerd-shim-wasm", features = ["testing"] }
 containerd-shim-wasmtime = { path = "../../crates/containerd-shim-wasmtime" }
 libc = { workspace = true }
 oci-spec = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = "3.8"
+wasmtime = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
-name = "webassembly-benchmarks"
+name = "wasmtime-benchmarks"
 harness = false

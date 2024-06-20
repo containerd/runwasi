@@ -1,0 +1,51 @@
+name: Run Benchmarks
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  pull_request:
+    
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: fetch submodules
+        run: git submodule update --init --recursive
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasi
+      - name: Setup build env
+        run: |
+          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          ./scripts/setup-$os.sh
+        shell: bash
+      - name: Run Benchmarks
+        run: |
+          set -o pipefail
+          cargo bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
+      # Download previous benchmark result from cache (if exists)
+      - name: Cache benchmark data
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1.20.3
+        with:
+          name: Criterion.rs Benchmark
+          tool: 'cargo'
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # my experimental local benchmarking seems to have a 20% margin of error. 
+          # So I set the alert threshold to 130% of the previous benchmark result.
+          # If the current benchmark result is more than 130% of the previous benchmark result, it will fail.
+          alert-threshold: '130%'
+          fail-on-alert: true
+          alert-comment-cc-users: '@runwasi-committers'
+          # Enable Job Summary
+          summary-always: true
+          # Where the previous data file is stored
+          external-data-json-path: ./cache/benchmark-data.json
