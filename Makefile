@@ -134,7 +134,7 @@ test-oci-tar-builder:
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
 
-install-%:
+install-%: build-%
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) $(TARGET_DIR)/$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
