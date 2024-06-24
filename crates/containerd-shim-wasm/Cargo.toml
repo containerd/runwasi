@@ -32,7 +32,7 @@ ttrpc = { workspace = true }
 wat = { workspace = true }
 tokio = { version = "1.38.0", features = [ "full" ] }
 futures = { version = "0.3.30" }
-wasmparser = "0.210.0"
+wasmparser = "0.211.1"
 tokio-stream = { version = "0.1" }
 prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
