@@ -314,7 +314,7 @@ pub mod oci_helpers {
                     .unwrap(),
             )
             .build()?;
-        builder.add_config(img, image_name.to_string());
+        builder.add_config(img, image_name.to_string(), spec::MediaType::ImageConfig);
         let img_path = dir.join("img.tar");
         let f = File::create(img_path.clone())?;
         builder.build(f)?;
