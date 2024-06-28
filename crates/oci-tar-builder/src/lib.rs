@@ -13,16 +13,17 @@ use oci_spec::image::{
 use oci_wasm::{WasmConfig, WASM_ARCHITECTURE};
 use serde::Serialize;
 use sha256::{digest, try_digest};
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Builder<C: OciConfig> {
     configs: Vec<(C, String, MediaType)>,
     layers: Vec<(PathBuf, String)>,
 }
 
-pub trait OciConfig: ToString {
+pub trait OciConfig {
     fn os(&self) -> String;
     fn architecture(&self) -> String;
     fn layers(&self) -> Vec<String>;
+    fn to_string(&self) -> String;
 }
 
 impl OciConfig for ImageConfiguration {
@@ -37,6 +38,10 @@ impl OciConfig for ImageConfiguration {
     fn layers(&self) -> Vec<String> {
         self.rootfs().diff_ids().to_vec()
     }
+
+    fn to_string(&self) -> String {
+        self.to_string_pretty().unwrap()
+    }
 }
 
 impl OciConfig for WasmConfig {
@@ -50,6 +55,28 @@ impl OciConfig for WasmConfig {
 
     fn layers(&self) -> Vec<String> {
         self.layer_digests.clone()
+    }
+
+    fn to_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+}
+
+impl Default for Builder<WasmConfig> {
+    fn default() -> Self {
+        Self {
+            configs: Vec::new(),
+            layers: Vec::new(),
+        }
+    }
+}
+
+impl Default for Builder<ImageConfiguration> {
+    fn default() -> Self {
+        Self {
+            configs: Vec::new(),
+            layers: Vec::new(),
+        }
     }
 }
 
@@ -79,8 +106,6 @@ struct DockerManifest {
 
 pub const WASM_LAYER_MEDIA_TYPE: &str =
     "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
-pub const WASM_ARTIFACT_LAYER: &str = "application/wasm";
-pub const WASM_ARTIFACT_TYPE: &str = "application/vnd.wasm.config.v0+json";
 
 impl<C: OciConfig> Builder<C> {
     pub fn add_config(&mut self, config: C, name: String, media_type: MediaType) -> &mut Self {
