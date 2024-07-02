@@ -14,7 +14,6 @@ use crate::sandbox::instance::Instance;
 use crate::sandbox::shim::events::{RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::local::Local;
 use crate::sys::networking::setup_namespaces;
-
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
 pub struct Cli<T: Instance + Sync + Send> {
     engine: T::Engine,
@@ -70,11 +69,9 @@ where
             .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
             .unwrap_or(&id);
 
+        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
         setup_namespaces(&spec)
             .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
-
-        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
-
         write_address(&address)?;
 
         Ok(address)

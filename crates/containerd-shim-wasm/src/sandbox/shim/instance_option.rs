@@ -43,7 +43,7 @@ impl<I: Instance> Instance for InstanceOption<I> {
         }
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip(self, t), level = "Info"))]
     fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
         match self {
             Self::Instance(i) => i.wait_timeout(t),
