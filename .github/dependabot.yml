@@ -14,3 +14,6 @@ updates:
           - "wasmtime"
           - "wasmtime-wasi"
           - "wasi-common"
+      patch:
+        update-types:
+        - "patch"
