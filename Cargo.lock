@@ -5148,7 +5148,7 @@ dependencies = [
 [[package]]
 name = "wamr-rust-sdk"
 version = "1.0.0"
-source = "git+https://github.com/bytecodealliance/wamr-rust-sdk?branch=main#10550adc902f49c868b281599d4e37fc7a6fcb6a"
+source = "git+https://github.com/macko99/wamr-rust-sdk?branch=main#b89f685eba764fd784be103a7659fe19bb215482"
 dependencies = [
  "esp-idf-sys",
  "wamr-sys",
@@ -5157,7 +5157,7 @@ dependencies = [
 [[package]]
 name = "wamr-sys"
 version = "1.0.0"
-source = "git+https://github.com/bytecodealliance/wamr-rust-sdk?branch=main#10550adc902f49c868b281599d4e37fc7a6fcb6a"
+source = "git+https://github.com/macko99/wamr-rust-sdk?branch=main#b89f685eba764fd784be103a7659fe19bb215482"
 dependencies = [
  "bindgen 0.69.4",
  "cc",
