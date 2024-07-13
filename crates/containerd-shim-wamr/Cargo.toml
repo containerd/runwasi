@@ -13,7 +13,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 ttrpc = { workspace = true }
 sha256 = { workspace = true }
 
-wamr-rust-sdk = { git = "https://github.com/bytecodealliance/wamr-rust-sdk", branch = "main" }
+wamr-rust-sdk = { git = "https://github.com/macko99/wamr-rust-sdk", branch = "main" }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
