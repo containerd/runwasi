@@ -6,10 +6,7 @@ use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInstnace;
 use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
-
-// use wamr_rust_sdk::value::WasmValue;
 use wamr_rust_sdk::wasi_context::WasiCtxBuilder;
-// use wamr_rust_sdk::RuntimeError;
 
 pub type WamrInstance = Instance<WamrEngine>;
 
@@ -24,7 +21,6 @@ unsafe impl Sync for WamrEngine {}
 
 impl Default for WamrEngine {
     fn default() -> Self {
-        log::info!("Create a WAMR runtime");
         let runtime = Runtime::new().unwrap();
         Self { runtime }
     }
@@ -32,7 +28,6 @@ impl Default for WamrEngine {
 
 impl Clone for WamrEngine {
     fn clone(&self) -> Self {
-        log::info!("Clone a WAMR runtime");
         let runtime = Runtime::new().unwrap();
         Self { runtime }
     }
@@ -57,38 +52,25 @@ impl Engine for WamrEngine {
             .as_bytes()
             .context("Failed to get bytes from source")?;
 
-        // log the source content
-        log::info!("Wasm source: {source:?}");
-        //and bytes
-        // log::info!("Wasm bytes: {wasm_bytes:?}");
 
         log::info!("Create a WAMR module");
 
         // TODO: error handling isn't ideal
 
-        let mut module = Module::from_buf(&self.runtime, &wasm_bytes, "main").map_err(|e| {
+        let mod_name = name.unwrap_or_else(|| "main".to_string());
+
+        let mut module = Module::from_buf(&self.runtime, &wasm_bytes, &mod_name).map_err(|e| {
             anyhow::Error::msg(format!("Failed to create module from bytes: {:?}", e))
         })?;
 
-        log::info!("Create a WAMR vec_of_strs");
-
-        //log envs
-        log::info!("envs: {envs:?}");
-
-        let vec_of_strs: Vec<&str> = envs.iter().map(|s| s.as_str()).collect();
-
-        log::info!("Create a WAMR wasi_ctx");
+        log::info!("Create a WASI context");
 
         let wasi_ctx = WasiCtxBuilder::new()
-        // .set_pre_open_path(vec!["/"], vec!["/"])
-        // .set_env_vars(vec_of_strs)
+        .set_pre_open_path(vec!["/"], vec!["/"])
+        .set_env_vars(envs.iter().map(String::as_str).collect())
         .build();
 
-        log::info!("Create a WAMR set_wasi_context");
-
         module.set_wasi_context(wasi_ctx);
-        // module.set_wasi_arg_pre_open_path(vec![String::from("/")], vec![String::from("/")]);
-        // module.set_wasi_arg_env_vars(envs);
 
         // TODO: no way to set args in wamr?
         // TODO: no way to register a named module with bytes?
@@ -104,7 +86,7 @@ impl Engine for WamrEngine {
         stdio.redirect()?;
 
         log::info!("Running {func:?}");
-        let function = Function::find_export_func(&instance, "main")
+        let function = Function::find_export_func(&instance, &func)
             .map_err(|e| anyhow::Error::msg(format!("Failed to find function: {:?}", e)))?;
         let status = function
             .call(&instance, &Vec::new())
