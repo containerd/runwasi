@@ -15,9 +15,6 @@ sha256 = { workspace = true }
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true }
 
-# OpenTelemetry dependencies
-tokio = { version = "1.38", features = ["rt", "macros"] }
-
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = { workspace = true }

@@ -34,10 +34,11 @@ tokio = { version = "1.38.1", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.214.0"
 tokio-stream = { version = "0.1" }
-prost-types = "0.12"                                                      # should match version in containerd-shim
+prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 # tracing
+# note: it's important to keep the version of tracing in sync with tracing-subscriber
 tracing = { workspace = true, optional = true }
 # does not include `tracing-log` feature due to https://github.com/spinkube/containerd-shim-spin/issues/61
 tracing-subscriber = { version = "0.3", default-features = false, features = [
@@ -51,17 +52,17 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
 ], optional = true }
 
 # opentelemetry
-opentelemetry = { version = "0.22", features = ["trace"], optional = true }
-opentelemetry-otlp = { version = "0.15.0", features = [
+opentelemetry = { version = "0.23", features = ["trace"], optional = true }
+opentelemetry-otlp = { version = "0.16.0", features = [
     "grpc-tonic",
     "http-proto",
     "reqwest-client",
     "trace",
 ], optional = true }
-opentelemetry_sdk = { version = "0.22", features = [
+opentelemetry_sdk = { version = "0.23", features = [
     "rt-tokio",
 ], optional = true }
-tracing-opentelemetry = { version = "0.23", optional = true }
+tracing-opentelemetry = { version = "0.24", optional = true }
 
 
 [target.'cfg(unix)'.dependencies]

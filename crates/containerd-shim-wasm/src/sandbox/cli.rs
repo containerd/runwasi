@@ -6,9 +6,9 @@ use containerd_shim::{parse, run, Config};
 use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
-#[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::Config as OTLPConfig;
 use crate::sandbox::shim::Local;
+#[cfg(feature = "opentelemetry")]
+use crate::sandbox::shim::OTLPConfig;
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -57,14 +57,18 @@ pub fn shim_main_with_otel<'a, I>(
     I::Engine: Default,
 {
     if OTLPConfig::traces_enabled() {
-        let _guard = OTLPConfig::builder()
-            .otel_endpoint_from_env()
-            .otel_protocol_from_env()
-            .build()
-            .expect("Failed to build OtelConfig.")
-            .init()
-            .expect("Failed to initialize OpenTelemetry.");
-        shim_main::<I>(name, version, revision, shim_version, config);
+        use tokio::runtime::Runtime;
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let _guard = OTLPConfig::builder()
+                .traces_endpoint_from_env()
+                .traces_protocol_from_env()
+                .build()
+                .expect("Failed to build OtelConfig.")
+                .init()
+                .expect("Failed to initialize OpenTelemetry.");
+            shim_main::<I>(name, version, revision, shim_version, config);
+        });
     } else {
         shim_main::<I>(name, version, revision, shim_version, config);
     }
