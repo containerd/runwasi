@@ -6,22 +6,20 @@
 
 ## Usage
 
-To use OpenTelemetry tracing in your shim, you need to use the `opentelemetry` feature in the `containerd-shim-wasm` crate and the `tokio` crate.
+To use OpenTelemetry tracing in your shim, you need to use the `opentelemetry` feature in the `containerd-shim-wasm` crate.
 ```toml
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
-tokio = { version = "1", features = ["full"] }
 ```
 
 Then, you may use the `containerd_shim_wasm::sandbox::cli::shim_main_with_otel` function to run the shim with OpenTelemetry tracing.
 
 ```rust
-#[tokio::main]
-async fn main() {
+fn main() {
     shim_main_with_otel::<WasmtimeInstance>("wasmtime", version!(), revision!(), "v1", None);
 }
 ```
 
-You may also use the `containerd_shim_wasm::sandbox::shim::OtelConfig` struct to configure the OpenTelemetry tracing manually.
+You may also use the `containerd_shim_wasm::sandbox::shim::OTLPConfig` struct to configure the OpenTelemetry tracing manually.
 
 ### Running containerd with OpenTelemetry
 
@@ -62,8 +60,10 @@ sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/contai
 
 `Runwasi` uses the standard [OTLP environment variables](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/) to configure the OTLP exporter endpoint. The following environment variables are supported:
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` - The endpoint to send trace data to. If the endpoint is not set or is empty, the OTLP exporter will not be used.
-`OTEL_EXPORTER_OTLP_PROTOCOL` - The protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
+`OTEL_EXPORTER_OTLP_ENDPOINT` - A base endpoint to send trace data to.
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - The endpoint to send trace data to. Overrides `OTEL_EXPORTER_OTLP_ENDPOINT`.
+`OTEL_EXPORTER_OTLP_PROTOCOL` - A base protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
+`OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` - The protocol to use when sending trace data. Overrides `OTEL_EXPORTER_OTLP_PROTOCOL`.
 
 ## Context Propagation
 
