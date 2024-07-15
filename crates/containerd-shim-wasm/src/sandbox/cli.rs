@@ -38,15 +38,12 @@ macro_rules! revision {
     };
 }
 
-/// Main entry point for the shim with OpenTelemetry tracing.
+/// Main entry point for the shim.
 ///
-/// It parses the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable to determine
-/// if the shim should be started with OpenTelemetry tracing.
+/// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
 ///
-/// If the environment variable is not set, the shim will be started without tracing.
-/// If the environment variable is empty, the shim will be started without tracing.
-#[cfg(feature = "opentelemetry")]
-pub fn shim_main_with_otel<'a, I>(
+/// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
+pub fn shim_main<'a, I>(
     name: &str,
     version: &str,
     revision: impl Into<Option<&'a str>>,
@@ -56,26 +53,30 @@ pub fn shim_main_with_otel<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
+    #[cfg(feature = "opentelemetry")]
     if OTLPConfig::traces_enabled() {
+        // opentelemetry uses tokio, so we need to initialize a runtime
         use tokio::runtime::Runtime;
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let _guard = OTLPConfig::builder()
-                .traces_endpoint_from_env()
-                .traces_protocol_from_env()
-                .build()
+            let _guard = OTLPConfig::build_from_env()
                 .expect("Failed to build OtelConfig.")
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
-            shim_main::<I>(name, version, revision, shim_version, config);
+            shim_main_inner::<I>(name, version, revision, shim_version, config);
         });
     } else {
-        shim_main::<I>(name, version, revision, shim_version, config);
+        shim_main_inner::<I>(name, version, revision, shim_version, config);
+    }
+
+    #[cfg(not(feature = "opentelemetry"))]
+    {
+        shim_main_inner::<I>(name, version, revision, shim_version, config);
     }
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-pub fn shim_main<'a, I>(
+fn shim_main_inner<'a, I>(
     name: &str,
     version: &str,
     revision: impl Into<Option<&'a str>>,

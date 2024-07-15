@@ -10,9 +10,7 @@
 //! use containerd_shim_wasm::sandbox::shim::otel::Config;
 //!
 //! fn main() -> anyhow::Result<()> {
-//!     let otel_config = Config::builder()
-//!         .traces_endpoint_from_env()
-//!         .build()?;
+//!     let otel_config = Config::build_from_env()?;
 //!
 //!     let _guard = otel_config.init()?;
 //!
@@ -28,7 +26,7 @@ use std::env;
 use opentelemetry::global::{self, set_text_map_propagator};
 use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::{
-    SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
+    Protocol, SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
 };
 pub use opentelemetry_otlp::{
     OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
@@ -47,7 +45,7 @@ const OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_TRACES_PROT
 /// Configuration struct for OpenTelemetry setup.
 pub struct Config {
     traces_endpoint: String,
-    traces_protocol: String,
+    traces_protocol: Protocol,
 }
 
 /// Initializes a new OpenTelemetry tracer with the OTLP exporter.
@@ -56,9 +54,13 @@ pub struct Config {
 ///
 /// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#configuration-options
 impl Config {
-    /// Creates a new builder for `Config`.
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::default()
+    pub fn build_from_env() -> anyhow::Result<Self> {
+        let traces_endpoint = traces_endpoint_from_env()?;
+        let traces_protocol: Protocol = traces_protocol_from_env()?;
+        Ok(Self {
+            traces_endpoint,
+            traces_protocol,
+        })
     }
 
     /// Returns `true` if traces are enabled, `false` otherwise.
@@ -107,7 +109,7 @@ impl Config {
         Ok(())
     }
 
-    fn init_tracer_http_protobuf(&self) -> SpanExporterBuilder {
+    fn init_tracer_http(&self) -> SpanExporterBuilder {
         opentelemetry_otlp::new_exporter()
             .http()
             .with_endpoint(&self.traces_endpoint)
@@ -122,12 +124,10 @@ impl Config {
     }
 
     fn init_tracer(&self) -> Result<opentelemetry_sdk::trace::Tracer, TraceError> {
-        let exporter = match self.traces_protocol.as_str() {
-            OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF => self.init_tracer_http_protobuf(),
-            OTEL_EXPORTER_OTLP_PROTOCOL_GRPC => self.init_tracer_grpc(),
-            _ => Err(TraceError::from(
-                "Invalid OTEL_EXPORTER_OTLP_PROTOCOL value",
-            ))?,
+        let exporter = match self.traces_protocol {
+            Protocol::HttpBinary => self.init_tracer_http(),
+            Protocol::HttpJson => self.init_tracer_http(),
+            Protocol::Grpc => self.init_tracer_grpc(),
         };
 
         opentelemetry_otlp::new_pipeline()
@@ -149,37 +149,26 @@ impl Drop for ShutdownGuard {
     }
 }
 
-#[derive(Default)]
-pub struct ConfigBuilder {
-    traces_endpoint: Option<String>,
-    traces_protocol: String,
+/// Sets the OTLP endpoint from environment variables.
+fn traces_endpoint_from_env() -> anyhow::Result<String> {
+    Ok(env::var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT)
+        .or_else(|_| env::var(OTEL_EXPORTER_OTLP_ENDPOINT))?)
 }
 
-impl ConfigBuilder {
-    /// Sets the OTLP endpoint from environment variables.
-    pub fn traces_endpoint_from_env(mut self) -> Self {
-        self.traces_endpoint = env::var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT)
-            .or_else(|_| env::var(OTEL_EXPORTER_OTLP_ENDPOINT))
-            .ok();
-        self
-    }
-
-    /// Sets the OTLP protocol from environment variables.
-    pub fn traces_protocol_from_env(mut self) -> Self {
-        self.traces_protocol = env::var(OTEL_EXPORTER_OTLP_TRACES_PROTOCOL).unwrap_or(
-            env::var(OTEL_EXPORTER_OTLP_PROTOCOL)
-                .unwrap_or(OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT.to_owned()),
-        );
-        self
-    }
-
-    /// Builds the `OtelConfig` instance.
-    pub fn build(self) -> Result<Config, &'static str> {
-        Ok(Config {
-            traces_endpoint: self.traces_endpoint.ok_or("otel_endpoint is required")?,
-            traces_protocol: self.traces_protocol,
-        })
-    }
+/// Sets the OTLP protocol from environment variables.
+fn traces_protocol_from_env() -> anyhow::Result<Protocol> {
+    let traces_protocol = env::var(OTEL_EXPORTER_OTLP_TRACES_PROTOCOL).unwrap_or(
+        env::var(OTEL_EXPORTER_OTLP_PROTOCOL)
+            .unwrap_or(OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT.to_owned()),
+    );
+    let protocol = match traces_protocol.as_str() {
+        OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF => Protocol::HttpBinary,
+        OTEL_EXPORTER_OTLP_PROTOCOL_GRPC => Protocol::Grpc,
+        _ => Err(TraceError::from(
+            "Invalid OTEL_EXPORTER_OTLP_PROTOCOL value",
+        ))?,
+    };
+    Ok(protocol)
 }
 
 #[cfg(test)]
@@ -253,17 +242,21 @@ mod tests {
 
     #[test]
     fn test_get_empty_trace_context() {
-        let trace_context = Config::get_trace_context();
-        assert!(trace_context.is_ok());
+        with_vars::<String, &str, _, _>([], || {
+            let trace_context = Config::get_trace_context();
+            assert!(trace_context.is_ok());
 
-        let trace_context = trace_context.unwrap();
-        assert_eq!(trace_context, "{}");
+            let trace_context = trace_context.unwrap();
+            assert_eq!(trace_context, "{}");
+        });
     }
 
     #[test]
     fn test_set_empty_trace_context() {
-        let trace_context = Config::set_trace_context("{}");
-        assert!(trace_context.is_ok());
+        with_vars::<String, &str, _, _>([], || {
+            let trace_context = Config::set_trace_context("{}");
+            assert!(trace_context.is_ok());
+        });
     }
 
     #[test]
@@ -271,8 +264,9 @@ mod tests {
         with_vars(
             [(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("trace_endpoint"))],
             || {
-                let builder = ConfigBuilder::default().traces_endpoint_from_env();
-                assert_eq!(builder.traces_endpoint, Some("trace_endpoint".to_string()));
+                let result = traces_endpoint_from_env();
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap(), "trace_endpoint".to_owned());
             },
         );
     }
@@ -282,50 +276,48 @@ mod tests {
         with_vars(
             [(OTEL_EXPORTER_OTLP_ENDPOINT, Some("fallback_endpoint"))],
             || {
-                let builder = ConfigBuilder::default().traces_endpoint_from_env();
-                assert_eq!(
-                    builder.traces_endpoint,
-                    Some("fallback_endpoint".to_string())
-                );
+                let result = traces_endpoint_from_env();
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap(), "fallback_endpoint".to_string());
             },
         );
     }
 
     #[test]
     fn test_otel_endpoint_from_env_missing() {
-        let builder = ConfigBuilder::default().traces_endpoint_from_env();
-        assert_eq!(builder.traces_endpoint, None);
+        with_vars::<String, &str, _, _>([], || {
+            let result = traces_endpoint_from_env();
+            assert!(result.is_err());
+        });
     }
 
     #[test]
     fn test_otel_protocol_from_env() {
-        with_vars(
-            [(OTEL_EXPORTER_OTLP_TRACES_PROTOCOL, Some("trace_protocol"))],
-            || {
-                let builder = ConfigBuilder::default().traces_protocol_from_env();
-                assert_eq!(builder.traces_protocol, "trace_protocol");
-            },
-        );
+        with_vars([(OTEL_EXPORTER_OTLP_TRACES_PROTOCOL, Some("grpc"))], || {
+            let result = traces_protocol_from_env();
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), Protocol::Grpc);
+        });
     }
 
     #[test]
-    fn test_otel_protocol_from_env_fallback() {
+    fn test_otel_protocol_from_env_fail() {
         with_vars(
-            [(OTEL_EXPORTER_OTLP_PROTOCOL, Some("fallback_protocol"))],
+            [(OTEL_EXPORTER_OTLP_PROTOCOL, Some("something-else"))],
             || {
-                let builder = ConfigBuilder::default().traces_protocol_from_env();
-                assert_eq!(builder.traces_protocol, "fallback_protocol");
+                let result = traces_protocol_from_env();
+                assert!(result.is_err());
             },
         );
     }
 
     #[test]
     fn test_otel_protocol_from_env_default() {
-        let builder = ConfigBuilder::default().traces_protocol_from_env();
-        assert_eq!(
-            builder.traces_protocol,
-            OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT.to_string()
-        );
+        with_vars::<String, &str, _, _>([], || {
+            let result = traces_protocol_from_env();
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), Protocol::HttpBinary);
+        });
     }
 
     #[test]
@@ -334,25 +326,22 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("trace_endpoint")),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("general_endpoint")),
-                (OTEL_EXPORTER_OTLP_TRACES_PROTOCOL, Some("trace_protocol")),
-                (OTEL_EXPORTER_OTLP_PROTOCOL, Some("general_protocol")),
+                (OTEL_EXPORTER_OTLP_TRACES_PROTOCOL, Some("grpc")),
+                (OTEL_EXPORTER_OTLP_PROTOCOL, Some("http/protobuf")),
             ],
             || {
-                let builder = ConfigBuilder::default()
-                    .traces_endpoint_from_env()
-                    .traces_protocol_from_env();
-                let config = builder.build().unwrap();
+                let config = Config::build_from_env().unwrap();
                 assert_eq!(config.traces_endpoint, "trace_endpoint".to_string());
-                assert_eq!(config.traces_protocol, "trace_protocol".to_string());
+                assert_eq!(config.traces_protocol, Protocol::Grpc);
             },
         );
     }
 
     #[test]
     fn test_build_missing_endpoint() {
-        let builder = ConfigBuilder::default().traces_protocol_from_env();
-        let result = builder.build();
-        assert!(result.is_err());
-        assert_eq!(result.err(), Some("otel_endpoint is required"));
+        with_vars::<String, &str, _, _>([], || {
+            let result = Config::build_from_env();
+            assert!(result.is_err());
+        });
     }
 }
