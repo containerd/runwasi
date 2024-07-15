@@ -6,11 +6,9 @@ use containerd_shim::{parse, run, Config};
 use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
-use crate::sandbox::shim::Local;
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{
-    Config as OTLPConfig, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL,
-};
+use crate::sandbox::shim::Config as OTLPConfig;
+use crate::sandbox::shim::Local;
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -58,26 +56,17 @@ pub fn shim_main_with_otel<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
-    match std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
-        Ok(otel_endpoint) => {
-            if otel_endpoint.is_empty() {
-                shim_main::<I>(name, version, revision, shim_version, config);
-                return;
-            }
-            let mut otel_config = OTLPConfig::builder().otel_endpoint(otel_endpoint);
-            if let Ok(protocol) = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL) {
-                otel_config = otel_config.otel_protocol(protocol);
-            }
-            let _guard = otel_config
-                .build()
-                .expect("Failed to build OtelConfig.")
-                .init()
-                .expect("Failed to initialize OpenTelemetry.");
-            shim_main::<I>(name, version, revision, shim_version, config);
-        }
-        Err(_) => {
-            shim_main::<I>(name, version, revision, shim_version, config);
-        }
+    if OTLPConfig::traces_enabled() {
+        let _guard = OTLPConfig::builder()
+            .otel_endpoint_from_env()
+            .otel_protocol_from_env()
+            .build()
+            .expect("Failed to build OtelConfig.")
+            .init()
+            .expect("Failed to initialize OpenTelemetry.");
+        shim_main::<I>(name, version, revision, shim_version, config);
+    } else {
+        shim_main::<I>(name, version, revision, shim_version, config);
     }
 }
 
