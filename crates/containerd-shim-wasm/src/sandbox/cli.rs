@@ -8,7 +8,7 @@ use ttrpc::Server;
 use crate::sandbox::manager::Shim;
 use crate::sandbox::shim::Local;
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::OTLPConfig;
+use crate::sandbox::shim::{otel_traces_enabled, OTLPConfig};
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -54,7 +54,7 @@ pub fn shim_main<'a, I>(
     I::Engine: Default,
 {
     #[cfg(feature = "opentelemetry")]
-    if OTLPConfig::traces_enabled() {
+    if otel_traces_enabled() {
         // opentelemetry uses tokio, so we need to initialize a runtime
         use tokio::runtime::Runtime;
         let rt = Runtime::new().unwrap();

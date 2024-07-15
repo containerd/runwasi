@@ -10,12 +10,13 @@
 //! use containerd_shim_wasm::sandbox::shim::otel::Config;
 //!
 //! fn main() -> anyhow::Result<()> {
-//!     let otel_config = Config::build_from_env()?;
-//!
-//!     let _guard = otel_config.init()?;
-//!
-//!     // Your application code here
-//!
+//!     if traces_enabled() {
+//!         let otel_config = Config::build_from_env()?;
+//!    
+//!         let _guard = otel_config.init()?;
+//!    
+//!         // Your application code here
+//!     }
 //!     Ok(())
 //! }
 //! ```
@@ -41,11 +42,26 @@ use tracing_subscriber::{EnvFilter, Registry};
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF: &str = "http/protobuf";
 const OTEL_EXPORTER_OTLP_PROTOCOL_GRPC: &str = "grpc";
 const OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL";
+const OTEL_SDK_DISABLED: &str = "OTEL_SDK_DISABLED";
 
 /// Configuration struct for OpenTelemetry setup.
 pub struct Config {
     traces_endpoint: String,
     traces_protocol: Protocol,
+}
+
+/// Returns `true` if traces are enabled, `false` otherwise.
+///
+/// Traces are enabled if either `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT` is set and not empty.
+/// `OTEL_SDK_DISABLED` can be set to `true` to disable traces.
+pub fn traces_enabled() -> bool {
+    let check_env_var = |var: &str| env::var_os(var).is_some_and(|val| !val.is_empty());
+    let traces_endpoint = check_env_var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT);
+    let otlp_endpoint = check_env_var(OTEL_EXPORTER_OTLP_ENDPOINT);
+
+    // https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/#general-sdk-configuration
+    let sdk_disabled = env::var_os(OTEL_SDK_DISABLED).is_some_and(|val| val == "true");
+    (traces_endpoint || otlp_endpoint) && !sdk_disabled
 }
 
 /// Initializes a new OpenTelemetry tracer with the OTLP exporter.
@@ -61,17 +77,6 @@ impl Config {
             traces_endpoint,
             traces_protocol,
         })
-    }
-
-    /// Returns `true` if traces are enabled, `false` otherwise.
-    ///
-    /// Traces are enabled if either `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT` is set and not empty.
-    pub fn traces_enabled() -> bool {
-        let traces_endpoint = env::var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT).ok();
-        let otlp_endpoint = env::var(OTEL_EXPORTER_OTLP_ENDPOINT).ok();
-
-        traces_endpoint.map_or(false, |v| !v.is_empty())
-            || otlp_endpoint.map_or(false, |v| !v.is_empty())
     }
 
     /// Initializes the tracer, sets up the telemetry and subscriber layers, and sets the global subscriber.
@@ -183,9 +188,10 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("trace_endpoint")),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("general_endpoint")),
+                (OTEL_SDK_DISABLED, None::<&str>),
             ],
             || {
-                assert!(Config::traces_enabled());
+                assert!(traces_enabled());
             },
         );
 
@@ -193,9 +199,10 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("")),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("general_endpoint")),
+                (OTEL_SDK_DISABLED, Some("t")),
             ],
             || {
-                assert!(Config::traces_enabled());
+                assert!(traces_enabled());
             },
         );
 
@@ -203,9 +210,10 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, None),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("general_endpoint")),
+                (OTEL_SDK_DISABLED, Some("false")),
             ],
             || {
-                assert!(Config::traces_enabled());
+                assert!(traces_enabled());
             },
         );
 
@@ -213,9 +221,10 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("trace_endpoint")),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("")),
+                (OTEL_SDK_DISABLED, Some("1")),
             ],
             || {
-                assert!(Config::traces_enabled());
+                assert!(traces_enabled());
             },
         );
 
@@ -223,9 +232,10 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("")),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, Some("")),
+                (OTEL_SDK_DISABLED, None::<&str>),
             ],
             || {
-                assert!(!Config::traces_enabled());
+                assert!(!traces_enabled());
             },
         );
 
@@ -233,9 +243,22 @@ mod tests {
             [
                 (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, None::<&str>),
                 (OTEL_EXPORTER_OTLP_ENDPOINT, None::<&str>),
+                (OTEL_SDK_DISABLED, None::<&str>),
             ],
             || {
-                assert!(!Config::traces_enabled());
+                assert!(!traces_enabled());
+            },
+        );
+
+        // Test when traces are disabled due to OTEL_SDK_DISABLED
+        with_vars(
+            [
+                (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, Some("trace_endpoint")),
+                (OTEL_EXPORTER_OTLP_ENDPOINT, Some("general_endpoint")),
+                (OTEL_SDK_DISABLED, Some("true")),
+            ],
+            || {
+                assert!(!traces_enabled());
             },
         );
     }

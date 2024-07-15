@@ -69,9 +69,11 @@ where
             .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
             .unwrap_or(&id);
 
-        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
         setup_namespaces(&spec)
             .map_err(|e| shim::Error::Other(format!("failed to setup namespaces: {}", e)))?;
+
+        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
+
         write_address(&address)?;
 
         Ok(address)

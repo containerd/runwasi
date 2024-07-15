@@ -15,6 +15,6 @@ pub use cli::Cli;
 pub(crate) use local::Local;
 #[cfg(feature = "opentelemetry")]
 pub use otel::{
-    Config as OTLPConfig, ShutdownGuard as OTLPShutdownGuard, OTEL_EXPORTER_OTLP_ENDPOINT,
-    OTEL_EXPORTER_OTLP_PROTOCOL,
+    traces_enabled as otel_traces_enabled, Config as OTLPConfig,
+    ShutdownGuard as OTLPShutdownGuard, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL,
 };
