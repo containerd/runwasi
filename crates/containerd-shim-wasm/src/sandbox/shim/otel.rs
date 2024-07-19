@@ -39,6 +39,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::{EnvFilter, Registry};
 
+const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_JSON: &str = "http/json";
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF: &str = "http/protobuf";
 const OTEL_EXPORTER_OTLP_PROTOCOL_GRPC: &str = "grpc";
 const OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL";
@@ -82,7 +83,7 @@ impl Config {
     /// Initializes the tracer, sets up the telemetry and subscriber layers, and sets the global subscriber.
     ///
     /// Note: this function should be called only once and be called by the binary entry point.
-    pub fn init(&self) -> anyhow::Result<ShutdownGuard> {
+    pub fn init(&self) -> anyhow::Result<impl Drop> {
         let tracer = self.init_tracer()?;
         let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
         set_text_map_propagator(TraceContextPropagator::new());
@@ -145,7 +146,7 @@ impl Config {
 
 /// Shutdown of the open telemetry services will automatically called when the OtelConfig instance goes out of scope.
 #[must_use]
-pub struct ShutdownGuard;
+struct ShutdownGuard;
 
 impl Drop for ShutdownGuard {
     fn drop(&mut self) {
@@ -169,6 +170,7 @@ fn traces_protocol_from_env() -> anyhow::Result<Protocol> {
     let protocol = match traces_protocol.as_str() {
         OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF => Protocol::HttpBinary,
         OTEL_EXPORTER_OTLP_PROTOCOL_GRPC => Protocol::Grpc,
+        OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_JSON => Protocol::HttpJson,
         _ => Err(TraceError::from(
             "Invalid OTEL_EXPORTER_OTLP_PROTOCOL value",
         ))?,

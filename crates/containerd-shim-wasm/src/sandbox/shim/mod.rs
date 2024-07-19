@@ -14,7 +14,4 @@ mod task_state;
 pub use cli::Cli;
 pub(crate) use local::Local;
 #[cfg(feature = "opentelemetry")]
-pub use otel::{
-    traces_enabled as otel_traces_enabled, Config as OTLPConfig,
-    ShutdownGuard as OTLPShutdownGuard, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL,
-};
+pub use otel::{traces_enabled as otel_traces_enabled, Config as OTLPConfig};
