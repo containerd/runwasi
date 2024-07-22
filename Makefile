@@ -3,7 +3,7 @@ INSTALL ?= install
 CARGO ?= cargo
 LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
-RUNTIMES ?= wasmedge wasmtime wasmer
+RUNTIMES ?= wasmedge wasmtime wasmer wamr
 CONTAINERD_NAMESPACE ?= default
 RUSTC ?= rustc
 
