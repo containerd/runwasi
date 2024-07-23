@@ -90,12 +90,20 @@ impl<E: Engine> Executor<E> {
 
     fn inner(&self, spec: &Spec) -> &InnerExecutor {
         self.inner.get_or_init(|| {
-            if is_linux_container(&self.ctx(spec)).is_ok() {
-                InnerExecutor::Linux
-            } else if self.engine.can_handle(&self.ctx(spec)).is_ok() {
-                InnerExecutor::Wasm
-            } else {
-                InnerExecutor::CantHandle
+            let ctx = &self.ctx(spec);
+            match is_linux_container(ctx) {
+                Ok(_) => InnerExecutor::Linux,
+                Err(err) => {
+                    log::debug!("error checking if linux container: {err}. Fallback to wasm container");
+                    match self.engine.can_handle(ctx) {
+                        Ok(_) => InnerExecutor::Wasm,
+                        Err(err) => {
+                            // log an error and return
+                            log::error!("error checking if wasm container: {err}. Note: arg0 must be a path to a Wasm file");
+                            InnerExecutor::CantHandle
+                        }
+                    }
+                }
             }
         })
     }
