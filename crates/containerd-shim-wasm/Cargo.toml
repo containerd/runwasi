@@ -38,18 +38,51 @@ prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 # tracing
+# note: it's important to keep the version of tracing in sync with tracing-subscriber
 tracing = { workspace = true, optional = true }
+# does not include `tracing-log` feature due to https://github.com/spinkube/containerd-shim-spin/issues/61
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "smallvec",
+    "fmt",
+    "ansi",
+    "std",
+    "env-filter",
+    "json",
+    "registry",
+], optional = true }
+
+# opentelemetry
+opentelemetry = { version = "0.23", features = ["trace"], optional = true }
+opentelemetry-otlp = { version = "0.16.0", features = [
+    "grpc-tonic",
+    "http-proto",
+    "reqwest-client",
+    "trace",
+], optional = true }
+opentelemetry_sdk = { version = "0.23", features = [
+    "rt-tokio",
+], optional = true }
+tracing-opentelemetry = { version = "0.24", optional = true }
+
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
 # this must match the version pulled by libcontainer
 dbus = { version = "0", features = ["vendored"] }
-libcontainer = { workspace = true, features = ["libseccomp", "systemd", "v1", "v2"]}
+libcontainer = { workspace = true, features = [
+    "libseccomp",
+    "systemd",
+    "v1",
+    "v2",
+] }
 nix = { workspace = true, features = ["sched", "mount"] }
 containerd-client = "0.5.0"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+] }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2" }
@@ -58,9 +91,22 @@ ttrpc-codegen = { version = "0.4.2" }
 containerd-shim-wasm-test-modules = { workspace = true }
 env_logger = { workspace = true }
 tempfile = { workspace = true }
-oci-tar-builder = { workspace = true}
-rand= "0.8" 
+oci-tar-builder = { workspace = true }
+rand = "0.8"
+temp-env = "0.3"
 
 [features]
-testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
-tracing = ["dep:tracing"]
+testing = [
+    "dep:containerd-shim-wasm-test-modules",
+    "dep:env_logger",
+    "dep:tempfile",
+    "dep:oci-tar-builder",
+]
+opentelemetry = [
+    "tracing",
+    "dep:opentelemetry",
+    "dep:opentelemetry-otlp",
+    "dep:opentelemetry_sdk",
+    "dep:tracing-opentelemetry",
+]
+tracing = ["dep:tracing", "dep:tracing-subscriber"]

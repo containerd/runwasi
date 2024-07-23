@@ -36,6 +36,10 @@ jobs:
         with:
           name: test-img
           path: dist
+      - name: enable OTLP
+        if: ${{ inputs.runtime == 'wasmtime' }}
+        run: |
+          sudo ./scripts/setup-otel.sh
       - name: run
         timeout-minutes: 5
         run: |

@@ -7,6 +7,8 @@ use ttrpc::Server;
 
 use crate::sandbox::manager::Shim;
 use crate::sandbox::shim::Local;
+#[cfg(feature = "opentelemetry")]
+use crate::sandbox::shim::{otel_traces_enabled, OTLPConfig};
 use crate::sandbox::{Instance, ManagerService, ShimCli};
 use crate::services::sandbox_ttrpc::{create_manager, Manager};
 
@@ -36,7 +38,11 @@ macro_rules! revision {
     };
 }
 
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+/// Main entry point for the shim.
+///
+/// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
+///
+/// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
 pub fn shim_main<'a, I>(
     name: &str,
     version: &str,
@@ -47,7 +53,51 @@ pub fn shim_main<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
+    #[cfg(feature = "opentelemetry")]
+    if otel_traces_enabled() {
+        // opentelemetry uses tokio, so we need to initialize a runtime
+        use tokio::runtime::Runtime;
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let _guard = OTLPConfig::build_from_env()
+                .expect("Failed to build OtelConfig.")
+                .init()
+                .expect("Failed to initialize OpenTelemetry.");
+            shim_main_inner::<I>(name, version, revision, shim_version, config);
+        });
+    } else {
+        shim_main_inner::<I>(name, version, revision, shim_version, config);
+    }
+
+    #[cfg(not(feature = "opentelemetry"))]
+    {
+        shim_main_inner::<I>(name, version, revision, shim_version, config);
+    }
+}
+
+#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+fn shim_main_inner<'a, I>(
+    name: &str,
+    version: &str,
+    revision: impl Into<Option<&'a str>>,
+    shim_version: impl Into<Option<&'a str>>,
+    config: Option<Config>,
+) where
+    I: 'static + Instance + Sync + Send,
+    I::Engine: Default,
+{
+    #[cfg(feature = "opentelemetry")]
+    {
+        // read TRACECONTEXT env var that's set by the parent process
+        if let Ok(ctx) = std::env::var("TRACECONTEXT") {
+            OTLPConfig::set_trace_context(&ctx).unwrap();
+        } else {
+            let ctx = OTLPConfig::get_trace_context().unwrap();
+            std::env::set_var("TRACECONTEXT", ctx);
+        }
+    }
     let os_args: Vec<_> = std::env::args_os().collect();
+
     let flags = parse(&os_args[1..]).unwrap();
     let argv0 = PathBuf::from(&os_args[0]);
     let argv0 = argv0.file_stem().unwrap_or_default().to_string_lossy();
@@ -61,6 +111,7 @@ pub fn shim_main<'a, I>(
 
         std::process::exit(0);
     }
+
     let shim_version = shim_version.into().unwrap_or("v1");
 
     let lower_name = name.to_lowercase();

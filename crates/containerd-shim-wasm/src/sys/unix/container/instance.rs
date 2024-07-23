@@ -150,7 +150,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// Waits for the instance to finish and retunrs its exit code
     /// Returns None if the timeout is reached before the instance has finished.
     /// This is a blocking call.
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip(self, t), level = "Info"))]
     fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
         self.exit_code.wait_timeout(t).copied()
     }

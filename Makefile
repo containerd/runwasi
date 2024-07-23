@@ -59,6 +59,9 @@ FEATURES_wasmedge = --no-default-features
 WARNINGS = 
 endif
 
+# turn opentelemetry feature on
+FEATURES_wasm ?= -F opentelemetry
+
 DOCKER_BUILD ?= docker buildx build
 
 KIND_CLUSTER_NAME ?= containerd-wasm
