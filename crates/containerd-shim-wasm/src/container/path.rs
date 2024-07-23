@@ -1,10 +1,6 @@
 use std::path::{Path, PathBuf};
 
 pub trait PathResolve {
-    // TODO: Once RPITIT lands in stable, change the return types from
-    //       `-> Box<dyn Trait>` to `-> impl Trait`
-    //       See: https://rustc-dev-guide.rust-lang.org/return-position-impl-trait-in-trait.html
-
     // Resolve the path of a file give a set of directories as the `which` unix
     // command would do with components of the `PATH` environment variable, and
     // return an iterator over all candidates.
@@ -13,10 +9,10 @@ pub trait PathResolve {
     // Further contraints can be added by calling filtering the returned iterator.
     fn resolve_in_dirs<'a>(
         &self,
-        dirs: impl IntoIterator<Item = impl AsRef<Path>> + 'a,
-    ) -> Box<dyn Iterator<Item = PathBuf> + 'a>;
-    fn resolve_in_path(&self) -> Box<dyn Iterator<Item = PathBuf>>;
-    fn resolve_in_path_or_cwd(&self) -> Box<dyn Iterator<Item = PathBuf>>;
+        dirs: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> impl Iterator<Item = PathBuf>;
+    fn resolve_in_path(&self) -> impl Iterator<Item = PathBuf>;
+    fn resolve_in_path_or_cwd(&self) -> impl Iterator<Item = PathBuf>;
 }
 
 // Gets the content of the `PATH` environment variable as an
@@ -34,8 +30,8 @@ pub fn paths() -> impl Iterator<Item = PathBuf> {
 impl<T: AsRef<Path>> PathResolve for T {
     fn resolve_in_dirs<'a>(
         &self,
-        dirs: impl IntoIterator<Item = impl AsRef<Path>> + 'a,
-    ) -> Box<dyn Iterator<Item = PathBuf> + 'a> {
+        dirs: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> impl Iterator<Item = PathBuf> {
         let cwd = std::env::current_dir().ok();
 
         let has_separator = self.as_ref().components().count() > 1;
@@ -55,25 +51,23 @@ impl<T: AsRef<Path>> PathResolve for T {
         };
 
         let file = self.as_ref().to_owned();
-        let it = first
+        first
             .into_iter()
             .chain(second.into_iter().flatten())
             .filter_map(move |p| {
                 // skip any paths that are not files
                 let path = p.join(&file).canonicalize().ok()?;
                 path.is_file().then_some(path)
-            });
-
-        Box::new(it)
+            })
     }
 
     // Like `find_in_dirs`, but searches on the entries of `PATH`.
-    fn resolve_in_path(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn resolve_in_path(&self) -> impl Iterator<Item = PathBuf> {
         self.resolve_in_dirs(paths())
     }
 
     // Like `find_in_dirs`, but searches on the entries of `PATH`, and on `cwd`, in that order.
-    fn resolve_in_path_or_cwd(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn resolve_in_path_or_cwd(&self) -> impl Iterator<Item = PathBuf> {
         self.resolve_in_dirs(paths().chain(std::env::current_dir().ok()))
     }
 }
