@@ -7,7 +7,7 @@ pub trait PathResolve {
     // Resulting candidates are files that exist, but no other constraing is
     // imposed, in particular this function does not check for the executable bits.
     // Further contraints can be added by calling filtering the returned iterator.
-    fn resolve_in_dirs<'a>(
+    fn resolve_in_dirs(
         &self,
         dirs: impl IntoIterator<Item = impl AsRef<Path>>,
     ) -> impl Iterator<Item = PathBuf>;
@@ -28,7 +28,7 @@ pub fn paths() -> impl Iterator<Item = PathBuf> {
 }
 
 impl<T: AsRef<Path>> PathResolve for T {
-    fn resolve_in_dirs<'a>(
+    fn resolve_in_dirs(
         &self,
         dirs: impl IntoIterator<Item = impl AsRef<Path>>,
     ) -> impl Iterator<Item = PathBuf> {
