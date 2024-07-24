@@ -34,7 +34,6 @@ tokio = { version = "1.38.1", features = [ "full" ] }
 futures = { version = "0.3.30" }
 wasmparser = "0.214.0"
 tokio-stream = { version = "0.1" }
-prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
 
 # tracing
