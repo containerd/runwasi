@@ -18,7 +18,6 @@ use containerd_client::tonic::Streaming;
 use containerd_client::{tonic, with_namespace};
 use futures::TryStreamExt;
 use oci_spec::image::{Arch, ImageManifest, MediaType, Platform};
-use prost_types::FieldMask;
 use sha256::digest;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
@@ -297,12 +296,14 @@ impl Client {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn update_info(&self, info: Info) -> Result<Info> {
         self.rt.block_on(async {
-            let req = UpdateRequest {
+            let mut req = UpdateRequest {
                 info: Some(info.clone()),
-                update_mask: Some(FieldMask {
-                    paths: vec!["labels".to_string()],
-                }),
+                update_mask: Some(Default::default()),
             };
+            // Instantiate update_mask to Default and then mutate it to avoid namig it's type.
+            // The type is `prost_types::FieldMask` and not re-exported, naming it would require depending on it.
+            // Depending on it would mean keeping it's version in sync with the version in `containerd-client`.
+            req.update_mask.as_mut().unwrap().paths = vec!["labels".to_string()];
             let req = with_namespace!(req, self.namespace);
             let info = ContentClient::new(self.inner.clone())
                 .update(req)

@@ -727,7 +727,6 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
- "prost-types 0.12.6",
  "protobuf 3.2.0",
  "rand",
  "serde",
