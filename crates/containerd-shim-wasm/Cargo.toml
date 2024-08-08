@@ -61,7 +61,7 @@ opentelemetry-otlp = { version = "0.16.0", features = [
 opentelemetry_sdk = { version = "0.23", features = [
     "rt-tokio",
 ], optional = true }
-tracing-opentelemetry = { version = "0.24", optional = true }
+tracing-opentelemetry = { version = "0.25", optional = true }
 
 
 [target.'cfg(unix)'.dependencies]
