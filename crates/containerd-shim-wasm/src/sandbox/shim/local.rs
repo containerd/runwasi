@@ -387,7 +387,31 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn wait(&self, _: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
         debug!("wait: {:?}", req);
-        Ok(self.task_wait(req)?)
+
+        #[cfg(feature = "opentelemetry")]
+        {
+            use tracing::{span, Level, Span};
+
+            let (tx, rx) = std::sync::mpsc::channel();
+            // Start a thread to export interval span for long wait
+            let parent_span = Span::current();
+            let _ = thread::spawn(move || loop {
+                let current_span =
+                    span!(parent: &parent_span, Level::INFO, "task wait 60s interval");
+                let _enter = current_span.enter();
+                if rx.recv_timeout(Duration::from_secs(60)).is_ok() {
+                    break;
+                }
+            });
+            let result = self.task_wait(req)?;
+            tx.send(()).unwrap();
+            Ok(result)
+        }
+
+        #[cfg(not(feature = "opentelemetry"))]
+        {
+            Ok(self.task_wait(req)?)
+        }
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
