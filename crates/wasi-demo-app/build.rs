@@ -59,6 +59,7 @@ fn main() {
     builder.add_config(
         img,
         "ghcr.io/containerd/runwasi/wasi-demo-app:latest".to_string(),
+        spec::MediaType::ImageConfig,
     );
 
     let f = File::create(&p).unwrap();

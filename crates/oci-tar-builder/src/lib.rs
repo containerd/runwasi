@@ -10,12 +10,74 @@ use oci_spec::image::{
     DescriptorBuilder, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder, MediaType,
     PlatformBuilder, SCHEMA_VERSION,
 };
+use oci_wasm::{WasmConfig, WASM_ARCHITECTURE};
 use serde::Serialize;
 use sha256::{digest, try_digest};
-#[derive(Debug, Default)]
-pub struct Builder {
-    configs: Vec<(ImageConfiguration, String)>,
+#[derive(Debug)]
+pub struct Builder<C: OciConfig> {
+    configs: Vec<(C, String, MediaType)>,
     layers: Vec<(PathBuf, String)>,
+}
+
+pub trait OciConfig {
+    fn os(&self) -> String;
+    fn architecture(&self) -> String;
+    fn layers(&self) -> Vec<String>;
+    fn to_string(&self) -> String;
+}
+
+impl OciConfig for ImageConfiguration {
+    fn os(&self) -> String {
+        self.os().to_string()
+    }
+
+    fn architecture(&self) -> String {
+        self.architecture().to_string()
+    }
+
+    fn layers(&self) -> Vec<String> {
+        self.rootfs().diff_ids().to_vec()
+    }
+
+    fn to_string(&self) -> String {
+        self.to_string_pretty().unwrap()
+    }
+}
+
+impl OciConfig for WasmConfig {
+    fn os(&self) -> String {
+        self.os.to_string()
+    }
+
+    fn architecture(&self) -> String {
+        WASM_ARCHITECTURE.to_string()
+    }
+
+    fn layers(&self) -> Vec<String> {
+        self.layer_digests.clone()
+    }
+
+    fn to_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+}
+
+impl Default for Builder<WasmConfig> {
+    fn default() -> Self {
+        Self {
+            configs: Vec::new(),
+            layers: Vec::new(),
+        }
+    }
+}
+
+impl Default for Builder<ImageConfiguration> {
+    fn default() -> Self {
+        Self {
+            configs: Vec::new(),
+            layers: Vec::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -45,9 +107,9 @@ struct DockerManifest {
 pub const WASM_LAYER_MEDIA_TYPE: &str =
     "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm";
 
-impl Builder {
-    pub fn add_config(&mut self, config: ImageConfiguration, name: String) -> &mut Self {
-        self.configs.push((config, name));
+impl<C: OciConfig> Builder<C> {
+    pub fn add_config(&mut self, config: C, name: String, media_type: MediaType) -> &mut Self {
+        self.configs.push((config, name, media_type));
         self
     }
 
@@ -108,7 +170,7 @@ impl Builder {
         }
 
         for config in self.configs.iter() {
-            let s = config.0.to_string().context("failed to serialize config")?;
+            let s = config.0.to_string();
             let b = s.as_bytes();
             let dgst = digest(b);
             let mut th = tar::Header::new_gnu();
@@ -122,7 +184,7 @@ impl Builder {
             mfst.config = p.to_string();
 
             let desc = DescriptorBuilder::default()
-                .media_type(MediaType::ImageConfig)
+                .media_type(config.2.clone())
                 .size(b.len() as i64)
                 .digest("sha256:".to_owned() + &dgst)
                 .build()
@@ -134,7 +196,7 @@ impl Builder {
                 layers.push(v.clone());
             }
 
-            for id in config.0.rootfs().diff_ids().iter() {
+            for id in config.0.layers().iter() {
                 debug!("id: {}", id);
                 if layer_digests.get(id).is_none() {
                     warn!("rootfs diff with id {} not found in layers", id);
@@ -176,8 +238,8 @@ impl Builder {
             tb.append(&th, b)?;
 
             let platform = PlatformBuilder::default()
-                .os(config.0.os().clone())
-                .architecture(config.0.architecture().clone())
+                .os(config.0.os().as_str())
+                .architecture(config.0.architecture().as_str())
                 .build()
                 .context("failed to build platform")?;
 
