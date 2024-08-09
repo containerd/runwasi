@@ -163,7 +163,7 @@ install/oci/all: test-image/oci/clean install test-image/oci load/oci
 test-image: dist/img.tar
 
 .PHONY: test-image/oci
-test-image/oci: dist/img-oci.tar
+test-image/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 
 .PHONY: test-image/clean
 test-image/clean:
@@ -172,6 +172,7 @@ test-image/clean:
 .PHONY: test-image/oci/clean
 test-image/oci/clean:
 	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
 
 .PHONY: demo-app
 demo-app: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
@@ -190,7 +191,11 @@ dist/img.tar:
 	[ -f $(PWD)/dist/img.tar ] || $(MAKE) target/wasm32-wasi/$(OPT_PROFILE)/img.tar
 	[ -f $(PWD)/dist/img.tar ] || cp target/wasm32-wasi/$(OPT_PROFILE)/img.tar "$@"
 
-dist/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+dist/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar 
+	@mkdir -p "dist/"
+	cp "$<" "$@"
+
+dist/img-oci-artifact.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
 	@mkdir -p "dist/"
 	cp "$<" "$@"
 
@@ -198,15 +203,21 @@ load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
 CTR_VERSION := $(shell sudo ctr version | sed -n -e '/Version/ {s/.*: *//p;q;}')
-load/oci: dist/img-oci.tar
+load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 	@echo $(CTR_VERSION)\\nv1.7.7 | sort -crV || @echo $(CTR_VERSION)\\nv1.6.25 | sort -crV || (echo "containerd version must be 1.7.7+ or 1.6.25+ was $(CTR_VERSION)" && exit 1)
 	@echo using containerd $(CTR_VERSION)
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms dist/img-oci-artifact.tar
 
 .PHONY:
 target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
 	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+
+.PHONY:
+target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
+	cargo run --bin oci-tar-builder -- --name wasi-demo-oci-artifact --as-artifact --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
@@ -240,8 +251,9 @@ test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-%
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
 
 .PHONY: test/k8s/deploy-workload-oci-%
-test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.tar
+test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.tar dist/img-oci-artifact.tar test/k8s/cluster-%
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) dist/img-oci.tar
+	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) dist/img-oci-artifact.tar
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=90s
 	# verify that we are still running after some time
