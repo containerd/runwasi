@@ -9,11 +9,11 @@ RUSTC ?= rustc
 
 # We have a bit of fancy logic here to determine the target 
 # since we support building for gnu and musl
-# TARGET must evenutually match one of the values in the cross.toml
+# TARGET must eventually match one of the values in the cross.toml
 HOST_TARGET = $(shell $(RUSTC) --version -v | sed -En 's/host: (.*)/\1/p')
 
 # if TARGET is not set and we are using cross
-# default to musl to facilitate easier use shim on other distros becuase of the static build
+# default to musl to facilitate easier use shim on other distros because of the static build
 # otherwise use the host target
 ifeq ($(TARGET),)
 ifeq ($(CARGO),cross)
@@ -118,7 +118,7 @@ test-wasm:
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-wasmedge:
-	# run tests in one thread to prevent paralellism
+	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 ifneq ($(OS), Windows_NT)
 ifneq ($(patsubst %-musl,,xx_$(TARGET)),)
@@ -128,7 +128,7 @@ endif
 endif
 
 test-%:
-	# run tests in one thread to prevent paralellism
+	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-oci-tar-builder:
@@ -139,7 +139,7 @@ install: $(RUNTIMES:%=install-%);
 
 install-%:
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) $(TARGET_DIR)/$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
+	$(INSTALL) $(TARGET_DIR)$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
@@ -203,7 +203,6 @@ load/oci: dist/img-oci.tar
 	@echo using containerd $(CTR_VERSION)
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
-.PHONY:
 target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
 	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
