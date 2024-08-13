@@ -15,11 +15,10 @@ To finish off installing pre-requisites, install Rust following [this](https://w
 After following these steps and navigating to the runwasi directory in your terminal:
 - run `make build`,
 - run `make install`,
-- run `make test/out/img.tar`,
-- open a secondary terminal and run `containerd`, and
+- run `make test-image`, and
 - run `make load`.
 
-After this, you can execute an example, like: `ctr run --rm --runtime=io.containerd.wasmtime.v1 docker.io/library/wasmtest:latest testwasm`.
+After this, you can execute an example, like: `ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
 
 > To kill the process from the example, you can run: `ctr task kill -s SIGKILL testwasm`.
 
@@ -51,3 +50,4 @@ If you are using VS Code for development you can use the following `settings.jso
         "WASMEDGE_INCLUDE_DIR": "C:\\Program Files\\WasmEdge\\include"
     }
 }
+```
