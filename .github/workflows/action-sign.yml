@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
     - name: Setup cosign for signing
-      uses: sigstore/cosign-installer@v3.5.0
+      uses: sigstore/cosign-installer@v3.6.0
       with:
         cosign-release: 'v2.2.2'
     - name: Sign the binaries
