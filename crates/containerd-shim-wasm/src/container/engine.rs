@@ -51,7 +51,10 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// Runtimes can override this to support other layer types
     /// such as lays that contain runtime specific configuration
     fn supported_layers_types() -> &'static [&'static str] {
-        &["application/vnd.bytecodealliance.wasm.component.layer.v0+wasm"]
+        &[
+            "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm",
+            "application/wasm",
+        ]
     }
 
     /// Precompile passes supported OCI layers to engine for compilation

@@ -262,3 +262,15 @@ sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi
 hello
 exiting 
 ```
+
+### Demo 3 using Wasm OCI Artifact
+
+The [CNCF tag-runtime wasm working group](https://tag-runtime.cncf.io/wgs/wasm/charter/) has a [OCI Artifact format for Wasm](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).  This is a new Artifact type that enable the usage across projects beyond just runwasi, see the https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/#implementations
+
+```
+make test-image/oci
+make load/oci
+make test/k8s-oci-wasmtime
+```
+
+> note: We are using a kubernetes cluster to run here since containerd's ctr has a bug that results in ctr: `unknown image config media type application/vnd.wasm.config.v0+json`
