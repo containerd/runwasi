@@ -31,7 +31,7 @@ impl Engine for WasmEdgeEngine {
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
-        let envs: Vec<_> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+        let envs = ctx.envs();
         let Entrypoint {
             source,
             func,
