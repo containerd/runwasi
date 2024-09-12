@@ -379,4 +379,68 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_get_envs() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .env(vec!["KEY1=VALUE1".to_string(), "KEY2=VALUE2".to_string()])
+                    .build()?,
+            )
+            .build()?;
+
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let envs = ctx.envs();
+        assert_eq!(envs.len(), 2);
+        assert_eq!(envs[0], "KEY1=VALUE1");
+        assert_eq!(envs[1], "KEY2=VALUE2");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_envs_return_empty() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").env(vec![]).build()?)
+            .build()?;
+
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let envs = ctx.envs();
+        assert_eq!(envs.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_envs_not_present() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").build()?)
+            .build()?;
+
+        let ctx = WasiContext {
+            spec: &spec,
+            wasm_layers: &[],
+            platform: &Platform::default(),
+        };
+
+        let envs = ctx.envs();
+        assert_eq!(envs.len(), 0);
+
+        Ok(())
+    }
 }
