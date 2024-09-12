@@ -15,8 +15,7 @@ jobs:
         run: git submodule update --init --recursive
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          target: wasm32-wasi
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup build env
         run: |
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
