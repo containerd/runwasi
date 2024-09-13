@@ -73,7 +73,15 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         log::info!("setting up wasi");
-        let envs: Vec<_> = std::env::vars().collect();
+        let envs = ctx
+            .envs()
+            .iter()
+            .map(|v| match v.split_once('=') {
+                None => (v.to_string(), String::new()),
+                Some((key, value)) => (key.to_string(), value.to_string()),
+            })
+            .collect::<Vec<_>>();
+
         let Entrypoint {
             source,
             func,
@@ -82,7 +90,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         } = ctx.entrypoint();
 
         log::info!("building wasi context");
-        let wasi_ctx = prepare_wasi_ctx(ctx, envs)?;
+        let wasi_ctx = prepare_wasi_ctx(ctx, &envs)?;
         let store = Store::new(&self.engine, wasi_ctx);
 
         let wasm_bytes = &source.as_bytes()?;
@@ -267,12 +275,12 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
 /// Prepare both wasi_preview1 and wasi_preview2 contexts.
 fn prepare_wasi_ctx(
     ctx: &impl RuntimeContext,
-    envs: Vec<(String, String)>,
+    envs: &[(String, String)],
 ) -> Result<WasiCtx, anyhow::Error> {
-    let mut wasi_preview1_builder = wasi_builder(ctx, &envs)?;
+    let mut wasi_preview1_builder = wasi_builder(ctx, envs)?;
     let wasi_preview1_ctx = wasi_preview1_builder.build_p1();
 
-    let mut wasi_preview2_builder = wasi_builder(ctx, &envs)?;
+    let mut wasi_preview2_builder = wasi_builder(ctx, envs)?;
     let wasi_preview2_ctx = wasi_preview2_builder.build();
     let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,

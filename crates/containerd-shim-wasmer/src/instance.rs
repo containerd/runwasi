@@ -18,7 +18,14 @@ impl Engine for WasmerEngine {
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
-        let envs = std::env::vars();
+        let envs = ctx
+            .envs()
+            .iter()
+            .map(|v| match v.split_once('=') {
+                None => (v.to_string(), String::new()),
+                Some((key, value)) => (key.to_string(), value.to_string()),
+            })
+            .collect::<Vec<_>>();
         let Entrypoint {
             source,
             func,

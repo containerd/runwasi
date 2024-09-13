@@ -1,4 +1,5 @@
 use std::cell::OnceCell;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::prelude::PermissionsExt;
@@ -8,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,
-    ExecutorValidationError,
+    ExecutorSetEnvsError, ExecutorValidationError,
 };
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
@@ -64,6 +65,21 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
                 };
             }
         }
+    }
+
+    // This is an no-op for the Wasm `Executor`. Instead of youki's libcontainer setting the envs
+    // in the shim process, the shim will manage the envs itself. The expectation is that the shim will
+    // call `RuntimeContext::envs()` to get the container's envs and set them in the `Engine::run_wasi`
+    // function. This way, the shim can decide how to pass the envs to the WASI context.
+    //
+    // See the following issues for more context:
+    // https://github.com/containerd/runwasi/issues/619
+    // https://github.com/containers/youki/issues/2815
+    fn setup_envs(
+        &self,
+        _: HashMap<String, String>,
+    ) -> std::result::Result<(), ExecutorSetEnvsError> {
+        Ok(())
     }
 }
 
