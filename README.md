@@ -18,14 +18,9 @@ on the CNCF slack.
 
 ## Usage
 
-runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation.
+runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation. It creates one shim process per container or k8s pod. 
 
-There are two modes of operation supported:
-
-1. "Normal" mode where there is 1 shim process per container or k8s pod.
-2. "Shared" mode where there is a single manager service running all shims in process.
-
-In either case you need to implement a trait to teach runwasi how to use your wasm host.
+You need to implement a trait to teach runwasi how to use your wasm host.
 
 There are two ways to do this:
 * implementing the `sandbox::Instance` trait
@@ -119,45 +114,6 @@ I encourage you to checkout how that is implemented.
 
 The shim binary just needs to be installed into `$PATH` (as seen by the containerd process) with a binary name like `containerd-shim-myshim-v1`.
 
-For the shared mode:
-
-```rust
-use containerd_shim_wasm::sandbox::{Local, ManagerService, Instance};
-use containerd_shim_wasm::services::sandbox_ttrpc::{create_manager, Manager};
-use std::sync::Arc;
-use ttrpc::{self, Server};
-/// ...
-
-struct MyInstance {
-    /// ...
-}
-
-impl Instance for MyInstance {
-    // ...
-}
-
-fn main() {
-    let s: ManagerService<Local<MyInstance>> =
-        ManagerService::new(Engine::new(Config::new().interruptable(true)).unwrap());
-    let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
-    let service = create_manager(s);
-
-    let mut server = Server::new()
-        .bind("unix:///run/io.containerd.myshim.v1/manager.sock")
-        .unwrap()
-        .register_service(service);
-
-    server.start().unwrap();
-    let (_tx, rx) = std::sync::mpsc::channel::<()>();
-    rx.recv().unwrap();
-}
-```
-
-This will be the host daemon that you startup and manage on your own.
-You can use the provided `containerd-shim-myshim-v1` binary as the shim to specify in containerd.
-
-Shared mode requires precise control over real threads and as such should not be used with an async runtime.
-
 Check out these projects that build on top of runwasi:
 - [spinkube/containerd-shim-spin](https://github.com/spinkube/containerd-shim-spin)
 - [deislabs/containerd-wasm-shims](https://github.com/deislabs/containerd-wasm-shims)
@@ -173,24 +129,6 @@ And make sure the shim binary must be in $PATH (that is the $PATH that container
 > build shim with wasmedge we need install library first
 
 This shim runs one per pod.
-
-- **containerd-shim-[ wasmedge | wasmtime | wasmer ]d-v1**
-
-A cli used to connect containerd to the `containerd-[ wasmedge | wasmtime | wasmer ]d` sandbox daemon.
-When containerd requests for a container to be created, it fires up this shim binary which will connect to the `containerd-[ wasmedge | wasmtime | wasmer ]d` service running on the host.
-The service will return a path to a unix socket which this shim binary will write back to containerd which containerd will use to connect to for shim requests.
-This binary does not serve requests, it is only responsible for sending requests to the `containerd-[ wasmedge | wasmtime | wasmer ]d` daemon to create or destroy sandboxes.
-
-- **containerd-[ wasmedge | wasmtime | wasmer ]d**
-
-This is a sandbox manager that enables running 1 wasm host for the entire node instead of one per pod (or container).
-When a container is created, a request is sent to this service to create a sandbox.
-The "sandbox" is a containerd task service that runs in a new thread on its own unix socket, which we return back to containerd to connect to.
-
-The Wasmedge / Wasmtime / Wasmer engine is shared between all sandboxes in the service.
-
-To use this shim, specify `io.containerd.[ wasmedge | wasmtime | wasmer ]d.v1` as the runtime to use.
-You will need to make sure the `containerd-[ wasmedge | wasmtime | wasmer ]d` daemon has already been started.
 
 ## Contributing
 

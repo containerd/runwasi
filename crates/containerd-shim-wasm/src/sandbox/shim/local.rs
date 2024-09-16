@@ -16,7 +16,6 @@ use containerd_shim::error::Error as ShimError;
 use containerd_shim::protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart};
 use containerd_shim::protos::shim::shim_ttrpc::Task;
 use containerd_shim::protos::types::task::Status;
-use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
 use log::debug;
@@ -25,7 +24,7 @@ use oci_spec::runtime::Spec;
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::instance_data::InstanceData;
-use crate::sandbox::{oci, Error, Result, SandboxService};
+use crate::sandbox::{oci, Error, Result};
 use crate::sys::metrics::get_metrics;
 
 #[cfg(test)]
@@ -340,22 +339,6 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             stats: Some(metrics).into(),
             ..Default::default()
         })
-    }
-}
-
-impl<T: Instance + Sync + Send> SandboxService for Local<T, RemoteEventSender> {
-    type Instance = T;
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn new(
-        namespace: String,
-        containerd_address: String,
-        _id: String,
-        engine: T::Engine,
-        publisher: RemotePublisher,
-    ) -> Self {
-        let events = RemoteEventSender::new(&namespace, publisher);
-        let exit = Arc::default();
-        Local::<T>::new(engine, events, exit, namespace, containerd_address)
     }
 }
 
