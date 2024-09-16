@@ -1,16 +1,10 @@
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
 
 use containerd_shim::{parse, run, Config};
-use ttrpc::Server;
 
-use crate::sandbox::manager::Shim;
-use crate::sandbox::shim::Local;
 #[cfg(feature = "opentelemetry")]
 use crate::sandbox::shim::{otel_traces_enabled, OTLPConfig};
-use crate::sandbox::{Instance, ManagerService, ShimCli};
-use crate::services::sandbox_ttrpc::{create_manager, Manager};
+use crate::sandbox::{Instance, ShimCli};
 
 pub mod r#impl {
     pub use git_version::git_version;
@@ -115,37 +109,7 @@ fn shim_main_inner<'a, I>(
     let shim_version = shim_version.into().unwrap_or("v1");
 
     let lower_name = name.to_lowercase();
-    let shim_cli = format!("containerd-shim-{lower_name}-{shim_version}");
-    let shim_client = format!("containerd-shim-{lower_name}d-{shim_version}");
-    let shim_daemon = format!("containerd-{lower_name}d");
     let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 
-    match argv0.to_lowercase() {
-        s if s == shim_cli => {
-            run::<ShimCli<I>>(&shim_id, config);
-        }
-        s if s == shim_client => {
-            run::<Shim>(&shim_client, config);
-        }
-        s if s == shim_daemon => {
-            log::info!("starting up!");
-            let s: ManagerService<Local<I>> = Default::default();
-            let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
-            let service = create_manager(s);
-
-            let mut server = Server::new()
-                .bind("unix:///run/io.containerd.wasmwasi.v1/manager.sock")
-                .expect("failed to bind to socket")
-                .register_service(service);
-
-            server.start().expect("failed to start daemon");
-            log::info!("server started!");
-            let (_tx, rx) = channel::<()>();
-            rx.recv().unwrap();
-        }
-        _ => {
-            eprintln!("error: unrecognized binary name, expected one of {shim_cli}, {shim_client}, or {shim_daemon}.");
-            std::process::exit(1);
-        }
-    }
+    run::<ShimCli<I>>(&shim_id, config);
 }
