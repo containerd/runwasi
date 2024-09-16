@@ -52,7 +52,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
 
 # opentelemetry
 opentelemetry = { version = "0.23", features = ["trace"], optional = true }
-opentelemetry-otlp = { version = "0.16.0", features = [
+opentelemetry-otlp = { version = "0.25.0", features = [
     "grpc-tonic",
     "http-proto",
     "reqwest-client",
