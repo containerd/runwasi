@@ -133,7 +133,10 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     }
 }
 
-impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T> {
+impl<T> WasmtimeEngine<T>
+where
+    T: std::clone::Clone + Sync + WasiConfig + Send + 'static,
+{
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
