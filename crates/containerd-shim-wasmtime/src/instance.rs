@@ -7,7 +7,7 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
+use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview1::{self as wasi_preview1};
 use wasmtime_wasi::{self as wasi_preview2};
@@ -186,7 +186,7 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
 
-        let mut linker = wasmtime_component::Linker::new(&self.engine);
+        let mut linker = component::Linker::new(&self.engine);
 
         log::debug!("init linker");
         wasi_preview2::add_to_linker_async(&mut linker)?;
