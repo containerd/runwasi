@@ -84,7 +84,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
 
         let Entrypoint {
             source,
-            func,
+            func: wasm_func_name,
             arg0: _,
             name: _,
         } = ctx.entrypoint();
@@ -95,7 +95,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
 
         let wasm_bytes = &source.as_bytes()?;
 
-        let status = self.execute(wasm_bytes, store, func, stdio)?;
+        let status = self.execute(wasm_bytes, store, wasm_func_name, stdio)?;
 
         let status = status.map(|_| 0).or_else(|err| {
             match err.downcast_ref::<wasmtime_wasi::I32Exit>() {
@@ -145,7 +145,7 @@ where
         &self,
         module: Module,
         mut store: Store<WasiCtx>,
-        func: &String,
+        wasm_func_name: &String,
         stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("execute module");
@@ -164,10 +164,10 @@ where
 
             log::info!("getting start function");
             let start_func = instance
-                .get_func(&mut store, func)
+                .get_func(&mut store, wasm_func_name)
                 .context("module does not have a WASI start function")?;
 
-            log::debug!("running start function {func:?}");
+            log::debug!("running start function {wasm_func_name:?}");
 
             stdio.redirect()?;
 
@@ -184,7 +184,7 @@ where
         &self,
         component: Component,
         mut store: Store<WasiCtx>,
-        func: String,
+        wasm_func_name: String,
         stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
@@ -201,7 +201,7 @@ where
         //
         // TODO: think about a better way to do this.
         wasmtime_wasi::runtime::in_tokio(async move {
-            if func == "_start" {
+            if wasm_func_name == "_start" {
                 let pre = linker.instantiate_pre(&component)?;
                 let (command, _instance) =
                     wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
@@ -224,12 +224,15 @@ where
 
                 let instance = pre.instantiate_async(&mut store).await?;
 
-                log::info!("getting component exported function {func:?}");
-                let start_func = instance.get_func(&mut store, &func).context(format!(
-                    "component does not have exported function {func:?}"
-                ))?;
+                log::info!("getting component exported function {wasm_func_name:?}");
+                let start_func =
+                    instance
+                        .get_func(&mut store, &wasm_func_name)
+                        .context(format!(
+                            "component does not have exported function {wasm_func_name:?}"
+                        ))?;
 
-                log::debug!("running exported function {func:?} {start_func:?}");
+                log::debug!("running exported function {wasm_func_name:?} {start_func:?}");
 
                 stdio.redirect()?;
 
@@ -243,29 +246,29 @@ where
         &self,
         wasm_binary: &[u8],
         store: Store<WasiCtx>,
-        func: String,
+        wasm_func_name: String,
         stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
                 log::debug!("loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
-                self.execute_module(module, store, &func, stdio)
+                self.execute_module(module, store, &wasm_func_name, stdio)
             }
             Some(WasmBinaryType::Component) => {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
-                self.execute_component(component, store, func, stdio)
+                self.execute_component(component, store, wasm_func_name, stdio)
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_module(module, store, &func, stdio)
+                    self.execute_module(module, store, &wasm_func_name, stdio)
                 }
                 Some(Precompiled::Component) => {
                     log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_component(component, store, func, stdio)
+                    self.execute_component(component, store, wasm_func_name, stdio)
                 }
                 None => {
                     bail!("invalid precompiled module")
