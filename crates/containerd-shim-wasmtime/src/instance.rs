@@ -200,8 +200,8 @@ where
         //
         // TODO: think about a better way to do this.
         wasmtime_wasi::runtime::in_tokio(async move {
+            let pre = linker.instantiate_pre(&component)?;
             if wasm_func_name == "_start" {
-                let pre = linker.instantiate_pre(&component)?;
                 let (command, _instance) =
                     wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
 
@@ -219,8 +219,6 @@ where
 
                 Ok(status)
             } else {
-                let pre = linker.instantiate_pre(&component)?;
-
                 let instance = pre.instantiate_async(&mut store).await?;
 
                 log::info!("getting component exported function {wasm_func_name:?}");
@@ -285,7 +283,6 @@ fn prepare_wasi_ctx(
     let mut wasi_builder = wasi_builder(ctx, envs)?;
     let wasi_preview1_ctx = wasi_builder.build_p1();
     let wasi_preview2_ctx = wasi_builder.build();
-
     let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,
         wasi_preview2: wasi_preview2_ctx,
