@@ -282,11 +282,10 @@ fn prepare_wasi_ctx(
     ctx: &impl RuntimeContext,
     envs: &[(String, String)],
 ) -> Result<WasiCtx, anyhow::Error> {
-    let mut wasi_preview1_builder = wasi_builder(ctx, envs)?;
-    let wasi_preview1_ctx = wasi_preview1_builder.build_p1();
+    let mut wasi_builder = wasi_builder(ctx, envs)?;
+    let wasi_preview1_ctx = wasi_builder.build_p1();
+    let wasi_preview2_ctx = wasi_builder.build();
 
-    let mut wasi_preview2_builder = wasi_builder(ctx, envs)?;
-    let wasi_preview2_ctx = wasi_preview2_builder.build();
     let wasi_data = WasiCtx {
         wasi_preview1: wasi_preview1_ctx,
         wasi_preview2: wasi_preview2_ctx,
