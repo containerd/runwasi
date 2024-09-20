@@ -153,8 +153,8 @@ where
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
         log::debug!("init linker");
-        wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| {
-            &mut s.wasi_preview1
+        wasi_preview1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiCtx| {
+            &mut wasi_ctx.wasi_preview1
         })?;
 
         wasmtime_wasi::runtime::in_tokio(async move {
@@ -193,7 +193,6 @@ where
 
         log::debug!("init linker");
         wasi_preview2::add_to_linker_async(&mut linker)?;
-        log::debug!("done init linker");
 
         log::info!("instantiating component");
 
