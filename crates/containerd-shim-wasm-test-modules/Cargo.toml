@@ -6,8 +6,6 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-libc = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

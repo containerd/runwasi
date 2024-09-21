@@ -5,11 +5,8 @@ edition.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
-oci-spec = { workspace = true, features = ["runtime"] }
-ttrpc = { workspace = true }
 
 # may need to bump wasmedge version in scripts/setup-windows.sh
 wasmedge-sdk = { version = "0.13.2" }
