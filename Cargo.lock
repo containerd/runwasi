@@ -693,16 +693,9 @@ dependencies = [
 name = "containerd-shim-benchmarks"
 version = "0.4.0"
 dependencies = [
- "anyhow",
- "chrono",
  "containerd-shim-wasm",
  "containerd-shim-wasmtime",
  "criterion",
- "libc",
- "oci-spec",
- "serde",
- "serde_json",
- "tempfile",
  "wasmtime",
 ]
 
@@ -767,7 +760,6 @@ version = "0.4.1"
 dependencies = [
  "anyhow",
  "lazy_static",
- "libc",
  "wat",
 ]
 
@@ -776,13 +768,10 @@ name = "containerd-shim-wasmedge"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "libc",
  "log",
- "oci-spec",
  "serial_test",
- "ttrpc",
  "wasmedge-sdk",
 ]
 
@@ -791,15 +780,11 @@ name = "containerd-shim-wasmer"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "log",
- "oci-spec",
  "serial_test",
  "tokio",
- "ttrpc",
  "wasmer",
- "wasmer-compiler",
  "wasmer-wasix",
 ]
 
@@ -808,13 +793,9 @@ name = "containerd-shim-wasmtime"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "log",
- "oci-spec",
  "serial_test",
- "sha256",
- "ttrpc",
  "wasmtime",
  "wasmtime-wasi",
 ]
