@@ -7,7 +7,7 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use wasmtime::component::{self as wasmtime_component, Component, ResourceTable};
+use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview1::{self as wasi_preview1};
 use wasmtime_wasi::{self as wasi_preview2};
@@ -133,7 +133,10 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     }
 }
 
-impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T> {
+impl<T> WasmtimeEngine<T>
+where
+    T: std::clone::Clone + Sync + WasiConfig + Send + 'static,
+{
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
@@ -150,8 +153,8 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
         log::debug!("init linker");
-        wasi_preview1::add_to_linker_async(&mut module_linker, |s: &mut WasiCtx| {
-            &mut s.wasi_preview1
+        wasi_preview1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiCtx| {
+            &mut wasi_ctx.wasi_preview1
         })?;
 
         wasmtime_wasi::runtime::in_tokio(async move {
@@ -186,11 +189,10 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
         log::debug!("loading wasm component");
 
-        let mut linker = wasmtime_component::Linker::new(&self.engine);
+        let mut linker = component::Linker::new(&self.engine);
 
         log::debug!("init linker");
         wasi_preview2::add_to_linker_async(&mut linker)?;
-        log::debug!("done init linker");
 
         log::info!("instantiating component");
 
@@ -198,8 +200,8 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
         //
         // TODO: think about a better way to do this.
         wasmtime_wasi::runtime::in_tokio(async move {
+            let pre = linker.instantiate_pre(&component)?;
             if func == "_start" {
-                let pre = linker.instantiate_pre(&component)?;
                 let (command, _instance) =
                     wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
 
@@ -217,8 +219,6 @@ impl<T: std::clone::Clone + Sync + WasiConfig + Send + 'static> WasmtimeEngine<T
 
                 Ok(status)
             } else {
-                let pre = linker.instantiate_pre(&component)?;
-
                 let instance = pre.instantiate_async(&mut store).await?;
 
                 log::info!("getting component exported function {func:?}");
@@ -277,14 +277,9 @@ fn prepare_wasi_ctx(
     ctx: &impl RuntimeContext,
     envs: &[(String, String)],
 ) -> Result<WasiCtx, anyhow::Error> {
-    let mut wasi_preview1_builder = wasi_builder(ctx, envs)?;
-    let wasi_preview1_ctx = wasi_preview1_builder.build_p1();
-
-    let mut wasi_preview2_builder = wasi_builder(ctx, envs)?;
-    let wasi_preview2_ctx = wasi_preview2_builder.build();
     let wasi_data = WasiCtx {
-        wasi_preview1: wasi_preview1_ctx,
-        wasi_preview2: wasi_preview2_ctx,
+        wasi_preview1: wasi_builder(ctx, envs)?.build_p1(),
+        wasi_preview2: wasi_builder(ctx, envs)?.build(),
         resource_table: ResourceTable::default(),
     };
     Ok(wasi_data)
