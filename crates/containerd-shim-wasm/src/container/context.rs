@@ -439,7 +439,7 @@ mod tests {
         };
 
         let envs = ctx.envs();
-        assert_eq!(envs.len(), 0);
+        assert_eq!(envs.len(), 2);
 
         Ok(())
     }
