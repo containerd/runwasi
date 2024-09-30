@@ -59,6 +59,7 @@ jobs:
         timeout-minutes: 5
         run: |
           make test-${{ inputs.runtime }}
+          echo "Exit status: $?"
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
