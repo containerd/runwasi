@@ -6,7 +6,7 @@ ENV MARCH=${CROSS_CMAKE_SYSTEM_PROCESSOR}
 RUN apk-init ${MARCH} ${CROSS_SYSROOT}
 
 # configure libsecccomp-rs to use static linking
-RUN apk-${MARCH} add libseccomp-static libseccomp-dev libssl-dev
+RUN apk-${MARCH} add libseccomp-static libseccomp-dev openssl-dev
 ENV LIBSECCOMP_LINK_TYPE="static"
 ENV LIBSECCOMP_LIB_PATH="${CROSS_SYSROOT}/lib"
 
