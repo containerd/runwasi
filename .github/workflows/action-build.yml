@@ -55,6 +55,12 @@ jobs:
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
+      - name: Run tests for common with cargo instead of cross
+        timeout-minutes: 5
+        if: ${{ inputs.runtime == 'common' && inputs.arch == 'x86_64' }}
+        run: |
+          RUST_LOG=trace cargo test --target=x86_64-unknown-linux-gnu --target-dir=./target/ --package containerd-shim-wasm -F opentelemetry --verbose -- --nocapture --test-threads=1
+          echo "Exit status: $?"
       - name: Run tests
         timeout-minutes: 5
         run: |
