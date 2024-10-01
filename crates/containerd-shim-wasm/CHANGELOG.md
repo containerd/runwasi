@@ -5,15 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- OpenTelemetry Tracing Support ([#582](https://github.com/containerd/runwasi/pull/582), [#653](https://github.com/containerd/runwasi/pull/653))
+- OpenTelemetry tracing support ([#582](https://github.com/containerd/runwasi/pull/582), [#653](https://github.com/containerd/runwasi/pull/653))
 - Enabled async, networking, and IP name lookup in Wasmtime ([#589](https://github.com/containerd/runwasi/pull/589))
-- Re-enabled Benchmarking with cargo bench ([#612](https://github.com/containerd/runwasi/pull/612))
-- Support for Generating New Artifact Types ([#631](https://github.com/containerd/runwasi/pull/631))
-- End-to-End Tests for Wasm OCI Artifacts ([#661](https://github.com/containerd/runwasi/pull/661))
+- Re-enabled benchmarking with cargo bench ([#612](https://github.com/containerd/runwasi/pull/612))
+- Support for generating new artifact types ([#631](https://github.com/containerd/runwasi/pull/631))
+- End-to-end tests for Wasm OCI artifacts ([#661](https://github.com/containerd/runwasi/pull/661))
 
 ### Changed
 - Made `tracing::instrument` macro optional ([#592](https://github.com/containerd/runwasi/pull/592))
-- Upgraded youki Libcontainer to v0.3.3 ([#601](https://github.com/containerd/runwasi/pull/601))
+- Upgraded youki Libcontainer to v0.3.3 that reduce startup time by 1s ([#601](https://github.com/containerd/runwasi/pull/601))
 - Configured dependabot to group patch updates ([#641](https://github.com/containerd/runwasi/pull/641))
 - Improved `PathResolve` logic using RPITIT ([#654](https://github.com/containerd/runwasi/pull/654))
 - Improved error messages in `Executor::exec` ([#655](https://github.com/containerd/runwasi/pull/655))
@@ -23,10 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - Corrected syntax errors in release scripts ([#603](https://github.com/containerd/runwasi/pull/603), [#604](https://github.com/containerd/runwasi/pull/604))
 - Resolved CI failures in benchmark tests ([#669](https://github.com/containerd/runwasi/pull/669))
-- [#680](https://github.com/containerd/runwasi/pull/680): fixed a failed test `test_envs_not_present` and renamed it to `test_envs_return_default_only`
+- Fixed a failed test `test_envs_not_present` and renamed it to `test_envs_return_default_only` [#680](https://github.com/containerd/runwasi/pull/680)
+- Fixed the setup environment by adding openssl dependency to the Dockerfile [#680](https://github.com/containerd/runwasi/pull/680)
 
 ### Deprecated
-- Deprecated 'Shared' mode removed ([#671](https://github.com/containerd/runwasi/pull/671))
+- Deprecated the 'Shared' mode ([#671](https://github.com/containerd/runwasi/pull/671))
 
 ### Removed
 - Removed dependency on `prost-types` ([#656](https://github.com/containerd/runwasi/pull/656))
