@@ -426,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn test_envs_not_present() -> Result<()> {
+    fn test_envs_return_default_only() -> Result<()> {
         let spec = SpecBuilder::default()
             .root(RootBuilder::default().path("rootfs").build()?)
             .process(ProcessBuilder::default().cwd("/").build()?)
@@ -439,7 +439,7 @@ mod tests {
         };
 
         let envs = ctx.envs();
-        assert_eq!(envs.len(), 0);
+        assert_eq!(envs.len(), 2);
 
         Ok(())
     }
