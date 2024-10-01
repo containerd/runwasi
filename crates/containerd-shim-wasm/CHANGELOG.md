@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - Corrected syntax errors in release scripts ([#603](https://github.com/containerd/runwasi/pull/603), [#604](https://github.com/containerd/runwasi/pull/604))
 - Resolved CI failures in benchmark tests ([#669](https://github.com/containerd/runwasi/pull/669))
+- [#680](https://github.com/containerd/runwasi/pull/680): fixed a failed test `test_envs_not_present` and renamed it to `test_envs_return_default_only`
 
 ### Deprecated
 - Deprecated 'Shared' mode removed ([#671](https://github.com/containerd/runwasi/pull/671))
