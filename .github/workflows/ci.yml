@@ -12,6 +12,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+
   fmt:
     name: ${{ matrix.runtime }}
     strategy:
