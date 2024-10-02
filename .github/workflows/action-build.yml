@@ -49,15 +49,22 @@ jobs:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup cross-rs
         if: runner.os == 'Linux'
-        run: ./scripts/setup-cross.sh ${{ inputs.target }}
+        run: |
+          set -e
+          ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Setup build profile
         shell: bash
-        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
+        run: |
+          set -e
+          echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
-        run: make build-${{ inputs.runtime }}
+        run: |
+          set -e
+          make build-${{ inputs.runtime }}
       - name: Run tests
         timeout-minutes: 5
         run: |
+          set -e
           make test-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
@@ -70,6 +77,7 @@ jobs:
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
         run: |
+          set -e
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
