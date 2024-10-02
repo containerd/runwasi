@@ -133,6 +133,8 @@ Most features will likely have most of the code in the `containerd-shim-wasm` pr
 
 A tip for developing a new feature is to implement it and test it with one runtime you are familiar with then add it to all the runtimes.  This makes it easier to test and iterate before making changes across all the runtimes.
 
+Any changes made to the `containerd-shim-wasm` crate needs to be documented in the [CHANGELOG.md](./crates/containerd-shim-wasm/CHANGELOG.md) file following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+
 ## Adding new shims
 
 We welcome new shims, though you can also host them in your own repositories as well and use the `coantainerd-shim-wasm` crate.  We recognize that the project is moving fast and having them in this repository can reduce the need for changes as well for discoverability.  
