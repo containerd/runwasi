@@ -74,24 +74,15 @@ build: build-wasm $(RUNTIMES:%=build-%);
 build-common: build-wasm;
 build-wasm:
 	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Build failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Build failed"; exit 1; fi 
 
 build-%:
 	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-$* $(FEATURES_$*) $(RELEASE_FLAG)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Build failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Build failed"; exit 1; fi 
 
 build-oci-tar-builder:
 	$(CARGO) build $(TARGET_FLAG) -p oci-tar-builder $(FEATURES_$*) $(RELEASE_FLAG)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Build failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Build failed"; exit 1; fi 
 
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
@@ -100,28 +91,16 @@ check-common: check-wasm;
 check-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
-	@if [ $$? -ne 0 ]; then \  
-		echo "Check failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Check failed"; exit 1; fi 
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Check failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Check failed"; exit 1; fi 
 
 check-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p containerd-shim-$* -- --check
-	@if [ $$? -ne 0 ]; then \  
-		echo "Check failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Check failed"; exit 1; fi 
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) -p containerd-shim-$* -- $(WARNINGS)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Check failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Check failed"; exit 1; fi 
 
 .PHONY: fix fix-common fix-wasm fix-%
 fix: fix-wasm $(RUNTIMES:%=fix-%);
@@ -130,28 +109,16 @@ fix-common: fix-wasm;
 fix-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
-	@if [ $$? -ne 0 ]; then \  
-		echo "Fix failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Fix failed"; exit 1; fi 
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Fix failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Fix failed"; exit 1; fi 
 
 fix-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p containerd-shim-$*
-	@if [ $$? -ne 0 ]; then \  
-		echo "Fix failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Fix failed"; exit 1; fi 
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_$*) --fix -p containerd-shim-$* -- $(WARNINGS)
-	@if [ $$? -ne 0 ]; then \  
-		echo "Fix failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Fix failed"; exit 1; fi 
 
 .PHONY: test test-common test-wasm test-wasmedge test-%
 test: test-wasm $(RUNTIMES:%=test-%);
@@ -160,42 +127,27 @@ test-common: test-wasm;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
-	@if [ $$? -ne 0 ]; then \  
-		echo "Test failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Test failed"; exit 1; fi 
 test-wasmedge:
 	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge $(FEATURES_wasmedge) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
-	@if [ $$? -ne 0 ]; then \  
-		echo "Test failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Test failed"; exit 1; fi 
 ifneq ($(OS), Windows_NT)
 ifneq ($(patsubst %-musl,,xx_$(TARGET)),)
 	# run wasmedge test without the default `static` feature
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasmedge --no-default-features --features standalone --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 endif
 endif
-	@if [ $$? -ne 0 ]; then \  
-		echo "Test failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Test failed"; exit 1; fi 
 
 test-%:
 	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
-	@if [ $$? -ne 0 ]; then \  
-		echo "Test failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Test failed"; exit 1; fi 
 
 test-oci-tar-builder:
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package oci-tar-builder $(FEATURES_$*) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
-	@if [ $$? -ne 0 ]; then \  
-		echo "Test failed"; \  
-		exit 1; \  
-	fi 
+	@if [ $$? -ne 0 ]; then echo "Test failed"; exit 1; fi 
 
 .PHONY: install install-%
 install: $(RUNTIMES:%=install-%);
