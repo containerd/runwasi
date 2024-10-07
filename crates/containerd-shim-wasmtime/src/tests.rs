@@ -3,6 +3,7 @@ use std::time::Duration;
 use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::testing::modules::*;
 use containerd_shim_wasm::testing::{oci_helpers, WasiTest};
+use reqwest::blocking::Client;
 use serial_test::serial;
 use wasmtime::Config;
 use WasmtimeTestInstance as WasiInstance;
@@ -254,6 +255,48 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "Hello, world!\n");
+
+    Ok(())
+}
+
+// Test that the shim can execute a wasm component that is
+// compiled with wasi:http/proxy.
+//
+// This is using the `wasi:http/proxy` world to run the component.
+//
+// The wasm component is built and copied over from
+// https://github.com/sunfishcode/hello-wasi-http. See
+// README.md for how to build the component.
+#[test]
+#[serial]
+fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
+    let client_thread = std::thread::spawn(|| {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(5)) // Set the timeout duration
+            .build()
+            .unwrap();
+
+        let response = client.get("http://127.0.0.1:8080").send().unwrap();
+        assert!(response.status().is_success());
+
+        let body = response.text().unwrap();
+        assert_eq!(body, "Hello, this is your first wasi:http/proxy world!\n");
+    });
+
+    // let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
+    //     .with_wasm(HELLO_WASI_HTTP)?
+    //     .as_oci_image(None, None)?;
+
+    // let (exit_code, _stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(300))?;
+
+    let (exit_code, _stdout, _) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(HELLO_WASI_HTTP)?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    client_thread.join().unwrap();
+    assert_eq!(exit_code, 0);
 
     Ok(())
 }

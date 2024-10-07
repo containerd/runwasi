@@ -7,12 +7,45 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
-use wasmtime::component::{self, Component, ResourceTable};
+use wasmtime::component::types::ComponentItem;
+use wasmtime::component::{self, Component, Linker, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::preview1::{self as wasi_preview1};
 use wasmtime_wasi::{self as wasi_preview2};
+use wasmtime_wasi_http::bindings::ProxyPre;
+use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
+
+use crate::http_proxy::serve_conn;
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+
+/// Represents the WASI API that the component is targeting.
+enum ComponentTarget<'a> {
+    /// A component that targets WASI command-line interface.
+    Command,
+    /// A component that targets WASI http/proxy  interface.
+    HttpProxy,
+    /// Core function. The `&'a str` represents function to call.
+    Core(&'a str),
+}
+
+impl<'a> ComponentTarget<'a> {
+    fn new<'b, I>(exports: I, func: &'a str) -> Self
+    where
+        I: IntoIterator<Item = (&'b str, ComponentItem)> + 'b,
+    {
+        // This is hueristic but seems to work
+        let has_http_handler = exports
+            .into_iter()
+            .any(|(name, _)| name.starts_with("wasi:http/incoming-handler"));
+
+        match (func, has_http_handler) {
+            ("_start", false) => Self::Command,
+            ("_start", true) => Self::HttpProxy,
+            _ => Self::Core(func),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct WasmtimeEngine<T: WasiConfig> {
@@ -50,9 +83,18 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
 
 /// Data that contains both wasi_preview1 and wasi_preview2 contexts.
 pub struct WasiCtx {
-    pub(crate) wasi_preview2: wasi_preview2::WasiCtx,
-    pub(crate) wasi_preview1: wasi_preview1::WasiP1Ctx,
+    // TODO: split WasiCtx into structs that holds only target relevant data
+    pub(crate) wasi_preview1: Option<wasi_preview1::WasiP1Ctx>,
+    pub(crate) wasi_preview2_cli: wasi_preview2::WasiCtx,
+    pub(crate) wasi_preview2_http: wasmtime_wasi_http::WasiHttpCtx,
     pub(crate) resource_table: ResourceTable,
+    pub(crate) envs: Vec<(String, String)>,
+}
+
+impl WasiCtx {
+    pub fn envs(&self) -> &[(String, String)] {
+        &self.envs
+    }
 }
 
 /// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
@@ -62,7 +104,17 @@ impl wasi_preview2::WasiView for WasiCtx {
     }
 
     fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
-        &mut self.wasi_preview2
+        &mut self.wasi_preview2_cli
+    }
+}
+
+impl WasiHttpView for WasiCtx {
+    fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
+        &mut self.resource_table
+    }
+
+    fn ctx(&mut self) -> &mut WasiHttpCtx {
+        &mut self.wasi_preview2_http
     }
 }
 
@@ -154,7 +206,10 @@ where
 
         log::debug!("init linker");
         wasi_preview1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiCtx| {
-            &mut wasi_ctx.wasi_preview1
+            wasi_ctx
+                .wasi_preview1
+                .as_mut()
+                .expect("Wasi Preview1 exists for module")
         })?;
 
         wasmtime_wasi::runtime::in_tokio(async move {
@@ -176,6 +231,68 @@ where
         })
     }
 
+    async fn execute_component_async(
+        &self,
+        component: Component,
+        store: Store<WasiCtx>,
+        linker: Linker<WasiCtx>,
+        func: String,
+        stdio: Stdio,
+    ) -> Result<()> {
+        let mut store = store;
+        let mut linker = linker;
+
+        let target = ComponentTarget::new(
+            component.component_type().exports(&self.engine),
+            func.as_str(),
+        );
+
+        // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
+        match target {
+            ComponentTarget::Command => {
+                let command = wasi_preview2::bindings::Command::instantiate_async(
+                    &mut store, &component, &linker,
+                )
+                .await?;
+
+                stdio.redirect()?;
+
+                command
+                    .wasi_cli_run()
+                    .call_run(&mut store)
+                    .await?
+                    .map_err(|_| {
+                        anyhow::anyhow!(
+                            "failed to run component targeting `wasi:cli/command` world"
+                        )
+                    })
+            }
+            ComponentTarget::HttpProxy => {
+                wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
+
+                let pre = linker.instantiate_pre(&component)?;
+                let instance = ProxyPre::new(pre)?;
+
+                log::info!("starting HTTP server");
+                serve_conn(instance, store).await
+            }
+            ComponentTarget::Core(func) => {
+                let pre = linker.instantiate_pre(&component)?;
+                let instance = pre.instantiate_async(&mut store).await?;
+
+                stdio.redirect()?;
+
+                log::info!("getting component exported function {func:?}");
+                let start_func = instance.get_func(&mut store, func).context(format!(
+                    "component does not have exported function {func:?}"
+                ))?;
+
+                log::debug!("running exported function {func:?} {start_func:?}");
+                start_func.call_async(&mut store, &[], &mut []).await
+            }
+        }
+    }
+
     /// Execute a wasm component.
     ///
     /// This function adds wasi_preview2 to the linker and can be utilized
@@ -183,7 +300,7 @@ where
     fn execute_component(
         &self,
         component: Component,
-        mut store: Store<WasiCtx>,
+        store: Store<WasiCtx>,
         func: String,
         stdio: Stdio,
     ) -> Result<std::prelude::v1::Result<(), anyhow::Error>, anyhow::Error> {
@@ -196,44 +313,14 @@ where
 
         log::info!("instantiating component");
 
-        // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
-        //
-        // TODO: think about a better way to do this.
         wasmtime_wasi::runtime::in_tokio(async move {
-            if func == "_start" {
-                let command = wasi_preview2::bindings::Command::instantiate_async(
-                    &mut store, &component, &linker,
-                )
-                .await?;
-
-                stdio.redirect()?;
-
-                let status = command
-                    .wasi_cli_run()
-                    .call_run(&mut store)
-                    .await?
-                    .map_err(|_| {
-                        anyhow::anyhow!(
-                            "failed to run component targeting `wasi:cli/command` world"
-                        )
-                    });
-
-                Ok(status)
-            } else {
-                let pre = linker.instantiate_pre(&component)?;
-                let instance = pre.instantiate_async(&mut store).await?;
-
-                log::info!("getting component exported function {func:?}");
-                let start_func = instance.get_func(&mut store, &func).context(format!(
-                    "component does not have exported function {func:?}"
-                ))?;
-
-                log::debug!("running exported function {func:?} {start_func:?}");
-
-                stdio.redirect()?;
-
-                let status = start_func.call_async(&mut store, &[], &mut []).await;
-                Ok(status)
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    Ok(Ok::<_, anyhow::Error>(()))
+                }
+                status = self.execute_component_async(component, store, linker, func, stdio) => {
+                    Ok(status)
+                }
             }
         })
     }
@@ -280,9 +367,11 @@ fn prepare_wasi_ctx(
     envs: &[(String, String)],
 ) -> Result<WasiCtx, anyhow::Error> {
     let wasi_data = WasiCtx {
-        wasi_preview1: wasi_builder(ctx, envs)?.build_p1(),
-        wasi_preview2: wasi_builder(ctx, envs)?.build(),
+        wasi_preview1: wasi_builder(ctx, envs)?.build_p1().into(),
+        wasi_preview2_cli: wasi_builder(ctx, envs)?.build(),
+        wasi_preview2_http: WasiHttpCtx::new(),
         resource_table: ResourceTable::default(),
+        envs: envs.to_owned(),
     };
     Ok(wasi_data)
 }
