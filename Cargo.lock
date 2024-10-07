@@ -521,6 +521,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "cfg_aliases"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
+
+[[package]]
 name = "cgroups-rs"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -673,9 +679,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim"
-version = "0.7.1"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ecfe3bbd2e126cbd3b37ebc7faadedeeb5a87a389dc1668f1f0f4d246e46769"
+checksum = "0a7db624a85172d3d66c8408e8a7ec8519b6506cc7437947c31ec3730dfd8b05"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -684,8 +690,8 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "mio",
- "nix 0.28.0",
+ "mio 1.0.2",
+ "nix 0.29.0",
  "oci-spec",
  "os_pipe",
  "page_size",
@@ -710,9 +716,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-protos"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e4ef8fa542cd6964b2705983d02de4f4bdaaac8d25feabcef5c43a87ac58291"
+checksum = "11496b458083e0e6c6f7a3473b33bb2af0f1ab6a39cdaf9f1bb1f6044f43bc51"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
@@ -2679,6 +2685,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mio"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80e04d1dcff3aae0704555fe5fee3bcfaf3d1fdf8a7e521d5b9d2b42acb52cec"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "log",
+ "wasi",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2767,7 +2786,20 @@ checksum = "ab2156c4fce2f8df6c499cc1c763e4394b7482525bf2a9701c9d79d215f519e4"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if 1.0.0",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
+ "libc",
+ "memoffset 0.9.1",
+]
+
+[[package]]
+name = "nix"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
+dependencies = [
+ "bitflags 2.6.0",
+ "cfg-if 1.0.0",
+ "cfg_aliases 0.2.1",
  "libc",
  "memoffset 0.9.1",
 ]
@@ -4732,7 +4764,7 @@ dependencies = [
  "backtrace",
  "bytes",
  "libc",
- "mio",
+ "mio 0.8.11",
  "num_cpus",
  "parking_lot",
  "pin-project-lite",
@@ -5247,7 +5279,7 @@ dependencies = [
  "bytes",
  "derivative",
  "futures",
- "mio",
+ "mio 0.8.11",
  "serde",
  "socket2 0.4.10",
  "thiserror",
@@ -5268,7 +5300,7 @@ dependencies = [
  "derivative",
  "futures-util",
  "libc",
- "mio",
+ "mio 0.8.11",
  "pin-project-lite",
  "serde",
  "socket2 0.4.10",
