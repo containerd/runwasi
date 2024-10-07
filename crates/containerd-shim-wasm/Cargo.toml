@@ -31,7 +31,7 @@ thiserror = { workspace = true }
 ttrpc = { workspace = true }
 wat = { workspace = true }
 tokio = { version = "1.38.1", features = [ "full" ] }
-futures = { version = "0.3.30" }
+futures = { version = "0.3.31" }
 wasmparser = "0.214.0"
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
