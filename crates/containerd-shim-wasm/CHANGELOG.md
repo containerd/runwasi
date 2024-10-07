@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v0.7.0] — 2024-10-7
+
 ### Added
 - OpenTelemetry tracing support ([#582](https://github.com/containerd/runwasi/pull/582), [#653](https://github.com/containerd/runwasi/pull/653))
 - Enabled async, networking, and IP name lookup in Wasmtime ([#589](https://github.com/containerd/runwasi/pull/589))
@@ -34,4 +36,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Removed dependency on `prost-types` ([#656](https://github.com/containerd/runwasi/pull/656))
 - Removed dependency on `native-tls` ([#683](https://github.com/containerd/runwasi/pull/683)), note that the `opentelemetry` feature still depends on `native-tls`.
 
-[Unreleased]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.6.0..HEAD>
+[Unreleased]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.7.0..HEAD>
+[v0.7.0]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.6.0...containerd-shim-wasm/v0.7.0>
