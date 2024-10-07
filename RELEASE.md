@@ -14,37 +14,13 @@ gh workflow run release.yml -f dry_run=true -f crate=containerd-shim-wasm -f ver
 - `version:` [string] the version of the crate to stamp, tag, and release (e.g., 1.0.0, 0.6.0-rc1)
 - `dry_run:` [boolean] a flag that causes the workflow to run all step except ones that would tag or push artifacts.
 
-The workflow performs the following steps:
-- Verifies inputs
-- Verifies ability to push crates
-- Updates the version of the crate to the version specified in the workflow input
-- Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)
-- Run the tests for that crate (and only that crate!)
-- Publishes to the crates.io
-- Tags the repository for the release
-- Creates a GitHub release for that crate (attaching any artifacts)
-
 ### Crate Release Sequence
 
 Must release the creates in this order due to dependencies:
-1. `containerd-shim-wasm-test-modules`
-2. `oci-tar-builder`
-3. `containerd-shim-wasm`
-4. All runtime-related crates.
+1. `containerd-shim-wasm`
+2. All runtime-related crates.
 
-The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
-
-## Local Development vs. Release
-Locally, crates reference local paths. During release, they target published versions.
-Use both `path` and `version` fields in the workspace `Cargo.toml`:
-
-e.g.
-
-```toml
-containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
-```
-
-## Steps
+## Release Steps
 
 1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate
 2. PR can be merged after 2 LGTMs
@@ -56,6 +32,16 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 > Note: If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.
 >
 > For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.
+
+## Local Development vs. Release
+Locally, crates reference local paths. During release, they target published versions.
+Use both `path` and `version` fields in the workspace `Cargo.toml`:
+
+e.g.
+
+```toml
+containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
+```
 
 ## Verify signing
 
@@ -70,7 +56,7 @@ containerd-shim-wasmtime-v1
 
 In the Github release page, please provide the above command in the instructions for the consumer to verify the release.
 
-## First release of a crate
+## First time release of a crate
 
 If the crate has never been published to crates.io before then ownership of the crate will need to be configured.
 The containerd/runwasi-committers team will need to be added as an owner of the crate.
@@ -85,3 +71,17 @@ cargo owner --add github:containerd:runwasi-committers <crate-name>
 Alternatively, the cargo cli does support setting the token via an environment variable, `CARGO_REGISTRY_TOKEN` or as a CLI flag.*
 
 Now all members of the containerd/runwasi-committers team will have access to manage the crate (after they have accepted the invite to the crate).
+
+## Release workflow summary
+
+The workflow performs the following steps:
+- Verifies inputs
+- Verifies ability to push crates
+- Updates the version of the crate to the version specified in the workflow input
+- Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)
+- Run the tests for that crate (and only that crate!)
+- Publishes to the crates.io
+- Tags the repository for the release
+- Creates a GitHub release for that crate (attaching any artifacts)
+
+The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
