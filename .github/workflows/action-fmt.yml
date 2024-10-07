@@ -32,3 +32,5 @@ jobs:
           rustup toolchain install nightly --component rustfmt
       - name: Run checks
         run: make check-${{ inputs.runtime }}
+      - name: Check unused dependencies
+        uses: bnjbvr/cargo-machete@v0.7.0
