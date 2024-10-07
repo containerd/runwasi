@@ -200,10 +200,11 @@ where
         //
         // TODO: think about a better way to do this.
         wasmtime_wasi::runtime::in_tokio(async move {
-            let pre = linker.instantiate_pre(&component)?;
             if func == "_start" {
-                let (command, _instance) =
-                    wasi_preview2::bindings::Command::instantiate_pre(&mut store, &pre).await?;
+                let command = wasi_preview2::bindings::Command::instantiate_async(
+                    &mut store, &component, &linker,
+                )
+                .await?;
 
                 stdio.redirect()?;
 
@@ -219,6 +220,7 @@ where
 
                 Ok(status)
             } else {
+                let pre = linker.instantiate_pre(&component)?;
                 let instance = pre.instantiate_async(&mut store).await?;
 
                 log::info!("getting component exported function {func:?}");

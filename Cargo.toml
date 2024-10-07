@@ -48,8 +48,8 @@ serial_test = "2"
 tracing = "0.1"
 
 # wasmtime
-wasmtime = { version = "22.0.0", features = ["async"] }
-wasmtime-wasi = { version = "22.0.0" }
+wasmtime = { version = "25.0.1", features = ["async"] }
+wasmtime-wasi = { version = "25.0.1" }
 
 [profile.release]
 panic = "abort"
