@@ -76,8 +76,8 @@ jobs:
               core.setOutput('is_shim', true);
             }
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
-      - name: Check crates.io ownership
-        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' }}
+      - name: Add crates.io ownership
+        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' }}
         run: |
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
@@ -134,7 +134,7 @@ jobs:
         with:
           path: release
       - name: Cargo publish
-        if: ${{ matrix.is_shim  != 'true' }}
+        if: ${{ matrix.is_shim  != 'true' && github.repository == 'containerd/runwasi' }}
         run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
