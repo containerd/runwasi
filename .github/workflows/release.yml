@@ -148,7 +148,7 @@ jobs:
         if: ${{ matrix.crate == 'containerd-shim-wasm' &&  !inputs.dry_run }}
         run: |
           cd $GITHUB_WORKSPACE
-          ./scripts/extract-changelog.sh ${{matrix.version}} > RELEASE_NOTES.md
+          ./scripts/extract-changelog.sh v${{matrix.version}} > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
       - name: Create release
         if: ${{ !inputs.dry_run }}
