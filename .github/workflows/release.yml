@@ -164,7 +164,7 @@ jobs:
             --title "${{matrix.crate}}/v${{matrix.version}}" \
             --notes-file RELEASE_NOTES.md \
             --verify-tag \
-            $PRERELEASE_ARGS \
+            $PRERELEASE_ARGS
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
