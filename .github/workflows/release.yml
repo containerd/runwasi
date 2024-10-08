@@ -146,7 +146,7 @@ jobs:
           git push origin "${{matrix.crate}}/v${{matrix.version}}"
       - name: Extract release notes
         if: ${{ matrix.crate == 'containerd-shim-wasm' &&  !inputs.dry_run }}
-        run: 
+        run: |
           cd $GITHUB_WORKSPACE
           ./scripts/extract-changelog.sh ${{matrix.version}} > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
