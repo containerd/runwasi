@@ -11,6 +11,7 @@ log = { workspace = true }
 tokio = "1.38.1"
 wasmer = { version = "4.1.2" }
 wasmer-wasix = { version = "0.12.0" }
+mio = { version = "0.8.11", features = ["net"] }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
@@ -19,3 +20,6 @@ serial_test = { workspace = true }
 [[bin]]
 name = "containerd-shim-wasmer-v1"
 path = "src/main.rs"
+
+[package.metadata.cargo-machete]
+ignored = ["mio"] # wasmer depends on mio but the latest version of mio moved features behind a feature flag
