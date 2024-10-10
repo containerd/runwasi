@@ -1,3 +1,4 @@
+mod http_proxy;
 pub mod instance;
 
 pub use instance::WasmtimeInstance;

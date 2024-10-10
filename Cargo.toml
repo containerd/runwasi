@@ -50,6 +50,7 @@ tracing = "0.1"
 # wasmtime
 wasmtime = { version = "25.0.1", features = ["async"] }
 wasmtime-wasi = { version = "25.0.1" }
+wasmtime-wasi-http = { version = "25.0.1" }
 
 [profile.release]
 panic = "abort"
