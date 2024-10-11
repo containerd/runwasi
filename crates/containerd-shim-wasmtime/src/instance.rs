@@ -34,7 +34,7 @@ impl<'a> ComponentTarget<'a> {
     where
         I: IntoIterator<Item = (&'b str, ComponentItem)> + 'b,
     {
-        // This is hueristic but seems to work
+        // This is heuristic but seems to work
         let has_http_handler = exports
             .into_iter()
             .any(|(name, _)| name.starts_with("wasi:http/incoming-handler"));
