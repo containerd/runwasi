@@ -1,4 +1,5 @@
-// Heavily inspired by wasmtime serve command
+// Heavily inspired by wasmtime serve command:
+// https://github.com/bytecodealliance/wasmtime/blob/main/src/commands/serve.rs
 
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicU64, Ordering};
