@@ -8,7 +8,6 @@ use std::sync::Arc;
 use anyhow::{bail, Result};
 use wasmtime::component::ResourceTable;
 use wasmtime::Store;
-use wasmtime_wasi::{self as wasi_preview2};
 use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
@@ -21,49 +20,6 @@ const DEFAULT_ADDR: SocketAddr =
     SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), 8080);
 
 const DEFAULT_BACKLOG: u32 = 100;
-
-fn wasi_store_for_request(handler: &ProxyHandlerInner, req_id: u64) -> Store<WasiCtx> {
-    let engine = handler.instance_pre.engine();
-    let mut builder = wasi_preview2::WasiCtxBuilder::new();
-
-    builder.envs(&handler.env);
-    builder.env("REQUEST_ID", req_id.to_string());
-
-    let ctx = WasiCtx {
-        wasi_preview1: None,
-        wasi_preview2_cli: builder.build(),
-        wasi_preview2_http: WasiHttpCtx::new(),
-        resource_table: ResourceTable::default(),
-        envs: vec![],
-    };
-
-    Store::new(engine, ctx)
-}
-
-struct ProxyHandlerInner {
-    instance_pre: ProxyPre<WasiCtx>,
-    next_id: AtomicU64,
-    env: Vec<(String, String)>,
-}
-
-impl ProxyHandlerInner {
-    fn next_req_id(&self) -> u64 {
-        self.next_id.fetch_add(1, Ordering::Relaxed)
-    }
-}
-
-#[derive(Clone)]
-struct ProxyHandler(Arc<ProxyHandlerInner>);
-
-impl ProxyHandler {
-    fn new(instance_pre: ProxyPre<WasiCtx>, env: &[(String, String)]) -> Self {
-        Self(Arc::new(ProxyHandlerInner {
-            instance_pre,
-            env: env.to_owned(),
-            next_id: AtomicU64::from(0),
-        }))
-    }
-}
 
 type Request = hyper::Request<hyper::body::Incoming>;
 
@@ -127,6 +83,31 @@ pub(crate) async fn serve_conn(instance: ProxyPre<WasiCtx>, store: Store<WasiCtx
     }
 }
 
+struct ProxyHandlerInner {
+    instance_pre: ProxyPre<WasiCtx>,
+    next_id: AtomicU64,
+    env: Vec<(String, String)>,
+}
+
+impl ProxyHandlerInner {
+    fn next_req_id(&self) -> u64 {
+        self.next_id.fetch_add(1, Ordering::Relaxed)
+    }
+}
+
+#[derive(Clone)]
+struct ProxyHandler(Arc<ProxyHandlerInner>);
+
+impl ProxyHandler {
+    fn new(instance_pre: ProxyPre<WasiCtx>, env: &[(String, String)]) -> Self {
+        Self(Arc::new(ProxyHandlerInner {
+            instance_pre,
+            env: env.to_owned(),
+            next_id: AtomicU64::from(0),
+        }))
+    }
+}
+
 async fn handle_request(
     ProxyHandler(inner): ProxyHandler,
     req: Request,
@@ -179,4 +160,22 @@ async fn handle_request(
             bail!("guest never invoked `response-outparam::set` method: {e:?}")
         }
     }
+}
+
+fn wasi_store_for_request(handler: &ProxyHandlerInner, req_id: u64) -> Store<WasiCtx> {
+    let engine = handler.instance_pre.engine();
+    let mut builder = wasmtime_wasi::WasiCtxBuilder::new();
+
+    builder.envs(&handler.env);
+    builder.env("REQUEST_ID", req_id.to_string());
+
+    let ctx = WasiCtx {
+        wasi_preview1: None,
+        wasi_preview2_cli: builder.build(),
+        wasi_preview2_http: WasiHttpCtx::new(),
+        resource_table: ResourceTable::default(),
+        envs: vec![],
+    };
+
+    Store::new(engine, ctx)
 }
