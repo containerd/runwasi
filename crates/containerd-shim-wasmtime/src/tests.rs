@@ -263,7 +263,8 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 //
 // This is using the `wasi:http/proxy` world to run the component.
 //
-// The wasm component is built using cargo component
+// The wasm component is built using cargo component as illustrated in the following example::
+// https://opensource.microsoft.com/blog/2024/09/25/distributing-webassembly-components-using-oci-registries/
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
