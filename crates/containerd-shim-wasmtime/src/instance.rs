@@ -315,11 +315,11 @@ where
 
         wasmtime_wasi::runtime::in_tokio(async move {
             tokio::select! {
-                _ = tokio::signal::ctrl_c() => {
-                    Ok(Ok::<_, anyhow::Error>(()))
-                }
                 status = self.execute_component_async(component, store, linker, func, stdio) => {
                     Ok(status)
+                }
+                sig = wait_for_signal() => {
+                    Ok(sig)
                 }
             }
         })
@@ -397,4 +397,26 @@ fn wasi_builder(
         .allow_ip_name_lookup(true)
         .preopened_dir("/", "/", dir_perms, file_perms)?;
     Ok(builder)
+}
+
+async fn wait_for_signal() -> Result<()> {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        let mut sigquit = signal(SignalKind::quit())?;
+        let mut sigterm = signal(SignalKind::terminate())?;
+
+        tokio::select! {
+            _ = sigquit.recv() => { }
+            _ = sigterm.recv() => { }
+            _ = tokio::signal::ctrl_c() =>  {}
+        }
+
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c().await;
+        Ok(())
+    }
 }

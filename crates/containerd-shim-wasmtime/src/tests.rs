@@ -3,7 +3,6 @@ use std::time::Duration;
 use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::testing::modules::*;
 use containerd_shim_wasm::testing::{oci_helpers, WasiTest};
-use reqwest::blocking::Client;
 use serial_test::serial;
 use wasmtime::Config;
 use WasmtimeTestInstance as WasiInstance;
@@ -264,38 +263,42 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 //
 // This is using the `wasi:http/proxy` world to run the component.
 //
-// The wasm component is built and copied over from
-// https://github.com/sunfishcode/hello-wasi-http. See
-// README.md for how to build the component.
+// The wasm component is built using cargo component
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
-    let client_thread = std::thread::spawn(|| {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(5)) // Set the timeout duration
-            .build()
-            .unwrap();
+    const MAX_ATTEMPTS: u32 = 10;
+    const BACKOFF_DURATION: Duration = Duration::from_secs(1);
 
-        let response = client.get("http://127.0.0.1:8080").send().unwrap();
-        assert!(response.status().is_success());
-
-        let body = response.text().unwrap();
-        assert_eq!(body, "Hello, this is your first wasi:http/proxy world!\n");
-    });
-
-    // let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
-    //     .with_wasm(HELLO_WASI_HTTP)?
-    //     .as_oci_image(None, None)?;
-
-    // let (exit_code, _stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(300))?;
-
-    let (exit_code, _stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let srv = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WASI_HTTP)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()?;
 
-    client_thread.join().unwrap();
+    let srv = srv.start()?;
+
+    let mut attempts = 0;
+    let response = loop {
+        match reqwest::blocking::get("http://127.0.0.1:8080") {
+            Ok(resp) => break Ok(resp),
+            Err(err) => {
+                if attempts < MAX_ATTEMPTS {
+                    std::thread::sleep(BACKOFF_DURATION);
+                    attempts += 1;
+                    continue;
+                }
+
+                break Err(err);
+            }
+        }
+    };
+
+    let response = response.expect("Server did not start in time");
+    assert!(response.status().is_success());
+
+    let body = response.text().unwrap();
+    assert_eq!(body, "Hello, this is your first wasi:http/proxy world!\n");
+
+    let (exit_code, _, _) = srv.ctrl_c()?.wait(Duration::from_secs(5))?;
     assert_eq!(exit_code, 0);
 
     Ok(())

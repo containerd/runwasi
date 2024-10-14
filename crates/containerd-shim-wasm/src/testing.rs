@@ -8,7 +8,11 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
-use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+use libc::SIGINT;
+use oci_spec::runtime::{
+    get_default_namespaces, LinuxBuilder, LinuxNamespaceType, ProcessBuilder, RootBuilder,
+    SpecBuilder,
+};
 
 use crate::sandbox::{Instance, InstanceConfig};
 use crate::sys::signals::SIGKILL;
@@ -79,8 +83,15 @@ where
             "" => "/hello.wasm".to_string(),
             s => "/hello.wasm#".to_string().add(s),
         };
+
+        // Removing the `network` namespace results in the binding to the host's socket.
+        // This allows for direct communication with the host's networking interface.
+        let mut namespaces = get_default_namespaces();
+        namespaces.retain(|ns| ns.typ() != LinuxNamespaceType::Network);
+
         let spec = SpecBuilder::default()
             .root(RootBuilder::default().path("rootfs").build()?)
+            .linux(LinuxBuilder::default().namespaces(namespaces).build()?)
             .process(
                 ProcessBuilder::default()
                     .cwd("/")
@@ -155,7 +166,7 @@ where
         let tempdir = self.tempdir;
         let dir = tempdir.path();
 
-        log::info!("building wasi test");
+        log::info!("building wasi test: {}", dir.display());
 
         let mut cfg = InstanceConfig::new(
             WasiInstance::Engine::default(),
@@ -186,13 +197,21 @@ where
 
     pub fn start(&self) -> Result<&Self> {
         log::info!("starting wasi test");
-        self.instance.start()?;
+        let pid = self.instance.start()?;
+        log::info!("wasi test pid {pid}");
+
         Ok(self)
     }
 
     pub fn delete(&self) -> Result<&Self> {
         log::info!("deleting wasi test");
         self.instance.delete()?;
+        Ok(self)
+    }
+
+    pub fn ctrl_c(&self) -> Result<&Self> {
+        log::info!("sending SIGINT");
+        self.instance.kill(SIGINT as u32)?;
         Ok(self)
     }
 
@@ -268,6 +287,7 @@ pub mod oci_helpers {
             .arg(TEST_NAMESPACE)
             .arg("c")
             .arg("create")
+            .arg("--net-host")
             .arg(image_name)
             .arg(container_name)
             .spawn()?
