@@ -84,20 +84,20 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
 }
 
 pub struct WasiPreview2Ctx {
-    pub(crate) ctx: wasi_preview2::WasiCtx,
+    pub(crate) wasi_ctx: wasi_preview2::WasiCtx,
     pub(crate) resource_table: ResourceTable,
 }
 
 pub struct WasiPreview2HttpCtx {
-    pub(crate) ctx: wasi_preview2::WasiCtx,
-    pub(crate) http: WasiHttpCtx,
+    pub(crate) wasi_ctx: wasi_preview2::WasiCtx,
+    pub(crate) wasi_http: WasiHttpCtx,
     pub(crate) resource_table: ResourceTable,
 }
 
 impl WasiPreview2Ctx {
     pub fn new(ctx: &impl RuntimeContext) -> Result<Self> {
         Ok(Self {
-            ctx: wasi_builder(ctx)?.build(),
+            wasi_ctx: wasi_builder(ctx)?.build(),
             resource_table: ResourceTable::default(),
         })
     }
@@ -106,8 +106,8 @@ impl WasiPreview2Ctx {
 impl WasiPreview2HttpCtx {
     pub fn new(ctx: &impl RuntimeContext) -> Result<Self> {
         Ok(Self {
-            ctx: wasi_builder(ctx)?.build(),
-            http: WasiHttpCtx::new(),
+            wasi_ctx: wasi_builder(ctx)?.build(),
+            wasi_http: WasiHttpCtx::new(),
             resource_table: ResourceTable::default(),
         })
     }
@@ -120,7 +120,7 @@ impl wasi_preview2::WasiView for WasiPreview2Ctx {
     }
 
     fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
-        &mut self.ctx
+        &mut self.wasi_ctx
     }
 }
 
@@ -130,7 +130,7 @@ impl wasi_preview2::WasiView for WasiPreview2HttpCtx {
     }
 
     fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
-        &mut self.ctx
+        &mut self.wasi_ctx
     }
 }
 
@@ -140,7 +140,7 @@ impl WasiHttpView for WasiPreview2HttpCtx {
     }
 
     fn ctx(&mut self) -> &mut wasmtime_wasi_http::WasiHttpCtx {
-        &mut self.http
+        &mut self.wasi_http
     }
 }
 

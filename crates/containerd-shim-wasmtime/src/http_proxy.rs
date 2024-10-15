@@ -174,8 +174,8 @@ fn wasi_store_for_request(handler: &ProxyHandlerInner, req_id: u64) -> Store<Was
     builder.env("REQUEST_ID", req_id.to_string());
 
     let ctx = WasiPreview2HttpCtx {
-        ctx: builder.build(),
-        http: WasiHttpCtx::new(),
+        wasi_ctx: builder.build(),
+        wasi_http: WasiHttpCtx::new(),
         resource_table: ResourceTable::default(),
     };
 
