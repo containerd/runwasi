@@ -63,7 +63,7 @@ pub(crate) async fn serve_conn(
 
     log::info!("Serving HTTP on http://{}/", listener.local_addr()?);
 
-    let handler = ProxyHandler::new(instance, &env);
+    let handler = ProxyHandler::new(instance, env);
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -103,10 +103,10 @@ impl ProxyHandlerInner {
 struct ProxyHandler(Arc<ProxyHandlerInner>);
 
 impl ProxyHandler {
-    fn new(instance_pre: ProxyPre<WasiPreview2HttpCtx>, env: &[(String, String)]) -> Self {
+    fn new(instance_pre: ProxyPre<WasiPreview2HttpCtx>, env: Vec<(String, String)>) -> Self {
         Self(Arc::new(ProxyHandlerInner {
             instance_pre,
-            env: env.to_owned(),
+            env,
             next_id: AtomicU64::from(0),
         }))
     }
