@@ -10,8 +10,8 @@ use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
 use libc::SIGINT;
 use oci_spec::runtime::{
-    get_default_namespaces, LinuxBuilder, LinuxNamespaceType, ProcessBuilder, RootBuilder,
-    SpecBuilder,
+    get_default_namespaces, LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder,
+    RootBuilder, SpecBuilder,
 };
 
 use crate::sandbox::{Instance, InstanceConfig};
@@ -24,6 +24,8 @@ where
     WasiInstance::Engine: Default + Send + Sync + Clone,
 {
     container_name: String,
+    start_fn: String,
+    namespaces: Vec<LinuxNamespace>,
     tempdir: tempfile::TempDir,
     _phantom: PhantomData<WasiInstance>,
 }
@@ -62,47 +64,29 @@ where
         write(dir.join("stderr"), "")?;
 
         let builder = Self {
-            container_name: "test".to_string(),
             tempdir,
+            container_name: "test".to_string(),
+            start_fn: "".to_string(),
+            namespaces: get_default_namespaces(),
             _phantom: Default::default(),
         }
         .with_wasm([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00])?
-        .with_start_fn("")?
         .with_stdin("")?;
 
         Ok(builder)
     }
 
-    pub fn with_start_fn(self, start_fn: impl AsRef<str>) -> Result<Self> {
-        let dir = self.tempdir.path();
-        let start_fn = start_fn.as_ref();
-
-        log::info!("setting wasi test start_fn to {start_fn:?}");
-
-        let entrypoint = match start_fn {
-            "" => "/hello.wasm".to_string(),
-            s => "/hello.wasm#".to_string().add(s),
-        };
-
+    pub fn with_host_network(mut self) -> Self {
         // Removing the `network` namespace results in the binding to the host's socket.
         // This allows for direct communication with the host's networking interface.
-        let mut namespaces = get_default_namespaces();
-        namespaces.retain(|ns| ns.typ() != LinuxNamespaceType::Network);
+        self.namespaces
+            .retain(|ns| ns.typ() != LinuxNamespaceType::Network);
+        self
+    }
 
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .linux(LinuxBuilder::default().namespaces(namespaces).build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args([entrypoint])
-                    .build()?,
-            )
-            .build()?;
-
-        spec.save(dir.join("config.json"))?;
-
-        Ok(self)
+    pub fn with_start_fn(mut self, start_fn: impl AsRef<str>) -> Self {
+        start_fn.as_ref().clone_into(&mut self.start_fn);
+        self
     }
 
     pub fn with_wasm(self, wasmbytes: impl AsRef<[u8]>) -> Result<Self> {
@@ -165,6 +149,30 @@ where
     pub fn build(self) -> Result<WasiTest<WasiInstance>> {
         let tempdir = self.tempdir;
         let dir = tempdir.path();
+
+        log::info!("setting wasi test start_fn to {}", self.start_fn);
+
+        let entrypoint = match self.start_fn.as_str() {
+            "" => "/hello.wasm".to_string(),
+            s => "/hello.wasm#".to_string().add(s),
+        };
+
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .linux(
+                LinuxBuilder::default()
+                    .namespaces(self.namespaces)
+                    .build()?,
+            )
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args([entrypoint])
+                    .build()?,
+            )
+            .build()?;
+
+        spec.save(dir.join("config.json"))?;
 
         log::info!("building wasi test: {}", dir.display());
 
@@ -287,7 +295,6 @@ pub mod oci_helpers {
             .arg(TEST_NAMESPACE)
             .arg("c")
             .arg("create")
-            .arg("--net-host")
             .arg(image_name)
             .arg(container_name)
             .spawn()?

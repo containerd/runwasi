@@ -48,7 +48,7 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
 #[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
-        .with_start_fn("foo")?
+        .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
         .build()?
         .start()?

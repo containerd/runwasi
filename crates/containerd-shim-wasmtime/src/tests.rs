@@ -146,7 +146,7 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
 #[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
-        .with_start_fn("foo")?
+        .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
         .build()?
         .start()?
@@ -225,7 +225,7 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 fn test_simple_component() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(SIMPLE_COMPONENT)?
-        .with_start_fn("thunk")?
+        .with_start_fn("thunk")
         .build()?
         .start()?
         .wait(Duration::from_secs(10))?;
@@ -273,6 +273,7 @@ fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
 
     let srv = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WASI_HTTP)?
+        .with_host_network()
         .build()?;
 
     let srv = srv.start()?;
