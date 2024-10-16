@@ -37,15 +37,18 @@ impl<'a> ComponentTarget<'a> {
         I: IntoIterator<Item = (&'b str, ComponentItem)> + 'b,
     {
         // This is heuristic but seems to work
-        let has_http_handler = exports
+        exports
             .into_iter()
-            .any(|(name, _)| name.starts_with("wasi:http/incoming-handler"));
-
-        match (func, has_http_handler) {
-            ("_start", false) => Self::Command,
-            ("_start", true) => Self::HttpProxy,
-            _ => Self::Core(func),
-        }
+            .find_map(|(name, _)| {
+                if name.starts_with("wasi:http/incoming-handler") {
+                    Some(Self::HttpProxy)
+                } else if name.starts_with("wasi:cli/run") {
+                    Some(Self::Command)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(Self::Core(func))
     }
 }
 
