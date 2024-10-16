@@ -117,7 +117,17 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
                 continue;
             }
 
-            let compiled_layer = self.engine.precompile_module(&layer.layer)?;
+            use WasmBinaryType::*;
+
+            let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
+                Some(Module) => self.engine.precompile_module(&layer.layer)?,
+                Some(Component) => self.engine.precompile_component(&layer.layer)?,
+                None => {
+                    log::warn!("Unknow WASM binary type");
+                    continue;
+                }
+            };
+
             compiled_layers.push(Some(compiled_layer));
         }
 
