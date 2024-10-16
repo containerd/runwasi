@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use containerd_shim_wasm::container::RuntimeContext;
+use hyper::server::conn::http1;
 use wasmtime::component::ResourceTable;
 use wasmtime::Store;
 use wasmtime_wasi_http::bindings::http::types::Scheme;
@@ -28,7 +29,6 @@ pub(crate) async fn serve_conn(
     ctx: &impl RuntimeContext,
     instance: ProxyPre<WasiPreview2HttpCtx>,
 ) -> Result<()> {
-    use hyper::server::conn::http1;
     let env = envs_from_ctx(ctx);
 
     let addr = env
