@@ -381,6 +381,21 @@ pub(crate) fn envs_from_ctx(ctx: &impl RuntimeContext) -> Vec<(String, String)> 
         .collect()
 }
 
+pub(crate) fn parse_env_value<T: std::str::FromStr>(
+    env: &[(String, String)],
+    key: &str,
+) -> Option<T> {
+    env.iter()
+        .find(|(k, _)| k == key)
+        .and_then(|(_, v)| match v.parse::<T>() {
+            Ok(v) => Some(v),
+            Err(_err) => {
+                log::warn!("Failed to parse env variable {key}:{v}");
+                None
+            }
+        })
+}
+
 fn store_for_context<T: wasi_preview2::WasiView>(
     engine: &wasmtime::Engine,
     ctx: T,

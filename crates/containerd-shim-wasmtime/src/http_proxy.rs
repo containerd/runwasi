@@ -16,7 +16,7 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::instance::{envs_from_ctx, WasiPreview2HttpCtx};
+use crate::instance::{envs_from_ctx, parse_env_value, WasiPreview2HttpCtx};
 
 const DEFAULT_ADDR: SocketAddr =
     SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), 8080);
@@ -30,18 +30,8 @@ pub(crate) async fn serve_conn(
     instance: ProxyPre<WasiPreview2HttpCtx>,
 ) -> Result<()> {
     let env = envs_from_ctx(ctx);
-
-    let addr = env
-        .iter()
-        .find(|(key, _)| key == "WASMTIME_HTTP_PROXY_SOCKET_ADDR")
-        .and_then(|(_, val)| val.parse().ok())
-        .unwrap_or(DEFAULT_ADDR);
-
-    let backlog = env
-        .iter()
-        .find(|(key, _)| key == "WASMTIME_HTTP_PROXY_BACKLOG")
-        .and_then(|(_, val)| val.parse().ok())
-        .unwrap_or(DEFAULT_BACKLOG);
+    let addr = parse_env_value(&env, "WASMTIME_HTTP_PROXY_SOCKET_ADDR").unwrap_or(DEFAULT_ADDR);
+    let backlog = parse_env_value(&env, "WASMTIME_HTTP_BACKLOG").unwrap_or(DEFAULT_BACKLOG);
 
     let socket = match addr {
         SocketAddr::V4(_) => tokio::net::TcpSocket::new_v4()?,
