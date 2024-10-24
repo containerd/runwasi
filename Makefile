@@ -143,6 +143,10 @@ install-%:
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
 	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
+install-oci-tar-builder: build-oci-tar-builder
+	mkdir -p $(PREFIX)/bin
+	$(INSTALL) $(TARGET_DIR)/$(TARGET)/$(OPT_PROFILE)/oci-tar-builder $(PREFIX)/bin/
+
 .PHONY: dist dist-%
 dist: $(RUNTIMES:%=dist-%);
 
