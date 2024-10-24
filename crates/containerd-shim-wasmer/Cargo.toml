@@ -7,8 +7,8 @@ edition.workspace = true
 anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
+tokio = { workspace = true }
 
-tokio = "1.38.1"
 wasmer = { version = "4.1.2" }
 wasmer-wasix = { version = "0.12.0" }
 mio = { version = "0.8.11", features = ["net"] }
