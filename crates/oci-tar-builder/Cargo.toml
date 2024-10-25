@@ -19,7 +19,7 @@ serde_json = { workspace = true }
 clap = { version = "4.5.20", features = ["derive"] }
 indexmap = "2.2.6"
 oci-wasm = { version = "0.0.5", default-features = false, features = ["rustls-tls"] }
-tokio = { version = "1.38.0", features = [ "full" ] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [lib]
 path = "src/lib.rs"

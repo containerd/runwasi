@@ -28,7 +28,7 @@ fn test_validation_error() -> anyhow::Result<()> {
     // as opposed to failing when starting it.
 
     let result = WasiTest::<InstanceFailingValidation>::builder()?
-        .with_start_fn("foo")?
+        .with_start_fn("foo")
         .with_wasm("/invalid_entrypoint.wasm")?
         .build();
 

@@ -134,7 +134,7 @@ pub trait Instance: 'static {
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
 
-    /// Waits for the instance to finish and retunrs its exit code
+    /// Waits for the instance to finish and returns its exit code
     /// This is a blocking call.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), parent = tracing::Span::current(), level = "Info"))]
     fn wait(&self) -> (u32, DateTime<Utc>) {

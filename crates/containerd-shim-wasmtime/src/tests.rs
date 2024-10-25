@@ -146,7 +146,7 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
 #[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
-        .with_start_fn("foo")?
+        .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
         .build()?
         .start()?
@@ -225,7 +225,7 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 fn test_simple_component() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(SIMPLE_COMPONENT)?
-        .with_start_fn("thunk")?
+        .with_start_fn("thunk")
         .build()?
         .start()?
         .wait(Duration::from_secs(10))?;
@@ -254,6 +254,50 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "Hello, world!\n");
+
+    Ok(())
+}
+
+// Test that the shim can execute a wasm component that is
+// compiled with wasi:http/proxy.
+//
+// This is using the `wasi:http/proxy` world to run the component.
+//
+// The wasm component is built using cargo component as illustrated in the following example::
+// https://opensource.microsoft.com/blog/2024/09/25/distributing-webassembly-components-using-oci-registries/
+#[test]
+#[serial]
+fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
+    const MAX_ATTEMPTS: u32 = 10;
+    const BACKOFF_DURATION: Duration = Duration::from_secs(1);
+
+    let srv = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(HELLO_WASI_HTTP)?
+        .with_host_network()
+        .build()?;
+
+    let srv = srv.start()?;
+
+    let mut attempts = 0;
+    let response = loop {
+        match reqwest::blocking::get("http://127.0.0.1:8080") {
+            Ok(resp) => break Ok(resp),
+            Err(err) if attempts == MAX_ATTEMPTS => break Err(err),
+            Err(_) => {
+                std::thread::sleep(BACKOFF_DURATION);
+                attempts += 1;
+            }
+        }
+    };
+
+    let response = response.expect("Server did not start in time");
+    assert!(response.status().is_success());
+
+    let body = response.text().unwrap();
+    assert_eq!(body, "Hello, this is your first wasi:http/proxy world!\n");
+
+    let (exit_code, _, _) = srv.ctrl_c()?.wait(Duration::from_secs(5))?;
+    assert_eq!(exit_code, 128 + 2);
 
     Ok(())
 }
