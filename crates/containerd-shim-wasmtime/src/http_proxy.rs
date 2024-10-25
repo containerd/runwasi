@@ -9,6 +9,8 @@ use std::sync::Arc;
 use anyhow::{bail, Result};
 use containerd_shim_wasm::container::RuntimeContext;
 use hyper::server::conn::http1;
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 use wasmtime::component::ResourceTable;
 use wasmtime::Store;
 use wasmtime_wasi_http::bindings::http::types::Scheme;
@@ -29,6 +31,7 @@ type Request = hyper::Request<hyper::body::Incoming>;
 pub(crate) async fn serve_conn(
     ctx: &impl RuntimeContext,
     instance: ProxyPre<WasiPreview2Ctx>,
+    cancel: CancellationToken,
 ) -> Result<()> {
     let mut env = envs_from_ctx(ctx).into_iter().collect::<HashMap<_, _>>();
 
@@ -59,45 +62,65 @@ pub(crate) async fn serve_conn(
     socket.bind(addr)?;
 
     let listener = socket.listen(backlog)?;
+    let tracker = TaskTracker::new();
 
     log::info!("Serving HTTP on http://{}/", listener.local_addr()?);
 
     let env = env.into_iter().collect();
-    let handler = Arc::new(ProxyHandler::new(instance, env));
+    let handler = Arc::new(ProxyHandler::new(instance, env, tracker.clone()));
 
     loop {
-        let (stream, _) = listener.accept().await?;
-        log::debug!("New connection");
-
-        let stream = TokioIo::new(stream);
-        let h = handler.clone();
-
-        tokio::spawn(async {
-            if let Err(e) = http1::Builder::new()
-                .keep_alive(true)
-                .serve_connection(
-                    stream,
-                    hyper::service::service_fn(move |req| h.clone().handle_request(req)),
-                )
-                .await
-            {
-                log::error!("error: {e:?}");
+        tokio::select! {
+            // listen to cancellation requests
+            _ = cancel.cancelled() => {
+                break;
             }
-        });
+            res = listener.accept() => {
+                let (stream, _) = res?;
+                log::debug!("New connection");
+
+                let stream = TokioIo::new(stream);
+                let h = handler.clone();
+
+                tracker.spawn(async {
+                    if let Err(e) = http1::Builder::new()
+                        .keep_alive(true)
+                        .serve_connection(
+                            stream,
+                            hyper::service::service_fn(move |req| h.clone().handle_request(req)),
+                        )
+                        .await
+                    {
+                        log::error!("error: {e:?}");
+                    }
+                });
+            }
+        }
     }
+
+    tracker.close();
+    tracker.wait().await;
+
+    Ok(())
 }
 
 struct ProxyHandler {
     instance_pre: ProxyPre<WasiPreview2Ctx>,
     next_id: AtomicU64,
     env: Vec<(String, String)>,
+    tracker: TaskTracker,
 }
 
 impl ProxyHandler {
-    fn new(instance_pre: ProxyPre<WasiPreview2Ctx>, env: Vec<(String, String)>) -> Self {
+    fn new(
+        instance_pre: ProxyPre<WasiPreview2Ctx>,
+        env: Vec<(String, String)>,
+        tracker: TaskTracker,
+    ) -> Self {
         ProxyHandler {
             instance_pre,
             env,
+            tracker,
             next_id: AtomicU64::from(0),
         }
     }
@@ -138,7 +161,7 @@ impl ProxyHandler {
         let out = store.data_mut().new_response_outparam(sender)?;
         let proxy = self.instance_pre.instantiate_async(&mut store).await?;
 
-        let task = tokio::spawn(async move {
+        let task = self.tracker.spawn(async move {
             if let Err(e) = proxy
                 .wasi_http_incoming_handler()
                 .call_handle(store, req, out)

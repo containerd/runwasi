@@ -297,7 +297,7 @@ fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
     assert_eq!(body, "Hello, this is your first wasi:http/proxy world!\n");
 
     let (exit_code, _, _) = srv.ctrl_c()?.wait(Duration::from_secs(5))?;
-    assert_eq!(exit_code, 128 + 2);
+    assert_eq!(exit_code, 0);
 
     Ok(())
 }

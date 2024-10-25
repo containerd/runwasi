@@ -6,10 +6,11 @@ edition.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
+libc = { workspace = true }
 log = { workspace = true }
 hyper = { workspace = true }
 tokio = { workspace = true, features = ["signal", "macros"] }
-libc = { workspace = true }
+tokio-util = { workspace = true, features = ["rt"] }
 
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true }
