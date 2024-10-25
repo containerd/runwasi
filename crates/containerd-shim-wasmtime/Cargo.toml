@@ -7,13 +7,18 @@ edition.workspace = true
 anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 log = { workspace = true }
+hyper = { workspace = true }
+tokio = { workspace = true, features = ["signal", "macros"] }
+libc = { workspace = true }
 
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true }
+wasmtime-wasi-http = { workspace = true }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = { workspace = true }
+reqwest = { version = "0.12", default-features=false, features = ["blocking"] }
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"

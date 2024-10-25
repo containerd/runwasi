@@ -46,10 +46,13 @@ wat = "1.214"
 windows-sys = "0.52"
 serial_test = "2"
 tracing = "0.1"
+hyper = "1.5.0"
+tokio = { version = "1.40.0", default-features = false }
 
 # wasmtime
-wasmtime = { version = "25.0.1", features = ["async"] }
-wasmtime-wasi = { version = "25.0.1" }
+wasmtime = { version = "25.0.2", features = ["async"] }
+wasmtime-wasi = { version = "25.0.2" }
+wasmtime-wasi-http = { version = "25.0.2" }
 
 [profile.release]
 panic = "abort"
