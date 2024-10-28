@@ -32,7 +32,7 @@ jobs:
           path: ./cache
           key: ${{ runner.os }}-benchmark
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.3
+        uses: benchmark-action/github-action-benchmark@v1.20.4
         with:
           name: Criterion.rs Benchmark
           tool: 'cargo'
