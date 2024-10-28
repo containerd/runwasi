@@ -29,7 +29,7 @@ containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-m
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 crossbeam = { version = "0.8.4", default-features = false }
 env_logger = "0.10"
-libc = "0.2.159"
+libc = "0.2.161"
 libcontainer = { version = "0.4.1", default-features = false }
 log = "0.4"
 nix = "0.28"
@@ -42,7 +42,7 @@ tar = "0.4"
 tempfile = "3.10"
 thiserror = "1.0"
 ttrpc = "0.8.2"
-wat = "1.214"
+wat = "1.219"
 windows-sys = "0.52"
 serial_test = "2"
 tracing = "0.1"
