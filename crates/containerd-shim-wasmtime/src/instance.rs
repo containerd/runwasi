@@ -306,7 +306,7 @@ where
         log::debug!("loading wasm component");
 
         wasmtime_wasi::runtime::in_tokio(async move {
-            let mut done = false;
+            let mut force_shutdown = false;
             let exec = self.execute_component_async(ctx, component, func, stdio);
 
             tokio::pin!(exec);
@@ -318,10 +318,10 @@ where
                     }
                     sig = wait_for_signal() => {
                         match sig? {
-                            libc::SIGINT if !done => {
+                            libc::SIGINT if !force_shutdown => {
                                 // Request graceful shutdown; if successful, the loop will
                                 // exit from the `exec` branch with a status code.
-                                done = true;
+                                force_shutdown = true;
                                 self.cancel.cancel();
                             }
                             sig => {
