@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 pub use containerd_shim_wasm_test_modules as modules;
-use libc::SIGINT;
+use libc::{SIGINT, SIGTERM};
 use oci_spec::runtime::{
     get_default_namespaces, LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder,
     RootBuilder, SpecBuilder,
@@ -220,6 +220,12 @@ where
     pub fn ctrl_c(&self) -> Result<&Self> {
         log::info!("sending SIGINT");
         self.instance.kill(SIGINT as u32)?;
+        Ok(self)
+    }
+
+    pub fn terminate(&self) -> Result<&Self> {
+        log::info!("sending SIGTERM");
+        self.instance.kill(SIGTERM as u32)?;
         Ok(self)
     }
 

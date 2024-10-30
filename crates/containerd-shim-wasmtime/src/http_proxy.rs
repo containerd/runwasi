@@ -5,10 +5,12 @@ use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{bail, Result};
 use containerd_shim_wasm::container::RuntimeContext;
 use hyper::server::conn::http1;
+use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use wasmtime::component::ResourceTable;
@@ -27,6 +29,40 @@ const DEFAULT_ADDR: SocketAddr =
 const DEFAULT_BACKLOG: u32 = 100;
 
 type Request = hyper::Request<hyper::body::Incoming>;
+
+fn is_connection_error(e: &std::io::Error) -> bool {
+    matches!(
+        e.kind(),
+        std::io::ErrorKind::ConnectionRefused
+            | std::io::ErrorKind::ConnectionAborted
+            | std::io::ErrorKind::ConnectionReset
+    )
+}
+
+// [From axum](https://github.com/tokio-rs/axum/blob/280d16a61059f57230819a79b15aa12a263e8cca/axum/src/serve.rs#L425)
+async fn tcp_accept(listener: &TcpListener) -> Option<TcpStream> {
+    match listener.accept().await {
+        Ok((stream, _addr)) => Some(stream),
+        Err(e) => {
+            if is_connection_error(&e) {
+                return None;
+            }
+
+            // [From `hyper::Server` in 0.14](https://github.com/hyperium/hyper/blob/v0.14.27/src/server/tcp.rs#L186)
+            //
+            // > A possible scenario is that the process has hit the max open files
+            // > allowed, and so trying to accept a new connection will fail with
+            // > `EMFILE`. In some cases, it's preferable to just wait for some time, if
+            // > the application will likely close some files (or connections), and try
+            // > to accept the connection again. If this option is `true`, the error
+            // > will be logged at the `error` level, since it is still a big deal,
+            // > and then the listener will sleep for 1 second.
+            log::error!("accept error: {e}");
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            None
+        }
+    }
+}
 
 pub(crate) async fn serve_conn(
     ctx: &impl RuntimeContext,
@@ -70,32 +106,35 @@ pub(crate) async fn serve_conn(
     let handler = Arc::new(ProxyHandler::new(instance, env, tracker.clone()));
 
     loop {
-        tokio::select! {
-            // listen to cancellation requests
+        let stream = tokio::select! {
+            conn = tcp_accept(&listener) => {
+                match conn {
+                    Some(conn) => conn,
+                    None => continue,
+                }
+            }
             _ = cancel.cancelled() => {
                 break;
             }
-            res = listener.accept() => {
-                let (stream, _) = res?;
-                log::debug!("New connection");
+        };
 
-                let stream = TokioIo::new(stream);
-                let h = handler.clone();
+        log::debug!("New connection");
 
-                tracker.spawn(async {
-                    if let Err(e) = http1::Builder::new()
-                        .keep_alive(true)
-                        .serve_connection(
-                            stream,
-                            hyper::service::service_fn(move |req| h.clone().handle_request(req)),
-                        )
-                        .await
-                    {
-                        log::error!("error: {e:?}");
-                    }
-                });
+        let stream = TokioIo::new(stream);
+        let h = handler.clone();
+
+        tracker.spawn(async {
+            if let Err(e) = http1::Builder::new()
+                .keep_alive(true)
+                .serve_connection(
+                    stream,
+                    hyper::service::service_fn(move |req| h.clone().handle_request(req)),
+                )
+                .await
+            {
+                log::error!("error: {e:?}");
             }
-        }
+        });
     }
 
     tracker.close();

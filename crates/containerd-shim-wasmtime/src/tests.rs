@@ -268,27 +268,13 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
-    const MAX_ATTEMPTS: u32 = 10;
-    const BACKOFF_DURATION: Duration = Duration::from_secs(1);
-
     let srv = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WASI_HTTP)?
         .with_host_network()
         .build()?;
 
     let srv = srv.start()?;
-
-    let mut attempts = 0;
-    let response = loop {
-        match reqwest::blocking::get("http://127.0.0.1:8080") {
-            Ok(resp) => break Ok(resp),
-            Err(err) if attempts == MAX_ATTEMPTS => break Err(err),
-            Err(_) => {
-                std::thread::sleep(BACKOFF_DURATION);
-                attempts += 1;
-            }
-        }
-    };
+    let response = http_get();
 
     let response = response.expect("Server did not start in time");
     assert!(response.status().is_success());
@@ -300,4 +286,43 @@ fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
     assert_eq!(exit_code, 0);
 
     Ok(())
+}
+
+// Test that the shim can terminate component targeting wasi:http/proxy by sending SIGTERM.
+#[test]
+#[serial]
+fn test_wasip2_component_http_proxy_force_shutdown() -> anyhow::Result<()> {
+    let srv = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(FAULTY_WASI_HTTP)?
+        .with_host_network()
+        .build()?;
+
+    let srv = srv.start()?;
+    assert!(http_get().unwrap().status().is_success());
+
+    // Send SIGTERM
+    let (exit_code, _, _) = srv.terminate()?.wait(Duration::from_secs(5))?;
+    // The exit code indicates that the process did not exit cleanly
+    assert_eq!(exit_code, 128 + libc::SIGTERM as u32);
+
+    Ok(())
+}
+
+// Helper method to make a `GET` request
+fn http_get() -> reqwest::Result<reqwest::blocking::Response> {
+    const MAX_ATTEMPTS: u32 = 10;
+    const BACKOFF_DURATION: Duration = Duration::from_secs(1);
+
+    let mut attempts = 0;
+
+    loop {
+        match reqwest::blocking::get("http://127.0.0.1:8080") {
+            Ok(resp) => break Ok(resp),
+            Err(err) if attempts == MAX_ATTEMPTS => break Err(err),
+            Err(_) => {
+                std::thread::sleep(BACKOFF_DURATION);
+                attempts += 1;
+            }
+        }
+    }
 }
