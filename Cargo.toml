@@ -28,12 +28,12 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.7.0"
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 crossbeam = { version = "0.8.4", default-features = false }
-env_logger = "0.10"
+env_logger = "0.11"
 libc = "0.2.159"
 libcontainer = { version = "0.4.1", default-features = false }
 log = "0.4"
-nix = "0.28"
-oci-spec = { version = "0.6.4", features = ["runtime"] }
+nix = "0.29"
+oci-spec = { version = "0.6.8", features = ["runtime"] }
 protobuf = "=3.2"
 serde = "1.0"
 serde_json = "1.0"
@@ -42,18 +42,18 @@ tar = "0.4"
 tempfile = "3.10"
 thiserror = "1.0"
 ttrpc = "0.8.2"
-wat = "1.214"
-windows-sys = "0.52"
-serial_test = "2"
+wat = "1.219"
+windows-sys = "0.59"
+serial_test = "3"
 tracing = "0.1"
 hyper = "1.5.0"
 tokio = { version = "1.40.0", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 
 # wasmtime
-wasmtime = { version = "25.0.2", features = ["async"] }
-wasmtime-wasi = { version = "25.0.2" }
-wasmtime-wasi-http = { version = "25.0.2" }
+wasmtime = { version = "26.0.0", features = ["async"] }
+wasmtime-wasi = { version = "26.0.0" }
+wasmtime-wasi-http = { version = "26.0.0" }
 
 [profile.release]
 panic = "abort"
