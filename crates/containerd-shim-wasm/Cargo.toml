@@ -19,7 +19,7 @@ containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 oci-tar-builder = { workspace = true, optional = true }
 crossbeam = { workspace = true }
 env_logger = { workspace = true, optional = true }
-git-version = "0.3.9"
+git-version = { version = "0.3.9" }
 libc = { workspace = true }
 log = { workspace = true }
 oci-spec = { workspace = true }
@@ -32,7 +32,7 @@ ttrpc = { workspace = true }
 wat = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 futures = { version = "0.3.30" }
-wasmparser = "0.214.0"
+wasmparser = { version = "0.219.1" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
 
@@ -75,7 +75,7 @@ libcontainer = { workspace = true, features = [
     "v2",
 ] }
 nix = { workspace = true, features = ["sched", "mount"] }
-containerd-client = "0.5.0"
+containerd-client = "0.6.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
