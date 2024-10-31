@@ -306,34 +306,31 @@ where
         log::debug!("loading wasm component");
 
         wasmtime_wasi::runtime::in_tokio(async move {
-            let mut force_shutdown = false;
-            let exec = self.execute_component_async(ctx, component, func, stdio);
-
-            tokio::pin!(exec);
-
-            loop {
-                tokio::select! {
-                    status = &mut exec => {
-                        return status;
-                    }
-                    sig = wait_for_signal() => {
-                        match sig? {
-                            libc::SIGINT if !force_shutdown => {
-                                // Request graceful shutdown; if successful, the loop will
-                                // exit from the `exec` branch with a status code.
-                                force_shutdown = true;
-                                self.cancel.cancel();
-                            }
-                            sig => {
-                                // On a second SIGINT or other signal, terminate the process
-                                // without waiting for spawned tasks to finish.
-                                return Ok(128 + sig);
-                            }
-                        }
-                    }
+            tokio::select! {
+                status = self.execute_component_async(ctx, component, func, stdio) => {
+                    status
+                }
+                status = self.handle_signals() => {
+                    status
                 }
             }
         })
+    }
+
+    async fn handle_signals(&self) -> Result<i32> {
+        match wait_for_signal().await? {
+            libc::SIGINT => {
+                // Request graceful shutdown;
+                self.cancel.cancel();
+            }
+            sig => {
+                // On other signal, terminate the process without waiting for spawned tasks to finish.
+                return Ok(128 + sig);
+            }
+        }
+
+        // On a second SIGINT, terminate the process as well
+        wait_for_signal().await
     }
 
     fn execute(
