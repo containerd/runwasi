@@ -822,6 +822,7 @@ dependencies = [
  "reqwest 0.12.8",
  "serial_test",
  "tokio",
+ "tokio-util",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
@@ -4996,6 +4997,8 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
+ "hashbrown 0.14.5",
  "pin-project-lite",
  "tokio",
 ]

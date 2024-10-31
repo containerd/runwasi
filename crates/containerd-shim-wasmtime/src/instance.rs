@@ -7,6 +7,7 @@ use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
+use tokio_util::sync::CancellationToken;
 use wasi_preview1::WasiP1Ctx;
 use wasi_preview2::bindings::Command;
 use wasmtime::component::types::ComponentItem;
@@ -55,6 +56,7 @@ impl<'a> ComponentTarget<'a> {
 #[derive(Clone)]
 pub struct WasmtimeEngine<T: WasiConfig> {
     engine: wasmtime::Engine,
+    cancel: CancellationToken,
     config_type: PhantomData<T>,
 }
 
@@ -81,6 +83,7 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
                 .unwrap(),
+            cancel: CancellationToken::new(),
             config_type: PhantomData,
         }
     }
@@ -250,7 +253,8 @@ where
                 let instance = ProxyPre::new(pre)?;
 
                 log::info!("starting HTTP server");
-                serve_conn(ctx, instance).await
+                let cancel = self.cancel.clone();
+                serve_conn(ctx, instance, cancel).await
             }
             ComponentTarget::Command => {
                 let wasi_ctx = WasiPreview2Ctx::new(ctx)?;
@@ -303,10 +307,30 @@ where
 
         wasmtime_wasi::runtime::in_tokio(async move {
             tokio::select! {
-                status = self.execute_component_async(ctx, component, func, stdio) => { status }
-                sig = wait_for_signal() => { sig }
+                status = self.execute_component_async(ctx, component, func, stdio) => {
+                    status
+                }
+                status = self.handle_signals() => {
+                    status
+                }
             }
         })
+    }
+
+    async fn handle_signals(&self) -> Result<i32> {
+        match wait_for_signal().await? {
+            libc::SIGINT => {
+                // Request graceful shutdown;
+                self.cancel.cancel();
+            }
+            sig => {
+                // On other signal, terminate the process without waiting for spawned tasks to finish.
+                return Ok(128 + sig);
+            }
+        }
+
+        // On a second SIGINT, terminate the process as well
+        wait_for_signal().await
     }
 
     fn execute(
@@ -397,9 +421,9 @@ async fn wait_for_signal() -> Result<i32> {
         let mut sigterm = signal(SignalKind::terminate())?;
 
         tokio::select! {
-            _ = sigquit.recv() => { Ok(128 + libc::SIGINT) }
-            _ = sigterm.recv() => { Ok(128 + libc::SIGTERM) }
-            _ = tokio::signal::ctrl_c() => { Ok(128 + libc::SIGINT) }
+            _ = sigquit.recv() => { Ok(libc::SIGINT) }
+            _ = sigterm.recv() => { Ok(libc::SIGTERM) }
+            _ = tokio::signal::ctrl_c() => { Ok(libc::SIGINT) }
         }
     }
     #[cfg(not(unix))]
