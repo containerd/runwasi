@@ -5,7 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Support for wasi:http/proxy world in Wasmtime shim ([](https://github.com/containerd/runwasi/pull/691))
+- Support for "wasi:http/proxy" world in Wasmtime shim ([#691](https://github.com/containerd/runwasi/pull/691), [#705](https://github.com/containerd/runwasi/pull/705))
+- Re-export `containerd_shim::Config` ([#714](https://github.com/containerd/runwasi/pull/714))
 
 ## [v0.7.0] — 2024-10-7
 
