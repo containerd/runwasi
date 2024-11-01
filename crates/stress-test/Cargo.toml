@@ -1,0 +1,22 @@
+[package]
+name = "stress-test"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+anyhow = "1"
+trapeze = "0.7"
+prost = "0.13"
+prost-types = "0.13"
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true, features = ["rt"] }
+tempfile = "3"
+oci-spec.workspace = true
+containerd-shim-wasm-test-modules.workspace = true
+clap = { version = "4", features = [ "derive"] }
+log.workspace = true
+env_logger.workspace = true
