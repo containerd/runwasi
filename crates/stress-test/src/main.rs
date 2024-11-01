@@ -13,14 +13,18 @@ use tokio_util::task::TaskTracker;
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(short, long)]
+    /// Show the logs shim logs in stderr
     verbose: bool,
 
+    /// Path to the shim binary
     shim: PathBuf,
 
     #[arg(short, long)]
+    /// Run all tasks one after the other instead of running them all concurrently
     serial: bool,
 
     #[arg(short('n'), long, default_value("10"))]
+    /// Number of tasks to run
     count: u32,
 }
 
