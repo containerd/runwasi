@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Support for "wasi:http/proxy" world in Wasmtime shim ([#691](https://github.com/containerd/runwasi/pull/691), [#705](https://github.com/containerd/runwasi/pull/705))
 - Re-export `containerd_shim::Config` ([#714](https://github.com/containerd/runwasi/pull/714))
 
+### Changed
+- Update the `opentelemetry` related dependencies to the latest version ([#712](https://github.com/containerd/runwasi/pull/712))
+
 ## [v0.7.0] — 2024-10-7
 
 ### Added

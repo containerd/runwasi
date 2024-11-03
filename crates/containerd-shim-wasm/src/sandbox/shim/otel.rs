@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::env;
 
 use opentelemetry::global::{self, set_text_map_propagator};
-use opentelemetry::trace::TraceError;
+use opentelemetry::trace::{TraceError, TracerProvider as _};
 use opentelemetry_otlp::{
     Protocol, SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
 };
@@ -33,7 +33,7 @@ pub use opentelemetry_otlp::{
     OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
 };
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::{runtime, trace as sdktrace};
+use opentelemetry_sdk::runtime;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::layer::SubscriberExt as _;
@@ -136,11 +136,16 @@ impl Config {
             Protocol::Grpc => self.init_tracer_grpc(),
         };
 
-        opentelemetry_otlp::new_pipeline()
+        let tracer = opentelemetry_otlp::new_pipeline()
             .tracing()
             .with_exporter(exporter)
-            .with_trace_config(sdktrace::config())
-            .install_batch(runtime::Tokio)
+            .with_trace_config(Default::default())
+            .install_batch(runtime::Tokio)?
+            .tracer_builder("containerd-shim-wasm")
+            .with_version(env!("CARGO_PKG_VERSION"))
+            .build();
+
+        Ok(tracer)
     }
 }
 
