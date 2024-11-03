@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
-        runtime: ["common", "wasmedge", "wasmtime", "wasmer"]
+        runtime: ["common", "wasmedge", "wasmtime", "wasmer", "wamr"]
     uses: ./.github/workflows/action-fmt.yml
     with:
       os: ${{ matrix.os }}

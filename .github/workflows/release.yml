@@ -22,6 +22,7 @@ on:
           - containerd-shim-wasmer
           - containerd-shim-wasmedge
           - containerd-shim-wasmtime
+          - containerd-shim-wamr
       version:
         description: "The version of the crate to release. (e.g., 1.2.3)"
         type: string
