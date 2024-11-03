@@ -43,7 +43,7 @@ There are several projects in the repository:
 
 - `containerd-shim-wasm` - main library that is used by runtimes to create shims. Most of the shared code lives here.
 - `containerd-shim-wasm-test-modules` - library with wasm test modules used in testing framework
-- `containerd-shim-<runtime>` - shims per runtime (wasmtime, wasmedge, wasmer, etc). These produce binaries that are the shims which containerd talks too.
+- `containerd-shim-<runtime>` - shims per runtime (wasmtime, wasmedge, wasmer, wamr, etc). These produce binaries that are the shims which containerd talks too.
 - `oci-tar-builder` - library and executable that helps build OCI tar files.
 - `wasi-demo-app` - wasm application that is used for demos and testing.
 
@@ -55,7 +55,7 @@ To build all the shims in this repository:
 make build
 ```
 
-To build a shim for specific runtime (wasmtime, wasmer, wasmedge, etc):
+To build a shim for specific runtime (wasmtime, wasmer, wasmedge, wamr, etc):
 
 ```
 make build-<runtime>
