@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, Stdio
-};
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInstnace;
 use wamr_rust_sdk::module::Module;
@@ -40,7 +38,7 @@ impl Engine for WamrEngine {
 
     fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
         let args = ctx.args();
-        let envs: Vec<_> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+        let envs = ctx.envs();
         let Entrypoint {
             source,
             func,
@@ -51,7 +49,6 @@ impl Engine for WamrEngine {
         let wasm_bytes = source
             .as_bytes()
             .context("Failed to get bytes from source")?;
-
 
         log::info!("Create a WAMR module");
 
@@ -66,21 +63,19 @@ impl Engine for WamrEngine {
         log::info!("Create a WASI context");
 
         let wasi_ctx = WasiCtxBuilder::new()
-        .set_pre_open_path(vec!["/"], vec!["/"])
-        .set_env_vars(envs.iter().map(String::as_str).collect())
-        .build();
+            .set_pre_open_path(vec!["/"], vec![])
+            .set_env_vars(envs.iter().map(String::as_str).collect())
+            .set_arguments(args.iter().map(String::as_str).collect())
+            .build();
 
         module.set_wasi_context(wasi_ctx);
 
-        // TODO: no way to set args in wamr?
         // TODO: no way to register a named module with bytes?
 
         log::info!("Create a WAMR instance");
 
         let instance = WamrInstnace::new(&self.runtime, &module, 1024 * 64)
             .map_err(|e| anyhow::Error::msg(format!("Failed to create instance: {:?}", e)))?;
-
-        // TODO: bug: failed at line above saying: `thread signal env initialized failed`
 
         log::info!("redirect stdio");
         stdio.redirect()?;
@@ -89,7 +84,7 @@ impl Engine for WamrEngine {
         let function = Function::find_export_func(&instance, &func)
             .map_err(|e| anyhow::Error::msg(format!("Failed to find function: {:?}", e)))?;
         let status = function
-            .call(&instance, &Vec::new())
+            .call(&instance, &vec![])
             .map(|_| 0)
             .or_else(|err| {
                 log::error!("Error: {:?}", err);
