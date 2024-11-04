@@ -7,11 +7,12 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use nix::sys::prctl::set_child_subreaper;
+use tokio::{sync::Semaphore, time::sleep};
+use tokio::task::JoinSet;
 use tokio::time::Duration;
-use tokio::{sync::Semaphore, task::JoinSet};
 use utils::{reap_children, TryFutureEx};
 
 #[derive(Parser)]
@@ -79,6 +80,7 @@ async fn main_impl() -> Result<()> {
                 // take a permit as this saction might have to run serially
                 let _permit = semaphore.acquire().await?;
                 task.create().await?;
+                sleep(Duration::from_millis(1)).await;
             }
 
             task.start().await?;
@@ -100,7 +102,8 @@ async fn main_impl() -> Result<()> {
     }
     .with_timeout(Duration::from_secs(timeout))
     .or_ctrl_c()
-    .await?;
+    .await
+    .with_context(|| anyhow!("{} tasks failed to run", count - successes.load(SeqCst)))?;
 
     Ok(())
 }

@@ -8,7 +8,7 @@ use nix::sys::wait::{waitpid, WaitPidFlag};
 use nix::unistd::Pid;
 use tokio::select;
 use tokio::signal::ctrl_c;
-use tokio::time::{Duration, sleep};
+use tokio::time::{sleep, Duration};
 
 pub fn hash(value: impl Hash) -> u64 {
     let mut hasher = DefaultHasher::new();
