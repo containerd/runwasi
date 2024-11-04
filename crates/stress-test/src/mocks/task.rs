@@ -1,19 +1,58 @@
+use std::path::Path;
+
 use anyhow::Result;
+use containerd_shim_wasm_test_modules::HELLO_WORLD;
 use log::info;
-use tempfile::TempDir;
+use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+use tempfile::{tempdir_in, TempDir};
+use tokio::fs::{canonicalize, create_dir_all, symlink, write};
 use trapeze::Client;
 
 use crate::protos::containerd::task::v2::{
     CreateTaskRequest, DeleteRequest, StartRequest, Task as _, WaitRequest,
 };
+use crate::utils::hash;
 
 pub struct Task {
-    pub(super) id: String,
-    pub(super) dir: TempDir,
-    pub(super) client: Client,
+    id: String,
+    dir: TempDir,
+    client: Client,
 }
 
 impl Task {
+    pub(super) async fn new(scratch: impl AsRef<Path>, client: Client) -> Result<Self> {
+        let dir = tempdir_in(scratch)?;
+        let id = hash(dir.path());
+        let id = format!("shim-benchmark-task-{id}");
+
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(
+                ProcessBuilder::default()
+                    .cwd("/")
+                    .args([String::from("/hello.wasm")])
+                    .build()?,
+            )
+            .build()?;
+        spec.save(dir.path().join("config.json"))?;
+
+        let options = format!("{{\"root\":{:?}}}", dir.path().join("rootfs"));
+        write(dir.path().join("options.json"), options).await?;
+
+        create_dir_all(dir.path().join("rootfs")).await?;
+
+        write(
+            dir.path().join("rootfs").join("hello.wasm"),
+            HELLO_WORLD.bytes,
+        )
+        .await?;
+
+        let stdout = canonicalize("/proc/self/fd/1").await?;
+        symlink(stdout, dir.path().join("stdout")).await?;
+
+        Ok(Self { id, dir, client })
+    }
+
     pub async fn create(&self) -> Result<()> {
         let res = self
             .client

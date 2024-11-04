@@ -5178,12 +5178,12 @@ dependencies = [
  "containerd-shim-wasm-test-modules",
  "env_logger",
  "log",
+ "nix 0.29.0",
  "oci-spec 0.6.8",
  "prost 0.13.3",
  "prost-types 0.13.3",
  "tempfile",
  "tokio",
- "tokio-util",
  "trapeze",
 ]
 

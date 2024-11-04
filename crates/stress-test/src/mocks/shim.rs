@@ -1,9 +1,11 @@
+use std::path::Path;
+
 use anyhow::Result;
-use containerd_shim_wasm_test_modules as modules;
 use log::info;
-use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+use oci_spec::runtime::SpecBuilder;
 use tempfile::{tempdir_in, TempDir};
-use tokio::fs::{canonicalize, create_dir_all, symlink, write};
+use tokio::fs::{canonicalize, symlink};
+use tokio::process::Command;
 use trapeze::Client;
 
 use super::Task;
@@ -16,41 +18,57 @@ pub struct Shim {
 }
 
 impl Shim {
-    pub async fn task(&self) -> Result<Task> {
-        let dir = tempdir_in(&self.dir)?;
-        let id = hash(dir.path());
-        let id = format!("shim-benchmark-task-{id}");
+    pub(super) async fn new(
+        scratch: impl AsRef<Path>,
+        verbose: bool,
+        binary: impl AsRef<Path>,
+    ) -> Result<Self> {
+        info!("Setting up shim");
 
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(
-                ProcessBuilder::default()
-                    .cwd("/")
-                    .args([String::from("/hello.wasm")])
-                    .build()?,
-            )
-            .build()?;
+        let scratch = scratch.as_ref();
+
+        let socket = scratch.join("containerd.sock.ttrpc");
+        let dir = tempdir_in(scratch)?;
+
+        let spec = SpecBuilder::default().build()?;
         spec.save(dir.path().join("config.json"))?;
 
-        let options = format!("{{\"root\":{:?}}}", dir.path().join("rootfs"));
-        write(dir.path().join("options.json"), options).await?;
+        if verbose {
+            let stderr = canonicalize("/proc/self/fd/2").await?;
+            symlink(stderr, dir.path().join("log")).await?;
+        } else {
+            symlink("/dev/null", dir.path().join("log")).await?;
+        }
 
-        create_dir_all(dir.path().join("rootfs")).await?;
+        info!("Starting shim");
 
-        write(
-            dir.path().join("rootfs").join("hello.wasm"),
-            modules::HELLO_WORLD.bytes,
-        )
-        .await?;
+        let hash = hash(dir.path());
+        let output = Command::new(binary.as_ref())
+            .args([
+                "-namespace",
+                &format!("shim-benchmark-{hash}"),
+                "-id",
+                &format!("shim-benchmark-{hash}"),
+                "-address",
+                "/run/containerd/containerd.sock",
+                "start",
+            ])
+            .process_group(0)
+            .env("TTRPC_ADDRESS", socket)
+            .current_dir(dir.path())
+            .output()
+            .await?;
 
-        let stdout = canonicalize("/proc/self/fd/1").await?;
-        symlink(stdout, dir.path().join("stdout")).await?;
+        let address = String::from_utf8(output.stdout)?.trim().to_owned();
 
-        Ok(Task {
-            id: id.into(),
-            dir,
-            client: self.client.clone(),
-        })
+        info!("Connecting to {address}");
+        let client = Client::connect(address).await?;
+
+        Ok(Shim { dir, client })
+    }
+
+    pub async fn task(&self) -> Result<Task> {
+        Task::new(&self.dir, self.client.clone()).await
     }
 
     pub async fn shutdown(&self) -> Result<()> {

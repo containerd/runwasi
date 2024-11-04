@@ -12,11 +12,11 @@ anyhow = "1"
 trapeze = "0.7"
 prost = "0.13"
 prost-types = "0.13"
-tokio = { workspace = true, features = ["full"] }
-tokio-util = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["macros", "fs", "process", "signal"] }
 tempfile = "3"
 oci-spec.workspace = true
 containerd-shim-wasm-test-modules.workspace = true
 clap = { version = "4", features = [ "derive"] }
 log.workspace = true
 env_logger.workspace = true
+nix = { version = "0.29", features = ["process", "signal"] }
