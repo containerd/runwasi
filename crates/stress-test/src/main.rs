@@ -79,9 +79,9 @@ async fn main_impl() -> Result<()> {
                 // take a permit as this saction might have to run serially
                 let _permit = semaphore.acquire().await?;
                 task.create().await?;
-                task.start().await?;
             }
 
+            task.start().await?;
             task.wait().await?;
             task.delete().await?;
             successes.fetch_add(1, SeqCst);
