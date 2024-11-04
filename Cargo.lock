@@ -796,7 +796,7 @@ dependencies = [
  "anyhow",
  "containerd-shim-wasm",
  "log",
- "mio 0.8.11",
+ "mio 1.0.2",
  "serial_test",
  "tokio",
  "wasmer",
