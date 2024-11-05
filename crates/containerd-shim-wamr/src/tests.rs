@@ -43,23 +43,6 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-#[test]
-#[serial]
-fn test_custom_entrypoint() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
-        .with_start_fn("foo")
-        .with_wasm(CUSTOM_ENTRYPOINT)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
-
-    assert_eq!(exit_code, 0);
-    assert_eq!(stdout, "hello world\n");
-
-    Ok(())
-}
-
 #[test]
 #[serial]
 fn test_unreachable() -> anyhow::Result<()> {
@@ -70,20 +53,6 @@ fn test_unreachable() -> anyhow::Result<()> {
         .wait(Duration::from_secs(10))?;
 
     assert_ne!(exit_code, 0);
-
-    Ok(())
-}
-
-#[test]
-#[serial]
-fn test_exit_code() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
-        .with_wasm(EXIT_CODE)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
-
-    assert_eq!(exit_code, 42);
 
     Ok(())
 }
@@ -113,6 +82,37 @@ fn test_has_default_devices() -> anyhow::Result<()> {
         .wait(Duration::from_secs(10))?;
 
     assert_eq!(exit_code, 0);
+
+    Ok(())
+}
+
+
+// test_exit_code is disabled because it requires the wamr SDK to expose exit code
+// See https://github.com/containerd/runwasi/pull/716#discussion_r1827086060
+fn test_exit_code() -> anyhow::Result<()> {
+    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+        .with_wasm(EXIT_CODE)?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 42);
+
+    Ok(())
+}
+
+// test_custom_entrypoint is disabled
+// See https://github.com/containerd/runwasi/pull/716#issuecomment-2458200081
+fn test_custom_entrypoint() -> anyhow::Result<()> {
+    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+        .with_start_fn("foo")
+        .with_wasm(CUSTOM_ENTRYPOINT)?
+        .build()?
+        .start()?
+        .wait(Duration::from_secs(10))?;
+
+    assert_eq!(exit_code, 0);
+    assert_eq!(stdout, "hello world\n");
 
     Ok(())
 }
