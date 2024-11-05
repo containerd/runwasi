@@ -1,7 +1,6 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 CARGO ?= cargo
-LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer
 CONTAINERD_NAMESPACE ?= default
@@ -140,8 +139,6 @@ install: $(RUNTIMES:%=install-%);
 install-%:
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) $(TARGET_DIR)$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
-	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
-	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
 .PHONY: dist dist-%
 dist: $(RUNTIMES:%=dist-%);
