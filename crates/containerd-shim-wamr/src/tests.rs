@@ -86,7 +86,6 @@ fn test_has_default_devices() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 // test_exit_code is disabled because it requires the wamr SDK to expose exit code
 // See https://github.com/containerd/runwasi/pull/716#discussion_r1827086060
 fn test_exit_code() -> anyhow::Result<()> {
