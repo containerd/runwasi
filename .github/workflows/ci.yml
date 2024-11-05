@@ -71,7 +71,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
