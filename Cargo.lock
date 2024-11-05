@@ -751,12 +751,9 @@ name = "containerd-shim-wamr"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "containerd-shim",
  "containerd-shim-wasm",
  "log",
- "oci-spec 0.6.8",
  "serial_test",
- "sha256",
  "wamr-rust-sdk",
 ]
 
