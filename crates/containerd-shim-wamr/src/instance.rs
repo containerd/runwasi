@@ -86,9 +86,9 @@ impl Engine for WamrEngine {
         let status = function
             .call(&instance, &vec![])
             .map(|_| 0)
-            .or_else(|err| {
+            .map_err(|err| {
                 log::error!("Error: {:?}", err);
-                Err(err)
+                err
             })
             .map_err(|e| anyhow::Error::msg(format!("Failed to call function: {:?}", e)))?;
 
