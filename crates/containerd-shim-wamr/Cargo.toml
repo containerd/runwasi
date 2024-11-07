@@ -9,6 +9,7 @@ anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true }
 log = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
 wamr-rust-sdk = { git = "https://github.com/bytecodealliance/wamr-rust-sdk", tag = "v1.1.0" }
 
 [dev-dependencies]
