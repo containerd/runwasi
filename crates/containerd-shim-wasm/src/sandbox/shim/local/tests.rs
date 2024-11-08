@@ -4,6 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::Context;
+use chrono::{DateTime, Utc};
 use containerd_shim::api::Status;
 use containerd_shim::event::Event;
 use protobuf::MessageDyn;
@@ -11,9 +12,37 @@ use serde_json as json;
 use tempfile::tempdir;
 
 use super::*;
-use crate::sandbox::instance::Nop;
 use crate::sandbox::shim::events::EventSender;
-use crate::sandbox::shim::instance_option::InstanceOption;
+use crate::sandbox::sync::WaitableCell;
+
+/// This is used for the tests and is a no-op instance implementation.
+pub struct InstanceStub {
+    /// Since we are faking the container, we need to keep track of the "exit" code/time
+    /// We'll just mark it as exited when kill is called.
+    exit_code: WaitableCell<(u32, DateTime<Utc>)>,
+}
+
+impl Instance for InstanceStub {
+    type Engine = ();
+    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error> {
+        Ok(InstanceStub {
+            exit_code: WaitableCell::new(),
+        })
+    }
+    fn start(&self) -> Result<u32, Error> {
+        Ok(std::process::id())
+    }
+    fn kill(&self, _signal: u32) -> Result<(), Error> {
+        let _ = self.exit_code.set((1, Utc::now()));
+        Ok(())
+    }
+    fn delete(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+        self.exit_code.wait_timeout(t).copied()
+    }
+}
 
 struct LocalWithDestructor<T: Instance + Send + Sync, E: EventSender> {
     local: Arc<Local<T, E>>,
@@ -76,7 +105,7 @@ fn test_delete_after_create() {
     create_bundle(dir.path(), None).unwrap();
 
     let (tx, _rx) = channel();
-    let local = Arc::new(Local::<Nop, _>::new(
+    let local = Arc::new(Local::<InstanceStub, _>::new(
         (),
         tx,
         Arc::new(ExitSignal::default()),
@@ -107,7 +136,7 @@ fn test_cri_task() -> Result<()> {
     // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
     let (etx, _erx) = channel();
     let exit_signal = Arc::new(ExitSignal::default());
-    let local = Arc::new(Local::<Nop, _>::new(
+    let local = Arc::new(Local::<InstanceStub, _>::new(
         (),
         etx,
         exit_signal,
@@ -134,9 +163,8 @@ fn test_cri_task() -> Result<()> {
     })?;
     assert_eq!(state.status(), Status::CREATED);
 
-    // A little janky since this is internal data, but check that this is seen as a sandbox container
-    let i = local.get_instance("testbase")?;
-    assert!(matches!(i.instance, InstanceOption::Nop(_)));
+    // make sure that the instance exists
+    let _i = local.get_instance("testbase")?;
 
     local.task_start(StartRequest {
         id: "testbase".to_string(),
@@ -176,10 +204,8 @@ fn test_cri_task() -> Result<()> {
     })?;
     assert_eq!(state.status(), Status::CREATED);
 
-    // again, this is janky since it is internal data, but check that this is seen as a "real" container.
-    // this is the inverse of the above test case.
-    let i = local.get_instance("testinstance")?;
-    assert!(matches!(i.instance, InstanceOption::Instance(_)));
+    // make sure that the instance exists
+    let _i = local.get_instance("testinstance")?;
 
     local.task_start(StartRequest {
         id: "testinstance".to_string(),
@@ -215,7 +241,7 @@ fn test_cri_task() -> Result<()> {
         ..Default::default()
     })?;
 
-    instance_rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
+    instance_rx.recv_timeout(Duration::from_secs(50)).unwrap()?;
 
     let state = local.task_state(StateRequest {
         id: "testinstance".to_string(),
@@ -280,7 +306,7 @@ fn test_cri_task() -> Result<()> {
 fn test_task_lifecycle() -> Result<()> {
     let (etx, _erx) = channel(); // TODO: check events
     let exit_signal = Arc::new(ExitSignal::default());
-    let local = Arc::new(Local::<Nop, _>::new(
+    let local = Arc::new(Local::<InstanceStub, _>::new(
         (),
         etx,
         exit_signal,

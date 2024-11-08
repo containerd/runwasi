@@ -92,13 +92,6 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     }
 }
 
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-fn is_cri_container(spec: &Spec) -> bool {
-    spec.annotations()
-        .as_ref()
-        .is_some_and(|annotations| annotations.contains_key("io.kubernetes.cri.sandbox-id"))
-}
-
 // These are the same functions as in Task, but without the TtrcpContext, which is useful for testing
 impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
@@ -154,13 +147,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             .set_stderr(&req.stderr);
 
         // Check if this is a cri container
-        let instance = if self.is_empty() && is_cri_container(&spec) {
-            // If it is cri, then this is the "pause" container, which we don't need to deal with.
-            // TODO: maybe we can just go ahead and execute the actual container with runc?
-            InstanceData::new_base(req.id(), cfg)?
-        } else {
-            InstanceData::new_instance(req.id(), cfg)?
-        };
+        let instance = InstanceData::new(req.id(), cfg)?;
 
         self.instances
             .write()
