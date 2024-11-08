@@ -246,10 +246,13 @@ where
         // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
         let status = match target {
             ComponentTarget::HttpProxy => {
+                log::info!("Found HTTP proxy target");
                 let mut linker = component::Linker::new(&self.engine);
-                wasmtime_wasi_http::add_to_linker_async(&mut linker)?;
+                wasmtime_wasi::add_to_linker_async(&mut linker)?;
+                wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
 
                 let pre = linker.instantiate_pre(&component)?;
+                log::info!("pre-instantiate_pre");
                 let instance = ProxyPre::new(pre)?;
 
                 log::info!("starting HTTP server");
@@ -257,6 +260,7 @@ where
                 serve_conn(ctx, instance, cancel).await
             }
             ComponentTarget::Command => {
+                log::info!("Found command target");
                 let wasi_ctx = WasiPreview2Ctx::new(ctx)?;
                 let (mut store, linker) = store_for_context(&self.engine, wasi_ctx)?;
 
@@ -273,6 +277,7 @@ where
                     })
             }
             ComponentTarget::Core(func) => {
+                log::info!("Found Core target");
                 let wasi_ctx = WasiPreview2Ctx::new(ctx)?;
                 let (mut store, linker) = store_for_context(&self.engine, wasi_ctx)?;
 
