@@ -29,7 +29,7 @@ containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-m
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 crossbeam = { version = "0.8.4", default-features = false }
 env_logger = "0.11"
-libc = "0.2.159"
+libc = "0.2.162"
 libcontainer = { version = "0.4.1", default-features = false }
 log = "0.4"
 nix = "0.29"
@@ -46,7 +46,7 @@ windows-sys = "0.59"
 serial_test = "3"
 tracing = "0.1"
 hyper = "1.5.0"
-tokio = { version = "1.40.0", default-features = false }
+tokio = { version = "1.41.1", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 
 # wasmtime
