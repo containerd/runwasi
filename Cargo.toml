@@ -50,8 +50,8 @@ tokio = { version = "1.40.0", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 
 # wasmtime
-wasmtime = { version = "26.0.0", features = ["async"] }
-wasmtime-wasi = { version = "26.0.0" }
+wasmtime = { version = "26.0.1", features = ["async"] }
+wasmtime-wasi = { version = "26.0.1" }
 wasmtime-wasi-http = { version = "26.0.0" }
 
 [profile.release]
