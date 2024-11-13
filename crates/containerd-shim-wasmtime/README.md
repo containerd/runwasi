@@ -50,7 +50,11 @@ Alternatively, you can use the pre-built [Hello World][5] example from this repo
 Use `oci-tar-builder` to create an OCI image with our `http-handler`. Assuming our Wasm component is named `wasi-http.wasm`:
 
 ```shell
-cargo run --bin oci-tar-builder -- --name wasi-http --repo ghcr.io/containerd/runwasi --tag latest --module wasi-http.wasm -o ./dist/wasi-http-img-oci.tar
+cargo run --bin oci-tar-builder -- \
+    --name wasi-http \
+    --repo ghcr.io/containerd/runwasi \
+    --tag latest --module wasi-http.wasm \
+    -o ./dist/wasi-http-img-oci.tar
 ```
 
 - Import the image:
@@ -62,7 +66,8 @@ sudo ctr image import --all-platforms ./dist/wasi-http-img-oci.tar
 - Run the image:
 
 ```shell
-sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-js:latest wasi-http /wasi-http.wasm
+sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 \
+    ghcr.io/containerd/runwasi/wasi-js:latest wasi-http /wasi-http.wasm
 ```
 
 - Finally, assuming our handler will respond to `GET` requests at `/`, we can
