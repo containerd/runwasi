@@ -119,7 +119,7 @@ mod test {
 
     use super::*;
 
-    /// containerd can send an empty path or a non-existant path
+    /// containerd can send an empty path or a non-existent path
     /// In both these cases we should just assume that the stdio stream was not setup (intentionally)
     /// Any other error is a real error.
     #[test]

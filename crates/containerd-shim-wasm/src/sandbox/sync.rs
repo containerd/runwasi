@@ -62,6 +62,7 @@ impl<T> WaitableCell<T> {
 
     /// If the `WaitableCell` is empty when this guard is dropped, the cell will be set to result of `f`.
     /// ```
+    /// # use containerd_shim_wasm::sandbox::sync::WaitableCell;
     /// let cell = WaitableCell::<i32>::new();
     /// {
     ///     let _guard = cell.set_guard_with(|| 42);
@@ -71,6 +72,7 @@ impl<T> WaitableCell<T> {
     ///
     /// The operation is a no-op if the cell conbtains a value before the guard is dropped.
     /// ```
+    /// # use containerd_shim_wasm::sandbox::sync::WaitableCell;
     /// let cell = WaitableCell::<i32>::new();
     /// {
     ///     let _guard = cell.set_guard_with(|| 42);
@@ -79,9 +81,9 @@ impl<T> WaitableCell<T> {
     /// assert_eq!(&24, cell.wait());
     /// ```
     ///
-    /// The function `f` will always be called, regardsless of whether the `WaitableCell` has a value or not.
+    /// The function `f` will always be called, regardless of whether the `WaitableCell` has a value or not.
     /// The `WaitableCell` is going to be set even in the case of an unwind. In this case, ff the function `f`
-    /// panics it will cause an abort, so it's recomended to avoid any panics in `f`.
+    /// panics it will cause an abort, so it's recommended to avoid any panics in `f`.
     pub fn set_guard_with<R: Into<T>>(&self, f: impl FnOnce() -> R) -> impl Drop {
         let cell = (*self).clone();
         WaitableCellSetGuard { f: Some(f), cell }
@@ -95,7 +97,7 @@ impl<T> WaitableCell<T> {
     }
 
     /// Wait for the WaitableCell to be set a value, with timeout.
-    /// Retuns None if the timeout is reached with no value.
+    /// Returns None if the timeout is reached with no value.
     pub fn wait_timeout(&self, timeout: impl Into<Option<Duration>>) -> Option<&T> {
         let timeout = timeout.into();
         let cvar = &self.inner.cvar;

@@ -129,7 +129,7 @@ make fix
 
 ## Adding new features
 
-Most features will likely have most of the code in the `containerd-shim-wasm` project and a few runtime specific addtions to each runtime shim.  The general expectation is that the feature should be added to all runtimes. We will evaluate on a case by case basis exceptions, where runtimes may not be able to support a given feature or requires changes that make it hard to review.  In those cases we it may make sense to implement in follow up PR's for other runtimes.
+Most features will likely have most of the code in the `containerd-shim-wasm` project and a few runtime specific additions to each runtime shim.  The general expectation is that the feature should be added to all runtimes. We will evaluate on a case by case basis exceptions, where runtimes may not be able to support a given feature or requires changes that make it hard to review.  In those cases we it may make sense to implement in follow up PR's for other runtimes.
 
 A tip for developing a new feature is to implement it and test it with one runtime you are familiar with then add it to all the runtimes.  This makes it easier to test and iterate before making changes across all the runtimes.
 
@@ -150,7 +150,7 @@ This is a fast moving space, with lots of innovation happening and some shims ma
 A Shim implementation maybe subject to removal if:
  - If a shim runtime has not been maintained for 6 months it will be subject to removal.  
  - If required changes to the runtime can't be merged or not supported by runtime maintainers.
- - If it falls behind in new features added to the `containerd-shim-wasm` due to lack of maintainance
+ - If it falls behind in new features added to the `containerd-shim-wasm` due to lack of maintenance
 
 Before removal:
 - We will create an issue in the repository, pinned to the top. 

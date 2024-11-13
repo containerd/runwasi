@@ -141,7 +141,7 @@ pub trait Instance: 'static {
         self.wait_timeout(None).unwrap()
     }
 
-    /// Waits for the instance to finish and retunrs its exit code
+    /// Waits for the instance to finish and returns its exit code
     /// Returns None if the timeout is reached before the instance has finished.
     /// This is a blocking call.
     fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)>;

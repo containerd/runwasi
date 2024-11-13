@@ -130,6 +130,12 @@ test-%:
 	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
+test-doc:
+	RUST_LOG=trace $(CARGO) test --doc -- --test-threads=1
+
+generate-doc:
+	RUST_LOG=trace $(CARGO) doc --workspace --all-features --no-deps --document-private-items --exclude wasi-demo-app
+
 test-oci-tar-builder:
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package oci-tar-builder $(FEATURES_$*) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
