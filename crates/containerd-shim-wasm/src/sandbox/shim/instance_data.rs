@@ -3,13 +3,11 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 
-use crate::sandbox::instance::Nop;
-use crate::sandbox::shim::instance_option::InstanceOption;
 use crate::sandbox::shim::task_state::TaskState;
 use crate::sandbox::{Instance, InstanceConfig, Result};
 
 pub(super) struct InstanceData<T: Instance> {
-    pub instance: InstanceOption<T>,
+    pub instance: T,
     cfg: InstanceConfig<T::Engine>,
     pid: OnceLock<u32>,
     state: Arc<RwLock<TaskState>>,
@@ -17,21 +15,9 @@ pub(super) struct InstanceData<T: Instance> {
 
 impl<T: Instance> InstanceData<T> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn new_instance(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
+    pub fn new(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
         let id = id.as_ref().to_string();
-        let instance = InstanceOption::Instance(T::new(id, Some(&cfg))?);
-        Ok(Self {
-            instance,
-            cfg,
-            pid: OnceLock::default(),
-            state: Arc::new(RwLock::new(TaskState::Created)),
-        })
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn new_base(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
-        let id = id.as_ref().to_string();
-        let instance = InstanceOption::Nop(Nop::new(id, None)?);
+        let instance = T::new(id, Some(&cfg))?;
         Ok(Self {
             instance,
             cfg,

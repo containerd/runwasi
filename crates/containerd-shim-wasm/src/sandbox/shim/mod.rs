@@ -5,7 +5,6 @@
 mod cli;
 mod events;
 mod instance_data;
-mod instance_option;
 mod local;
 #[cfg(feature = "opentelemetry")]
 mod otel;
