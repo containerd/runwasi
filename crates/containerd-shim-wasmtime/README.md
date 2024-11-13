@@ -78,4 +78,4 @@ Hello, this is your first wasi:http/proxy world!
 [2]: https://docs.wasmtime.dev/cli-options.html#serve
 [3]: https://cfallin.org/blog/2024/08/27/aot-js/
 [4]: https://opensource.microsoft.com/blog/2024/09/25/distributing-webassembly-components-using-oci-registries/
-[5]: ../crates/containerd-shim-wasm-test-modules/src/modules//component-hello-world.wasm
+[5]: ../containerd-shim-wasm-test-modules/src/modules//component-hello-world.wasm
