@@ -6,17 +6,7 @@ A library to help build containerd shims for wasm workloads.
 
 ## Usage
 
-```rust,no_run
-use containerd_shim as shim;
-use containerd_shim_wasm::sandbox::instance::Nop;
-use containerd_shim_wasm::sandbox::{ShimCli, Instance};
-
-shim::run::<ShimCli<Nop>>("io.containerd.nop.v1", None);
-```
-
-The above example uses the built-in `Nop` instance which does nothing.
-You can build your own instance by implementing the `Instance` trait.
-
+Implement the `Instance` trait, then call `run`, for example,
 ```rust,no_run
 use std::time::Duration;
 use chrono::{DateTime, Utc};
