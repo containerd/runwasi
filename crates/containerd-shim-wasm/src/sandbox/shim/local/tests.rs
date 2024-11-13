@@ -15,11 +15,11 @@ use crate::sandbox::instance::Nop;
 use crate::sandbox::shim::events::EventSender;
 use crate::sandbox::shim::instance_option::InstanceOption;
 
-struct LocalWithDescrutor<T: Instance + Send + Sync, E: EventSender> {
+struct LocalWithDestructor<T: Instance + Send + Sync, E: EventSender> {
     local: Arc<Local<T, E>>,
 }
 
-impl<T: Instance + Send + Sync, E: EventSender> LocalWithDescrutor<T, E> {
+impl<T: Instance + Send + Sync, E: EventSender> LocalWithDestructor<T, E> {
     fn new(local: Arc<Local<T, E>>) -> Self {
         Self { local }
     }
@@ -31,7 +31,7 @@ impl EventSender for Sender<(String, Box<dyn MessageDyn>)> {
     }
 }
 
-impl<T: Instance + Send + Sync, E: EventSender> Drop for LocalWithDescrutor<T, E> {
+impl<T: Instance + Send + Sync, E: EventSender> Drop for LocalWithDestructor<T, E> {
     fn drop(&mut self) {
         self.local
             .instances
@@ -83,7 +83,7 @@ fn test_delete_after_create() {
         "test_namespace",
         "/test/address",
     ));
-    let mut _wrapped = LocalWithDescrutor::new(local.clone());
+    let mut _wrapped = LocalWithDestructor::new(local.clone());
 
     local
         .task_create(CreateTaskRequest {
@@ -115,7 +115,7 @@ fn test_cri_task() -> Result<()> {
         "/test/address",
     ));
 
-    let mut _wrapped = LocalWithDescrutor::new(local.clone());
+    let mut _wrapped = LocalWithDestructor::new(local.clone());
 
     let temp = tempdir().unwrap();
     let dir = temp.path();
@@ -288,7 +288,7 @@ fn test_task_lifecycle() -> Result<()> {
         "/test/address",
     ));
 
-    let mut _wrapped = LocalWithDescrutor::new(local.clone());
+    let mut _wrapped = LocalWithDestructor::new(local.clone());
 
     let temp = tempdir().unwrap();
     let dir = temp.path();

@@ -4,9 +4,9 @@ pub trait PathResolve {
     // Resolve the path of a file give a set of directories as the `which` unix
     // command would do with components of the `PATH` environment variable, and
     // return an iterator over all candidates.
-    // Resulting candidates are files that exist, but no other constraing is
+    // Resulting candidates are files that exist, but no other constraint is
     // imposed, in particular this function does not check for the executable bits.
-    // Further contraints can be added by calling filtering the returned iterator.
+    // Further constraints can be added by calling filtering the returned iterator.
     fn resolve_in_dirs(
         &self,
         dirs: impl IntoIterator<Item = impl AsRef<Path>>,

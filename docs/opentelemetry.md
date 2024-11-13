@@ -19,7 +19,7 @@ fn main() {
 }
 ```
 
-You may also use the `containerd_shim_wasm::sandbox::shim::OTLPConfig` struct to configure the OpenTelemetry tracing manually.
+You may also use the `containerd_shim_wasm::sandbox::shim::OtlpConfig` struct to configure the OpenTelemetry tracing manually.
 
 ### Running containerd with OpenTelemetry
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use containerd_shim::{parse, run, Config};
 
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{otel_traces_enabled, OTLPConfig};
+use crate::sandbox::shim::{otel_traces_enabled, OtlpConfig};
 use crate::sandbox::{Instance, ShimCli};
 
 pub mod r#impl {
@@ -53,7 +53,7 @@ pub fn shim_main<'a, I>(
         use tokio::runtime::Runtime;
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let _guard = OTLPConfig::build_from_env()
+            let _guard = OtlpConfig::build_from_env()
                 .expect("Failed to build OtelConfig.")
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
@@ -84,9 +84,9 @@ fn shim_main_inner<'a, I>(
     {
         // read TRACECONTEXT env var that's set by the parent process
         if let Ok(ctx) = std::env::var("TRACECONTEXT") {
-            OTLPConfig::set_trace_context(&ctx).unwrap();
+            OtlpConfig::set_trace_context(&ctx).unwrap();
         } else {
-            let ctx = OTLPConfig::get_trace_context().unwrap();
+            let ctx = OtlpConfig::get_trace_context().unwrap();
             std::env::set_var("TRACECONTEXT", ctx);
         }
     }
