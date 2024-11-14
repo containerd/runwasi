@@ -42,8 +42,8 @@ impl Engine for WamrEngine {
         let Entrypoint {
             source,
             func,
-            arg0: _,
             name,
+            ..
         } = ctx.entrypoint();
 
         let wasm_bytes = source
@@ -56,9 +56,8 @@ impl Engine for WamrEngine {
 
         let mod_name = name.unwrap_or_else(|| "main".to_string());
 
-        let mut module = Module::from_buf(&self.runtime, &wasm_bytes, &mod_name).map_err(|e| {
-            anyhow::Error::msg(format!("Failed to create module from bytes: {:?}", e))
-        })?;
+        let mut module = Module::from_buf(&self.runtime, &wasm_bytes, &mod_name)
+            .context("Failed to create module from bytes")?;
 
         log::info!("Create a WASI context");
 
@@ -75,14 +74,14 @@ impl Engine for WamrEngine {
         log::info!("Create a WAMR instance");
 
         let instance = WamrInstnace::new(&self.runtime, &module, 1024 * 64)
-            .map_err(|e| anyhow::Error::msg(format!("Failed to create instance: {:?}", e)))?;
+            .context("Failed to create instance")?;
 
         log::info!("redirect stdio");
         stdio.redirect()?;
 
         log::info!("Running {func:?}");
         let function = Function::find_export_func(&instance, &func)
-            .map_err(|e| anyhow::Error::msg(format!("Failed to find function: {:?}", e)))?;
+            .context("Failed to find function")?;
         let status = function
             .call(&instance, &vec![])
             .map(|_| 0)
@@ -90,7 +89,7 @@ impl Engine for WamrEngine {
                 log::error!("Error: {:?}", err);
                 err
             })
-            .map_err(|e| anyhow::Error::msg(format!("Failed to call function: {:?}", e)))?;
+            .context("Failed to call function")?;
 
         Ok(status)
     }

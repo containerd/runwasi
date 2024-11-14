@@ -86,7 +86,8 @@ fn test_has_default_devices() -> anyhow::Result<()> {
     Ok(())
 }
 
-// test_exit_code is disabled because it requires the wamr SDK to expose exit code
+#[test]
+#[ignore = "disabled because the WAMR SDK doesn't expose exit code yet"]
 // See https://github.com/containerd/runwasi/pull/716#discussion_r1827086060
 fn test_exit_code() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
@@ -100,7 +101,8 @@ fn test_exit_code() -> anyhow::Result<()> {
     Ok(())
 }
 
-// test_custom_entrypoint is disabled
+#[test]
+#[ignore]
 // See https://github.com/containerd/runwasi/pull/716#issuecomment-2458200081
 fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
