@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - Update the `opentelemetry` related dependencies to the latest version ([#712](https://github.com/containerd/runwasi/pull/712))
 
+### Removed
+- Removed special handling of the pause container, now it is treated as any other native container ([#724](https://github.com/containerd/runwasi/pull/724))
+
 ## [v0.7.0] — 2024-10-7
 
 ### Added

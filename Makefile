@@ -1,7 +1,6 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 CARGO ?= cargo
-LN ?= ln -sf
 TEST_IMG_NAME ?= wasmtest:latest
 RUNTIMES ?= wasmedge wasmtime wasmer wamr
 CONTAINERD_NAMESPACE ?= default
@@ -131,6 +130,12 @@ test-%:
 	# run tests in one thread to prevent parallelism
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-$* $(FEATURES_$*) --lib --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
+test-doc:
+	RUST_LOG=trace $(CARGO) test --doc -- --test-threads=1
+
+generate-doc:
+	RUST_LOG=trace $(CARGO) doc --workspace --all-features --no-deps --document-private-items --exclude wasi-demo-app
+
 test-oci-tar-builder:
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package oci-tar-builder $(FEATURES_$*) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
@@ -140,8 +145,6 @@ install: $(RUNTIMES:%=install-%);
 install-%:
 	mkdir -p $(PREFIX)/bin
 	$(INSTALL) $(TARGET_DIR)$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
-	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-shim-$*d-v1
-	$(LN) ./containerd-shim-$*-v1 $(PREFIX)/bin/containerd-$*d
 
 .PHONY: dist dist-%
 dist: $(RUNTIMES:%=dist-%);

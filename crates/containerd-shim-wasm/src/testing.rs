@@ -15,9 +15,9 @@ use oci_spec::runtime::{
 };
 
 use crate::sandbox::{Instance, InstanceConfig};
-use crate::sys::signals::SIGKILL;
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
+pub const SIGKILL: u32 = 9;
 
 pub struct WasiTestBuilder<WasiInstance: Instance>
 where
@@ -236,7 +236,7 @@ where
         let (status, _) = match self.instance.wait_timeout(timeout) {
             Some(res) => res,
             None => {
-                self.instance.kill(SIGKILL as u32)?;
+                self.instance.kill(SIGKILL)?;
                 bail!("timeout while waiting for module to finish");
             }
         };

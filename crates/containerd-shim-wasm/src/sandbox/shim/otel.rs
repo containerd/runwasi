@@ -7,11 +7,12 @@
 //! # Usage
 //!
 //! ```rust
-//! use containerd_shim_wasm::sandbox::shim::otel::Config;
+//! use containerd_shim_wasm::sandbox::shim::OtlpConfig;
+//! use containerd_shim_wasm::sandbox::shim::otel_traces_enabled;
 //!
 //! fn main() -> anyhow::Result<()> {
-//!     if traces_enabled() {
-//!         let otel_config = Config::build_from_env()?;
+//!     if otel_traces_enabled() {
+//!         let otel_config = OtlpConfig::build_from_env()?;
 //!    
 //!         let _guard = otel_config.init()?;
 //!    
@@ -69,7 +70,7 @@ pub fn traces_enabled() -> bool {
 ///
 /// Returns a `Result` containing the initialized tracer or a `TraceError` if initialization fails.
 ///
-/// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#configuration-options
+/// <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#configuration-options>
 impl Config {
     pub fn build_from_env() -> anyhow::Result<Self> {
         let traces_endpoint = traces_endpoint_from_env()?;
@@ -98,7 +99,7 @@ impl Config {
 
     /// Returns the current trace context as a JSON string.
     pub fn get_trace_context() -> anyhow::Result<String> {
-        // propogate the context
+        // propagate the context
         let mut injector: HashMap<String, String> = HashMap::new();
         global::get_text_map_propagator(|propagator| {
             // retrieve the context from `tracing`

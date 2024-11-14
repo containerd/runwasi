@@ -18,7 +18,7 @@ on the CNCF slack.
 
 ## Usage
 
-runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation. It creates one shim process per container or k8s pod. 
+runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation. It creates one shim process per container or k8s pod.
 
 You need to implement a trait to teach runwasi how to use your wasm host.
 
@@ -145,7 +145,7 @@ make build
 sudo make install
 ```
 
-> Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH and uses symlinks to create all the component described above. 
+> Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH and uses symlinks to create all the component described above.
 
 Build the test image and load it into containerd:
 
@@ -174,7 +174,7 @@ So they'll continue singing it forever just because...
 (...)
 ```
 
-To kill the process, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`. 
+To kill the process, you can run in other session: `sudo ctr task kill -s SIGKILL testwasm`.
 
 The test binary supports commands for different type of functionality, check [crates/wasi-demo-app/src/main.rs](crates/wasi-demo-app/src/main.rs) to try it out.
 
@@ -182,7 +182,7 @@ The test binary supports commands for different type of functionality, check [cr
 
 The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits. To build OCI images using your own images you can use the [oci-tar-builder](./crates/oci-tar-builder/README.md)
 
-To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).  
+To learn more about this approach checkout the [design document](https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit).
 
 > **Note**: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps. Latest versions of k3s and kind have the necessary containerd versions.
 
@@ -198,7 +198,7 @@ Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmt
 ```
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci wasi-demo-oci.wasm echo 'hello'
 hello
-exiting 
+exiting
 ```
 
 ### Demo 3 using Wasm OCI Artifact
@@ -212,3 +212,6 @@ make test/k8s-oci-wasmtime
 ```
 
 > note: We are using a kubernetes cluster to run here since containerd's ctr has a bug that results in ctr: `unknown image config media type application/vnd.wasm.config.v0+json`
+
+### WASI/HTTP Demo for `wasmtime-shim`
+See [wasmtime-shim documentation](./crates/containerd-shim-wasmtime/README.md#WASI/HTTP).
