@@ -7,12 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Support for "wasi:http/proxy" world in Wasmtime shim ([#691](https://github.com/containerd/runwasi/pull/691), [#705](https://github.com/containerd/runwasi/pull/705))
 - Re-export `containerd_shim::Config` ([#714](https://github.com/containerd/runwasi/pull/714))
+- CI jobs for spell checking and running documentation tests ([#728](https://github.com/containerd/runwasi/pull/728))
 
 ### Changed
 - Update the `opentelemetry` related dependencies to the latest version ([#712](https://github.com/containerd/runwasi/pull/712))
 
 ### Removed
 - Removed special handling of the pause container, now it is treated as any other native container ([#724](https://github.com/containerd/runwasi/pull/724))
+
+### Fixed
+- Documentation tests ([#728](https://github.com/containerd/runwasi/pull/728))
 
 ## [v0.7.0] — 2024-10-7
 
