@@ -40,10 +40,7 @@ impl Engine for WamrEngine {
         let args = ctx.args();
         let envs = ctx.envs();
         let Entrypoint {
-            source,
-            func,
-            name,
-            ..
+            source, func, name, ..
         } = ctx.entrypoint();
 
         let wasm_bytes = source
@@ -80,8 +77,8 @@ impl Engine for WamrEngine {
         stdio.redirect()?;
 
         log::info!("Running {func:?}");
-        let function = Function::find_export_func(&instance, &func)
-            .context("Failed to find function")?;
+        let function =
+            Function::find_export_func(&instance, &func).context("Failed to find function")?;
         let status = function
             .call(&instance, &vec![])
             .map(|_| 0)
