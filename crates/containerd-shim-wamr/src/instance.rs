@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
 use wamr_rust_sdk::function::Function;
-use wamr_rust_sdk::instance::Instance as WamrInstnace;
+use wamr_rust_sdk::instance::Instance as WamrInstance;
 use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
 use wamr_rust_sdk::wasi_context::WasiCtxBuilder;
@@ -70,7 +70,7 @@ impl Engine for WamrEngine {
 
         log::info!("Create a WAMR instance");
 
-        let instance = WamrInstnace::new(&self.runtime, &module, 1024 * 64)
+        let instance = WamrInstance::new(&self.runtime, &module, 1024 * 64)
             .context("Failed to create instance")?;
 
         log::info!("redirect stdio");
