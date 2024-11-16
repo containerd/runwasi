@@ -2,7 +2,7 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 CARGO ?= cargo
 TEST_IMG_NAME ?= wasmtest:latest
-RUNTIMES ?= wasmedge wasmtime wasmer
+RUNTIMES ?= wasmedge wasmtime wasmer wamr
 CONTAINERD_NAMESPACE ?= default
 RUSTC ?= rustc
 
