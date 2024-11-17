@@ -36,6 +36,13 @@ jobs:
       - name: describe runner
         run: |
           echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
+      - name: set runtime prefix
+        run: |
+          if [[ "${{ inputs.runtime }}" == "oci-tar-builder" ]]; then
+            echo "PREFIX=" >> $GITHUB_ENV
+          else
+            echo "PREFIX=containerd-shim-" >> $GITHUB_ENV
+          fi
       - uses: actions/checkout@v4
       - name: Setup build env
         run: |
@@ -73,13 +80,13 @@ jobs:
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
+            tar -czf dist/${PREFIX}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
           else
-            tar -czf dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -T /dev/null
+            tar -czf dist/${PREFIX}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -T /dev/null
           fi
       - name: Upload artifacts
         if: ${{ inputs.runtime != 'common' }}
         uses: actions/upload-artifact@master
         with:
-          name: containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}
-          path: dist/containerd-shim-${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz
+          name: ${PREFIX}${{ inputs.runtime }}-${{ inputs.slug }}
+          path: dist/${PREFIX}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz

@@ -82,10 +82,16 @@ jobs:
     name: oci-tar-builder-${{ matrix.os }}
     strategy:
       matrix:
-        os: ["ubuntu-22.04", "windows-latest", "macos-14", "macos-12"] # macos-14 uses the arm64 architecture
-    uses: ./.github/workflows/action-build-oci-tar-builder.yml
+        os: ["ubuntu-22.04"]
+        arch: ["x86_64", "aarch64"]
+    uses: ./.github/workflows/action-build.yml
     with:
       os: ${{ matrix.os }}
+      runtime: "oci-tar-builder"
+      target: "${{ matrix.arch }}-unknown-linux-gnu"
+      slug: "${{ matrix.arch }}-linux-gnu"
+      arch: ${{ matrix.arch }}
+      sign: false
 
   smoke-tests:
     name: ${{ matrix.runtime }}
