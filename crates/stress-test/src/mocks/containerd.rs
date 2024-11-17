@@ -44,7 +44,7 @@ impl Containerd {
     }
 
     pub async fn shutdown(self) -> Result<()> {
-        self.server.shutdown();
+        self.server.terminate();
         Ok(self.server.await?)
     }
 }

@@ -1,5 +1,6 @@
 use std::future::{pending, Future};
 use std::hash::{DefaultHasher, Hash, Hasher as _};
+use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use nix::sys::signal::kill;
@@ -8,6 +9,7 @@ use nix::sys::wait::{waitpid, WaitPidFlag};
 use nix::unistd::Pid;
 use tokio::select;
 use tokio::signal::ctrl_c;
+use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 
 pub fn hash(value: impl Hash) -> u64 {
@@ -39,19 +41,22 @@ pub async fn reap_children() -> Result<()> {
 
 pub trait TryFutureEx<E> {
     fn or_ctrl_c(self) -> impl Future<Output = Result<E>> + Send;
-    fn with_timeout(self, t: Duration) -> impl Future<Output = Result<E>> + Send;
+    fn with_watchdog(self, t: Duration, ping: Arc<Notify>) -> impl Future<Output = Result<E>> + Send;
 }
 
 impl<E: Default, T: Future<Output = Result<E>> + Send> TryFutureEx<E> for T {
     async fn or_ctrl_c(self) -> Result<E> {
         select! {
             val = self => { val },
-            _ = ctrl_c() => { bail!("Terminated"); }
+            _ = ctrl_c() => {
+                println!();
+                bail!("Terminated");
+            }
         }
     }
 
-    async fn with_timeout(self, t: Duration) -> Result<E> {
-        let timeout = async move {
+    async fn with_watchdog(self, t: Duration, ping: Arc<Notify>) -> Result<E> {
+        let timeout = |t: Duration| async move {
             if t.is_zero() {
                 pending().await
             } else {
@@ -59,9 +64,17 @@ impl<E: Default, T: Future<Output = Result<E>> + Send> TryFutureEx<E> for T {
             }
         };
 
-        select! {
-            val = self => { val },
-            _ = timeout => { bail!("Timeout"); }
+        let mut timer = timeout(t.clone());
+
+        let fut = self;
+        tokio::pin!(fut);
+        
+        loop {
+            select! {
+                val = &mut fut => { return val; },
+                _ = ping.notified() => { timer = timeout(t.clone()); }
+                _ = timer => { bail!("Timeout"); }
+            }
         }
     }
 }

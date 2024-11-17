@@ -5177,6 +5177,7 @@ dependencies = [
  "clap",
  "containerd-shim-wasm-test-modules",
  "env_logger",
+ "humantime",
  "log",
  "nix 0.29.0",
  "oci-spec 0.6.8",

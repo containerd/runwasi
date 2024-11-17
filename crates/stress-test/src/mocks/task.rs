@@ -53,18 +53,21 @@ impl Task {
         Ok(Self { id, dir, client })
     }
 
-    pub async fn create(&self) -> Result<()> {
+    pub async fn create(&self, verbose: bool) -> Result<()> {
         let res = self
             .client
             .create(CreateTaskRequest {
                 id: self.id.clone(),
                 bundle: self.dir.path().to_string_lossy().into_owned(),
-                stdout: self
-                    .dir
-                    .path()
-                    .join("stdout")
-                    .to_string_lossy()
-                    .into_owned(),
+                stdout: if !verbose {
+                    String::new()
+                } else {
+                    self.dir
+                        .path()
+                        .join("stdout")
+                        .to_string_lossy()
+                        .into_owned()
+                },
                 ..Default::default()
             })
             .await?;

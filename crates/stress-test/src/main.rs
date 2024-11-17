@@ -3,39 +3,53 @@ mod protos;
 mod utils;
 
 use std::path::PathBuf;
-use std::sync::atomic::AtomicU32;
-use std::sync::atomic::Ordering::SeqCst;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
-use clap::Parser;
+use anyhow::Result;
+use clap::{Parser, ValueEnum};
 use nix::sys::prctl::set_child_subreaper;
-use tokio::{sync::Semaphore, time::sleep};
+use tokio::sync::{Notify, Semaphore};
 use tokio::task::JoinSet;
 use tokio::time::Duration;
 use utils::{reap_children, TryFutureEx};
+
+#[derive(ValueEnum, Clone, Copy)]
+enum Step {
+    Create,
+    Start,
+    Wait,
+    Delete,
+}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(short, long)]
-    /// Show the logs shim logs in stderr
+    /// Show the shim logs in stderr
     verbose: bool,
+
+    #[arg(short('O'), long)]
+    /// Show the container output in stdout
+    container_output: bool,
 
     /// Path to the shim binary
     shim: PathBuf,
 
-    #[arg(short, long)]
-    /// Create and start all tasks concurrently instead of one after the other
-    parallel: bool,
+    #[arg(short, long, default_value("1"))]
+    /// Number of tasks to create and start concurrently [0 = no limit]
+    parallel: usize,
+
+    #[arg(short('S'), long, default_value("start"))]
+    /// Up to what steps to run in series
+    serial_steps: Step,
 
     #[arg(short('n'), long, default_value("10"))]
     /// Number of tasks to run
-    count: u32,
+    count: usize,
 
-    #[arg(short, long, default_value("0"))]
-    /// Runtime timeout in seconds, 0 = no timeout
-    timeout: u64,
+    #[clap(short, long, value_parser = humantime::parse_duration, default_value = "2s")]
+    /// Runtime timeout [0 = no timeout]
+    timeout: Duration,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -52,7 +66,9 @@ async fn main_impl() -> Result<()> {
     let Cli {
         shim,
         verbose,
+        container_output,
         parallel,
+        serial_steps,
         count,
         timeout,
     } = Cli::parse();
@@ -63,15 +79,24 @@ async fn main_impl() -> Result<()> {
     let shim = c8d.start_shim(shim).await?;
     let shim = Arc::new(shim);
 
-    let permits = if !parallel { 1 } else { count as _ };
+    let permits = if parallel == 0 {
+        count as _
+    } else {
+        parallel as _
+    };
     let semaphore = Arc::new(Semaphore::new(permits));
-    let successes = Arc::new(AtomicU32::new(0));
     let mut tracker: JoinSet<Result<()>> = JoinSet::new();
+
+    let serial_steps = match serial_steps {
+        Step::Create => "c",
+        Step::Start => "cs",
+        Step::Wait => "csw",
+        Step::Delete => "cswd",
+    };
 
     for _ in 0..count {
         let shim = shim.clone();
         let semaphore = semaphore.clone();
-        let successes = successes.clone();
 
         tracker.spawn(async move {
             let task = shim.task().await?;
@@ -79,13 +104,32 @@ async fn main_impl() -> Result<()> {
             {
                 // take a permit as this saction might have to run serially
                 let _permit = semaphore.acquire().await?;
-                task.create().await?;
-                task.start().await?;
+                if serial_steps.contains('c') {
+                    task.create(container_output).await?;
+                }
+                if serial_steps.contains('s') {
+                    task.start().await?;
+                }
+                if serial_steps.contains('w') {
+                    task.wait().await?;
+                }
+                if serial_steps.contains('d') {
+                    task.delete().await?;
+                }
             }
 
-            task.wait().await?;
-            task.delete().await?;
-            successes.fetch_add(1, SeqCst);
+            if !serial_steps.contains('c') {
+                task.create(container_output).await?;
+            }
+            if !serial_steps.contains('s') {
+                task.start().await?;
+            }
+            if !serial_steps.contains('w') {
+                task.wait().await?;
+            }
+            if !serial_steps.contains('d') {
+                task.delete().await?;
+            }
 
             Ok(())
         });
@@ -94,15 +138,39 @@ async fn main_impl() -> Result<()> {
     println!("Waiting for tasks to finish.");
     println!("Press Ctrl-C to terminate.");
 
-    async {
-        tracker.join_all().await;
-        shim.shutdown().await?;
+    let mut success = 0;
+    let mut failed = 0;
+    let ping = Arc::new(Notify::new());
+    let _ = async {
+        let ping = ping.clone();
+        let count = count as usize;
+        while let Some(res) = tracker.join_next().await {
+            ping.notify_waiters();
+            match res {
+                Ok(Ok(())) => {
+                    success += 1;
+                    println!(" > {} .. [OK]", count - tracker.len());
+                }
+                Ok(Err(err)) => {
+                    failed += 1;
+                    println!(" > {} .. {err}", count - tracker.len());
+                }
+                Err(err) => {
+                    println!(" > {} .. {err}", count - tracker.len());
+                }
+            }
+        }
+        let _ = shim.shutdown().await;
         c8d.shutdown().await
     }
-    .with_timeout(Duration::from_secs(timeout))
+    .with_watchdog(timeout, ping.clone())
     .or_ctrl_c()
-    .await
-    .with_context(|| anyhow!("{} tasks failed to run", count - successes.load(SeqCst)))?;
+    .await;
+
+    println!();
+    println!("{success} tasks succeeded");
+    println!("{failed} tasks failed");
+    println!("{} tasks hanged", count - success - failed);
 
     Ok(())
 }

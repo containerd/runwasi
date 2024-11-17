@@ -13,6 +13,7 @@ trapeze = "0.7"
 prost = "0.13"
 prost-types = "0.13"
 tokio = { workspace = true, features = ["macros", "fs", "process", "signal"] }
+humantime = "2.1.0"
 tempfile = "3"
 oci-spec.workspace = true
 containerd-shim-wasm-test-modules.workspace = true
