@@ -81,7 +81,7 @@ jobs:
           make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
-            tar -czf dist/$PREFIX{{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
+            tar -czf dist/$PREFIX${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
           else
             tar -czf dist/$PREFIX${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -T /dev/null
           fi
