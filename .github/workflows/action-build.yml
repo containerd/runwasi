@@ -37,6 +37,7 @@ jobs:
         run: |
           echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
       - name: set runtime prefix
+        shell: bash
         run: |
           if [[ "${{ inputs.runtime }}" == "oci-tar-builder" ]]; then
             echo "PREFIX=" >> $GITHUB_ENV
