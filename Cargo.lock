@@ -378,9 +378,9 @@ dependencies = [
 
 [[package]]
 name = "bstr"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40723b8fb387abc38f4f4a37c09073622e41dd12327033091ef8950659e6dc0c"
+checksum = "1a68f1f47cdf0ec8ee4b941b2eee2a80cb796db73118c0dd09ac63fbe405be22"
 dependencies = [
  "memchr",
  "serde",
@@ -846,6 +846,17 @@ dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
  "ttrpc-codegen",
+]
+
+[[package]]
+name = "containerd-shim-wamr"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "containerd-shim-wasm",
+ "log",
+ "serial_test",
+ "wamr-rust-sdk",
 ]
 
 [[package]]
@@ -5197,18 +5208,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.67"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b3c6efbfc763e64eb85c11c25320f0737cb7364c4b6336db90aa9ebe27a0bbd"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.67"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b607164372e89797d78b8e23a6d67d5d1038c1c65efd52e1389ef8b77caba2a6"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5929,6 +5940,24 @@ checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
 dependencies = [
  "same-file",
  "winapi-util",
+]
+
+[[package]]
+name = "wamr-rust-sdk"
+version = "1.0.0"
+source = "git+https://github.com/bytecodealliance/wamr-rust-sdk?tag=v1.1.0#b03ec6030b3f0ee9a190e59804ed87b2445635f6"
+dependencies = [
+ "wamr-sys",
+]
+
+[[package]]
+name = "wamr-sys"
+version = "1.0.0"
+source = "git+https://github.com/bytecodealliance/wamr-rust-sdk?tag=v1.1.0#b03ec6030b3f0ee9a190e59804ed87b2445635f6"
+dependencies = [
+ "bindgen 0.70.1",
+ "cc",
+ "cmake",
 ]
 
 [[package]]

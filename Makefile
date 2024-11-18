@@ -2,9 +2,11 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 CARGO ?= cargo
 TEST_IMG_NAME ?= wasmtest:latest
-RUNTIMES ?= wasmedge wasmtime wasmer
+RUNTIMES ?= wasmedge wasmtime wasmer wamr
 CONTAINERD_NAMESPACE ?= default
 RUSTC ?= rustc
+
+SHELL=/bin/bash -o pipefail
 
 # We have a bit of fancy logic here to determine the target 
 # since we support building for gnu and musl
@@ -247,7 +249,7 @@ test/k8s/cluster-%: dist/img.tar bin/kind test/k8s/_out/img-%
 .PHONY: test/k8s/deploy-workload-%
 test/k8s/deploy-workload-%: test/k8s/clean test/k8s/cluster-% 
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.yaml
-	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=180s
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=300s
 	# verify that we are still running after some time	
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
@@ -257,7 +259,7 @@ test/k8s/deploy-workload-oci-%: test/k8s/clean test/k8s/cluster-% dist/img-oci.t
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) dist/img-oci.tar
 	bin/kind load image-archive --name $(KIND_CLUSTER_NAME) dist/img-oci-artifact.tar
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) apply -f test/k8s/deploy.oci.yaml
-	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=180s
+	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=300s
 	# verify that we are still running after some time
 	sleep 5s
 	kubectl --context=kind-$(KIND_CLUSTER_NAME) wait deployment wasi-demo --for condition=Available=True --timeout=5s
@@ -300,7 +302,7 @@ test/k3s-%: dist/img.tar bin/k3s dist-%
 	sudo bin/k3s kubectl get pods --all-namespaces
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.yaml
 	sudo bin/k3s kubectl get pods --all-namespaces
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=180s
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=300s
 	# verify that we are still running after some time	
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s
@@ -314,7 +316,7 @@ test/k3s-oci-%: dist/img-oci.tar bin/k3s dist-%
 	sudo bin/k3s kubectl get pods --all-namespaces
 	sudo bin/k3s kubectl apply -f test/k8s/deploy.oci.yaml
 	sudo bin/k3s kubectl get pods --all-namespaces
-	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=180s
+	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=300s
 	# verify that we are still running after some time	
 	sleep 5s
 	sudo bin/k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=5s

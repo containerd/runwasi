@@ -293,7 +293,7 @@ fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
 #[serial]
 fn test_wasip2_component_http_proxy_force_shutdown() -> anyhow::Result<()> {
     let srv = WasiTest::<WasiInstance>::builder()?
-        .with_wasm(FAULTY_WASI_HTTP)?
+        .with_wasm(HELLO_WASI_HTTP)?
         .with_host_network()
         .build()?;
 

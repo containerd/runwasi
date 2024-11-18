@@ -3,8 +3,6 @@
 
 # runwasi
 
-> Warning: Alpha quality software, do not use in production.
-
 This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
 Included in the repository is a PoC for running a plain wasi host (ie. no extra host functions except to support wasi system calls).
@@ -121,10 +119,10 @@ Check out these projects that build on top of runwasi:
 
 ### Components
 
-- **containerd-shim-[ wasmedge | wasmtime | wasmer ]-v1**
+- **containerd-shim-[ wasmedge | wasmtime | wasmer | wamr ]-v1**
 
 This is a containerd shim which runs wasm workloads in [WasmEdge](https://github.com/WasmEdge/WasmEdge) or [Wasmtime](https://github.com/bytecodealliance/wasmtime) or [Wasmer](https://github.com/wasmerio/wasmer).
-You can use it with containerd's `ctr` by specifying `--runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1` when creating the container.
+You can use it with containerd's `ctr` by specifying `--runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1` when creating the container.
 And make sure the shim binary must be in $PATH (that is the $PATH that containerd sees). Usually you just run `make install` after `make build`.
 > build shim with wasmedge we need install library first
 
@@ -156,7 +154,7 @@ make load
 
 ### Demo 1 using container image that contains a Wasm module.
 
-Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'`. You should see some output repeated like:
+Run it with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'`. You should see some output repeated like:
 
 ```terminal
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
@@ -193,7 +191,7 @@ make test-image/oci
 make load/oci
 ```
 
-Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`
+Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`
 
 ```
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci wasi-demo-oci.wasm echo 'hello'
