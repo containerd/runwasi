@@ -6,6 +6,8 @@ RUNTIMES ?= wasmedge wasmtime wasmer wamr
 CONTAINERD_NAMESPACE ?= default
 RUSTC ?= rustc
 
+SHELL=/bin/bash -o pipefail
+
 # We have a bit of fancy logic here to determine the target 
 # since we support building for gnu and musl
 # TARGET must eventually match one of the values in the cross.toml
