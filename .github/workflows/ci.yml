@@ -84,6 +84,22 @@ jobs:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
       slug: "windows"
+  
+  build-oci-tar-builder:
+    name: oci-tar-builder-${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-22.04"]
+        arch: ["x86_64", "aarch64"]
+    uses: ./.github/workflows/action-build.yml
+    with:
+      os: ${{ matrix.os }}
+      runtime: "oci-tar-builder"
+      target: "${{ matrix.arch }}-unknown-linux-gnu"
+      slug: "${{ matrix.arch }}-linux-gnu"
+      arch: ${{ matrix.arch }}
+      sign: false
+      binprefix: ""
 
   smoke-tests:
     name: ${{ matrix.runtime }}
