@@ -92,6 +92,7 @@ jobs:
       slug: "${{ matrix.arch }}-linux-gnu"
       arch: ${{ matrix.arch }}
       sign: false
+      binprefix: ""
 
   smoke-tests:
     name: ${{ matrix.runtime }}
