@@ -1,6 +1,11 @@
 #![cfg(unix)]
 
+use std::mem::ManuallyDrop;
+
+use anyhow::Context as _;
 use containerd_client::services::v1::leases_client::LeasesClient;
+use containerd_client::services::v1::DeleteRequest;
+use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
 use tonic::Request;
 
@@ -20,43 +25,59 @@ macro_rules! with_lease {
 
 #[derive(Debug)]
 pub(crate) struct LeaseGuard {
-    pub(crate) lease_id: String,
-    pub(crate) namespace: String,
-    pub(crate) address: String,
+    inner: ManuallyDrop<LeaseGuardInner>,
+}
+
+#[derive(Debug)]
+pub(crate) struct LeaseGuardInner {
+    client: LeasesClient<Channel>,
+    req: tonic::Request<DeleteRequest>,
+}
+
+impl LeaseGuard {
+    pub fn new(
+        client: LeasesClient<Channel>,
+        id: impl Into<String>,
+        namespace: impl AsRef<str>,
+    ) -> Self {
+        let id = id.into();
+        let req = DeleteRequest { id, sync: false };
+        let req = with_namespace!(req, namespace.as_ref());
+        let inner = LeaseGuardInner { client, req };
+        let inner = ManuallyDrop::new(inner);
+        Self { inner }
+    }
+
+    pub async fn release(self) -> anyhow::Result<()> {
+        let mut this = ManuallyDrop::new(self);
+        let inner = unsafe { ManuallyDrop::take(&mut this.inner) };
+        inner.release().await?;
+        Ok(())
+    }
+
+    pub fn id(&self) -> &'_ str {
+        &self.inner.req.get_ref().id
+    }
+}
+
+impl LeaseGuardInner {
+    async fn release(mut self) -> anyhow::Result<()> {
+        self.client
+            .delete(self.req)
+            .await
+            .context("Failed to remove lease")?;
+        Ok(())
+    }
 }
 
 // Provides a best effort for dropping a lease of the content.  If the lease cannot be dropped, it will log a warning
 impl Drop for LeaseGuard {
     fn drop(&mut self) {
-        let id = self.lease_id.clone();
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        let client = rt.block_on(containerd_client::connect(self.address.clone()));
-
-        let channel = match client {
-            Ok(channel) => channel,
-            Err(e) => {
-                log::error!(
-                    "failed to connect to containerd: {}. lease may not be deleted",
-                    e
-                );
-                return;
-            }
-        };
-
-        let mut client = LeasesClient::new(channel);
-
-        rt.block_on(async {
-            let req = containerd_client::services::v1::DeleteRequest { id, sync: false };
-            let req = with_namespace!(req, self.namespace);
-            let result = client.delete(req).await;
-
-            match result {
-                Ok(_) => log::debug!("removed lease"),
-                Err(e) => log::error!("failed to remove lease: {}", e),
+        let inner = unsafe { ManuallyDrop::take(&mut self.inner) };
+        tokio::spawn(async move {
+            match inner.release().await {
+                Ok(()) => log::info!("removed lease"),
+                Err(err) => log::warn!("error removing lease: {err}"),
             }
         });
     }
