@@ -1,5 +1,6 @@
 use anyhow::Result;
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
+use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
@@ -47,10 +48,11 @@ impl Engine for WasmerEngine {
         let _guard = runtime.enter();
 
         log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
+        let fs = FileSystem::new(Handle::current(), "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
             .envs(envs)
-            .fs(Box::<FileSystem>::default())
+            .fs(Box::new(fs))
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
 
