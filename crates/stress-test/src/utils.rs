@@ -41,7 +41,11 @@ pub async fn reap_children() -> Result<()> {
 
 pub trait TryFutureEx<E> {
     fn or_ctrl_c(self) -> impl Future<Output = Result<E>> + Send;
-    fn with_watchdog(self, t: Duration, ping: Arc<Notify>) -> impl Future<Output = Result<E>> + Send;
+    fn with_watchdog(
+        self,
+        t: Duration,
+        ping: Arc<Notify>,
+    ) -> impl Future<Output = Result<E>> + Send;
 }
 
 impl<E: Default, T: Future<Output = Result<E>> + Send> TryFutureEx<E> for T {
@@ -68,13 +72,25 @@ impl<E: Default, T: Future<Output = Result<E>> + Send> TryFutureEx<E> for T {
 
         let fut = self;
         tokio::pin!(fut);
-        
+
         loop {
             select! {
                 val = &mut fut => { return val; },
                 _ = ping.notified() => { timer = timeout(t.clone()); }
                 _ = timer => { bail!("Timeout"); }
             }
+        }
+    }
+}
+
+pub trait DropIf {
+    fn drop_if(&mut self, cond: bool);
+}
+
+impl<T> DropIf for Option<T> {
+    fn drop_if(&mut self, cond: bool) {
+        if cond {
+            self.take();
         }
     }
 }

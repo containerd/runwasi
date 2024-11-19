@@ -18,7 +18,7 @@ impl Events for EventsService {
 
 pub struct Containerd {
     dir: TempDir,
-    server: ServerHandle,
+    _server: ServerHandle,
     verbose: bool,
 }
 
@@ -27,24 +27,19 @@ impl Containerd {
         let dir = tempdir()?;
         let socket = dir.path().join("containerd.sock.ttrpc");
 
-        let server = Server::new()
+        let _server = Server::new()
             .register(service!(EventsService: Events))
             .bind(format!("unix://{}", socket.display()))
             .await?;
 
         Ok(Self {
             dir,
-            server,
+            _server,
             verbose,
         })
     }
 
     pub async fn start_shim(&self, shim: impl AsRef<Path>) -> Result<Shim> {
         Shim::new(&self.dir, self.verbose, shim).await
-    }
-
-    pub async fn shutdown(self) -> Result<()> {
-        self.server.terminate();
-        Ok(self.server.await?)
     }
 }

@@ -9,7 +9,6 @@ use tokio::process::Command;
 use trapeze::Client;
 
 use super::Task;
-use crate::protos::containerd::task::v2::Task as _;
 use crate::utils::hash;
 
 pub struct Shim {
@@ -69,12 +68,5 @@ impl Shim {
 
     pub async fn task(&self) -> Result<Task> {
         Task::new(&self.dir, self.client.clone()).await
-    }
-
-    pub async fn shutdown(&self) -> Result<()> {
-        info!("Shutting down");
-
-        self.client.shutdown(Default::default()).await?;
-        Ok(())
     }
 }

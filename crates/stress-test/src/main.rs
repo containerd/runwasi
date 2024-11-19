@@ -7,13 +7,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
+use humantime::{format_duration, parse_duration};
 use nix::sys::prctl::set_child_subreaper;
 use tokio::sync::{Notify, Semaphore};
 use tokio::task::JoinSet;
-use tokio::time::Duration;
-use utils::{reap_children, TryFutureEx};
+use tokio::time::{Duration, Instant};
+use utils::{reap_children, DropIf as _, TryFutureEx as _};
 
-#[derive(ValueEnum, Clone, Copy)]
+#[derive(ValueEnum, Clone, Copy, PartialEq)]
 enum Step {
     Create,
     Start,
@@ -47,7 +48,7 @@ struct Cli {
     /// Number of tasks to run
     count: usize,
 
-    #[clap(short, long, value_parser = humantime::parse_duration, default_value = "2s")]
+    #[clap(short, long, value_parser = parse_duration, default_value = "2s")]
     /// Runtime timeout [0 = no timeout]
     timeout: Duration,
 }
@@ -79,6 +80,15 @@ async fn main_impl() -> Result<()> {
     let shim = c8d.start_shim(shim).await?;
     let shim = Arc::new(shim);
 
+    let mut tasks = vec![];
+
+    // First create the tasks bundles, as this is not
+    // work done by the shim itself
+    for _ in 0..count {
+        let task = shim.task().await?;
+        tasks.push(task);
+    }
+
     let permits = if parallel == 0 {
         count as _
     } else {
@@ -87,49 +97,25 @@ async fn main_impl() -> Result<()> {
     let semaphore = Arc::new(Semaphore::new(permits));
     let mut tracker: JoinSet<Result<()>> = JoinSet::new();
 
-    let serial_steps = match serial_steps {
-        Step::Create => "c",
-        Step::Start => "cs",
-        Step::Wait => "csw",
-        Step::Delete => "cswd",
-    };
-
-    for _ in 0..count {
-        let shim = shim.clone();
+    let start = Instant::now();
+    for task in tasks {
         let semaphore = semaphore.clone();
 
         tracker.spawn(async move {
-            let task = shim.task().await?;
+            // take a permit as this section might have to run serially
+            let mut permit = Some(semaphore.acquire().await?);
 
-            {
-                // take a permit as this saction might have to run serially
-                let _permit = semaphore.acquire().await?;
-                if serial_steps.contains('c') {
-                    task.create(container_output).await?;
-                }
-                if serial_steps.contains('s') {
-                    task.start().await?;
-                }
-                if serial_steps.contains('w') {
-                    task.wait().await?;
-                }
-                if serial_steps.contains('d') {
-                    task.delete().await?;
-                }
-            }
+            task.create(container_output).await?;
+            permit.drop_if(serial_steps == Step::Create);
 
-            if !serial_steps.contains('c') {
-                task.create(container_output).await?;
-            }
-            if !serial_steps.contains('s') {
-                task.start().await?;
-            }
-            if !serial_steps.contains('w') {
-                task.wait().await?;
-            }
-            if !serial_steps.contains('d') {
-                task.delete().await?;
-            }
+            task.start().await?;
+            permit.drop_if(serial_steps == Step::Start);
+
+            task.wait().await?;
+            permit.drop_if(serial_steps == Step::Wait);
+
+            task.delete().await?;
+            permit.drop_if(serial_steps == Step::Delete);
 
             Ok(())
         });
@@ -160,17 +146,22 @@ async fn main_impl() -> Result<()> {
                 }
             }
         }
-        let _ = shim.shutdown().await;
-        c8d.shutdown().await
+        Ok(())
     }
     .with_watchdog(timeout, ping.clone())
     .or_ctrl_c()
     .await;
 
+    let elapsed = start.elapsed();
+
+    let color = if success == count { 32 } else { 31 };
+
     println!();
-    println!("{success} tasks succeeded");
-    println!("{failed} tasks failed");
-    println!("{} tasks hanged", count - success - failed);
+    println!(
+        "\x1b[{color}m{success} tasks succeeded, {failed} tasks failed, {} tasks didn't finish\x1b[0m",
+        count - success - failed
+    );
+    println!("elapsed time: {}", format_duration(elapsed));
 
     Ok(())
 }
