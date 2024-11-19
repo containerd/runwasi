@@ -1,4 +1,4 @@
 [toolchain]
-channel="1.80.0"
+channel="1.81.0"
 profile="default"
 targets = ["wasm32-wasi"]
