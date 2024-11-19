@@ -49,7 +49,7 @@ There are several projects in the repository:
 
 ## Project architecture
 
-![A diagram of runwasi architecture](docs/assets/runwasi-architecture.png)
+![A diagram of runwasi architecture](docs/src/assets/runwasi-architecture.png)
 
 The Containerd "shim" is a daemon process that serves [Task Service API](https://github.com/containerd/containerd/blob/v2.0.0/core/runtime/v2/README.md#tasks). It listens on a socket to receive ttRPC commands from Containerd, allowing for lifecycle management for containers (create, start, stop, etc.). Runwasi's `containerd-shim-wasm` library is designed to easily author your own shim binaries that handle Wasm modules. 
 
