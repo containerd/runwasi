@@ -57,7 +57,3 @@ wasmtime-wasi-http = { version = "26.0.0" }
 
 [profile.release]
 panic = "abort"
-
-[patch.crates-io]
-wasmer = { git = "https://github.com/wasmerio/wasmer.git", rev = "82f4f038923f9d26f5619bf05ae2ae8143c75837"}
-wasmer-wasix = { git = "https://github.com/wasmerio/wasmer.git", rev = "82f4f038923f9d26f5619bf05ae2ae8143c75837"}
