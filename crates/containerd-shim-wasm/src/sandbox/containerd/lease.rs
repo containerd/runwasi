@@ -25,7 +25,7 @@ macro_rules! with_lease {
 
 #[derive(Debug)]
 pub(crate) struct LeaseGuard {
-    inner: ManuallyDrop<LeaseGuardInner>,
+    inner: Option<LeaseGuardInner>,
 }
 
 #[derive(Debug)]
@@ -43,20 +43,20 @@ impl LeaseGuard {
         let id = id.into();
         let req = DeleteRequest { id, sync: false };
         let req = with_namespace!(req, namespace.as_ref());
-        let inner = LeaseGuardInner { client, req };
-        let inner = ManuallyDrop::new(inner);
+        let inner = Some(LeaseGuardInner { client, req });
         Self { inner }
     }
 
+    // Release a LeaseGuard in a way that we can await for it to complete.
+    // The alternative to `release` is to `drop` the LeaseGuard, but in that case we can't await for its completion.
     pub async fn release(self) -> anyhow::Result<()> {
         let mut this = ManuallyDrop::new(self);
-        let inner = unsafe { ManuallyDrop::take(&mut this.inner) };
-        inner.release().await?;
+        this.inner.take().unwrap().release().await?;
         Ok(())
     }
 
     pub fn id(&self) -> &'_ str {
-        &self.inner.req.get_ref().id
+        &self.inner.as_ref().unwrap().req.get_ref().id
     }
 }
 
@@ -73,7 +73,7 @@ impl LeaseGuardInner {
 // Provides a best effort for dropping a lease of the content.  If the lease cannot be dropped, it will log a warning
 impl Drop for LeaseGuard {
     fn drop(&mut self) {
-        let inner = unsafe { ManuallyDrop::take(&mut self.inner) };
+        let inner = self.inner.take().unwrap();
         tokio::spawn(async move {
             match inner.release().await {
                 Ok(()) => log::info!("removed lease"),

@@ -487,7 +487,7 @@ impl Client {
                 let mut image_content = self.get_info(&image_digest).await?;
                 image_content.labels.insert(
                     format!("containerd.io/gc.ref.content.precompile.{}", i),
-                    precompiled_content.digest.clone(),
+                    precompiled_content.digest,
                 );
                 image_content
                     .labels
@@ -499,7 +499,7 @@ impl Client {
                     layer: compiled_layer.clone(),
                 });
 
-                let _ = precompiled_content.release().await;
+                let _ = precompiled_content.lease.release().await;
             }
             return Ok((layers_for_runtime, platform));
         };
