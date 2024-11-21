@@ -19,7 +19,6 @@ use containerd_client::{tonic, with_namespace};
 use futures::TryStreamExt;
 use oci_spec::image::{Arch, ImageManifest, MediaType, Platform};
 use sha256::digest;
-use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
@@ -38,114 +37,107 @@ static MAX_WRITE_CHUNK_SIZE_BYTES: i64 = 1024 * 1024 * 15;
 
 pub struct Client {
     inner: Channel,
-    rt: Runtime,
     namespace: String,
-    address: String,
 }
 
 #[derive(Debug)]
 pub(crate) struct WriteContent {
-    _lease: LeaseGuard,
+    lease: LeaseGuard,
     pub digest: String,
+}
+
+impl WriteContent {
+    // used in tests
+    #[allow(dead_code)]
+    pub async fn release(self) -> anyhow::Result<()> {
+        self.lease.release().await
+    }
 }
 
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
 impl Client {
     // wrapper around connection that will establish a connection and create a client
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn connect(
-        address: impl AsRef<Path> + ToString,
-        namespace: impl ToString,
+    pub async fn connect(
+        address: impl AsRef<Path>,
+        namespace: impl Into<String>,
     ) -> Result<Client> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-
-        let inner = rt
-            .block_on(containerd_client::connect(address.as_ref()))
+        let inner = containerd_client::connect(address.as_ref())
+            .await
             .map_err(|err| ShimError::Containerd(err.to_string()))?;
 
         Ok(Client {
             inner,
-            rt,
-            namespace: namespace.to_string(),
-            address: address.to_string(),
+            namespace: namespace.into(),
         })
     }
 
     // wrapper around read that will read the entire content file
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
-        self.rt.block_on(async {
-            let req = ReadContentRequest {
-                digest: digest.to_string(),
-                ..Default::default()
-            };
-            let req = with_namespace!(req, self.namespace);
-            ContentClient::new(self.inner.clone())
-                .read(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .map_ok(|msg| msg.data)
-                .try_concat()
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))
-        })
+    async fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
+        let req = ReadContentRequest {
+            digest: digest.to_string(),
+            ..Default::default()
+        };
+        let req = with_namespace!(req, self.namespace);
+        ContentClient::new(self.inner.clone())
+            .read(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?
+            .into_inner()
+            .map_ok(|msg| msg.data)
+            .try_concat()
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))
     }
 
     // used in tests to clean up content
     #[allow(dead_code)]
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn delete_content(&self, digest: impl ToString) -> Result<()> {
-        self.rt.block_on(async {
-            let req = DeleteContentRequest {
-                digest: digest.to_string(),
-            };
-            let req = with_namespace!(req, self.namespace);
-            ContentClient::new(self.inner.clone())
-                .delete(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?;
-            Ok(())
-        })
+    async fn delete_content(&self, digest: impl ToString) -> Result<()> {
+        let req = DeleteContentRequest {
+            digest: digest.to_string(),
+        };
+        let req = with_namespace!(req, self.namespace);
+        ContentClient::new(self.inner.clone())
+            .delete(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?;
+        Ok(())
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn lease(&self, reference: String) -> Result<LeaseGuard> {
-        self.rt.block_on(async {
-            let mut lease_labels = HashMap::new();
-            // Unwrap is safe here since 24 hours is a valid time
-            let expire = chrono::Utc::now() + chrono::Duration::try_hours(24).unwrap();
-            lease_labels.insert("containerd.io/gc.expire".to_string(), expire.to_rfc3339());
-            let lease_request = containerd_client::services::v1::CreateRequest {
-                id: reference.clone(),
-                labels: lease_labels,
-            };
+    async fn lease(&self, reference: String) -> Result<LeaseGuard> {
+        let mut lease_labels = HashMap::new();
+        // Unwrap is safe here since 24 hours is a valid time
+        let expire = chrono::Utc::now() + chrono::Duration::try_hours(24).unwrap();
+        lease_labels.insert("containerd.io/gc.expire".to_string(), expire.to_rfc3339());
+        let lease_request = containerd_client::services::v1::CreateRequest {
+            id: reference.clone(),
+            labels: lease_labels,
+        };
 
-            let mut leases_client = LeasesClient::new(self.inner.clone());
+        let mut leases_client = LeasesClient::new(self.inner.clone());
+        let lease = leases_client
+            .create(with_namespace!(lease_request, self.namespace))
+            .await
+            .map_err(|e| ShimError::Containerd(e.to_string()))?
+            .into_inner()
+            .lease
+            .ok_or_else(|| {
+                ShimError::Containerd(format!("unable to create lease for  {}", reference))
+            })?;
 
-            let lease = leases_client
-                .create(with_namespace!(lease_request, self.namespace))
-                .await
-                .map_err(|e| ShimError::Containerd(e.to_string()))?
-                .into_inner()
-                .lease
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!("unable to create lease for  {}", reference))
-                })?;
-
-            Ok(LeaseGuard {
-                lease_id: lease.id,
-                address: self.address.clone(),
-                namespace: self.namespace.clone(),
-            })
-        })
+        Ok(LeaseGuard::new(
+            leases_client.clone(),
+            lease.id,
+            self.namespace.clone(),
+        ))
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn save_content(
+    async fn save_content(
         &self,
         data: Vec<u8>,
         unique_id: &str,
@@ -153,9 +145,9 @@ impl Client {
     ) -> Result<WriteContent> {
         let expected = format!("sha256:{}", digest(data.clone()));
         let reference = format!("precompile-{}", unique_id);
-        let lease = self.lease(reference.clone())?;
+        let lease = self.lease(reference.clone()).await?;
 
-        let digest = self.rt.block_on(async {
+        let digest = 'digest: {
             // create a channel to feed the stream; only sending one message at a time so we can set this to one
             let (tx, rx) = mpsc::channel(1);
 
@@ -177,13 +169,12 @@ impl Client {
 
             // Create stream for the channel
             let request_stream = ReceiverStream::new(rx);
-            let request_stream =
-                with_lease!(request_stream, self.namespace, lease.lease_id.clone());
+            let request_stream = with_lease!(request_stream, self.namespace, lease.id());
             let mut response_stream = match client.write(request_stream).await {
                 Ok(response_stream) => response_stream.into_inner(),
                 Err(e) if e.code() == Code::AlreadyExists => {
                     log::info!("content already exists {}", expected.clone().to_string());
-                    return Ok(expected);
+                    break 'digest expected;
                 }
                 Err(e) => return Err(ShimError::Containerd(e.to_string())),
             };
@@ -261,86 +252,71 @@ impl Client {
                     expected, response.digest
                 )));
             }
-            Ok(response.digest)
-        })?;
+            response.digest
+        };
 
-        Ok(WriteContent {
-            _lease: lease,
-            digest: digest.clone(),
-        })
+        Ok(WriteContent { lease, digest })
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn get_info(&self, content_digest: &str) -> Result<Info> {
-        self.rt.block_on(async {
-            let req = InfoRequest {
-                digest: content_digest.to_string(),
-            };
-            let req = with_namespace!(req, self.namespace);
-            let info = ContentClient::new(self.inner.clone())
-                .info(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .info
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!(
-                        "failed to get info for content {}",
-                        content_digest
-                    ))
-                })?;
-            Ok(info)
-        })
+    async fn get_info(&self, content_digest: &str) -> Result<Info> {
+        let req = InfoRequest {
+            digest: content_digest.to_string(),
+        };
+        let req = with_namespace!(req, self.namespace);
+        let info = ContentClient::new(self.inner.clone())
+            .info(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?
+            .into_inner()
+            .info
+            .ok_or_else(|| {
+                ShimError::Containerd(format!("failed to get info for content {}", content_digest))
+            })?;
+        Ok(info)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn update_info(&self, info: Info) -> Result<Info> {
-        self.rt.block_on(async {
-            let mut req = UpdateRequest {
-                info: Some(info.clone()),
-                update_mask: Some(Default::default()),
-            };
-            // Instantiate update_mask to Default and then mutate it to avoid namig it's type.
-            // The type is `prost_types::FieldMask` and not re-exported, naming it would require depending on it.
-            // Depending on it would mean keeping it's version in sync with the version in `containerd-client`.
-            req.update_mask.as_mut().unwrap().paths = vec!["labels".to_string()];
-            let req = with_namespace!(req, self.namespace);
-            let info = ContentClient::new(self.inner.clone())
-                .update(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .info
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!(
-                        "failed to update info for content {}",
-                        info.digest
-                    ))
-                })?;
-            Ok(info)
-        })
+    async fn update_info(&self, info: Info) -> Result<Info> {
+        let mut req = UpdateRequest {
+            info: Some(info.clone()),
+            update_mask: Some(Default::default()),
+        };
+        // Instantiate update_mask to Default and then mutate it to avoid namig it's type.
+        // The type is `prost_types::FieldMask` and not re-exported, naming it would require depending on it.
+        // Depending on it would mean keeping it's version in sync with the version in `containerd-client`.
+        req.update_mask.as_mut().unwrap().paths = vec!["labels".to_string()];
+        let req = with_namespace!(req, self.namespace);
+        let info = ContentClient::new(self.inner.clone())
+            .update(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?
+            .into_inner()
+            .info
+            .ok_or_else(|| {
+                ShimError::Containerd(format!("failed to update info for content {}", info.digest))
+            })?;
+        Ok(info)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn get_image(&self, image_name: impl ToString) -> Result<Image> {
-        self.rt.block_on(async {
-            let name = image_name.to_string();
-            let req = GetImageRequest { name };
-            let req = with_namespace!(req, self.namespace);
-            let image = ImagesClient::new(self.inner.clone())
-                .get(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .image
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!(
-                        "failed to get image for image {}",
-                        image_name.to_string()
-                    ))
-                })?;
-            Ok(image)
-        })
+    async fn get_image(&self, image_name: impl ToString) -> Result<Image> {
+        let name = image_name.to_string();
+        let req = GetImageRequest { name };
+        let req = with_namespace!(req, self.namespace);
+        let image = ImagesClient::new(self.inner.clone())
+            .get(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?
+            .into_inner()
+            .image
+            .ok_or_else(|| {
+                ShimError::Containerd(format!(
+                    "failed to get image for image {}",
+                    image_name.to_string()
+                ))
+            })?;
+        Ok(image)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
@@ -360,32 +336,34 @@ impl Client {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn get_container(&self, container_name: impl ToString) -> Result<Container> {
-        self.rt.block_on(async {
-            let id = container_name.to_string();
-            let req = GetContainerRequest { id };
-            let req = with_namespace!(req, self.namespace);
-            let container = ContainersClient::new(self.inner.clone())
-                .get(req)
-                .await
-                .map_err(|err| ShimError::Containerd(err.to_string()))?
-                .into_inner()
-                .container
-                .ok_or_else(|| {
-                    ShimError::Containerd(format!(
-                        "failed to get image for container {}",
-                        container_name.to_string()
-                    ))
-                })?;
-            Ok(container)
-        })
+    async fn get_container(&self, container_name: impl ToString) -> Result<Container> {
+        let id = container_name.to_string();
+        let req = GetContainerRequest { id };
+        let req = with_namespace!(req, self.namespace);
+        let container = ContainersClient::new(self.inner.clone())
+            .get(req)
+            .await
+            .map_err(|err| ShimError::Containerd(err.to_string()))?
+            .into_inner()
+            .container
+            .ok_or_else(|| {
+                ShimError::Containerd(format!(
+                    "failed to get image for container {}",
+                    container_name.to_string()
+                ))
+            })?;
+        Ok(container)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn get_image_manifest_and_digest(&self, image_name: &str) -> Result<(ImageManifest, String)> {
-        let image = self.get_image(image_name)?;
+    async fn get_image_manifest_and_digest(
+        &self,
+        image_name: &str,
+    ) -> Result<(ImageManifest, String)> {
+        let image = self.get_image(image_name).await?;
         let image_digest = self.extract_image_content_sha(&image)?;
-        let manifest = ImageManifest::from_reader(self.read_content(&image_digest)?.as_slice())?;
+        let manifest =
+            ImageManifest::from_reader(self.read_content(&image_digest).await?.as_slice())?;
         Ok((manifest, image_digest))
     }
 
@@ -393,16 +371,16 @@ impl Client {
     // If found it continues to parse the manifest and return the layers that contains the WASM modules
     // and possibly other configuration layers.
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn load_modules<T: Engine>(
+    pub async fn load_modules<T: Engine>(
         &self,
         containerd_id: impl ToString,
         engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
-        let container = self.get_container(containerd_id.to_string())?;
-        let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image)?;
+        let container = self.get_container(containerd_id.to_string()).await?;
+        let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image).await?;
 
         let image_config_descriptor = manifest.config();
-        let image_config = self.read_content(image_config_descriptor.digest())?;
+        let image_config = self.read_content(image_config_descriptor.digest()).await?;
         let image_config = image_config.as_slice();
 
         // the only part we care about here is the platform values
@@ -420,22 +398,26 @@ impl Client {
             None => (false, "".to_string()),
         };
 
-        let image_info = self.get_info(&image_digest)?;
+        let image_info = self.get_info(&image_digest).await?;
         let mut needs_precompile =
             can_precompile && !image_info.labels.contains_key(&precompile_id);
-        let layers = manifest
+        let configs = manifest
             .layers()
             .iter()
-            .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()))
-            .map(|original_config| {
-                self.read_wasm_layer(
+            .filter(|x| is_wasm_layer(x.media_type(), T::supported_layers_types()));
+
+        let mut layers = vec![];
+        for original_config in configs {
+            let layer = self
+                .read_wasm_layer(
                     original_config,
                     can_precompile,
                     &precompile_id,
                     &mut needs_precompile,
                 )
-            })
-            .collect::<Result<Vec<_>>>()?;
+                .await?;
+            layers.push(layer);
+        }
 
         if layers.is_empty() {
             log::info!("no WASM layers found in OCI image");
@@ -473,8 +455,9 @@ impl Client {
                     format!("{precompile_id}/original"),
                     original_config.digest().to_string(),
                 )]);
-                let precompiled_content =
-                    self.save_content(compiled_layer.clone(), &precompile_id, labels)?;
+                let precompiled_content = self
+                    .save_content(compiled_layer.clone(), &precompile_id, labels)
+                    .await?;
 
                 log::debug!(
                     "updating original layer {} with compiled layer {}",
@@ -484,7 +467,7 @@ impl Client {
                 // We add two labels here:
                 // - one with cache key per engine instance
                 // - one with a gc ref flag so it doesn't get cleaned up as long as the original layer exists
-                let mut original_layer = self.get_info(original_config.digest())?;
+                let mut original_layer = self.get_info(original_config.digest()).await?;
                 original_layer
                     .labels
                     .insert(precompile_id.clone(), precompiled_content.digest.clone());
@@ -492,7 +475,7 @@ impl Client {
                     format!("containerd.io/gc.ref.content.precompile.{}", i),
                     precompiled_content.digest.clone(),
                 );
-                self.update_info(original_layer)?;
+                self.update_info(original_layer).await?;
 
                 // The original image is considered a root object, by adding a ref to the new compiled content
                 // We tell containerd to not garbage collect the new content until this image is removed from the system
@@ -501,7 +484,7 @@ impl Client {
                 log::debug!(
                     "updating image content with precompile digest to avoid garbage collection"
                 );
-                let mut image_content = self.get_info(&image_digest)?;
+                let mut image_content = self.get_info(&image_digest).await?;
                 image_content.labels.insert(
                     format!("containerd.io/gc.ref.content.precompile.{}", i),
                     precompiled_content.digest,
@@ -509,12 +492,14 @@ impl Client {
                 image_content
                     .labels
                     .insert(precompile_id.clone(), "true".to_string());
-                self.update_info(image_content)?;
+                self.update_info(image_content).await?;
 
                 layers_for_runtime.push(WasmLayer {
                     config: original_config.clone(),
                     layer: compiled_layer.clone(),
                 });
+
+                let _ = precompiled_content.lease.release().await;
             }
             return Ok((layers_for_runtime, platform));
         };
@@ -524,7 +509,7 @@ impl Client {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn read_wasm_layer(
+    async fn read_wasm_layer(
         &self,
         original_config: &oci_spec::image::Descriptor,
         can_precompile: bool,
@@ -533,7 +518,7 @@ impl Client {
     ) -> std::prelude::v1::Result<WasmLayer, ShimError> {
         let mut digest_to_load = original_config.digest().clone();
         if can_precompile {
-            let info = self.get_info(&digest_to_load)?;
+            let info = self.get_info(&digest_to_load).await?;
             if let Some(label) = info.labels.get(precompile_id) {
                 // Safe to unwrap here since we already checked for the label's existence
                 digest_to_load.clone_from(label);
@@ -545,26 +530,29 @@ impl Client {
             }
         }
         log::debug!("loading digest: {} ", &digest_to_load);
-        self.read_content(&digest_to_load)
+        let res = self
+            .read_content(&digest_to_load)
+            .await
             .map(|module| WasmLayer {
                 config: original_config.clone(),
                 layer: module,
-            })
-            .or_else(|e| {
-                // handle content being removed from the content store out of band
-                if digest_to_load != *original_config.digest() {
-                    log::error!("failed to load precompiled layer: {}", e);
-                    log::error!("falling back to original layer and marking for recompile");
-                    *needs_precompile = can_precompile; // only mark for recompile if engine is capable
-                    self.read_content(original_config.digest())
-                        .map(|module| WasmLayer {
-                            config: original_config.clone(),
-                            layer: module,
-                        })
-                } else {
-                    Err(e)
-                }
-            })
+            });
+
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) if digest_to_load == *original_config.digest() => Err(err),
+            Err(err) => {
+                log::error!("failed to load precompiled layer: {err}");
+                log::error!("falling back to original layer and marking for recompile");
+                *needs_precompile = can_precompile; // only mark for recompile if engine is capable
+                self.read_content(original_config.digest())
+                    .await
+                    .map(|module| WasmLayer {
+                        config: original_config.clone(),
+                        layer: module,
+                    })
+            }
+        }
     }
 }
 
@@ -618,63 +606,75 @@ mod tests {
     use crate::testing::oci_helpers::ImageContent;
     use crate::testing::{oci_helpers, TEST_NAMESPACE};
 
-    #[test]
-    fn test_save_content() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_save_content() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, "test-ns").unwrap();
+        let client = Client::connect(path, "test-ns").await.unwrap();
         let data = b"hello world".to_vec();
 
         let expected = digest(data.clone());
         let expected = format!("sha256:{}", expected);
 
         let label = HashMap::from([(precompile_label("test", "hasdfh"), "original".to_string())]);
-        let returned = client.save_content(data, "test", label.clone()).unwrap();
+        let returned = client
+            .save_content(data, "test", label.clone())
+            .await
+            .unwrap();
         assert_eq!(expected, returned.digest.clone());
 
-        let data = client.read_content(returned.digest.clone()).unwrap();
+        let data = client.read_content(returned.digest.clone()).await.unwrap();
         assert_eq!(data, b"hello world");
 
         client
             .save_content(data.clone(), "test", label.clone())
+            .await
             .expect_err("Should not be able to save when lease is open");
 
         // need to drop the lease to be able to create a second one
         // a second call should be successful since it already exists
-        drop(returned);
+        let _ = returned.release().await;
 
         // a second call should be successful since it already exists
-        let returned = client.save_content(data, "test", label.clone()).unwrap();
+        let returned = client
+            .save_content(data, "test", label.clone())
+            .await
+            .unwrap();
         assert_eq!(expected, returned.digest);
 
-        client.delete_content(expected.clone()).unwrap();
+        client.delete_content(expected.clone()).await.unwrap();
 
         client
             .read_content(expected)
+            .await
             .expect_err("content should not exist");
+
+        let _ = returned.release().await;
     }
 
-    #[test]
-    fn test_layers_when_precompile_not_supported() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_when_precompile_not_supported() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, TEST_NAMESPACE).await.unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
         let engine = FakePrecomiplerEngine::new(None);
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_bytes.bytes);
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 0);
     }
 
-    #[test]
-    fn test_layers_are_precompiled_once() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_are_precompiled_once() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
@@ -683,21 +683,23 @@ mod tests {
         let mut engine = FakePrecomiplerEngine::new(Some(()));
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (_, _) = client.load_modules(&container_name, &engine).unwrap();
+        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
 
         // Even on second calls should only pre-compile once
-        let (layers, _) = client.load_modules(&container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(&container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
     }
 
-    #[test]
-    fn test_layers_are_recompiled_if_version_changes() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_are_recompiled_if_version_changes() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
@@ -706,19 +708,21 @@ mod tests {
         let mut engine = FakePrecomiplerEngine::new(Some(()));
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (_, _) = client.load_modules(&container_name, &engine).unwrap();
+        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
 
         engine.precompile_id = Some("new_version".to_string());
-        let (_, _) = client.load_modules(&container_name, &engine).unwrap();
+        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
     }
 
-    #[test]
-    fn test_layers_are_precompiled() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_are_precompiled() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
@@ -731,14 +735,17 @@ mod tests {
             engine.can_precompile().unwrap().as_str(),
         );
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
 
-        let (manifest, _) = client.get_image_manifest_and_digest(&image_name).unwrap();
+        let (manifest, _) = client
+            .get_image_manifest_and_digest(&image_name)
+            .await
+            .unwrap();
         let original_config = manifest.layers().first().unwrap();
-        let info = client.get_info(original_config.digest()).unwrap();
+        let info = client.get_info(original_config.digest()).await.unwrap();
 
         let actual_digest = info.labels.get(&expected_id).unwrap();
         assert_eq!(
@@ -747,11 +754,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_layers_are_precompiled_but_not_for_all_layers() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_are_precompiled_but_not_for_all_layers() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let non_wasm_bytes = generate_content("original_dont_compile", "textfile");
@@ -762,7 +771,7 @@ mod tests {
         let mut engine = FakePrecomiplerEngine::new(Some(()));
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
 
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
@@ -771,11 +780,13 @@ mod tests {
         assert_eq!(layers[1].layer, non_wasm_bytes.bytes);
     }
 
-    #[test]
-    fn test_layers_do_not_need_precompiled_if_new_layers_are_added_to_existing_image() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_do_not_need_precompiled_if_new_layers_are_added_to_existing_image() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
@@ -784,7 +795,7 @@ mod tests {
         let mut engine = FakePrecomiplerEngine::new(Some(()));
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
@@ -792,6 +803,7 @@ mod tests {
         // get original image sha before importing new image
         let image_sha = client
             .get_image(&_image_name)
+            .await
             .unwrap()
             .target
             .unwrap()
@@ -809,17 +821,19 @@ mod tests {
         // and then check that the layers don't need to be recompiled
         oci_helpers::wait_for_content_removal(&image_sha).unwrap();
 
-        let (layers, _) = client.load_modules(container_name2, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name2, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
         assert_eq!(layers.len(), 2);
         assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
     }
 
-    #[test]
-    fn test_layers_do_not_need_precompiled_if_new_layers_are_add_to_new_image() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_do_not_need_precompiled_if_new_layers_are_add_to_new_image() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
@@ -828,7 +842,7 @@ mod tests {
         let mut engine = FakePrecomiplerEngine::new(Some(()));
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
@@ -839,17 +853,19 @@ mod tests {
         let fake_precompiled_bytes2 = generate_content("precompiled2", WASM_LAYER_MEDIA_TYPE);
         engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
-        let (layers, _) = client.load_modules(container_name2, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name2, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
         assert_eq!(layers.len(), 2);
         assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
     }
 
-    #[test]
-    fn test_layers_are_precompiled_for_multiple_layers() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_layers_are_precompiled_for_multiple_layers() {
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
-        let client = Client::connect(path, crate::testing::TEST_NAMESPACE).unwrap();
+        let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
+            .await
+            .unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let fake_bytes2 = generate_content("original1", WASM_LAYER_MEDIA_TYPE);
@@ -869,7 +885,7 @@ mod tests {
             engine.can_precompile().unwrap().as_str(),
         );
 
-        let (layers, _) = client.load_modules(container_name, &engine).unwrap();
+        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
         assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
         assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 2);
 
@@ -877,10 +893,13 @@ mod tests {
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
         assert_eq!(layers[1].layer, fake_precompiled_bytes2.bytes);
 
-        let (manifest, _) = client.get_image_manifest_and_digest(&image_name).unwrap();
+        let (manifest, _) = client
+            .get_image_manifest_and_digest(&image_name)
+            .await
+            .unwrap();
 
         let original_config1 = manifest.layers().first().unwrap();
-        let info1 = client.get_info(original_config1.digest()).unwrap();
+        let info1 = client.get_info(original_config1.digest()).await.unwrap();
         let actual_digest1 = info1.labels.get(&expected_id).unwrap();
         assert_eq!(
             actual_digest1.to_string(),
@@ -888,7 +907,7 @@ mod tests {
         );
 
         let original_config2 = manifest.layers().last().unwrap();
-        let info2 = client.get_info(original_config2.digest()).unwrap();
+        let info2 = client.get_info(original_config2.digest()).await.unwrap();
         let actual_digest2 = info2.labels.get(&expected_id).unwrap();
         assert_eq!(
             actual_digest2.to_string(),

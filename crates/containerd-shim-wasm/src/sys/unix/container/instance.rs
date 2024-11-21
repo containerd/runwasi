@@ -15,6 +15,7 @@ use nix::unistd::Pid;
 use oci_spec::image::Platform;
 
 use crate::container::Engine;
+use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance_utils::{determine_rootdir, get_instance_root, instance_exists};
 use crate::sandbox::sync::WaitableCell;
 use crate::sandbox::{
@@ -45,8 +46,9 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let stdio = Stdio::init_from_cfg(cfg)?;
 
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace)?
+        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace).block_on()?
             .load_modules(&id, &engine)
+            .block_on()
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
                 (vec![], Platform::default())
