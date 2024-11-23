@@ -17,7 +17,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
 
     /// Check that the runtime can run the container.
     /// This checks runs after the container creation and before the container starts.
-    /// By it checks that the wasi_entrypoint is either:
+    /// By default it checks that the wasi_entrypoint is either:
     /// * a OCI image with wasm layers
     /// * a file with the `wasm` filetype header
     /// * a parsable `wat` file.
