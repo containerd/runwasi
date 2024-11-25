@@ -943,7 +943,7 @@ version = "0.5.0"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "libc",
  "log",
  "reqwest 0.12.9",
@@ -2361,9 +2361,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbbff0a806a4728c99295b254c8838933b5b082d75e3cb70c8dab21fdfbcfa9a"
+checksum = "97818827ef4f364230e16705d4706e2897df2bb60617d6ca15d598025a3c481f"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2402,7 +2402,7 @@ checksum = "08afdbb5c31130e3034af566421053ab03787c640246a446327f550d11bcb333"
 dependencies = [
  "futures-util",
  "http 1.1.0",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "rustls 0.23.17",
  "rustls-pki-types",
@@ -2418,7 +2418,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b90d566bffbce6a75bd8b09a05aa8c2cb1fabb6cb348f8840c9e4c90a0d83b0"
 dependencies = [
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "pin-project-lite",
  "tokio",
@@ -2433,7 +2433,7 @@ checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
 dependencies = [
  "bytes",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "native-tls",
  "tokio",
@@ -2452,7 +2452,7 @@ dependencies = [
  "futures-util",
  "http 1.1.0",
  "http-body 1.0.1",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "pin-project-lite",
  "socket2",
  "tokio",
@@ -4467,7 +4467,7 @@ dependencies = [
  "http 1.1.0",
  "http-body 1.0.1",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-rustls 0.27.3",
  "hyper-tls",
  "hyper-util",
@@ -5676,7 +5676,7 @@ dependencies = [
  "http 1.1.0",
  "http-body 1.0.1",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-timeout",
  "hyper-util",
  "percent-encoding",
@@ -5819,9 +5819,9 @@ dependencies = [
 
 [[package]]
 name = "trapeze"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5210f73b3b055ada99539fdfb7fb66e5232e67a37b57c5f21b44a2861ce10bde"
+checksum = "4a2da2a61bcb6db06b2b1e1665a7b7aec6f83e384b544ccf47a039c84b69946f"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -5834,6 +5834,7 @@ dependencies = [
  "thiserror 2.0.3",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "tokio-vsock",
  "trapeze-codegen",
  "trapeze-macros",
@@ -5842,18 +5843,18 @@ dependencies = [
 
 [[package]]
 name = "trapeze-codegen"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f97ee725498491a347ea89cdc3032b7b1033281cc9b4f478b5fc2cbc7584b496"
+checksum = "2d6f3bfa2fda8c8f5d417fca8030109f5f1b67e91b020bdc34d61a55dcf158f4"
 dependencies = [
  "prost-build 0.13.3",
 ]
 
 [[package]]
 name = "trapeze-macros"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "464d4b88afef6fd5a1f38a9bc28ad3abbedd3331bdb9472a8e7e6458bca6bd0c"
+checksum = "b629c7aad077270c530523c46be16dfba42224824b57b539f9e2674d7e937b2c"
 dependencies = [
  "anyhow",
  "proc-macro2",
@@ -7079,7 +7080,7 @@ dependencies = [
  "http 1.1.0",
  "http-body 1.0.1",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "rustls 0.22.4",
  "tokio",
  "tokio-rustls 0.25.0",
