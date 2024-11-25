@@ -118,8 +118,6 @@ pub(crate) async fn serve_conn(
             }
         };
 
-        log::debug!("New connection");
-
         let stream = TokioIo::new(stream);
         let h = handler.clone();
 
@@ -188,7 +186,7 @@ impl ProxyHandler {
 
         let req_id = self.next_req_id();
 
-        log::info!(
+        log::trace!(
             "Request {req_id} handling {} to {}",
             req.method(),
             req.uri()

@@ -79,6 +79,15 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
     fn default() -> Self {
         let mut config = T::new_config();
         config.async_support(true); // must be on
+
+        if let Some(true) = use_pooling_allocator_by_default()
+            .context("failed to determine allocation strategy")
+            .unwrap()
+        {
+            let cfg = wasmtime::PoolingAllocationConfig::default();
+            config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
+        }
+
         Self {
             engine: wasmtime::Engine::new(&config)
                 .context("failed to create wasmtime engine")
@@ -438,6 +447,23 @@ async fn wait_for_signal() -> Result<i32> {
     }
 }
 
+/// The pooling allocator is tailor made for the `wasi/http` use case. Check if we can use it.
+///
+/// For more details refer to: <https://github.com/bytecodealliance/wasmtime/blob/v27.0.0/src/commands/serve.rs#L641>
+fn use_pooling_allocator_by_default() -> Result<Option<bool>> {
+    const BITS_TO_TEST: u32 = 42;
+    let mut config = Config::new();
+    config.wasm_memory64(true);
+    let engine = wasmtime::Engine::new(&config)?;
+    let mut store = Store::new(&engine, ());
+    let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
+    if wasmtime::Memory::new(&mut store, ty).is_ok() {
+        Ok(Some(true))
+    } else {
+        Ok(None)
+    }
+}
+
 pub trait IntoErrorCode {
     fn into_error_code(self) -> Result<i32>;
 }
@@ -445,7 +471,7 @@ pub trait IntoErrorCode {
 impl IntoErrorCode for Result<i32> {
     fn into_error_code(self) -> Result<i32> {
         self.or_else(|err| match err.downcast_ref::<wasmtime_wasi::I32Exit>() {
-            Some(value) => Ok(value.process_exit_code()),
+            Some(exit) => Ok(exit.0),
             _ => Err(err),
         })
     }
