@@ -31,7 +31,7 @@ thiserror = { workspace = true }
 wat = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 futures = { version = "0.3.30" }
-wasmparser = { version = "0.219.1" }
+wasmparser = { version = "0.220.0" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
 
