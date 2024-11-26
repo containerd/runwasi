@@ -176,35 +176,35 @@ test-image/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 
 .PHONY: test-image/clean
 test-image/clean:
-	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/
+	rm -rf target/wasm32-wasip1/$(OPT_PROFILE)/
 
 .PHONY: test-image/oci/clean
 test-image/oci/clean:
-	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
-	rm -rf target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
+	rm -rf target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar
+	rm -rf target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar
 
 .PHONY: demo-app
-demo-app: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+demo-app: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 
-.PHONY: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
-target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm:
-	rustup target add wasm32-wasi
+.PHONY: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
+target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm:
+	rustup target add wasm32-wasip1
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG)
 
-target/wasm32-wasi/$(OPT_PROFILE)/img.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+target/wasm32-wasip1/$(OPT_PROFILE)/img.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	cd crates/wasi-demo-app && cargo build $(RELEASE_FLAG) --features oci-v1-tar
 
 .PHONY: dist/img.tar
 dist/img.tar:
 	@mkdir -p "dist/"
-	[ -f $(PWD)/dist/img.tar ] || $(MAKE) target/wasm32-wasi/$(OPT_PROFILE)/img.tar
-	[ -f $(PWD)/dist/img.tar ] || cp target/wasm32-wasi/$(OPT_PROFILE)/img.tar "$@"
+	[ -f $(PWD)/dist/img.tar ] || $(MAKE) target/wasm32-wasip1/$(OPT_PROFILE)/img.tar
+	[ -f $(PWD)/dist/img.tar ] || cp target/wasm32-wasip1/$(OPT_PROFILE)/img.tar "$@"
 
-dist/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar 
+dist/img-oci.tar: target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar 
 	@mkdir -p "dist/"
 	cp "$<" "$@"
 
-dist/img-oci-artifact.tar: target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
+dist/img-oci-artifact.tar: target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar
 	@mkdir -p "dist/"
 	cp "$<" "$@"
 
@@ -218,14 +218,14 @@ load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms dist/img-oci-artifact.tar
 
-target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
-	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci.tar
+	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar
 
 .PHONY:
-target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar: target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm
+target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
-	cargo run --bin oci-tar-builder -- --name wasi-demo-oci-artifact --as-artifact --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasi/$(OPT_PROFILE)/img-oci-artifact.tar
+	cargo run --bin oci-tar-builder -- --name wasi-demo-oci-artifact --as-artifact --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
