@@ -850,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wamr"
-version = "0.4.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
