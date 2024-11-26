@@ -25,7 +25,7 @@ There is an experimental executable that uses the library and can package a wasm
 To generate the package and import to a registry using a tool such as [regctl](https://github.com/regclient/regclient/blob/main/docs/install.md).  To [run a local image registry](https://www.docker.com/blog/how-to-use-your-own-registry-2/) use `docker run -d -p 5000:5000 --name registry registry:2.7`
 
 ```
-cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o ./dist/img-oci.tar
+cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasip1/debug/wasi-demo-app.wasm -o ./dist/img-oci.tar
 regctl image import localhost:5000/wasi-demo-oci:latest ./dist/img-oci.tar        
 ```
 
@@ -63,8 +63,8 @@ In order to be compatible with Docker, since Docker does not currently support t
 The CNCF wg-wasm has published and [OCI artifact format](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/) for packaging wasm modules and components.  The artifact can be produced locally by running the `--as-artifact` flag:
 
 ```
-cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --as-artifact --module ./target/wasm32-wasi/debug/wasi-demo-app.wasm -o target/wasm32-wasi/debug/img-oci-artifact.tar
-regctl image import localhost:5000/wasi-artifact:latest target/wasm32-wasi/debug/img-oci-artifact.tar
+cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --as-artifact --module ./target/wasm32-wasip1/debug/wasi-demo-app.wasm -o target/wasm32-wasip1/debug/img-oci-artifact.tar
+regctl image import localhost:5000/wasi-artifact:latest target/wasm32-wasip1/debug/img-oci-artifact.tar
 ```
 
 The manifest will follow the guidance:

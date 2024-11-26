@@ -64,7 +64,7 @@ fn compile_rust(src: impl AsRef<Path>) -> Result<PathBuf> {
     let dst = output_for(src)?;
 
     Command::new(rustc)
-        .arg("--target=wasm32-wasi")
+        .arg("--target=wasm32-wasip1")
         .arg("-Copt-level=z")
         .arg("-Cstrip=symbols")
         .arg("-o")
