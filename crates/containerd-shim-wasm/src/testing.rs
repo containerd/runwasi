@@ -4,6 +4,11 @@ use std::collections::HashMap;
 use std::fs::{self, create_dir, read, read_to_string, write, File};
 use std::marker::PhantomData;
 use std::ops::Add;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file as symlink;
+use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
@@ -76,6 +81,11 @@ where
         Ok(builder)
     }
 
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.container_name = name.into();
+        self
+    }
+
     pub fn with_host_network(mut self) -> Self {
         // Removing the `network` namespace results in the binding to the host's socket.
         // This allows for direct communication with the host's networking interface.
@@ -109,6 +119,32 @@ where
         log::info!("setting wasi test stdin to [u8; {}]", stdin.as_ref().len());
 
         write(dir.join("stdin"), stdin)?;
+
+        Ok(self)
+    }
+
+    pub fn with_stdout(self, stdout: impl AsRef<Path>) -> Result<Self> {
+        let stdout = fs::canonicalize(stdout.as_ref())?;
+
+        let dir = self.tempdir.path();
+
+        log::info!("setting wasi test stdout to {:?}", stdout);
+
+        std::fs::remove_file(dir.join("stdout"))?;
+        symlink(stdout, dir.join("stdout"))?;
+
+        Ok(self)
+    }
+
+    pub fn with_stderr(self, stderr: impl AsRef<Path>) -> Result<Self> {
+        let stderr = fs::canonicalize(stderr.as_ref())?;
+
+        let dir = self.tempdir.path();
+
+        log::info!("setting wasi test stderr to {:?}", stderr);
+
+        std::fs::remove_file(dir.join("stderr"))?;
+        symlink(stderr, dir.join("stderr"))?;
 
         Ok(self)
     }
@@ -229,9 +265,13 @@ where
         Ok(self)
     }
 
-    pub fn wait(&self, timeout: Duration) -> Result<(u32, String, String)> {
-        let dir = self.tempdir.path();
+    pub fn kill(&self) -> Result<&Self> {
+        log::info!("sending SIGKILL");
+        self.instance.kill(SIGKILL as u32)?;
+        Ok(self)
+    }
 
+    pub fn wait(&self, timeout: Duration) -> Result<(u32, String, String)> {
         log::info!("waiting wasi test");
         let (status, _) = match self.instance.wait_timeout(timeout) {
             Some(res) => res,
@@ -241,14 +281,34 @@ where
             }
         };
 
-        let stdout = read_to_string(dir.join("stdout"))?;
-        let stderr = read_to_string(dir.join("stderr"))?;
+        let stdout = self.read_stdout()?.unwrap_or_default();
+        let stderr = self.read_stderr()?.unwrap_or_default();
 
         self.instance.delete()?;
 
         log::info!("wasi test status is {status}");
 
         Ok((status, stdout, stderr))
+    }
+
+    pub fn root(&self) -> &Path {
+        self.tempdir.path()
+    }
+
+    pub fn read_stdout(&self) -> Result<Option<String>> {
+        let path = self.tempdir.path().join("stdout");
+        if path.is_symlink() {
+            return Ok(None);
+        }
+        Ok(Some(read_to_string(path)?))
+    }
+
+    pub fn read_stderr(&self) -> Result<Option<String>> {
+        let path = self.tempdir.path().join("stderr");
+        if path.is_symlink() {
+            return Ok(None);
+        }
+        Ok(Some(read_to_string(path)?))
     }
 }
 

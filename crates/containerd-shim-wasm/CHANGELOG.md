@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Added test for signal handling issue [#755](https://github.com/containerd/runwasi/issues/755) ([#756](https://github.com/containerd/runwasi/pull/756))
+
 ## [v0.8.0] — 2024-12-04
 
 ### Added

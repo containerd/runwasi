@@ -11,6 +11,12 @@ pub mod sandbox;
 pub(crate) mod sys;
 
 #[cfg(any(test, feature = "testing"))]
+/// Utilities for writing shims tests.
+/// You can use this to test your runwasi based shim.
 pub mod testing;
+
+#[cfg(test)]
+/// Tests for runwasi's containerd-shim-wasm.
+mod test;
 
 pub use containerd_shim::Config;
