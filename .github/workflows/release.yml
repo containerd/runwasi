@@ -159,10 +159,15 @@ jobs:
           else
             PRERELEASE_ARGS=""
           fi  
+          
+          NOTES_ARG=""
+          if [[ -f RELEASE_NOTES.md ]]; then
+            NOTES_ARG="--notes-file RELEASE_NOTES.md"
+          fi
         
-          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' \
+          gh release create "refs/tags/${{matrix.crate}}/v${{matrix.version}}" \
             --title "${{matrix.crate}}/v${{matrix.version}}" \
-            --notes-file RELEASE_NOTES.md \
+            $NOTES_ARG \
             --verify-tag \
             $PRERELEASE_ARGS
         env:
