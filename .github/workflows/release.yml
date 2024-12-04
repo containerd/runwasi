@@ -165,7 +165,7 @@ jobs:
             NOTES_ARG="--notes-file RELEASE_NOTES.md"
           fi
         
-          gh release create "refs/tags/${{matrix.crate}}/v${{matrix.version}}" \
+          gh release create ${{matrix.crate}}/v${{matrix.version}} \
             --title "${{matrix.crate}}/v${{matrix.version}}" \
             $NOTES_ARG \
             --verify-tag \
