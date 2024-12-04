@@ -22,7 +22,7 @@ Must release the creates in this order due to dependencies:
 
 ## Release Steps
 
-1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate
+1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate, and change the "Unreleased" section in the `CHANGELOG.md` to the new version.
 2. PR can be merged after 2 LGTMs
 3. Run the release workflow for the dependent crate. (e.g. `containerd-shim-wasm/v0.2.0` where `crate=containerd-shim-wasm` and `version=0.2.0`)
 4. Wait for the release workflow to complete

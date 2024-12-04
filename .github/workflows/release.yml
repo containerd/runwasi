@@ -144,10 +144,32 @@ jobs:
         run: |
           git tag "${{matrix.crate}}/v${{matrix.version}}"
           git push origin "${{matrix.crate}}/v${{matrix.version}}"
+      - name: Extract release notes
+        if: ${{ matrix.crate == 'containerd-shim-wasm' &&  !inputs.dry_run }}
+        run: |
+          cd $GITHUB_WORKSPACE
+          ./scripts/extract-changelog.sh v${{matrix.version}} > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
       - name: Create release
         if: ${{ !inputs.dry_run }}
         run: |
-          gh release create 'refs/tags/${{matrix.crate}}/v${{matrix.version}}' --generate-notes
+          TAG_NAME=${{matrix.version}}
+          if [[ "$TAG_NAME" =~ .+-pre.* ]]; then
+            PRERELEASE_ARGS="--prerelease --latest=false"
+          else
+            PRERELEASE_ARGS=""
+          fi  
+          
+          NOTES_ARG=""
+          if [[ -f RELEASE_NOTES.md ]]; then
+            NOTES_ARG="--notes-file RELEASE_NOTES.md"
+          fi
+        
+          gh release create "refs/tags/${{matrix.crate}}/v${{matrix.version}}" \
+            --title "${{matrix.crate}}/v${{matrix.version}}" \
+            $NOTES_ARG \
+            --verify-tag \
+            $PRERELEASE_ARGS
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
