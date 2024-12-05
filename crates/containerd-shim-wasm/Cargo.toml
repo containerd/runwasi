@@ -78,6 +78,7 @@ windows-sys = { workspace = true, features = [
 ] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["signal"] }
 containerd-shim-wasm-test-modules = { workspace = true }
 env_logger = { workspace = true }
 tempfile = { workspace = true }
