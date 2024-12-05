@@ -1,4 +1,4 @@
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::{OnceLock, RwLock};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -10,7 +10,7 @@ pub(super) struct InstanceData<T: Instance> {
     pub instance: T,
     cfg: InstanceConfig<T::Engine>,
     pid: OnceLock<u32>,
-    state: Arc<RwLock<TaskState>>,
+    state: RwLock<TaskState>,
 }
 
 impl<T: Instance> InstanceData<T> {
@@ -22,7 +22,7 @@ impl<T: Instance> InstanceData<T> {
             instance,
             cfg,
             pid: OnceLock::default(),
-            state: Arc::new(RwLock::new(TaskState::Created)),
+            state: RwLock::new(TaskState::Created),
         })
     }
 
