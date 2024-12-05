@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Signing
+description: 'Signs binaries using cosign'
+
+inputs:
+  runtime:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup cosign for signing
+      uses: sigstore/cosign-installer@v3.7.0
+      with:
+        cosign-release: 'v2.2.2'
+    - name: Sign the binaries
+      shell: bash
+      run: |
+        make dist-${{ inputs.runtime }}
+        
+        # Check if there's any files to archive as tar fails otherwise
+        if stat dist/bin/* >/dev/null 2>&1; then
+          echo "::notice::Signing the binary"
+          cosign sign-blob --yes \
+            --output-signature containerd-shim-${{ inputs.runtime }}-v1.sig \
+            --output-certificate containerd-shim-${{ inputs.runtime }}-v1.pem \
+            --bundle containerd-shim-${{ inputs.runtime }}-v1.bundle \
+            dist/bin/containerd-shim-${{ inputs.runtime }}-v1
+          
+          # Copy the certs to the dist/bin folder
+          cp *.sig dist/bin/
+          cp *.pem dist/bin/
+        else
+          echo "::warning::No files to sign"
+        fi

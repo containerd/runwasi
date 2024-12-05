@@ -66,10 +66,9 @@ jobs:
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
-        uses: ./.github/workflows/action-sign.yml
+        uses: ./.github/action-sign
         with:
           runtime: ${{ inputs.runtime }}
-          os: ${{ inputs.os }}
       - name: Package artifacts
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
