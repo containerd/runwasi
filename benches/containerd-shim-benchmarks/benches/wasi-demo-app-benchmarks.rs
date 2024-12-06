@@ -3,61 +3,86 @@ use std::time::{Duration, Instant};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
+struct TestCase<'a> {
+    image: &'a str,
+    entrypoint: &'a str,
+    args: &'a [&'a str],
+    expected: &'a str,
+}
+
 static RUNTIMES: &[&str] = &["wasmtime", "wasmedge", "wasmer", "wamr"];
+static TEST_CASES: &[TestCase] = &[
+    TestCase {
+        image: "ghcr.io/containerd/runwasi/wasi-demo-app:latest",
+        entrypoint: "wasi-demo-app.wasm",
+        args: &["echo", "hello"],
+        expected: "hello",
+    },
+    TestCase {
+        image: "ghcr.io/containerd/runwasi/wasi-demo-oci:latest",
+        entrypoint: "wasi-demo-oci.wasm",
+        args: &["echo", "hello"],
+        expected: "hello",
+    },
+];
 
-fn run_container(runtime: &str, image_base_name: &str) -> Duration {
+fn run_container<F>(runtime: &str, test_case: &TestCase, verify_output: F) -> Duration
+where
+    F: Fn(&str),
+{
     let start = Instant::now();
+    let mut cmd = Command::new("sudo");
+    cmd.args([
+        "ctr",
+        "run",
+        "--rm",
+        &format!("--runtime=io.containerd.{}.v1", runtime),
+        test_case.image,
+        "testwasm",
+        test_case.entrypoint,
+    ]);
+    cmd.args(test_case.args);
 
-    let output = Command::new("sudo")
-        .args([
-            "ctr",
-            "run",
-            "--rm",
-            &format!("--runtime=io.containerd.{}.v1", runtime),
-            &format!("ghcr.io/containerd/runwasi/{}:latest", image_base_name),
-            "testwasm",
-            &format!("{}.wasm", image_base_name),
-            "echo",
-            "hello",
-        ])
-        .output()
-        .expect("Failed to execute command");
-
+    let output = cmd.output().expect("Failed to execute command");
     if !output.status.success() {
         panic!(
             "Container failed to run: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-    } else {
-        let stdout_str = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout_str.contains("hello"));
     }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    verify_output(&stdout);
 
     start.elapsed()
 }
 
-fn benchmark_startup(c: &mut Criterion) {
-    let mut group = c.benchmark_group("wasi-demo-app");
-
+fn benchmark_image(c: &mut Criterion) {
+    let mut group = c.benchmark_group("end-to-end");
     for runtime in RUNTIMES {
-        group.bench_function(*runtime, |b| {
-            b.iter(|| run_container(runtime, "wasi-demo-app"));
-        });
+        for test_case in TEST_CASES {
+            let image_base_name = test_case
+                .image
+                .rsplit('/')
+                .next()
+                .unwrap_or(test_case.image);
+            let bench_name = format!("{}/{}", runtime, image_base_name);
+            group.bench_function(&bench_name, |b| {
+                b.iter(|| {
+                    run_container(runtime, test_case, |stdout| {
+                        assert!(stdout.contains(test_case.expected));
+                    })
+                });
+            });
+        }
     }
-    for runtime in RUNTIMES {
-        let name = format!("{}-oci", runtime);
-        group.bench_function(&name, |b| {
-            b.iter(|| run_container(runtime, "wasi-demo-oci"));
-        });
-    }
-
     group.finish();
 }
 
 criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(10);
-    targets = benchmark_startup
+    targets = benchmark_image
 }
 
 criterion_main!(benches);
