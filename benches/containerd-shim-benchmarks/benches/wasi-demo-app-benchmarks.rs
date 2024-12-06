@@ -81,7 +81,9 @@ fn benchmark_image(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default()
+        .sample_size(10)
+        .warm_up_time(Duration::from_secs(3));
     targets = benchmark_image
 }
 
