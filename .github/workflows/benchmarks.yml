@@ -57,3 +57,46 @@ jobs:
           summary-always: true
           # Where the previous data file is stored
           external-data-json-path: ./cache/benchmark-data.json
+      - name: Load wasi-http image
+        shell: bash
+        run: |
+          make test-image/http
+          make load/http
+      - name: Start wasmtime shim
+        shell: bash
+        run: |
+          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm
+      - name: Wait for wasmtime shim to start
+        shell: bash
+        run: |
+          while ! curl -s http://127.0.0.1:8080 > /dev/null; do
+            sleep 1
+          done
+      - name: Run hey benchmark
+        shell: bash
+        run: |
+          hey -n 100000 -c 50 http://127.0.0.1:8080 > raw-output.txt
+          python3 ./scripts/parse-hey.py raw-output.txt > benchmark-results.json
+          cat benchmark-results.json
+      - name: Report Throughput results
+        uses: benchmark-action/github-action-benchmark@v1.20.4
+        with:
+          name: "HTTP Throughput"
+          tool: "customBiggerIsBetter"
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          external-data-json-path: ./cache/benchmark-data.json
+          summary-always: true
+          alert-threshold: "120%"
+          fail-on-alert: true
+      - name: Report Latency results
+        uses: benchmark-action/github-action-benchmark@v1.20.4
+        with:
+          name: "HTTP Latency"
+          tool: "customSmallerIsBetter"
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          external-data-json-path: ./cache/benchmark-data.json
+          summary-always: true
+          alert-threshold: "130%"
+          fail-on-alert: true
