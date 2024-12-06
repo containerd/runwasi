@@ -1,10 +1,11 @@
 use std::process::Command;
 use std::time::{Duration, Instant};
+
 use criterion::{criterion_group, criterion_main, Criterion};
 
 fn run_container(runtime: &str, oci: bool) -> Duration {
     let start = Instant::now();
-    
+
     let image_name = if oci {
         "ghcr.io/containerd/runwasi/wasi-demo-oci:latest" // OCI artifact
     } else {
@@ -12,8 +13,12 @@ fn run_container(runtime: &str, oci: bool) -> Duration {
     };
 
     let container_name = "testwasm";
-    let wasm_file = if oci { "wasi-demo-oci.wasm" } else { "wasi-demo-app.wasm" };
-    
+    let wasm_file = if oci {
+        "wasi-demo-oci.wasm"
+    } else {
+        "wasi-demo-app.wasm"
+    };
+
     let output = Command::new("sudo")
         .args([
             "ctr",
@@ -24,13 +29,16 @@ fn run_container(runtime: &str, oci: bool) -> Duration {
             container_name,
             wasm_file,
             "echo",
-            "hello"
+            "hello",
         ])
         .output()
         .expect("Failed to execute command");
 
     if !output.status.success() {
-        panic!("Container failed to run: {}", String::from_utf8_lossy(&output.stderr));
+        panic!(
+            "Container failed to run: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     } else {
         let stdout_str = String::from_utf8_lossy(&output.stdout);
         assert!(stdout_str.contains("hello"));
@@ -41,9 +49,9 @@ fn run_container(runtime: &str, oci: bool) -> Duration {
 
 fn benchmark_startup(c: &mut Criterion) {
     let mut group = c.benchmark_group("wasi-demo-app");
-    
+
     const RUNTIMES: &[&str] = &["wasmtime", "wasmedge", "wasmer", "wamr"];
-    
+
     for runtime in RUNTIMES {
         group.bench_function(runtime, |b| {
             b.iter(|| run_container(runtime, false));
@@ -65,4 +73,4 @@ criterion_group! {
     targets = benchmark_startup
 }
 
-criterion_main!(benches); 
+criterion_main!(benches);
