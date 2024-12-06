@@ -174,6 +174,9 @@ test-image: dist/img.tar
 .PHONY: test-image/oci
 test-image/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 
+.PHONY: test-image/http
+test-image/http: dist/http-img-oci.tar
+
 .PHONY: test-image/clean
 test-image/clean:
 	rm -rf target/wasm32-wasip1/$(OPT_PROFILE)/
@@ -218,6 +221,10 @@ load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms dist/img-oci-artifact.tar
 
+.PHONY: load/http
+load/http: dist/http-img-oci.tar
+	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+
 target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
 	cargo run --bin oci-tar-builder -- --name wasi-demo-oci --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar
@@ -226,6 +233,16 @@ target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasip1/$(OPT_PROF
 target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/
 	cargo run --bin oci-tar-builder -- --name wasi-demo-oci-artifact --as-artifact --repo ghcr.io/containerd/runwasi --tag latest --module ./target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm -o target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar
+
+.PHONY:
+dist/http-img-oci.tar: crates/containerd-shim-wasm-test-modules/src/modules/hello_wasi_http.wasm
+	@mkdir -p "dist/"
+	cargo run --bin oci-tar-builder -- \
+		--name wasi-http \
+		--repo ghcr.io/containerd/runwasi \
+		--tag latest \
+		--module $< \
+		-o $@
 
 bin/kind: test/k8s/Dockerfile
 	$(DOCKER_BUILD) --output=bin/ -f test/k8s/Dockerfile --target=kind .
