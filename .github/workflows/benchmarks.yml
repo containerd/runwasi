@@ -28,6 +28,8 @@ jobs:
           make install
           make test-image
           make load
+          make test-image/oci
+          make load/oci
       - name: Run Benchmarks
         run: |
           set -o pipefail

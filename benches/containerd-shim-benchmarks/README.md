@@ -14,6 +14,8 @@ Then, build and load the wasi-demo-app:
 ```bash
 make test-image
 make load
+make test-image/oci
+make load/oci
 ```
 
 To run all benchmarks:

@@ -2,8 +2,17 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 use criterion::{criterion_group, criterion_main, Criterion};
 
-fn run_container(runtime: &str) -> Duration {
+fn run_container(runtime: &str, oci: bool) -> Duration {
     let start = Instant::now();
+    
+    let image_name = if oci {
+        "ghcr.io/containerd/runwasi/wasi-demo-oci:latest" // OCI artifact
+    } else {
+        "ghcr.io/containerd/runwasi/wasi-demo-app:latest"
+    };
+
+    let container_name = "testwasm";
+    let wasm_file = if oci { "wasi-demo-oci.wasm" } else { "wasi-demo-app.wasm" };
     
     let output = Command::new("sudo")
         .args([
@@ -11,9 +20,9 @@ fn run_container(runtime: &str) -> Duration {
             "run",
             "--rm",
             &format!("--runtime=io.containerd.{}.v1", runtime),
-            "ghcr.io/containerd/runwasi/wasi-demo-app:latest",
-            "testwasm",
-            "/wasi-demo-app.wasm",
+            image_name,
+            container_name,
+            wasm_file,
             "echo",
             "hello"
         ])
@@ -33,21 +42,19 @@ fn run_container(runtime: &str) -> Duration {
 fn benchmark_startup(c: &mut Criterion) {
     let mut group = c.benchmark_group("wasi-demo-app");
     
-    group.bench_function("wasmtime", |b| {
-        b.iter(|| run_container("wasmtime"));
-    });
-
-    group.bench_function("wasmedge", |b| {
-        b.iter(|| run_container("wasmedge"));
-    });
-
-    group.bench_function("wasmer", |b| {
-        b.iter(|| run_container("wasmer"));
-    });
-
-    group.bench_function("wamr", |b| {
-        b.iter(|| run_container("wamr"));
-    });
+    const RUNTIMES: &[&str] = &["wasmtime", "wasmedge", "wasmer", "wamr"];
+    
+    for runtime in RUNTIMES {
+        group.bench_function(runtime, |b| {
+            b.iter(|| run_container(runtime, false));
+        });
+    }
+    for runtime in RUNTIMES {
+        let name = format!("{}-oci", runtime);
+        group.bench_function(&name, |b| {
+            b.iter(|| run_container(runtime, true));
+        });
+    }
 
     group.finish();
 }
