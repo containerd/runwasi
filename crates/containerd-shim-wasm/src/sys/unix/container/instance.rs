@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
@@ -16,7 +17,7 @@ use oci_spec::image::Platform;
 
 use crate::container::Engine;
 use crate::sandbox::async_utils::AmbientRuntime as _;
-use crate::sandbox::instance_utils::{determine_rootdir, get_instance_root, instance_exists};
+use crate::sandbox::instance_utils::determine_rootdir;
 use crate::sandbox::sync::WaitableCell;
 use crate::sandbox::{
     containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio,
@@ -27,7 +28,7 @@ static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
-    rootdir: PathBuf,
+    container: Mutex<Container>,
     id: String,
     _phantom: PhantomData<E>,
 }
@@ -54,7 +55,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                 (vec![], Platform::default())
             });
 
-        ContainerBuilder::new(id.clone(), SyscallType::Linux)
+        let container = ContainerBuilder::new(id.clone(), SyscallType::Linux)
             .with_executor(Executor::new(engine, stdio, modules, platform))
             .with_root_path(rootdir.clone())?
             .as_init(&bundle)
@@ -64,7 +65,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         Ok(Self {
             id,
             exit_code: WaitableCell::new(),
-            rootdir,
+            container: Mutex::new(container),
             _phantom: Default::default(),
         })
     }
@@ -78,8 +79,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         // make sure we have an exit code by the time we finish (even if there's a panic)
         let guard = self.exit_code.set_guard_with(|| (137, Utc::now()));
 
-        let container_root = get_instance_root(&self.rootdir, &self.id)?;
-        let mut container = Container::load(container_root)?;
+        let mut container = self.container.lock().expect("Poisoned mutex");
         let pid = container.pid().context("failed to get pid")?.as_raw();
 
         container.start()?;
@@ -115,11 +115,11 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let signal = Signal::try_from(signal as i32).map_err(|err| {
             SandboxError::InvalidArgument(format!("invalid signal number: {}", err))
         })?;
-        let container_root = get_instance_root(&self.rootdir, &self.id)?;
-        let mut container = Container::load(container_root)
-            .with_context(|| format!("could not load state for container {}", self.id))?;
 
-        container.kill(signal, true)?;
+        self.container
+            .lock()
+            .expect("Poisoned mutex")
+            .kill(signal, true)?;
 
         Ok(())
     }
@@ -129,23 +129,10 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete(&self) -> Result<(), SandboxError> {
         log::info!("deleting instance: {}", self.id);
-        match instance_exists(&self.rootdir, &self.id) {
-            Ok(true) => {}
-            Ok(false) => return Ok(()),
-            Err(err) => {
-                log::error!("could not find the container, skipping cleanup: {}", err);
-                return Ok(());
-            }
-        }
-        let container_root = get_instance_root(&self.rootdir, &self.id)?;
-        match Container::load(container_root) {
-            Ok(mut container) => {
-                container.delete(true)?;
-            }
-            Err(err) => {
-                log::error!("could not find the container, skipping cleanup: {}", err);
-            }
-        }
+        self.container
+            .lock()
+            .expect("Poisoned mutex")
+            .delete(true)?;
         Ok(())
     }
 

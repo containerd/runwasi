@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Added test for signal handling issue [#755](https://github.com/containerd/runwasi/issues/755) ([#756](https://github.com/containerd/runwasi/pull/756))
 
+### Changed
+- Reuse and synchronise access to `Container` object instead of reloading form disk ([#763](https://github.com/containerd/runwasi/pull/763))
+
+### Removed
+- Removed `containerd_shim_wasm::sandbox::instance_utils::get_instance_root` and `containerd_shim_wasm::sandbox::instance_utils::instance_exists` functions ([#763](https://github.com/containerd/runwasi/pull/763))
+
 ## [v0.8.0] — 2024-12-04
 
 ### Added

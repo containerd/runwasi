@@ -3,34 +3,9 @@ use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use super::Error;
-
-/// Return the root path for the instance.
-///
-/// The root path is the path to the directory containing the container's state.
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-pub fn get_instance_root<P: AsRef<Path>>(
-    root_path: P,
-    instance_id: &str,
-) -> Result<PathBuf, anyhow::Error> {
-    let instance_root = construct_instance_root(root_path, instance_id)?;
-    if !instance_root.exists() {
-        bail!("container {} does not exist.", instance_id)
-    }
-    Ok(instance_root)
-}
-
-/// Checks if the container exists.
-///
-/// The root path is the path to the directory containing the container's state.
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-pub fn instance_exists<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<bool> {
-    let instance_root = construct_instance_root(root_path, container_id)?;
-    Ok(instance_root.exists())
-}
 
 #[derive(Serialize, Deserialize)]
 struct Options {
@@ -54,18 +29,6 @@ pub fn determine_rootdir(
         .join(namespace);
     log::info!("container runtime root path is {path:?}");
     Ok(path)
-}
-
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-fn construct_instance_root<P: AsRef<Path>>(root_path: P, container_id: &str) -> Result<PathBuf> {
-    let root_path = root_path.as_ref().canonicalize().with_context(|| {
-        format!(
-            "failed to canonicalize {} for container {}",
-            root_path.as_ref().display(),
-            container_id
-        )
-    })?;
-    Ok(root_path.join(container_id))
 }
 
 #[cfg(unix)]
