@@ -21,6 +21,13 @@ jobs:
           os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
           ./scripts/setup-$os.sh
         shell: bash
+      - name: Build and load shims and wasi-demo-app
+        shell: bash
+        run: |
+          make build
+          sudo make install
+          make test-image
+          make load
       - name: Run Benchmarks
         run: |
           set -o pipefail
