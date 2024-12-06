@@ -146,11 +146,11 @@ install: $(RUNTIMES:%=install-%);
 
 install-%:
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) $(TARGET_DIR)$(TARGET)/$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
+	$(INSTALL) $(TARGET_DIR)$(if $(TARGET),$(TARGET)/,)$(OPT_PROFILE)/containerd-shim-$*-v1 $(PREFIX)/bin/
 
 install-oci-tar-builder:
 	mkdir -p $(PREFIX)/bin
-	$(INSTALL) $(TARGET_DIR)$(TARGET)/$(OPT_PROFILE)/oci-tar-builder $(PREFIX)/bin/
+	$(INSTALL) $(TARGET_DIR)$(if $(TARGET),$(TARGET)/,)$(OPT_PROFILE)/oci-tar-builder $(PREFIX)/bin/
 
 .PHONY: dist dist-%
 dist: $(RUNTIMES:%=dist-%);
