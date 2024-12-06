@@ -32,7 +32,6 @@ fn run_container(runtime: &str) -> Duration {
 
 fn benchmark_startup(c: &mut Criterion) {
     let mut group = c.benchmark_group("wasi-demo-app");
-    group.sample_size(10); // Adjust sample size as needed
     
     group.bench_function("wasmtime", |b| {
         b.iter(|| run_container("wasmtime"));
