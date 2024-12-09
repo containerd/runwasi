@@ -4,7 +4,13 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Runs daily at midnight
   pull_request:
-    
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -57,3 +63,6 @@ jobs:
           summary-always: true
           # Where the previous data file is stored
           external-data-json-path: ./cache/benchmark-data.json
+          # Automatically push the benchmark result to gh-pages branch
+          # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
+          auto-push: true
