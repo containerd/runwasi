@@ -19,3 +19,7 @@ harness = false
 [[bench]]
 name = "wasmedge-benchmarks"
 harness = false
+
+[[bench]]
+name = "wasi-demo-app-benchmarks"
+harness = false
