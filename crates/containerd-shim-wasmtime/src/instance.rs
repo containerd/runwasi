@@ -451,6 +451,7 @@ fn use_pooling_allocator_by_default() -> Result<bool> {
     const BITS_TO_TEST: u32 = 42;
     let mut config = Config::new();
     config.wasm_memory64(true);
+    config.static_memory_maximum_size(1 << BITS_TO_TEST);
     let engine = wasmtime::Engine::new(&config)?;
     let mut store = Store::new(&engine, ());
     let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
