@@ -9,7 +9,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install hey
+    - name: Install hey  
+      shell: bash
       run: |
         curl -LO https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64
         chmod +x hey_linux_amd64
@@ -32,7 +33,6 @@ runs:
         summary-always: true
         alert-threshold: "120%"
         fail-on-alert: true
-
     - name: Report Latency results
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
