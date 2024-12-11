@@ -56,7 +56,8 @@ jobs:
       - name: Start wasmtime shim
         shell: bash
         run: |
-          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm
+          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm &
+          sleep 1
       - name: Wait for wasmtime shim to start
         shell: bash
         run: |
