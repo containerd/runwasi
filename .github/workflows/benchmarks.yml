@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Runs daily at midnight
   pull_request:
-    
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -30,6 +30,8 @@ jobs:
           make load
           make test-image/oci
           make load/oci
+          make test-image/http
+          make load/http
       - name: Run Benchmarks
         run: |
           set -o pipefail
@@ -57,11 +59,6 @@ jobs:
           summary-always: true
           # Where the previous data file is stored
           external-data-json-path: ./cache/benchmark-data.json
-      - name: Load wasi-http image
-        shell: bash
-        run: |
-          make test-image/http
-          make load/http
       - name: Start wasmtime shim
         shell: bash
         run: |
@@ -72,31 +69,13 @@ jobs:
           while ! curl -s http://127.0.0.1:8080 > /dev/null; do
             sleep 1
           done
-      - name: Run hey benchmark
+      - name: Run HTTP throughput and latency benchmarks
+        if: success()
+        uses: ./.github/actions/run-hey-load-test
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Stop wasmtime shim
+        if: success()
         shell: bash
         run: |
-          hey -n 100000 -c 50 http://127.0.0.1:8080 > raw-output.txt
-          python3 ./scripts/parse-hey.py raw-output.txt > benchmark-results.json
-          cat benchmark-results.json
-      - name: Report Throughput results
-        uses: benchmark-action/github-action-benchmark@v1.20.4
-        with:
-          name: "HTTP Throughput"
-          tool: "customBiggerIsBetter"
-          output-file-path: benchmark-results.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          external-data-json-path: ./cache/benchmark-data.json
-          summary-always: true
-          alert-threshold: "120%"
-          fail-on-alert: true
-      - name: Report Latency results
-        uses: benchmark-action/github-action-benchmark@v1.20.4
-        with:
-          name: "HTTP Latency"
-          tool: "customSmallerIsBetter"
-          output-file-path: benchmark-results.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          external-data-json-path: ./cache/benchmark-data.json
-          summary-always: true
-          alert-threshold: "130%"
-          fail-on-alert: true
+          sudo ctr task kill -s SIGKILL wasi-http

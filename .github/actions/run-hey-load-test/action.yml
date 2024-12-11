@@ -1,0 +1,41 @@
+name: "Run hey load test"
+description: "Composite action to run hey load test"
+
+inputs:
+  github-token:
+    description: "GitHub token"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run hey benchmark
+      shell: bash
+      run: |
+        hey -n 100000 -c 50 http://127.0.0.1:8080 > raw-output.txt
+        python3 ./scripts/parse-hey.py raw-output.txt > benchmark-results.json
+        cat benchmark-results.json
+
+    - name: Report Throughput results
+      uses: benchmark-action/github-action-benchmark@v1.20.4
+      with:
+        name: "HTTP Throughput"
+        tool: "customBiggerIsBetter"
+        output-file-path: benchmark-results.json
+        github-token: ${{ inputs.github-token }}
+        external-data-json-path: ./cache/benchmark-data.json
+        summary-always: true
+        alert-threshold: "120%"
+        fail-on-alert: true
+
+    - name: Report Latency results
+      uses: benchmark-action/github-action-benchmark@v1.20.4
+      with:
+        name: "HTTP Latency"
+        tool: "customSmallerIsBetter"
+        output-file-path: benchmark-results.json
+        github-token: ${{ inputs.github-token }}
+        external-data-json-path: ./cache/benchmark-data.json
+        summary-always: true
+        alert-threshold: "130%"
+        fail-on-alert: true
