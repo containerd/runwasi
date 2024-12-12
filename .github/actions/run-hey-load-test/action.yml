@@ -29,7 +29,7 @@ runs:
         tool: "customBiggerIsBetter"
         output-file-path: benchmark-results.json
         github-token: ${{ inputs.github-token }}
-        external-data-json-path: ./cache/benchmark-data.json
+        auto-push: true
         summary-always: true
         alert-threshold: "120%"
         fail-on-alert: true
@@ -40,7 +40,7 @@ runs:
         tool: "customSmallerIsBetter"
         output-file-path: benchmark-results.json
         github-token: ${{ inputs.github-token }}
-        external-data-json-path: ./cache/benchmark-data.json
+        auto-push: true
         summary-always: true
         alert-threshold: "130%"
         fail-on-alert: true
