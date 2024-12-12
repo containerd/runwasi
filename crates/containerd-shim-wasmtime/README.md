@@ -67,7 +67,7 @@ sudo ctr image import --all-platforms ./dist/wasi-http-img-oci.tar
 
 ```shell
 sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 \
-    ghcr.io/containerd/runwasi/wasi-js:latest wasi-http /wasi-http.wasm
+    ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm
 ```
 
 - Finally, assuming our handler will respond to `GET` requests at `/`, we can
