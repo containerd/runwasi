@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1733893870093,
+  "lastUpdate": 1733983229430,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -374,6 +374,38 @@ window.BENCHMARK_DATA = {
             "value": 80197823,
             "range": "± 1457256",
             "unit": "ns/iter"
+          }
+        ]
+      }
+    ],
+    "HTTP Throughput": [
+      {
+        "commit": {
+          "author": {
+            "name": "containerd",
+            "username": "containerd"
+          },
+          "committer": {
+            "name": "containerd",
+            "username": "containerd"
+          },
+          "id": "547021bae4f4b01e3eddae49873967b813b06615",
+          "message": ".github/workflows/benchmarks: support push to Github Pages",
+          "timestamp": "2024-12-12T00:38:05Z",
+          "url": "https://github.com/containerd/runwasi/pull/766/commits/547021bae4f4b01e3eddae49873967b813b06615"
+        },
+        "date": 1733983228393,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 3782.4061,
+            "unit": "req/s"
+          },
+          {
+            "name": "HTTP p95 Latency",
+            "value": 21,
+            "unit": "ms"
           }
         ]
       }
