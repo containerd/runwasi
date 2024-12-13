@@ -47,13 +47,13 @@ jobs:
           # So I set the alert threshold to 130% of the previous benchmark result.
           # If the current benchmark result is more than 130% of the previous benchmark result, it will fail.
           alert-threshold: '130%'
-          fail-on-alert: {{ github.event_name == 'schedule' }}
+          fail-on-alert: ${{ github.event_name == 'schedule' }}
           alert-comment-cc-users: '@runwasi-committers'
           # Enable Job Summary
           summary-always: true
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
-          auto-push: {{ github.event_name == 'schedule' }}
+          auto-push: ${{ github.event_name == 'schedule' }}
   
   benchmark-http:
     runs-on: ubuntu-latest
