@@ -29,10 +29,10 @@ runs:
         tool: "customBiggerIsBetter"
         output-file-path: benchmark-results.json
         github-token: ${{ inputs.github-token }}
-        auto-push: true
+        auto-push: {{ github.event_name == 'schedule' }}
         summary-always: true
         alert-threshold: "120%"
-        fail-on-alert: true
+        fail-on-alert: {{ github.event_name == 'schedule' }}
     - name: Report Latency results
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
@@ -40,7 +40,7 @@ runs:
         tool: "customSmallerIsBetter"
         output-file-path: benchmark-results.json
         github-token: ${{ inputs.github-token }}
-        auto-push: true
+        auto-push: {{ github.event_name == 'schedule' }}
         summary-always: true
         alert-threshold: "130%"
-        fail-on-alert: true
+        fail-on-alert: {{ github.event_name == 'schedule' }}
