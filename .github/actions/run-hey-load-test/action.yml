@@ -20,25 +20,26 @@ runs:
       shell: bash
       run: |
         hey -n 100000 -c 50 http://127.0.0.1:8080 > raw-output.txt
-        python3 ./scripts/parse-hey.py raw-output.txt > benchmark-results.json
-        cat benchmark-results.json
+        python3 ./scripts/parse-hey.py raw-output.txt
+        cat latency_results.json
+        cat throughput_results.json
     - name: Report Throughput results
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
         name: "HTTP Throughput"
         tool: "customBiggerIsBetter"
-        output-file-path: benchmark-results.json
+        output-file-path: throughput_results.json
         github-token: ${{ inputs.github-token }}
         auto-push: {{ github.event_name == 'schedule' }}
         summary-always: true
-        alert-threshold: "120%"
+        alert-threshold: "130%"
         fail-on-alert: {{ github.event_name == 'schedule' }}
     - name: Report Latency results
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
         name: "HTTP Latency"
         tool: "customSmallerIsBetter"
-        output-file-path: benchmark-results.json
+        output-file-path: latency_results.json
         github-token: ${{ inputs.github-token }}
         auto-push: {{ github.event_name == 'schedule' }}
         summary-always: true

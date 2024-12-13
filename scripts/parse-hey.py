@@ -57,19 +57,20 @@ if __name__ == "__main__":
 
     latency = latency * 1000 if latency is not None else None
 
-    results = []
     if rps is not None:
-        results.append({
+        throughput_result = [{
             "name": "HTTP RPS",
             "unit": "req/s",
             "value": rps
-        })
+        }]
+        with open('throughput_results.json', 'w') as f:
+            json.dump(throughput_result, f, indent=2)
 
     if latency is not None:
-        results.append({
+        latency_result = [{
             "name": "HTTP p95 Latency",
             "unit": "ms",
             "value": latency
-        })
-
-    print(json.dumps(results, indent=2))
+        }]
+        with open('latency_results.json', 'w') as f:
+            json.dump(latency_result, f, indent=2)
