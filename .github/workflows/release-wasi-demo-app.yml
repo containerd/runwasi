@@ -10,7 +10,7 @@ on:
         description: "The version of the crate to release. (e.g., 1.2.3)"
         type: string
         required: true
-    dry_run:
+      dry_run:
         description: "Run the release without actually releasing bits"
         type: boolean
         default: true
