@@ -6,8 +6,7 @@ on:
       image-name:
         type: string
         required: true
-      version:
-        description: "The version of the image to release. (e.g., 1.2.3)"
+      image-digest:
         type: string
         required: true
 
@@ -37,17 +36,17 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.repository }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Find platform digest
         shell: bash
         run: |
           set -e
-          IMG_REPOSITORY_NAME=$( echo ${{ github.repository_owner }} | awk '{print tolower($0)}' )
+          IMG_REPOSITORY_NAME=$( echo ${{ github.repository }} | awk '{print tolower($0)}' )
           echo IMG_REPOSITORY_NAME=${IMG_REPOSITORY_NAME} >> $GITHUB_ENV
           DIGEST=$(crane digest \
-            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.version }})
+            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.image-digest }})
           echo "PLATFORM_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
 
       - name: Create SBOM file

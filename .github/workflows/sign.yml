@@ -6,8 +6,7 @@ on:
       image-name:
         type: string
         required: true
-      version:
-        description: "The version of the image to release. (e.g., 1.2.3)"
+      image-digest:
         type: string
         required: true
 
@@ -27,11 +26,11 @@ jobs:
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.repository }}
           password: ${{ secrets.GITHUB_TOKEN }}
   
       - name: Sign container image
         run: |
-          IMG_REPOSITORY_NAME=$( echo ${{ github.repository_owner }} | awk '{print tolower($0)}' )
+          IMG_REPOSITORY_NAME=$( echo ${{ github.repository }} | awk '{print tolower($0)}' )
           cosign sign --yes \
-            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.version }}
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ inputs.image-digest }}

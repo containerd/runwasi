@@ -23,6 +23,10 @@ jobs:
     permissions:
       packages: write
     runs-on: ubuntu-latest
+    outputs:
+      wasi_demo_app_digest: ${{ steps.get_digests.outputs.wasi_demo_app_digest }}
+      wasi_demo_oci_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_digest }}
+      wasi_demo_oci_artifact_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact_digest }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup build env
@@ -48,8 +52,7 @@ jobs:
 
           sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
           sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
-
-
+      
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
@@ -62,6 +65,21 @@ jobs:
           sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
           sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
 
+      - name: Display image digests
+        id: get_digests
+        run: |
+          digest_wasi_demo_app=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-app: $digest_wasi_demo_app"
+          echo "wasi_demo_app_digest=$digest_wasi_demo_app" >> $GITHUB_OUTPUT
+
+          digest_wasi_demo_oci=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-oci: $digest_wasi_demo_oci"
+          echo "wasi_demo_oci_digest=$digest_wasi_demo_oci" >> $GITHUB_OUTPUT
+
+          digest_wasi_demo_oci_artifact=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-oci-artifact: $digest_wasi_demo_oci_artifact"
+          echo "wasi_demo_oci_artifact_digest=$digest_wasi_demo_oci_artifact" >> $GITHUB_OUTPUT
+
   sign-wasi-demo-app:
     if: ${{ inputs.dry_run == false }}
     needs:
@@ -69,7 +87,7 @@ jobs:
     uses: ./.github/workflows/sign.yml
     with:
       image-name: "wasi-demo-app"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
 
   sbom-wasi-demo-app:
     if: ${{ inputs.dry_run == false }}
@@ -78,7 +96,8 @@ jobs:
     uses: ./.github/workflows/sbom.yml
     with:
       image-name: "wasi-demo-app"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
+      
   
   sign-wasi-demo-oci:
     if: ${{ inputs.dry_run == false }}
@@ -87,7 +106,8 @@ jobs:
     uses: ./.github/workflows/sign.yml
     with:
       image-name: "wasi-demo-oci"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
+      
   
   sbom-wasi-demo-oci:
     if: ${{ inputs.dry_run == false }}
@@ -96,7 +116,8 @@ jobs:
     uses: ./.github/workflows/sbom.yml
     with:
       image-name: "wasi-demo-oci"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
+      
     
   sign-wasi-demo-oci-artifact:
     if: ${{ inputs.dry_run == false }}
@@ -105,7 +126,8 @@ jobs:
     uses: ./.github/workflows/sign.yml
     with:
       image-name: "wasi-demo-oci-artifact"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
+      
   
   sbom-wasi-demo-oci-artifact:
     if: ${{ inputs.dry_run == false }}
@@ -114,4 +136,4 @@ jobs:
     uses: ./.github/workflows/sbom.yml
     with:
       image-name: "wasi-demo-oci-artifact"
-      version: ${{ inputs.version }}
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
