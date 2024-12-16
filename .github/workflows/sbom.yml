@@ -36,7 +36,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.repository }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Find platform digest
@@ -44,7 +44,7 @@ jobs:
         run: |
           set -e
           DIGEST=$(crane digest \
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ inputs.image-digest }})
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ inputs.image-digest }})
           echo "PLATFORM_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
 
       - name: Create SBOM file
@@ -53,7 +53,7 @@ jobs:
           syft \
             -o spdx-json \
             --file ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file
         run: |
@@ -67,7 +67,7 @@ jobs:
         run: |
           cosign attach \
             sbom --sbom ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file pushed to OCI registry
         shell: bash
@@ -75,7 +75,7 @@ jobs:
           set -e
           SBOM_TAG="$(echo ${{ env.PLATFORM_DIGEST }} | sed -e 's/:/-/g').sbom"
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${SBOM_TAG}
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}:${SBOM_TAG}
 
       - name: Upload SBOMs as artifacts
         uses: actions/upload-artifact@v4

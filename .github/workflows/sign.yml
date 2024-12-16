@@ -26,10 +26,10 @@ jobs:
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.repository }}
           password: ${{ secrets.GITHUB_TOKEN }}
   
       - name: Sign container image
         run: |
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ inputs.image-digest }}
+            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ inputs.image-digest }}
