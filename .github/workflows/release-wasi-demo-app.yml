@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Release wasi-demo-app
+run-name: wasi-demo-app@${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the crate to release. (e.g., 1.2.3)"
+        type: string
+        required: true
+      dry_run:
+        description: "Run the release without actually releasing bits"
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+ release-wasi-demo-app:
+    permissions:
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
+      - name: Install Rust and wasm32-wasi target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasi
+          override: true
+      - name: Build oci tarballs
+        run: |
+          make test-image  
+          make test-image/oci
+          ls -l dist/
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Load tarballs to ctr
+        run: |
+          sudo ctr image import dist/img.tar
+          sudo ctr image import dist/img-oci.tar
+          sudo ctr image import dist/img-oci-artifact.tar
+      - name: Push images to ghcr.io
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
+
