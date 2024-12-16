@@ -1,0 +1,139 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Release wasi-demo-app
+run-name: wasi-demo-app@${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the image to release. (e.g., 1.2.3)"
+        type: string
+        required: true
+      dry_run:
+        description: "Run the release without actually releasing bits"
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release-wasi-demo:
+    permissions:
+      packages: write
+    runs-on: ubuntu-latest
+    outputs:
+      wasi_demo_app_digest: ${{ steps.get_digests.outputs.wasi_demo_app_digest }}
+      wasi_demo_oci_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_digest }}
+      wasi_demo_oci_artifact_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact_digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
+      - name: Install Rust and wasm32-wasi target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasi
+          override: true
+      - name: Build oci tarballs
+        run: |
+          make load
+          make load/oci
+          sudo ctr image ls
+      - name: Tagging images
+        run: |
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-app:latest
+
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-oci:latest
+
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
+      
+      - name: Push images to ghcr.io
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:latest
+
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:latest
+          
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
+
+      - name: Display image digests
+        id: get_digests
+        run: |
+          digest_wasi_demo_app=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-app: $digest_wasi_demo_app"
+          echo "wasi_demo_app_digest=$digest_wasi_demo_app" >> $GITHUB_OUTPUT
+
+          digest_wasi_demo_oci=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-oci: $digest_wasi_demo_oci"
+          echo "wasi_demo_oci_digest=$digest_wasi_demo_oci" >> $GITHUB_OUTPUT
+
+          digest_wasi_demo_oci_artifact=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}" | awk '{print $3}')
+          echo "Digest for wasi-demo-oci-artifact: $digest_wasi_demo_oci_artifact"
+          echo "wasi_demo_oci_artifact_digest=$digest_wasi_demo_oci_artifact" >> $GITHUB_OUTPUT
+
+  sign-wasi-demo-app:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-app"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
+
+  sbom-wasi-demo-app:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-app"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
+      
+  
+  sign-wasi-demo-oci:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-oci"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
+      
+  
+  sbom-wasi-demo-oci:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-oci"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
+      
+    
+  sign-wasi-demo-oci-artifact:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-oci-artifact"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
+      
+  
+  sbom-wasi-demo-oci-artifact:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-oci-artifact"
+      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
