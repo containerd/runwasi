@@ -38,10 +38,15 @@ jobs:
           make load
           make load/oci
           sudo ctr image ls
+      - name: Tagging images
+        run: |
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-app:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-oci:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
 
