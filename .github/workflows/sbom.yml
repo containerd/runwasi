@@ -43,10 +43,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          IMG_REPOSITORY_NAME=$( echo ${{ github.repository_owner }} | awk '{print tolower($0)}' )
-          echo IMG_REPOSITORY_NAME=${IMG_REPOSITORY_NAME} >> $GITHUB_ENV
           DIGEST=$(crane digest \
-            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.image-digest }})
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ inputs.image-digest }})
           echo "PLATFORM_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
 
       - name: Create SBOM file
@@ -55,7 +53,7 @@ jobs:
           syft \
             -o spdx-json \
             --file ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file
         run: |
@@ -69,7 +67,7 @@ jobs:
         run: |
           cosign attach \
             sbom --sbom ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file pushed to OCI registry
         shell: bash
@@ -77,7 +75,7 @@ jobs:
           set -e
           SBOM_TAG="$(echo ${{ env.PLATFORM_DIGEST }} | sed -e 's/:/-/g').sbom"
           cosign sign --yes \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}:${SBOM_TAG}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${SBOM_TAG}
 
       - name: Upload SBOMs as artifacts
         uses: actions/upload-artifact@v4
