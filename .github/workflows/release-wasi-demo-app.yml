@@ -35,8 +35,8 @@ jobs:
           override: true
       - name: Build oci tarballs
         run: |
-          sudo make test-image  
-          sudo make test-image/oci
+          make test-image  
+          make test-image/oci
           ls -l dist/
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Load tarballs to ctr
