@@ -13,10 +13,6 @@ on:
 jobs:
   sbom:
     name: Generate SBOM, sign and attach them to OCI image
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
-
     permissions:
       packages: write
       id-token: write
@@ -52,23 +48,24 @@ jobs:
       - name: Create SBOM file
         shell: bash
         run: |
-          sudo syft \
+          SYFT=$(which syft)
+          sudo $SYFT \
             -o spdx-json \
-            --file ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
+            --file ${{ inputs.image-name }}-sbom.spdx \
             ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file
         run: |
           cosign sign-blob --yes \
-            --output-certificate ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx.cert \
-            --output-signature ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx.sig \
-            ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx
+            --output-certificate ${{ inputs.image-name }}-sbom.spdx.cert \
+            --output-signature ${{ inputs.image-name }}-sbom.spdx.sig \
+            ${{ inputs.image-name }}-sbom.spdx
 
       - name: Attach SBOM to container image
         shell: bash
         run: |
           cosign attach \
-            sbom --sbom ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
+            sbom --sbom ${{ inputs.image-name }}-sbom.spdx \
             ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
 
       - name: Sign SBOM file pushed to OCI registry
@@ -82,5 +79,5 @@ jobs:
       - name: Upload SBOMs as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ matrix.arch }}
+          name: sbom
           path: ${{ inputs.image-name }}-sbom-*
