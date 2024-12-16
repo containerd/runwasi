@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 
-name: Release
+name: Release wasi-demo-app
 run-name: wasi-demo-app@${{ inputs.version }}
 
 on:
