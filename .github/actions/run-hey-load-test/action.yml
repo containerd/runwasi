@@ -35,13 +35,35 @@ runs:
         alert-threshold: "130%"
         fail-on-alert: ${{ github.event_name == 'schedule' }}
     - name: Report Latency results
+      if : ${{ github.event_name == 'schedule' }}
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
         name: "HTTP Latency"
         tool: "customSmallerIsBetter"
         output-file-path: latency_results.json
         github-token: ${{ inputs.github-token }}
-        auto-push: ${{ github.event_name == 'schedule' }}
+        auto-push: true
         summary-always: true
         alert-threshold: "130%"
-        fail-on-alert: ${{ github.event_name == 'schedule' }}
+        fail-on-alert: true
+    
+    # If the event is not a schedule, we'd run into a problem of the failed `git fetch` command,
+    # which attempts to update the local `gh-pages` branch with changes from the remote repository 
+    # but failed because the update is non-fast-forward. It failed because the previous step
+    # `benchmark-action/github-action-benchmark` has already committed the changes to the local, so
+    # it creates a conflict with the remote repository.
+    # 
+    # The workaround is to use the `external-data-json-path` option to tell the action to not 
+    # attempt to update the local `gh-pages` branch.
+    - name: Report Latency results
+      if : ${{ github.event_name != 'schedule' }}
+      uses: benchmark-action/github-action-benchmark@v1.20.4
+      with:
+        name: "HTTP Latency"
+        tool: "customSmallerIsBetter"
+        output-file-path: latency_results.json
+        github-token: ${{ inputs.github-token }}
+        summary-always: true
+        alert-threshold: "130%"
+        fail-on-alert: false
+        external-data-json-path: ./cache/latency_results.json
