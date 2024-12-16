@@ -52,7 +52,7 @@ jobs:
       - name: Create SBOM file
         shell: bash
         run: |
-          syft \
+          sudo syft \
             -o spdx-json \
             --file ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
             ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
