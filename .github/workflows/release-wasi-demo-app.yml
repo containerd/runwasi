@@ -19,7 +19,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  release-wasi-demo-app:
+  release-wasi-demo:
     permissions:
       packages: write
     runs-on: ubuntu-latest
@@ -49,6 +49,7 @@ jobs:
           sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
           sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
 
+
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
@@ -60,3 +61,57 @@ jobs:
           
           sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
           sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
+
+  sign-wasi-demo-app:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-app"
+      version: ${{ inputs.version }}
+
+  sbom-wasi-demo-app:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-app"
+      version: ${{ inputs.version }}
+  
+  sign-wasi-demo-oci:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-oci"
+      version: ${{ inputs.version }}
+  
+  sbom-wasi-demo-oci:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-oci"
+      version: ${{ inputs.version }}
+    
+  sign-wasi-demo-oci-artifact:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sign.yml
+    with:
+      image-name: "wasi-demo-oci-artifact"
+      version: ${{ inputs.version }}
+  
+  sbom-wasi-demo-oci-artifact:
+    if: ${{ inputs.dry_run == false }}
+    needs:
+      - release-wasi-demo
+    uses: ./.github/workflows/sbom.yml
+    with:
+      image-name: "wasi-demo-oci-artifact"
+      version: ${{ inputs.version }}
