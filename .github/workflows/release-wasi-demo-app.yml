@@ -41,7 +41,7 @@ jobs:
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-app:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-oci:${{ inputs.version }}
+          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository_owner }}/wasi-demo-oci-artifact:${{ inputs.version }}
 
