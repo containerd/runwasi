@@ -6,8 +6,7 @@ on:
       image-name:
         type: string
         required: true
-      version:
-        description: "The version of the image to release. (e.g., 1.2.3)"
+      image-digest:
         type: string
         required: true
 
@@ -34,4 +33,4 @@ jobs:
         run: |
           IMG_REPOSITORY_NAME=$( echo ${{ github.repository_owner }} | awk '{print tolower($0)}' )
           cosign sign --yes \
-            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}:${{ inputs.version }}
+            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.image-digest }}
