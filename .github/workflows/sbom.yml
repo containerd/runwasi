@@ -1,0 +1,87 @@
+name: Generate SBOMs
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        type: string
+        required: true
+      version:
+        description: "The version of the image to release. (e.g., 1.2.3)"
+        type: string
+        required: true
+
+jobs:
+  sbom:
+    name: Generate SBOM, sign and attach them to OCI image
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    permissions:
+      packages: write
+      id-token: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@e8d2a6937ecead383dfe75190d104edd1f9c5751 # v0.16.0
+
+      - name: Install crane
+        uses: IAreKyleW00t/crane-installer@66858ae469ebd32ce731051d9c2bae9b811537e9 # v1.3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find platform digest
+        shell: bash
+        run: |
+          set -e
+          IMG_REPOSITORY_NAME=$( echo ${{ github.repository_owner }} | awk '{print tolower($0)}' )
+          echo IMG_REPOSITORY_NAME=${IMG_REPOSITORY_NAME} >> $GITHUB_ENV
+          DIGEST=$(crane digest \
+            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.version }})
+          echo "PLATFORM_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+
+      - name: Create SBOM file
+        shell: bash
+        run: |
+          syft \
+            -o spdx-json \
+            --file ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+
+      - name: Sign SBOM file
+        run: |
+          cosign sign-blob --yes \
+            --output-certificate ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx.cert \
+            --output-signature ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx.sig \
+            ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx
+
+      - name: Attach SBOM to container image
+        shell: bash
+        run: |
+          cosign attach \
+            sbom --sbom ${{ inputs.image-name }}-sbom-${{ matrix.arch }}.spdx \
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ env.PLATFORM_DIGEST }}
+
+      - name: Sign SBOM file pushed to OCI registry
+        shell: bash
+        run: |
+          set -e
+          SBOM_TAG="$(echo ${{ env.PLATFORM_DIGEST }} | sed -e 's/:/-/g').sbom"
+          cosign sign --yes \
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}:${SBOM_TAG}
+
+      - name: Upload SBOMs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.arch }}
+          path: ${{ inputs.image-name }}-sbom-*
