@@ -23,7 +23,7 @@ jobs:
         uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository }}
@@ -33,4 +33,4 @@ jobs:
         run: |
           IMG_REPOSITORY_NAME=$( echo ${{ github.repository }} | awk '{print tolower($0)}' )
           cosign sign --yes \
-            ghcr.io/${{ github.repository }}/${{ inputs.image-name }}@${{ inputs.image-digest }}
+            ghcr.io/${IMG_REPOSITORY_NAME}/${{ inputs.image-name }}@${{ inputs.image-digest }}
