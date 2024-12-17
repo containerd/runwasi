@@ -6226,9 +6226,9 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-sdk"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f477f3b515760c6f7fa734dae5b97c030ee443969f1c30ed12d3a09bea783a2"
+checksum = "852257498e8524cb0e2e8e9c7f1540afc2f24f2c3dd77806cf583feba8c19e99"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
@@ -6242,9 +6242,9 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-sys"
-version = "0.17.5"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d8e2276d63bb6f0c36871218643d193d2da6da3db36c1c1227547da465ed58"
+checksum = "88da93fb54be1deaa84bc68393f09ba8491e20113465c35a9446e14107f55a6e"
 dependencies = [
  "bindgen 0.69.5",
  "cfg-if 1.0.0",
@@ -6252,6 +6252,7 @@ dependencies = [
  "flate2",
  "lazy_static",
  "libc",
+ "log",
  "parking_lot",
  "paste",
  "phf",
@@ -6269,9 +6270,9 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-types"
-version = "0.4.4"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d4e7c8aebe2c513bb389beebc148253eb6f5904a6f9327179bbf2014c0efd52"
+checksum = "17315f552d26bcfe01fc185b874177592d30aab86a10ed898cc8a3f29815c9c4"
 dependencies = [
  "thiserror 1.0.69",
  "wat",

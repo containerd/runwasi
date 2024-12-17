@@ -1,7 +1,7 @@
 #!/bin/bash
 # when we bump wasmedge-sdk version, we may need to update the version here as well
-choco install -y wasmedge --version 0.13.5
-# require clang for wasmedge for bindgen, which is used in the build script to generate the rust bindings to the c codebase 
+choco install -y wasmedge --version 0.14.1
+# require clang for wasmedge for bindgen, which is used in the build script to generate the rust bindings to the c codebase
 choco install -y llvm --version 16.0.6
 choco install -y protoc
 
