@@ -137,7 +137,7 @@ impl RuntimeContext for WasiContext<'_> {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use oci_spec::image::Descriptor;
+    use oci_spec::image::{Descriptor, Digest};
     use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
 
     use super::*;
@@ -370,7 +370,11 @@ mod tests {
             spec: &spec,
             wasm_layers: &[WasmLayer {
                 layer: vec![],
-                config: Descriptor::new(oci_spec::image::MediaType::Other("".to_string()), 10, ""),
+                config: Descriptor::new(
+                    oci_spec::image::MediaType::Other("".to_string()),
+                    10,
+                    Digest::try_from(format!("sha256:{:064?}", 0))?,
+                ),
             }],
             platform: &Platform::default(),
         };
