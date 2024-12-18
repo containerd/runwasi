@@ -21,7 +21,7 @@ struct MyInstance {
 impl Instance for MyInstance {
     type Engine = ();
 
-   fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error> {
+   fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
        todo!();
     }
     fn start(&self) -> Result<u32, Error> {

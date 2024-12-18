@@ -103,7 +103,7 @@ pub trait Instance: 'static {
     type Engine: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig>) -> Result<Self, Error>
+    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error>
     where
         Self: Sized;
 

@@ -38,8 +38,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     type Engine = E;
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn new(id: String, cfg: Option<&InstanceConfig>) -> Result<Self, SandboxError> {
-        let cfg = cfg.context("missing configuration")?;
+    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         let engine = Self::Engine::default();
         let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();

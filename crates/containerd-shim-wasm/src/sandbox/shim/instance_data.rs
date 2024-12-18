@@ -17,7 +17,7 @@ impl<T: Instance> InstanceData<T> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     pub fn new(id: impl AsRef<str>, cfg: InstanceConfig) -> Result<Self> {
         let id = id.as_ref().to_string();
-        let instance = T::new(id, Some(&cfg))?;
+        let instance = T::new(id, &cfg)?;
         Ok(Self {
             instance,
             cfg,

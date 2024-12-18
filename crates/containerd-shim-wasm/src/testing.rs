@@ -218,7 +218,7 @@ where
             .set_stderr(dir.join("stderr"))
             .set_stdin(dir.join("stdin"));
 
-        let instance = WasiInstance::new(self.container_name, Some(&cfg))?;
+        let instance = WasiInstance::new(self.container_name, &cfg)?;
         Ok(WasiTest { instance, tempdir })
     }
 }
