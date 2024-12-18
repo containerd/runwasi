@@ -8,14 +8,14 @@ use crate::sandbox::{Instance, InstanceConfig, Result};
 
 pub(super) struct InstanceData<T: Instance> {
     pub instance: T,
-    cfg: InstanceConfig<T::Engine>,
+    cfg: InstanceConfig,
     pid: OnceLock<u32>,
     state: RwLock<TaskState>,
 }
 
 impl<T: Instance> InstanceData<T> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn new(id: impl AsRef<str>, cfg: InstanceConfig<T::Engine>) -> Result<Self> {
+    pub fn new(id: impl AsRef<str>, cfg: InstanceConfig) -> Result<Self> {
         let id = id.as_ref().to_string();
         let instance = T::new(id, Some(&cfg))?;
         Ok(Self {
@@ -32,7 +32,7 @@ impl<T: Instance> InstanceData<T> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    pub fn config(&self) -> &InstanceConfig<T::Engine> {
+    pub fn config(&self) -> &InstanceConfig {
         &self.cfg
     }
 
