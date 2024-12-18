@@ -4,12 +4,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use super::error::Error;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct InstanceConfig {
     /// Optional stdin named pipe path.
     stdin: PathBuf,

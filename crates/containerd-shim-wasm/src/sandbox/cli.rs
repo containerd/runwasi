@@ -47,6 +47,9 @@ pub fn shim_main<'a, I>(
     I: 'static + Instance + Sync + Send,
     I::Engine: Default,
 {
+    #[cfg(unix)]
+    zygote::Zygote::init();
+
     #[cfg(feature = "opentelemetry")]
     if otel_traces_enabled() {
         // opentelemetry uses tokio, so we need to initialize a runtime

@@ -14,6 +14,7 @@ use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
 use oci_spec::image::Platform;
+use zygote::{WireError, Zygote};
 
 use crate::container::Engine;
 use crate::sandbox::async_utils::AmbientRuntime as _;
@@ -25,7 +26,7 @@ use crate::sandbox::{
 use crate::sys::container::executor::Executor;
 use crate::sys::stdio::open;
 
-static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
+const DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
@@ -39,36 +40,52 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
-        let engine = Self::Engine::default();
-        let bundle = cfg.get_bundle().to_path_buf();
-        let namespace = cfg.get_namespace();
-        let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-        let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
-
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace).block_on()?
-            .load_modules(&id, &engine)
+        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address(), &cfg.get_namespace()).block_on()?
+            .load_modules(&id, &E::default())
             .block_on()
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
                 (vec![], Platform::default())
             });
 
-        let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(engine, modules, platform))
-            .with_root_path(rootdir.clone())?;
+        let (root, state) = Zygote::global()
+            .run(
+                |(id, cfg, modules, platform)| -> Result<_, WireError> {
+                    let namespace = cfg.get_namespace();
 
-        if let Ok(f) = open(cfg.get_stdin()) {
-            builder = builder.with_stdin(f);
-        }
-        if let Ok(f) = open(cfg.get_stdout()) {
-            builder = builder.with_stdout(f);
-        }
-        if let Ok(f) = open(cfg.get_stderr()) {
-            builder = builder.with_stderr(f);
-        }
+                    let bundle = cfg.get_bundle().to_path_buf();
+                    let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
+                    let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
+                    let engine = E::default();
 
-        let container = builder.as_init(&bundle).with_systemd(false).build()?;
+                    let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
+                        .with_executor(Executor::new(engine, modules, platform))
+                        .with_root_path(rootdir.clone())?;
+
+                    if let Ok(f) = open(cfg.get_stdin()) {
+                        builder = builder.with_stdin(f);
+                    }
+                    if let Ok(f) = open(cfg.get_stdout()) {
+                        builder = builder.with_stdout(f);
+                    }
+                    if let Ok(f) = open(cfg.get_stderr()) {
+                        builder = builder.with_stderr(f);
+                    }
+
+                    let Container { root, state } = builder
+                        .as_init(&bundle)
+                        .as_sibling(true)
+                        .with_systemd(false)
+                        .build()?;
+
+                    // Container is not serializable, but its parts are
+                    Ok((root, state))
+                },
+                (id.clone(), cfg.clone(), modules, platform),
+            )
+            .map_err(|e| SandboxError::Others(e.to_string()))?;
+        let container = Container { root, state };
 
         Ok(Self {
             id,
