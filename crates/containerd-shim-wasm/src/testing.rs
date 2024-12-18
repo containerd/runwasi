@@ -212,11 +212,7 @@ where
 
         log::info!("building wasi test: {}", dir.display());
 
-        let mut cfg = InstanceConfig::new(
-            WasiInstance::Engine::default(),
-            TEST_NAMESPACE,
-            "/run/containerd/containerd.sock",
-        );
+        let mut cfg = InstanceConfig::new(TEST_NAMESPACE, "/run/containerd/containerd.sock");
         cfg.set_bundle(dir)
             .set_stdout(dir.join("stdout"))
             .set_stderr(dir.join("stderr"))

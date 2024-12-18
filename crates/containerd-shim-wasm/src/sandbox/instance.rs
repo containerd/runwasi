@@ -10,10 +10,7 @@ use super::error::Error;
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
 #[derive(Clone)]
-pub struct InstanceConfig<Engine: Send + Sync + Clone> {
-    /// The WASI engine to use.
-    /// This should be cheap to clone.
-    engine: Engine,
+pub struct InstanceConfig {
     /// Optional stdin named pipe path.
     stdin: PathBuf,
     /// Optional stdout named pipe path.
@@ -28,16 +25,11 @@ pub struct InstanceConfig<Engine: Send + Sync + Clone> {
     containerd_address: String,
 }
 
-impl<Engine: Send + Sync + Clone> InstanceConfig<Engine> {
-    pub fn new(
-        engine: Engine,
-        namespace: impl AsRef<str>,
-        containerd_address: impl AsRef<str>,
-    ) -> Self {
+impl InstanceConfig {
+    pub fn new(namespace: impl AsRef<str>, containerd_address: impl AsRef<str>) -> Self {
         let namespace = namespace.as_ref().to_string();
         let containerd_address = containerd_address.as_ref().to_string();
         Self {
-            engine,
             namespace,
             containerd_address,
             stdin: PathBuf::default(),
@@ -91,11 +83,6 @@ impl<Engine: Send + Sync + Clone> InstanceConfig<Engine> {
         &self.bundle
     }
 
-    /// get the wasm engine for the instance
-    pub fn get_engine(&self) -> Engine {
-        self.engine.clone()
-    }
-
     /// get the namespace for the instance
     pub fn get_namespace(&self) -> String {
         self.namespace.clone()
@@ -116,7 +103,7 @@ pub trait Instance: 'static {
     type Engine: Send + Sync + Clone;
 
     /// Create a new instance
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error>
+    fn new(id: String, cfg: Option<&InstanceConfig>) -> Result<Self, Error>
     where
         Self: Sized;
 
