@@ -814,7 +814,7 @@ dependencies = [
  "log",
  "mio",
  "nix 0.29.0",
- "oci-spec 0.6.8",
+ "oci-spec 0.6.7",
  "os_pipe",
  "page_size",
  "prctl",
@@ -878,7 +878,7 @@ dependencies = [
  "libcontainer",
  "log",
  "nix 0.29.0",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "oci-tar-builder",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -1766,12 +1766,12 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
+checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1782,9 +1782,9 @@ checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
 
 [[package]]
 name = "fastrand"
-version = "2.1.1"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
+checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fd-lock"
@@ -1930,7 +1930,6 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
- "num_cpus",
 ]
 
 [[package]]
@@ -2644,9 +2643,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.11"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
+checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "ittapi"
@@ -2737,45 +2736,40 @@ checksum = "5aaeb2981e0606ca11d79718f8bb01164f1d6ed75080182d3abf017e6d244b6d"
 [[package]]
 name = "libcgroups"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef6c844cd81f0e078bb07896a14fddcec9f9582833ce18f99c2d4c9b69081d53"
+source = "git+https://github.com/youki-dev/youki.git#8e855e00973f70fd1e8c94e66905bf144894a45e"
 dependencies = [
  "fixedbitset 0.5.7",
  "nix 0.28.0",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "procfs",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.7",
  "tracing",
 ]
 
 [[package]]
 name = "libcontainer"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e301f76db45c6b2612de0fb1978b9e245fd64a36898ff35928760aee7e34af70"
+source = "git+https://github.com/youki-dev/youki.git#8e855e00973f70fd1e8c94e66905bf144894a45e"
 dependencies = [
- "bitflags 2.6.0",
  "caps",
  "chrono",
  "fastrand",
- "futures",
  "libc",
  "libcgroups",
  "libseccomp",
  "nc",
  "nix 0.28.0",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "once_cell",
  "prctl",
  "procfs",
- "protobuf 3.2.0",
  "regex",
  "rust-criu",
  "safe-path",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.7",
  "tracing",
 ]
 
@@ -3269,7 +3263,7 @@ dependencies = [
  "http-auth",
  "jwt",
  "lazy_static",
- "oci-spec 0.7.0",
+ "oci-spec 0.7.1",
  "olpc-cjson",
  "regex",
  "reqwest 0.12.9",
@@ -3284,14 +3278,12 @@ dependencies = [
 
 [[package]]
 name = "oci-spec"
-version = "0.6.8"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f5a3fe998d50101ae009351fec56d88a69f4ed182e11000e711068c2f5abf72"
+checksum = "bdf88ddc01cc6bccbe1044adb6a29057333f523deadcb4953c011a73158cfa5e"
 dependencies = [
  "derive_builder 0.20.2",
  "getset",
- "once_cell",
- "regex",
  "serde",
  "serde_json",
  "strum",
@@ -3301,9 +3293,9 @@ dependencies = [
 
 [[package]]
 name = "oci-spec"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cee185ce7cf1cce45e194e34cd87c0bad7ff0aa2e8917009a2da4f7b31fb363"
+checksum = "da406e58efe2eb5986a6139626d611ce426e5324a824133d76367c765cf0b882"
 dependencies = [
  "derive_builder 0.20.2",
  "getset",
@@ -3312,7 +3304,7 @@ dependencies = [
  "serde_json",
  "strum",
  "strum_macros",
- "thiserror 1.0.69",
+ "thiserror 2.0.7",
 ]
 
 [[package]]
@@ -3323,7 +3315,7 @@ dependencies = [
  "clap",
  "indexmap 2.6.0",
  "log",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "oci-wasm",
  "serde",
  "serde_json",
@@ -3362,9 +3354,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.19.0"
+version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "oorandom"
@@ -3784,24 +3776,23 @@ dependencies = [
 
 [[package]]
 name = "procfs"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "731e0d9356b0c25f16f33b5be79b1c57b562f141ebfcdb0ad8ac2c13a24293b4"
+checksum = "cc5b72d8145275d844d4b5f6d4e1eef00c8cd889edb6035c21675d1bb1f45c9f"
 dependencies = [
  "bitflags 2.6.0",
  "chrono",
  "flate2",
  "hex",
- "lazy_static",
  "procfs-core",
  "rustix",
 ]
 
 [[package]]
 name = "procfs-core"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
+checksum = "239df02d8349b06fc07398a3a1697b06418223b1c7725085e801e7c0fc6a12ec"
 dependencies = [
  "bitflags 2.6.0",
  "chrono",
@@ -4459,9 +4450,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.38"
+version = "0.38.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa260229e6538e52293eeb577aabd09945a09d6d9cc0fc550ed7529056c2e32a"
+checksum = "f93dc38ecbab2eb790ff964bb77fa94faf256fd3e73285fd7ba0903b76bedb85"
 dependencies = [
  "bitflags 2.6.0",
  "errno",
@@ -4469,7 +4460,7 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "once_cell",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5049,7 +5040,7 @@ dependencies = [
  "humantime",
  "log",
  "nix 0.29.0",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "prost 0.13.4",
  "prost-types 0.13.4",
  "tempfile",
@@ -5196,9 +5187,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.13.0"
+version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0f2c9fc62d0beef6951ccffd757e241266a2c833136efbe35af6cd2567dca5b"
+checksum = "28cce251fcbc87fac86a866eeb0d6c2d536fc16d06f184bb61aeae11aa4cee0c"
 dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
@@ -5246,11 +5237,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.3"
+version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c006c85c7651b3cf2ada4584faa36773bd07bac24acfb39f3c431b36d7e667aa"
+checksum = "93605438cbd668185516ab499d589afb7ee1859ea3d5fc8f6b0755e1c7443767"
 dependencies = [
- "thiserror-impl 2.0.3",
+ "thiserror-impl 2.0.7",
 ]
 
 [[package]]
@@ -5266,9 +5257,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.3"
+version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f077553d607adc1caf65430528a576c757a71ed73944b66ebb58ef2bbd243568"
+checksum = "e1d8749b4531af2117677a5fcd12b1348a3fe2b81e36e61ffeac5c4aa3273e36"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5678,7 +5669,7 @@ dependencies = [
  "log",
  "prost 0.13.4",
  "prost-types 0.13.4",
- "thiserror 2.0.3",
+ "thiserror 2.0.7",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -6103,7 +6094,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
- "oci-spec 0.6.8",
+ "oci-spec 0.7.1",
  "oci-tar-builder",
  "sha256",
  "tar",

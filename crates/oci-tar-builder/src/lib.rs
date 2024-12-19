@@ -7,8 +7,8 @@ use anyhow::{Context, Error, Result};
 use indexmap::IndexMap;
 use log::{debug, warn};
 use oci_spec::image::{
-    DescriptorBuilder, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder, MediaType,
-    PlatformBuilder, SCHEMA_VERSION,
+    DescriptorBuilder, Digest, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder,
+    MediaType, PlatformBuilder, SCHEMA_VERSION,
 };
 use oci_wasm::{WasmConfig, WASM_ARCHITECTURE};
 use serde::Serialize;
@@ -142,7 +142,6 @@ impl<C: OciConfig> Builder<C> {
         for layer in self.layers.iter() {
             let dgst = try_digest(layer.0.as_path()).context("failed to digest layer")?;
             let meta = metadata(layer.0.clone()).context("could not get layer metadata")?;
-            let oci_digest = "sha256:".to_owned() + &dgst;
 
             let mut media_type = MediaType::ImageLayer;
             if !layer.1.is_empty() {
@@ -151,11 +150,11 @@ impl<C: OciConfig> Builder<C> {
             let desc = DescriptorBuilder::default()
                 // TODO: check file headers to determine mediatype? Could also just require it to be passed in on add_layer
                 .media_type(media_type)
-                .digest(&oci_digest)
-                .size(meta.len() as i64)
+                .digest(Digest::try_from(format!("sha256:{dgst}"))?)
+                .size(meta.len())
                 .build()
                 .context("failed to build descriptor")?;
-            layer_digests.insert(oci_digest, desc);
+            layer_digests.insert(format!("sha256:{dgst}"), desc);
 
             let mut th = tar::Header::new_gnu();
             th.set_mode(0o444);
@@ -185,8 +184,8 @@ impl<C: OciConfig> Builder<C> {
 
             let desc = DescriptorBuilder::default()
                 .media_type(config.2.clone())
-                .size(b.len() as i64)
-                .digest("sha256:".to_owned() + &dgst)
+                .size(b.len() as u64)
+                .digest(Digest::try_from(format!("sha256:{dgst}"))?)
                 .build()
                 .context("failed to build descriptor")?;
 
@@ -245,10 +244,10 @@ impl<C: OciConfig> Builder<C> {
 
             let desc = DescriptorBuilder::default()
                 .media_type(MediaType::ImageManifest)
-                .size(b.len() as i64)
+                .size(b.len() as u64)
                 .platform(platform)
                 .annotations(annotations)
-                .digest("sha256:".to_owned() + &dgst)
+                .digest(Digest::try_from(format!("sha256:{dgst}"))?)
                 .build()
                 .context("failed to build descriptor")?;
 

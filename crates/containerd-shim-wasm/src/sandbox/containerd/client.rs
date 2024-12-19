@@ -17,7 +17,7 @@ use containerd_client::tonic::transport::Channel;
 use containerd_client::tonic::Streaming;
 use containerd_client::{tonic, with_namespace};
 use futures::TryStreamExt;
-use oci_spec::image::{Arch, ImageManifest, MediaType, Platform};
+use oci_spec::image::{Arch, Digest, ImageManifest, MediaType, Platform};
 use sha256::digest;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -259,7 +259,7 @@ impl Client {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    async fn get_info(&self, content_digest: &str) -> Result<Info> {
+    async fn get_info(&self, content_digest: &Digest) -> Result<Info> {
         let req = InfoRequest {
             digest: content_digest.to_string(),
         };
@@ -359,9 +359,9 @@ impl Client {
     async fn get_image_manifest_and_digest(
         &self,
         image_name: &str,
-    ) -> Result<(ImageManifest, String)> {
+    ) -> Result<(ImageManifest, Digest)> {
         let image = self.get_image(image_name).await?;
-        let image_digest = self.extract_image_content_sha(&image)?;
+        let image_digest = self.extract_image_content_sha(&image)?.try_into()?;
         let manifest =
             ImageManifest::from_reader(self.read_content(&image_digest).await?.as_slice())?;
         Ok((manifest, image_digest))
@@ -521,7 +521,7 @@ impl Client {
             let info = self.get_info(&digest_to_load).await?;
             if let Some(label) = info.labels.get(precompile_id) {
                 // Safe to unwrap here since we already checked for the label's existence
-                digest_to_load.clone_from(label);
+                digest_to_load = label.parse()?;
                 log::info!(
                     "layer {} has pre-compiled content: {} ",
                     info.digest,
