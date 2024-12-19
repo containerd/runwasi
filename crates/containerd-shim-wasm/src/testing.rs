@@ -555,7 +555,7 @@ pub mod oci_helpers {
     pub fn get_content_label() -> Result<(String, String)> {
         let mut grep = Command::new("grep")
             .arg("-ohE")
-            .arg("runwasi.io/precompiled/[[:alpha:]]*/[0-9]+=.*")
+            .arg("runwasi.io/precompiled/[[:alpha:]]*/[[:xdigit:]]+=.*")
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
             .spawn()?;

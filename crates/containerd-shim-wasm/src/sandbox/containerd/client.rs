@@ -374,7 +374,6 @@ impl Client {
     pub async fn load_modules<T: Engine>(
         &self,
         containerd_id: impl ToString,
-        engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id.to_string()).await?;
         let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image).await?;
@@ -393,7 +392,7 @@ impl Client {
         log::info!("found manifest with WASM OCI image format");
         // This label is unique across runtimes and version of the shim running
         // a precompiled component/module will not work across different runtimes or versions
-        let (can_precompile, precompile_id) = match engine.can_precompile() {
+        let (can_precompile, precompile_id) = match T::can_precompile() {
             Some(precompile_id) => (true, precompile_label(T::name(), &precompile_id)),
             None => (false, "".to_string()),
         };
@@ -426,7 +425,7 @@ impl Client {
 
         if needs_precompile {
             log::info!("precompiling layers for image: {}", container.image);
-            let compiled_layers = match engine.precompile(&layers) {
+            let compiled_layers = match T::precompile(&layers) {
                 Ok(compiled_layers) => {
                     if compiled_layers.len() != layers.len() {
                         return Err(ShimError::FailedPrecondition(
@@ -594,8 +593,9 @@ async fn send_message(
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use std::sync::atomic::{AtomicI32, Ordering};
-    use std::sync::Arc;
+    use std::sync::atomic::AtomicI32;
+    use std::sync::atomic::Ordering::SeqCst;
+    use std::sync::{Arc, LazyLock, Mutex, MutexGuard};
 
     use oci_tar_builder::WASM_LAYER_MEDIA_TYPE;
     use rand::prelude::*;
@@ -605,6 +605,23 @@ mod tests {
     use crate::sandbox::Stdio;
     use crate::testing::oci_helpers::ImageContent;
     use crate::testing::{oci_helpers, TEST_NAMESPACE};
+
+    macro_rules! fake_engine {
+        (can_precompile: $can_precompile:expr) => {
+            #[derive(Clone, Default)]
+            struct FakeEngine;
+
+            impl AsFakeEngineInner for FakeEngine {
+                fn inner() -> MutexGuard<'static, FakeEngineInner> {
+                    static PRECOMPILERS: LazyLock<Mutex<FakeEngineInner>> =
+                        LazyLock::new(|| Default::default());
+                    PRECOMPILERS.lock().expect("poisoned mutex")
+                }
+            }
+
+            FakeEngine::inner().set_can_precompile($can_precompile);
+        };
+    }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_save_content() {
@@ -654,22 +671,28 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_when_precompile_not_supported() {
+        fake_engine!(can_precompile: false);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, TEST_NAMESPACE).await.unwrap();
 
         let fake_bytes = generate_content("original", WASM_LAYER_MEDIA_TYPE);
         let (_, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
-        let engine = FakePrecomiplerEngine::new(None);
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_bytes.bytes);
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 0);
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 0);
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_are_precompiled_once() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -680,21 +703,28 @@ mod tests {
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (_, _) = client
+            .load_modules::<FakeEngine>(&container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
 
         // Even on second calls should only pre-compile once
-        let (layers, _) = client.load_modules(&container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(&container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_are_recompiled_if_version_changes() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -705,19 +735,28 @@ mod tests {
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (_, _) = client
+            .load_modules::<FakeEngine>(&container_name)
+            .await
+            .unwrap();
+        println!("{:?}", FakeEngine::can_precompile());
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
 
-        engine.precompile_id = Some("new_version".to_string());
-        let (_, _) = client.load_modules(&container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
+        FakeEngine::inner().precompile_id = Some("new_version".into());
+        let (_, _) = client
+            .load_modules::<FakeEngine>(&container_name)
+            .await
+            .unwrap();
+        println!("{:?}", FakeEngine::can_precompile());
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 2);
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_are_precompiled() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -728,15 +767,17 @@ mod tests {
         let (image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
         let expected_id = precompile_label(
-            FakePrecomiplerEngine::name(),
-            engine.can_precompile().unwrap().as_str(),
+            FakeEngine::name(),
+            FakeEngine::can_precompile().unwrap().as_str(),
         );
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
 
@@ -750,12 +791,14 @@ mod tests {
         let actual_digest = info.labels.get(&expected_id).unwrap();
         assert_eq!(
             actual_digest.to_string(),
-            format!("sha256:{}", &digest(fake_precompiled_bytes.bytes.clone()))
+            format!("sha256:{}", digest(fake_precompiled_bytes.bytes.clone()))
         );
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_are_precompiled_but_not_for_all_layers() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -768,13 +811,15 @@ mod tests {
             generate_test_container(None, &[&fake_bytes, &non_wasm_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
 
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
-        assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
+        assert_eq!(FakeEngine::inner().layers_compiled_per_call.load(SeqCst), 1);
         assert_eq!(layers.len(), 2);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
         assert_eq!(layers[1].layer, non_wasm_bytes.bytes);
@@ -782,6 +827,8 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_do_not_need_precompiled_if_new_layers_are_added_to_existing_image() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -792,11 +839,13 @@ mod tests {
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
 
@@ -813,7 +862,8 @@ mod tests {
         let (_image_name2, container_name2, _cleanup2) =
             generate_test_container(Some(_image_name), &[&fake_bytes, &fake_bytes2]);
         let fake_precompiled_bytes2 = generate_content("precompiled2", WASM_LAYER_MEDIA_TYPE);
-        engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
+        FakeEngine::inner()
+            .add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
         // When a new image with the same name is create the older image content will disappear
         // but since these layers are part of the new image we don't want to have to recompile
@@ -821,14 +871,19 @@ mod tests {
         // and then check that the layers don't need to be recompiled
         oci_helpers::wait_for_content_removal(&image_sha).unwrap();
 
-        let (layers, _) = client.load_modules(container_name2, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name2)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 2);
         assert_eq!(layers.len(), 2);
-        assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
+        assert_eq!(FakeEngine::inner().layers_compiled_per_call.load(SeqCst), 1);
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_do_not_need_precompiled_if_new_layers_are_add_to_new_image() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -839,11 +894,13 @@ mod tests {
         let (_image_name, container_name, _cleanup) = generate_test_container(None, &[&fake_bytes]);
 
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
         assert_eq!(layers.len(), 1);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
 
@@ -851,16 +908,22 @@ mod tests {
         let (_image_name2, container_name2, _cleanup2) =
             generate_test_container(None, &[&fake_bytes, &fake_bytes2]);
         let fake_precompiled_bytes2 = generate_content("precompiled2", WASM_LAYER_MEDIA_TYPE);
-        engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
+        FakeEngine::inner()
+            .add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
-        let (layers, _) = client.load_modules(container_name2, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 2);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name2)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 2);
         assert_eq!(layers.len(), 2);
-        assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 1);
+        assert_eq!(FakeEngine::inner().layers_compiled_per_call.load(SeqCst), 1);
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_layers_are_precompiled_for_multiple_layers() {
+        fake_engine!(can_precompile: true);
+
         let path = PathBuf::from("/run/containerd/containerd.sock");
         let path = path.to_str().unwrap();
         let client = Client::connect(path, crate::testing::TEST_NAMESPACE)
@@ -876,18 +939,21 @@ mod tests {
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
         let fake_precompiled_bytes2 = generate_content("precompiled1", WASM_LAYER_MEDIA_TYPE);
 
-        let mut engine = FakePrecomiplerEngine::new(Some(()));
-        engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
-        engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
+        FakeEngine::inner().add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
+        FakeEngine::inner()
+            .add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
         let expected_id = precompile_label(
-            FakePrecomiplerEngine::name(),
-            engine.can_precompile().unwrap().as_str(),
+            FakeEngine::name(),
+            FakeEngine::can_precompile().unwrap().as_str(),
         );
 
-        let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
-        assert_eq!(engine.precompile_called.load(Ordering::SeqCst), 1);
-        assert_eq!(engine.layers_compiled_per_call.load(Ordering::SeqCst), 2);
+        let (layers, _) = client
+            .load_modules::<FakeEngine>(container_name)
+            .await
+            .unwrap();
+        assert_eq!(FakeEngine::inner().precompile_called.load(SeqCst), 1);
+        assert_eq!(FakeEngine::inner().layers_compiled_per_call.load(SeqCst), 2);
 
         assert_eq!(layers.len(), 2);
         assert_eq!(layers[0].layer, fake_precompiled_bytes.bytes);
@@ -903,7 +969,7 @@ mod tests {
         let actual_digest1 = info1.labels.get(&expected_id).unwrap();
         assert_eq!(
             actual_digest1.to_string(),
-            format!("sha256:{}", &digest(fake_precompiled_bytes.bytes.clone()))
+            format!("sha256:{}", digest(fake_precompiled_bytes.bytes.clone()))
         );
 
         let original_config2 = manifest.layers().last().unwrap();
@@ -911,7 +977,7 @@ mod tests {
         let actual_digest2 = info2.labels.get(&expected_id).unwrap();
         assert_eq!(
             actual_digest2.to_string(),
-            format!("sha256:{}", &digest(fake_precompiled_bytes2.bytes.clone()))
+            format!("sha256:{}", digest(fake_precompiled_bytes2.bytes.clone()))
         );
     }
 
@@ -951,31 +1017,15 @@ mod tests {
         x
     }
 
-    #[derive(Clone)]
-    struct FakePrecomiplerEngine {
+    #[derive(Default)]
+    struct FakeEngineInner {
         precompile_id: Option<String>,
         precompiled_layers: HashMap<String, Vec<u8>>,
         precompile_called: Arc<AtomicI32>,
         layers_compiled_per_call: Arc<AtomicI32>,
     }
 
-    impl FakePrecomiplerEngine {
-        fn new(can_precompile: Option<()>) -> Self {
-            let precompile_id = match can_precompile {
-                Some(_) => {
-                    let precompile_id = format!("uuid-{}", random_number());
-                    Some(precompile_id)
-                }
-                None => None,
-            };
-
-            FakePrecomiplerEngine {
-                precompile_id,
-                precompiled_layers: HashMap::new(),
-                precompile_called: Arc::new(AtomicI32::new(0)),
-                layers_compiled_per_call: Arc::new(AtomicI32::new(0)),
-            }
-        }
+    impl FakeEngineInner {
         fn add_precompiled_bits(
             &mut self,
             original: Vec<u8>,
@@ -985,9 +1035,17 @@ mod tests {
             self.precompiled_layers
                 .insert(key, precompiled_content.bytes.clone());
         }
+
+        fn set_can_precompile(&mut self, val: bool) {
+            self.precompile_id = val.then(|| format!("uuid-{}", random_number()));
+        }
     }
 
-    impl Engine for FakePrecomiplerEngine {
+    trait AsFakeEngineInner {
+        fn inner() -> MutexGuard<'static, FakeEngineInner>;
+    }
+
+    impl<T: AsFakeEngineInner + Send + Sync + Clone + 'static> Engine for T {
         fn name() -> &'static str {
             "fake"
         }
@@ -1000,17 +1058,18 @@ mod tests {
             panic!("not implemented")
         }
 
-        fn can_precompile(&self) -> Option<String> {
-            self.precompile_id.clone()
+        fn can_precompile() -> Option<String> {
+            Self::inner().precompile_id.clone()
         }
 
         fn supported_layers_types() -> &'static [&'static str] {
             &[WASM_LAYER_MEDIA_TYPE, "textfile"]
         }
 
-        fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>, anyhow::Error> {
-            self.layers_compiled_per_call.store(0, Ordering::SeqCst);
-            self.precompile_called.fetch_add(1, Ordering::SeqCst);
+        fn precompile(layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>, anyhow::Error> {
+            let inner = Self::inner();
+            inner.layers_compiled_per_call.store(0, SeqCst);
+            inner.precompile_called.fetch_add(1, SeqCst);
             let mut compiled_layers = vec![];
             for layer in layers {
                 if layer.config.media_type().to_string() == *"textfile" {
@@ -1020,20 +1079,20 @@ mod tests {
                 }
 
                 let key = digest(layer.layer.clone());
-                if self.precompiled_layers.values().any(|l| digest(l) == key) {
+                if inner.precompiled_layers.values().any(|l| digest(l) == key) {
                     // simulate scenario were one of the layers is already compiled
                     compiled_layers.push(None);
                     continue;
                 }
 
                 // load the "precompiled" layer that was stored as precompiled for this layer
-                self.precompiled_layers.iter().all(|x| {
+                inner.precompiled_layers.iter().all(|x| {
                     log::warn!("layer: {:?}", x.0);
                     true
                 });
-                let precompiled = self.precompiled_layers[&key].clone();
+                let precompiled = inner.precompiled_layers[&key].clone();
                 compiled_layers.push(Some(precompiled));
-                self.layers_compiled_per_call.fetch_add(1, Ordering::SeqCst);
+                inner.layers_compiled_per_call.fetch_add(1, SeqCst);
             }
             Ok(compiled_layers)
         }

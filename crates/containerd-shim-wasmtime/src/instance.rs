@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
@@ -21,6 +22,18 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use crate::http_proxy::serve_conn;
 
 pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+
+static PRECOMPILER: LazyLock<wasmtime::Engine> = LazyLock::new(|| {
+    let mut config = wasmtime::Config::new();
+
+    // Disable Wasmtime parallel compilation for the tests
+    // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+    config.parallel_compilation(!cfg!(test));
+    config.wasm_component_model(true); // enable component linking
+    config.async_support(true); // must be on
+
+    wasmtime::Engine::new(&config).expect("failed to create wasmtime precompilation engine")
+});
 
 /// Represents the WASI API that the component is targeting.
 enum ComponentTarget<'a> {
@@ -150,11 +163,11 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         self.execute(ctx, wasm_bytes, func, stdio).into_error_code()
     }
 
-    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+    fn precompile(layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
-            if self.engine.detect_precompiled(&layer.layer).is_some() {
+            if PRECOMPILER.detect_precompiled(&layer.layer).is_some() {
                 log::info!("Already precompiled");
                 compiled_layers.push(None);
                 continue;
@@ -163,8 +176,8 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
             use WasmBinaryType::*;
 
             let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(Module) => self.engine.precompile_module(&layer.layer)?,
-                Some(Component) => self.engine.precompile_component(&layer.layer)?,
+                Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
+                Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
                 None => {
                     log::warn!("Unknow WASM binary type");
                     continue;
@@ -177,12 +190,12 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         Ok(compiled_layers)
     }
 
-    fn can_precompile(&self) -> Option<String> {
+    fn can_precompile() -> Option<String> {
         let mut hasher = DefaultHasher::new();
-        self.engine
+        PRECOMPILER
             .precompile_compatibility_hash()
             .hash(&mut hasher);
-        Some(hasher.finish().to_string())
+        Some(format!("{:016x}", hasher.finish()))
     }
 }
 
