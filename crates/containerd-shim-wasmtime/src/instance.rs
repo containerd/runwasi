@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
@@ -21,7 +20,12 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
 
-pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+pub type WasmtimeInstance = Instance<WasmtimeEngine>;
+
+pub fn init() {
+    // The default engine is memoize, cache it now.
+    let _ = WasmtimeEngine::default();
+}
 
 static PRECOMPILER: LazyLock<wasmtime::Engine> = LazyLock::new(|| {
     let mut config = wasmtime::Config::new();
@@ -67,44 +71,34 @@ impl<'a> ComponentTarget<'a> {
 }
 
 #[derive(Clone)]
-pub struct WasmtimeEngine<T: WasiConfig> {
+pub struct WasmtimeEngine {
     engine: wasmtime::Engine,
     cancel: CancellationToken,
-    config_type: PhantomData<T>,
 }
 
-#[derive(Clone)]
-pub struct DefaultConfig {}
-
-impl WasiConfig for DefaultConfig {
-    fn new_config() -> Config {
-        let mut config = wasmtime::Config::new();
-        config.wasm_component_model(true); // enable component linking
-        config
-    }
-}
-
-pub trait WasiConfig: Clone + Sync + Send + 'static {
-    fn new_config() -> Config;
-}
-
-impl<T: WasiConfig> Default for WasmtimeEngine<T> {
+impl Default for WasmtimeEngine {
     fn default() -> Self {
-        let mut config = T::new_config();
-        config.async_support(true); // must be on
+        static ENGINE: LazyLock<WasmtimeEngine> = LazyLock::new(|| {
+            let mut config = wasmtime::Config::new();
+            config.async_support(true); // must be on
 
-        if use_pooling_allocator_by_default().unwrap_or_default() {
-            let cfg = wasmtime::PoolingAllocationConfig::default();
-            config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
-        }
+            // Disable Wasmtime parallel compilation for the tests
+            // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+            config.parallel_compilation(!cfg!(test));
 
-        Self {
-            engine: wasmtime::Engine::new(&config)
-                .context("failed to create wasmtime engine")
-                .unwrap(),
-            cancel: CancellationToken::new(),
-            config_type: PhantomData,
-        }
+            if use_pooling_allocator_by_default() {
+                let cfg = wasmtime::PoolingAllocationConfig::default();
+                config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
+            }
+
+            WasmtimeEngine {
+                engine: wasmtime::Engine::new(&config)
+                    .context("failed to create wasmtime engine")
+                    .unwrap(),
+                cancel: CancellationToken::new(),
+            }
+        });
+        ENGINE.clone()
     }
 }
 
@@ -145,7 +139,7 @@ impl WasiHttpView for WasiPreview2Ctx {
     }
 }
 
-impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
+impl Engine for WasmtimeEngine {
     fn name() -> &'static str {
         "wasmtime"
     }
@@ -199,10 +193,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     }
 }
 
-impl<T> WasmtimeEngine<T>
-where
-    T: std::clone::Clone + Sync + WasiConfig + Send + 'static,
-{
+impl WasmtimeEngine {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
@@ -460,16 +451,18 @@ async fn wait_for_signal() -> Result<i32> {
 /// The pooling allocator is tailor made for the `wasi/http` use case. Check if we can use it.
 ///
 /// For more details refer to: <https://github.com/bytecodealliance/wasmtime/blob/v27.0.0/src/commands/serve.rs#L641>
-fn use_pooling_allocator_by_default() -> Result<bool> {
+fn use_pooling_allocator_by_default() -> bool {
     const BITS_TO_TEST: u32 = 42;
     let mut config = Config::new();
     config.wasm_memory64(true);
     config.static_memory_maximum_size(1 << BITS_TO_TEST);
-    let engine = wasmtime::Engine::new(&config)?;
+    let Ok(engine) = wasmtime::Engine::new(&config) else {
+        return false;
+    };
     let mut store = Store::new(&engine, ());
     let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
 
-    Ok(wasmtime::Memory::new(&mut store, ty).is_ok())
+    wasmtime::Memory::new(&mut store, ty).is_ok()
 }
 
 pub trait IntoErrorCode {
