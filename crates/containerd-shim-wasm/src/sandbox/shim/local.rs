@@ -83,12 +83,8 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn instance_config(&self) -> InstanceConfig<T::Engine> {
-        InstanceConfig::new(
-            self.engine.clone(),
-            &self.namespace,
-            &self.containerd_address,
-        )
+    fn instance_config(&self) -> InstanceConfig {
+        InstanceConfig::new(&self.namespace, &self.containerd_address)
     }
 }
 
