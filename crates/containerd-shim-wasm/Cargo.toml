@@ -34,6 +34,7 @@ futures = { version = "0.3.30" }
 wasmparser = { version = "0.220.0" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
+serde_bytes = "0.11"
 
 # tracing
 # note: it's important to keep the version of tracing in sync with tracing-subscriber
@@ -59,6 +60,7 @@ tracing-opentelemetry = { version = "0.27", default-features = false, optional =
 
 
 [target.'cfg(unix)'.dependencies]
+zygote = { version = "0.1.1" }
 caps = "0.5"
 # this must match the version pulled by libcontainer
 dbus = { version = "0", features = ["vendored"] }

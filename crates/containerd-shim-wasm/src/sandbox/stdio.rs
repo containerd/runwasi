@@ -31,7 +31,7 @@ impl Stdio {
         }
     }
 
-    pub fn init_from_cfg(cfg: &InstanceConfig<impl Send + Sync + Clone>) -> Result<Self> {
+    pub fn init_from_cfg(cfg: &InstanceConfig) -> Result<Self> {
         Ok(Self {
             stdin: StdioStream::try_from_path(cfg.get_stdin())?,
             stdout: StdioStream::try_from_path(cfg.get_stdout())?,
