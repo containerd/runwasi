@@ -4,7 +4,7 @@ use std::time::Duration;
 use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::sandbox::Error;
 use containerd_shim_wasm::testing::WasiTest;
-use containerd_shim_wasmtime::instance::{WasiConfig, WasmtimeEngine};
+use containerd_shim_wasmtime::instance::WasmtimeEngine;
 use criterion::measurement::WallTime;
 use criterion::{criterion_group, criterion_main, BenchmarkGroup, Criterion};
 
@@ -53,21 +53,8 @@ use criterion::{criterion_group, criterion_main, BenchmarkGroup, Criterion};
     of a longer benchmarking time). Running the whole suite on a desktop
     computer takes now a bit over 10 minutes.
 */
-#[derive(Clone)]
-struct WasiTestConfig {}
 
-impl WasiConfig for WasiTestConfig {
-    fn new_config() -> wasmtime::Config {
-        let mut config = wasmtime::Config::new();
-        // Disable Wasmtime parallel compilation for the tests
-        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-        config.parallel_compilation(false);
-        config.wasm_component_model(true); // enable component linking
-        config
-    }
-}
-
-type WasmtimeTestInstance = Instance<WasmtimeEngine<WasiTestConfig>>;
+type WasmtimeTestInstance = Instance<WasmtimeEngine>;
 
 fn run_wasmtime_test_with_spec(wasmbytes: &[u8]) -> Result<u32, Error> {
     let (exit_code, _, _) = WasiTest::<WasmtimeTestInstance>::builder()?
