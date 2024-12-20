@@ -38,7 +38,6 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
-        let engine = Self::Engine::default();
         let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
@@ -55,7 +54,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
             });
 
         let container = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(engine, stdio, modules, platform))
+            .with_executor(Executor::<E>::new(stdio, modules, platform))
             .with_root_path(rootdir.clone())?
             .as_init(&bundle)
             .with_systemd(false)
