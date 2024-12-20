@@ -48,6 +48,8 @@ where
     WasiInstance::Engine: Default + Send + Sync + Clone,
 {
     pub fn new() -> Result<Self> {
+        zygote::Zygote::init();
+
         // start logging
         // to enable logging run `export RUST_LOG=trace` and append cargo command with
         // --show-output before running test
