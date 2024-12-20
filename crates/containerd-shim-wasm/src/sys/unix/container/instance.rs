@@ -48,7 +48,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
         // check if container is OCI image with wasm layers and attempt to read the module
         let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace).block_on()?
-            .load_modules(&id, &engine)
+            .load_modules::<Self::Engine>(&id)
             .block_on()
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
