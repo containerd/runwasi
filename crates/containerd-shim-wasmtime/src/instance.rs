@@ -78,27 +78,24 @@ pub struct WasmtimeEngine {
 
 impl Default for WasmtimeEngine {
     fn default() -> Self {
-        static ENGINE: LazyLock<WasmtimeEngine> = LazyLock::new(|| {
-            let mut config = wasmtime::Config::new();
-            config.async_support(true); // must be on
+        let mut config = wasmtime::Config::new();
+        config.async_support(true); // must be on
 
-            // Disable Wasmtime parallel compilation for the tests
-            // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-            config.parallel_compilation(!cfg!(test));
+        // Disable Wasmtime parallel compilation for the tests
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(!cfg!(test));
 
-            if use_pooling_allocator_by_default() {
-                let cfg = wasmtime::PoolingAllocationConfig::default();
-                config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
-            }
+        if use_pooling_allocator_by_default() {
+            let cfg = wasmtime::PoolingAllocationConfig::default();
+            config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
+        }
 
-            WasmtimeEngine {
-                engine: wasmtime::Engine::new(&config)
-                    .context("failed to create wasmtime engine")
-                    .unwrap(),
-                cancel: CancellationToken::new(),
-            }
-        });
-        ENGINE.clone()
+        WasmtimeEngine {
+            engine: wasmtime::Engine::new(&config)
+                .context("failed to create wasmtime engine")
+                .unwrap(),
+            cancel: CancellationToken::new(),
+        }
     }
 }
 
