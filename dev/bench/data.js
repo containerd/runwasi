@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1734655567262,
+  "lastUpdate": 1734740526120,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -1182,6 +1182,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 3724.8695,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "95853b4e3339d0509bc8ea195e742442268ff6a7",
+          "message": "Merge pull request #766 from containerd/gh-pages-chart",
+          "timestamp": "2024-12-19T21:59:59Z",
+          "url": "https://github.com/containerd/runwasi/commit/95853b4e3339d0509bc8ea195e742442268ff6a7"
+        },
+        "date": 1734740525663,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 3754.6983,
             "unit": "req/s"
           }
         ]
