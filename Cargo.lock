@@ -890,7 +890,7 @@ dependencies = [
  "sha256",
  "temp-env",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.7",
  "tokio",
  "tokio-stream",
  "tracing",
