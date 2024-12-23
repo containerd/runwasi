@@ -25,15 +25,15 @@ enum InnerExecutor {
 }
 
 #[derive(Clone)]
-pub(crate) struct Executor<E: Engine> {
-    engine: E,
+pub(crate) struct Executor<E: Engine + Default> {
+    engine: OnceCell<E>,
     stdio: Stdio,
     inner: OnceCell<InnerExecutor>,
     wasm_layers: Vec<WasmLayer>,
     platform: Platform,
 }
 
-impl<E: Engine> LibcontainerExecutor for Executor<E> {
+impl<E: Engine + Default> LibcontainerExecutor for Executor<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
         // We can handle linux container. We delegate wasm container to the engine.
@@ -56,7 +56,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             }
             InnerExecutor::Wasm => {
                 log::info!("calling start function");
-                match self.engine.run_wasi(&self.ctx(spec), self.stdio.take()) {
+                match self.engine().run_wasi(&self.ctx(spec), self.stdio.take()) {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
@@ -83,10 +83,10 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
     }
 }
 
-impl<E: Engine> Executor<E> {
-    pub fn new(engine: E, stdio: Stdio, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
+impl<E: Engine + Default> Executor<E> {
+    pub fn new(stdio: Stdio, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
         Self {
-            engine,
+            engine: Default::default(),
             stdio,
             inner: Default::default(),
             wasm_layers,
@@ -111,7 +111,7 @@ impl<E: Engine> Executor<E> {
                 Ok(_) => InnerExecutor::Linux,
                 Err(err) => {
                     log::debug!("error checking if linux container: {err}. Fallback to wasm container");
-                    match self.engine.can_handle(ctx) {
+                    match self.engine().can_handle(ctx) {
                         Ok(_) => InnerExecutor::Wasm,
                         Err(err) => {
                             // log an error and return
@@ -122,6 +122,10 @@ impl<E: Engine> Executor<E> {
                 }
             }
         })
+    }
+
+    fn engine(&self) -> &E {
+        self.engine.get_or_init(|| E::default())
     }
 }
 

@@ -9,9 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - Reuse and synchronise access to `Container` object instead of reloading form disk ([#763](https://github.com/containerd/runwasi/pull/763))
+- Require `Engine` generic in `Instance` to implement `Default` ([#774](https://github.com/containerd/runwasi/pull/774))
+- The method `Instance::new` now takes an `&InstanceConfig` instead of `Option<&InstanceConfig>` ([#774](https://github.com/containerd/runwasi/pull/774))
 
 ### Removed
 - Removed `containerd_shim_wasm::sandbox::instance_utils::get_instance_root` and `containerd_shim_wasm::sandbox::instance_utils::instance_exists` functions ([#763](https://github.com/containerd/runwasi/pull/763))
+- Removed `Engine` generic from `InstanceConfig` ([#774](https://github.com/containerd/runwasi/pull/774))
 
 ## [v0.8.0] — 2024-12-04
 
