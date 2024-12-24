@@ -63,7 +63,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// The cached, precompiled layers will be reloaded on subsequent runs.
     /// The runtime is expected to return the same number of layers passed in, if the layer cannot be precompiled it should return `None` for that layer.
     /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
-    fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+    fn precompile(_layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
         bail!("precompile not supported");
     }
 
@@ -78,7 +78,7 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// "runwasi.io/precompiled/<Engine.name()>/<unique_string>"
     ///
     /// When it returns None the runtime will not be asked to precompile the module.  This is the default value.
-    fn can_precompile(&self) -> Option<String> {
+    fn can_precompile() -> Option<String> {
         None
     }
 }
