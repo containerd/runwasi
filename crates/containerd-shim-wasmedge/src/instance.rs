@@ -1,26 +1,19 @@
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
-use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
+use std::collections::HashMap;
 use wasmedge_sdk::plugin::PluginManager;
-use wasmedge_sdk::VmBuilder;
+use wasmedge_sdk::{config::Config, wasi::WasiModule, Module, Store, Vm};
 
 pub type WasmEdgeInstance = Instance<WasmEdgeEngine>;
 
 #[derive(Clone)]
 pub struct WasmEdgeEngine {
-    vm: wasmedge_sdk::Vm,
+    config: Option<Config>,
 }
 
 impl Default for WasmEdgeEngine {
     fn default() -> Self {
-        let host_options = HostRegistrationConfigOptions::default();
-        let host_options = host_options.wasi(true);
-        let config = ConfigBuilder::default()
-            .with_host_registration_config(host_options)
-            .build()
-            .unwrap();
-        let vm = VmBuilder::new().with_config(config).build().unwrap();
-        Self { vm }
+        Self { config: None }
     }
 }
 
@@ -39,23 +32,24 @@ impl Engine for WasmEdgeEngine {
             name,
         } = ctx.entrypoint();
 
-        let mut vm = self.vm.clone();
-        vm.wasi_module_mut()
-            .context("Not found wasi module")?
-            .initialize(
-                Some(args.iter().map(String::as_str).collect()),
-                Some(envs.iter().map(String::as_str).collect()),
-                Some(vec!["/:/"]),
-            );
+        let mut wasi_module = WasiModule::create(
+            Some(args.iter().map(String::as_str).collect()),
+            Some(envs.iter().map(String::as_str).collect()),
+            Some(vec!["/:/"]),
+        )?;
 
+        let mut instances = HashMap::new();
+        instances.insert(wasi_module.name().to_string(), wasi_module.as_mut());
+        let mut vm = Vm::new(Store::new(self.config.as_ref(), instances).unwrap());
         let mod_name = name.unwrap_or_else(|| "main".to_string());
 
         PluginManager::load(None)?;
-        let vm = vm.auto_detect_plugins()?;
+        PluginManager::auto_detect_plugins()?;
 
         let wasm_bytes = source.as_bytes()?;
+        let module = Module::from_bytes(None, &wasm_bytes)?;
         let vm = vm
-            .register_module_from_bytes(&mod_name, wasm_bytes)
+            .register_module(Some(&mod_name), module)
             .context("registering module")?;
 
         stdio.redirect()?;
@@ -63,11 +57,6 @@ impl Engine for WasmEdgeEngine {
         log::debug!("running with method {func:?}");
         vm.run_func(Some(&mod_name), func, vec![])?;
 
-        let status = vm
-            .wasi_module()
-            .context("Not found wasi module")?
-            .exit_code();
-
-        Ok(status as i32)
+        Ok(wasi_module.exit_code() as i32)
     }
 }

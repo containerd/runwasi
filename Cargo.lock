@@ -192,6 +192,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-wasi"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9abe3a40b90f239a8a9141aff1a1b98befb36d5aa23a89ed33e030e520bfd20"
+dependencies = [
+ "bitflags 2.6.0",
+ "cfg-if 1.0.0",
+ "futures",
+ "getrandom",
+ "libc",
+ "log",
+ "parking_lot",
+ "path-absolutize",
+ "serde",
+ "slab",
+ "socket2 0.4.10",
+ "tokio",
+]
+
+[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1798,6 +1818,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "fiber-for-wasmedge"
+version = "14.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03d7057d9db6e5266b609656724393781a1d75beb1159134420e0a47a7d1fae6"
+dependencies = [
+ "cc",
+ "cfg-if 1.0.0",
+ "rustix",
+ "wasmtime-asm-macros 14.0.4",
+ "wasmtime-versioned-export-macros 14.0.4",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2361,7 +2395,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2",
+ "socket2 0.5.7",
  "tokio",
  "tower-service",
  "tracing",
@@ -2463,7 +2497,7 @@ dependencies = [
  "http-body 1.0.1",
  "hyper 1.5.2",
  "pin-project-lite",
- "socket2",
+ "socket2 0.5.7",
  "tokio",
  "tower-service",
  "tracing",
@@ -3537,10 +3571,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "path-absolutize"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4af381fe79fa195b4909485d99f73a80792331df0625188e707854f0b3383f5"
+dependencies = [
+ "path-dedot",
+]
+
+[[package]]
 name = "path-clean"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
+
+[[package]]
+name = "path-dedot"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ba0ad7e047712414213ff67533e6dd477af0a4e1d14fb52343e53d30ea9397"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "pbkdf2"
@@ -4052,7 +4104,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.0.0",
  "rustls 0.23.18",
- "socket2",
+ "socket2 0.5.7",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -4084,7 +4136,7 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "once_cell",
- "socket2",
+ "socket2 0.5.7",
  "tracing",
  "windows-sys 0.59.0",
 ]
@@ -4985,6 +5037,16 @@ dependencies = [
 
 [[package]]
 name = "socket2"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7916fc008ca5542385b89a3d3ce689953c143e9304a9bf8beec1de48994c0d"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "socket2"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce305eb0b4296696835b71df73eb912e0f1ffd2556a501fcede6e0c50349191c"
@@ -5342,9 +5404,10 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
- "socket2",
+ "socket2 0.5.7",
  "tokio-macros",
  "windows-sys 0.52.0",
 ]
@@ -5520,7 +5583,7 @@ dependencies = [
  "percent-encoding",
  "pin-project",
  "prost 0.13.4",
- "socket2",
+ "socket2 0.5.7",
  "tokio",
  "tokio-stream",
  "tower 0.4.13",
@@ -5930,7 +5993,7 @@ dependencies = [
  "futures",
  "mio",
  "serde",
- "socket2",
+ "socket2 0.5.7",
  "thiserror 1.0.69",
  "tracing",
 ]
@@ -5955,7 +6018,7 @@ dependencies = [
  "rkyv",
  "serde",
  "smoltcp",
- "socket2",
+ "socket2 0.5.7",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -6229,11 +6292,12 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-sdk"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f477f3b515760c6f7fa734dae5b97c030ee443969f1c30ed12d3a09bea783a2"
+checksum = "852257498e8524cb0e2e8e9c7f1540afc2f24f2c3dd77806cf583feba8c19e99"
 dependencies = [
  "anyhow",
+ "async-wasi",
  "cfg-if 1.0.0",
  "num-derive",
  "num-traits",
@@ -6245,16 +6309,19 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-sys"
-version = "0.17.5"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d8e2276d63bb6f0c36871218643d193d2da6da3db36c1c1227547da465ed58"
+checksum = "88da93fb54be1deaa84bc68393f09ba8491e20113465c35a9446e14107f55a6e"
 dependencies = [
+ "async-wasi",
  "bindgen 0.69.5",
  "cfg-if 1.0.0",
  "cmake",
+ "fiber-for-wasmedge",
  "flate2",
  "lazy_static",
  "libc",
+ "log",
  "parking_lot",
  "paste",
  "phf",
@@ -6272,9 +6339,9 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-types"
-version = "0.4.4"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d4e7c8aebe2c513bb389beebc148253eb6f5904a6f9327179bbf2014c0efd52"
+checksum = "17315f552d26bcfe01fc185b874177592d30aab86a10ed898cc8a3f29815c9c4"
 dependencies = [
  "thiserror 1.0.69",
  "wat",
@@ -6685,7 +6752,7 @@ dependencies = [
  "target-lexicon",
  "wasm-encoder 0.219.1",
  "wasmparser 0.219.1",
- "wasmtime-asm-macros",
+ "wasmtime-asm-macros 27.0.0",
  "wasmtime-cache",
  "wasmtime-component-macro",
  "wasmtime-component-util",
@@ -6695,10 +6762,19 @@ dependencies = [
  "wasmtime-jit-debug",
  "wasmtime-jit-icache-coherence",
  "wasmtime-slab",
- "wasmtime-versioned-export-macros",
+ "wasmtime-versioned-export-macros 27.0.0",
  "wasmtime-winch",
  "wat",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "wasmtime-asm-macros"
+version = "14.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54984bc0b5689da87a43d7c181d23092b4d5cfcbb7ae3eb6b917dd55865d95e6"
+dependencies = [
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
@@ -6773,7 +6849,7 @@ dependencies = [
  "thiserror 1.0.69",
  "wasmparser 0.219.1",
  "wasmtime-environ",
- "wasmtime-versioned-export-macros",
+ "wasmtime-versioned-export-macros 27.0.0",
 ]
 
 [[package]]
@@ -6813,8 +6889,8 @@ dependencies = [
  "cc",
  "cfg-if 1.0.0",
  "rustix",
- "wasmtime-asm-macros",
- "wasmtime-versioned-export-macros",
+ "wasmtime-asm-macros 27.0.0",
+ "wasmtime-versioned-export-macros 27.0.0",
  "windows-sys 0.59.0",
 ]
 
@@ -6826,7 +6902,7 @@ checksum = "ab2a056056e9ac6916c2b8e4743408560300c1355e078c344211f13210d449b3"
 dependencies = [
  "object 0.36.5",
  "rustix",
- "wasmtime-versioned-export-macros",
+ "wasmtime-versioned-export-macros 27.0.0",
 ]
 
 [[package]]
@@ -6846,6 +6922,17 @@ name = "wasmtime-slab"
 version = "27.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d5f8acf677ee6b3b8ba400dd9753ea4769e56a95c4b30b045ac6d2d54b2f8ea"
+
+[[package]]
+name = "wasmtime-versioned-export-macros"
+version = "14.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09b5575a75e711ca6c36bb9ad647c93541cdc8e34218031acba5da3f35919dd3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
 
 [[package]]
 name = "wasmtime-versioned-export-macros"
