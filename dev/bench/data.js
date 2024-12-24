@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1734914029695,
+  "lastUpdate": 1734999672771,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -2391,6 +2391,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 3701.9379,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fc5c057ada726f97d8080ce7fb57183fa6e7c48a",
+          "message": "Merge pull request #780 from containerd/dependabot/cargo/patch-94b207fe0f\n\nchore(deps): bump thiserror from 2.0.7 to 2.0.9 in the patch group across 1 directory",
+          "timestamp": "2024-12-23T20:17:25Z",
+          "url": "https://github.com/containerd/runwasi/commit/fc5c057ada726f97d8080ce7fb57183fa6e7c48a"
+        },
+        "date": 1734999672285,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 3707.8321,
             "unit": "req/s"
           }
         ]
