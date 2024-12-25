@@ -1,20 +1,17 @@
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
-use std::collections::HashMap;
+use wasmedge_sdk::config::Config;
 use wasmedge_sdk::plugin::PluginManager;
-use wasmedge_sdk::{config::Config, wasi::WasiModule, Module, Store, Vm};
+use wasmedge_sdk::wasi::WasiModule;
+use wasmedge_sdk::{Module, Store, Vm};
 
 pub type WasmEdgeInstance = Instance<WasmEdgeEngine>;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct WasmEdgeEngine {
     config: Option<Config>,
-}
-
-impl Default for WasmEdgeEngine {
-    fn default() -> Self {
-        Self { config: None }
-    }
 }
 
 impl Engine for WasmEdgeEngine {
