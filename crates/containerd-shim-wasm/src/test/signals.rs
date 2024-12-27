@@ -18,6 +18,7 @@
 //! Once #755 is fixed we can remove the libc based implementation and
 //! remove the ignore attribute from the test.
 
+use std::fs::canonicalize;
 use std::future::pending;
 use std::io::{stderr, Write as _};
 use std::sync::mpsc::channel;
@@ -85,12 +86,18 @@ fn test_handling_signals() -> Result<()> {
         let mut containers = vec![];
 
         for i in 0..20 {
-            let container = WasiTest::<SomeInstance>::builder()?
+            let builder = WasiTest::<SomeInstance>::builder()?
                 .with_name(format!("test-{i}"))
                 .with_start_fn(format!("test-{i}"))
-                .with_stdout("/proc/self/fd/1")?
-                .with_wasm(HELLO_WORLD)?
-                .build()?;
+                .with_wasm(HELLO_WORLD)?;
+
+            // In CI /proc/self/fd/1 doesn't seem to be available
+            let builder = match canonicalize("/proc/self/fd/1") {
+                Ok(stdout) => builder.with_stdout(stdout)?,
+                _ => builder,
+            };
+
+            let container = builder.build()?;
             containers.push(Arc::new(container));
         }
 
