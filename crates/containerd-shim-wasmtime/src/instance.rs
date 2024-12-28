@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
@@ -419,17 +420,19 @@ async fn wait_for_signal() -> Result<i32> {
 ///
 /// For more details refer to: <https://github.com/bytecodealliance/wasmtime/blob/v27.0.0/src/commands/serve.rs#L641>
 fn use_pooling_allocator_by_default() -> bool {
-    const BITS_TO_TEST: u32 = 42;
-    let mut config = Config::new();
-    config.wasm_memory64(true);
-    config.static_memory_maximum_size(1 << BITS_TO_TEST);
-    let Ok(engine) = wasmtime::Engine::new(&config) else {
-        return false;
-    };
-    let mut store = Store::new(&engine, ());
-    let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
-
-    wasmtime::Memory::new(&mut store, ty).is_ok()
+    static SUPPORTS_POOLING_ALLOCATOR: LazyLock<bool> = LazyLock::new(|| {
+        const BITS_TO_TEST: u32 = 42;
+        let mut config = Config::new();
+        config.wasm_memory64(true);
+        config.static_memory_maximum_size(1 << BITS_TO_TEST);
+        let Ok(engine) = wasmtime::Engine::new(&config) else {
+            return false;
+        };
+        let mut store = Store::new(&engine, ());
+        let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
+        wasmtime::Memory::new(&mut store, ty).is_ok()
+    });
+    *SUPPORTS_POOLING_ALLOCATOR
 }
 
 pub trait IntoErrorCode {
