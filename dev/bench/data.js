@@ -4159,11 +4159,6 @@ window.BENCHMARK_DATA = {
             "name": "HTTP RPS",
             "value": 3782.4061,
             "unit": "req/s"
-          },
-          {
-            "name": "HTTP p95 Latency",
-            "value": 21,
-            "unit": "ms"
           }
         ]
       },
@@ -4430,11 +4425,6 @@ window.BENCHMARK_DATA = {
         "date": 1733983230492,
         "tool": "customSmallerIsBetter",
         "benches": [
-          {
-            "name": "HTTP RPS",
-            "value": 3782.4061,
-            "unit": "req/s"
-          },
           {
             "name": "HTTP p95 Latency",
             "value": 21,
