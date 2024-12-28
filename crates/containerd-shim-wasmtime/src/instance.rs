@@ -68,7 +68,7 @@ impl Default for WasmtimeEngine {
         // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
         config.parallel_compilation(!cfg!(test));
 
-        if use_pooling_allocator_by_default().unwrap_or_default() {
+        if use_pooling_allocator_by_default() {
             let cfg = wasmtime::PoolingAllocationConfig::default();
             config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
         }
@@ -418,16 +418,18 @@ async fn wait_for_signal() -> Result<i32> {
 /// The pooling allocator is tailor made for the `wasi/http` use case. Check if we can use it.
 ///
 /// For more details refer to: <https://github.com/bytecodealliance/wasmtime/blob/v27.0.0/src/commands/serve.rs#L641>
-fn use_pooling_allocator_by_default() -> Result<bool> {
+fn use_pooling_allocator_by_default() -> bool {
     const BITS_TO_TEST: u32 = 42;
     let mut config = Config::new();
     config.wasm_memory64(true);
     config.static_memory_maximum_size(1 << BITS_TO_TEST);
-    let engine = wasmtime::Engine::new(&config)?;
+    let Ok(engine) = wasmtime::Engine::new(&config) else {
+        return false;
+    };
     let mut store = Store::new(&engine, ());
     let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
 
-    Ok(wasmtime::Memory::new(&mut store, ty).is_ok())
+    wasmtime::Memory::new(&mut store, ty).is_ok()
 }
 
 pub trait IntoErrorCode {
