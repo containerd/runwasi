@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
@@ -20,7 +19,7 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
 
-pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+pub type WasmtimeInstance = Instance<WasmtimeEngine>;
 
 /// Represents the WASI API that the component is targeting.
 enum ComponentTarget<'a> {
@@ -54,31 +53,20 @@ impl<'a> ComponentTarget<'a> {
 }
 
 #[derive(Clone)]
-pub struct WasmtimeEngine<T: WasiConfig> {
+pub struct WasmtimeEngine {
     engine: wasmtime::Engine,
     cancel: CancellationToken,
-    config_type: PhantomData<T>,
 }
 
-#[derive(Clone)]
-pub struct DefaultConfig {}
-
-impl WasiConfig for DefaultConfig {
-    fn new_config() -> Config {
+impl Default for WasmtimeEngine {
+    fn default() -> Self {
         let mut config = wasmtime::Config::new();
         config.wasm_component_model(true); // enable component linking
-        config
-    }
-}
-
-pub trait WasiConfig: Clone + Sync + Send + 'static {
-    fn new_config() -> Config;
-}
-
-impl<T: WasiConfig> Default for WasmtimeEngine<T> {
-    fn default() -> Self {
-        let mut config = T::new_config();
         config.async_support(true); // must be on
+
+        // Disable Wasmtime parallel compilation for the tests
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(!cfg!(test));
 
         if use_pooling_allocator_by_default().unwrap_or_default() {
             let cfg = wasmtime::PoolingAllocationConfig::default();
@@ -90,7 +78,6 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
                 .context("failed to create wasmtime engine")
                 .unwrap(),
             cancel: CancellationToken::new(),
-            config_type: PhantomData,
         }
     }
 }
@@ -132,7 +119,7 @@ impl WasiHttpView for WasiPreview2Ctx {
     }
 }
 
-impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
+impl Engine for WasmtimeEngine {
     fn name() -> &'static str {
         "wasmtime"
     }
@@ -186,10 +173,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
     }
 }
 
-impl<T> WasmtimeEngine<T>
-where
-    T: std::clone::Clone + Sync + WasiConfig + Send + 'static,
-{
+impl WasmtimeEngine {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
