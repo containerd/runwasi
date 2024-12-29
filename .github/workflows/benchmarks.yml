@@ -30,7 +30,7 @@ jobs:
       - name: Build and load shims and wasi-demo-app
         shell: bash
         run: |
-          make build install test-image load test-image/oci load/oci
+          make OPT_PROFILE=release build install test-image load test-image/oci load/oci
       - name: Run Benchmarks
         shell: bash
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Build and load shims and wasi-demo-app
         shell: bash
         run: |
-          make build install test-image/http load/http
+          make OPT_PROFILE=release build install test-image/http load/http
       - name: Start wasmtime shim
         shell: bash
         run: |
