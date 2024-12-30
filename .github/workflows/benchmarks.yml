@@ -36,6 +36,9 @@ jobs:
         run: |
           set -o pipefail
           cargo bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
+      - name: Show diff
+        shell: bash
+        run: git diff
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1.20.4
         with:

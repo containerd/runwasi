@@ -23,6 +23,9 @@ runs:
         python3 ./scripts/parse-hey.py raw-output.txt
         cat latency_results.json
         cat throughput_results.json
+    - name: Show diff
+      shell: bash
+      run: git diff
     - name: Report Throughput results
       uses: benchmark-action/github-action-benchmark@v1.20.4
       with:
