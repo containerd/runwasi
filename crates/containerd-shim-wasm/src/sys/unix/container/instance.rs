@@ -33,13 +33,11 @@ pub struct Instance<E: Engine> {
     _phantom: PhantomData<E>,
 }
 
-impl<E: Engine> SandboxInstance for Instance<E> {
+impl<E: Engine + Default> SandboxInstance for Instance<E> {
     type Engine = E;
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, SandboxError> {
-        let cfg = cfg.context("missing configuration")?;
-        let engine = cfg.get_engine();
+    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         let bundle = cfg.get_bundle().to_path_buf();
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
@@ -48,7 +46,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
         // check if container is OCI image with wasm layers and attempt to read the module
         let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace).block_on()?
-            .load_modules(&id, &engine)
+            .load_modules::<Self::Engine>(&id)
             .block_on()
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
@@ -56,7 +54,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
             });
 
         let container = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(engine, stdio, modules, platform))
+            .with_executor(Executor::<E>::new(stdio, modules, platform))
             .with_root_path(rootdir.clone())?
             .as_init(&bundle)
             .with_systemd(false)

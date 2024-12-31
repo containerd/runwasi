@@ -212,17 +212,13 @@ where
 
         log::info!("building wasi test: {}", dir.display());
 
-        let mut cfg = InstanceConfig::new(
-            WasiInstance::Engine::default(),
-            TEST_NAMESPACE,
-            "/run/containerd/containerd.sock",
-        );
+        let mut cfg = InstanceConfig::new(TEST_NAMESPACE, "/run/containerd/containerd.sock");
         cfg.set_bundle(dir)
             .set_stdout(dir.join("stdout"))
             .set_stderr(dir.join("stderr"))
             .set_stdin(dir.join("stdin"));
 
-        let instance = WasiInstance::new(self.container_name, Some(&cfg))?;
+        let instance = WasiInstance::new(self.container_name, &cfg)?;
         Ok(WasiTest { instance, tempdir })
     }
 }
@@ -555,7 +551,7 @@ pub mod oci_helpers {
     pub fn get_content_label() -> Result<(String, String)> {
         let mut grep = Command::new("grep")
             .arg("-ohE")
-            .arg("runwasi.io/precompiled/[[:alpha:]]*/[0-9]+=.*")
+            .arg("runwasi.io/precompiled/[[:alpha:]]*/[[:xdigit:]]+=.*")
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
             .spawn()?;

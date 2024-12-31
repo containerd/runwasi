@@ -834,7 +834,6 @@ dependencies = [
  "containerd-shim-wasmedge",
  "containerd-shim-wasmtime",
  "criterion",
- "wasmtime",
 ]
 
 [[package]]
