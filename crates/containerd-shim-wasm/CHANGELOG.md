@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - Reuse and synchronise access to `Container` object instead of reloading form disk ([#763](https://github.com/containerd/runwasi/pull/763))
+- Remove custom stdio redicrection: The `run_wasi` method doesn't receive the `Stdio` object anymore, and redirection is done before the method is called ([#788](https://github.com/containerd/runwasi/pull/788))
 
 ### Removed
 - Removed `containerd_shim_wasm::sandbox::instance_utils::get_instance_root` and `containerd_shim_wasm::sandbox::instance_utils::instance_exists` functions ([#763](https://github.com/containerd/runwasi/pull/763))
