@@ -23,6 +23,7 @@ use crate::sandbox::{
     containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio,
 };
 use crate::sys::container::executor::Executor;
+use crate::sys::stdio::open;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
@@ -55,12 +56,21 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                 (vec![], Platform::default())
             });
 
-        let container = ContainerBuilder::new(id.clone(), SyscallType::Linux)
+        let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
             .with_executor(Executor::new(engine, stdio, modules, platform))
-            .with_root_path(rootdir.clone())?
-            .as_init(&bundle)
-            .with_systemd(false)
-            .build()?;
+            .with_root_path(rootdir.clone())?;
+
+        if let Ok(f) = open(cfg.get_stdin()) {
+            builder = builder.with_stdin(f);
+        }
+        if let Ok(f) = open(cfg.get_stdout()) {
+            builder = builder.with_stdout(f);
+        }
+        if let Ok(f) = open(cfg.get_stderr()) {
+            builder = builder.with_stderr(f);
+        }
+
+        let container = builder.as_init(&bundle).with_systemd(false).build()?;
 
         Ok(Self {
             id,
