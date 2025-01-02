@@ -1,6 +1,6 @@
 use anyhow::bail;
 
-use crate::container::{Engine, RuntimeContext, Stdio};
+use crate::container::{Engine, RuntimeContext};
 use crate::sys::container::instance::Instance;
 use crate::testing::WasiTest;
 
@@ -14,7 +14,7 @@ impl Engine for EngineFailingValidation {
     fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
         bail!("can't handle");
     }
-    fn run_wasi(&self, _ctx: &impl RuntimeContext, _stdio: Stdio) -> anyhow::Result<i32> {
+    fn run_wasi(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<i32> {
         Ok(0)
     }
 }

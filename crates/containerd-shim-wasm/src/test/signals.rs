@@ -29,7 +29,6 @@ use containerd_shim_wasm_test_modules::HELLO_WORLD;
 use tokio::sync::Notify;
 
 use crate::container::{Engine, Instance, RuntimeContext};
-use crate::sandbox::Stdio;
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
@@ -55,8 +54,7 @@ impl Engine for SomeEngine {
         "some-engine"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
-        stdio.redirect()?;
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let name = ctx.entrypoint().func;
         tokio::runtime::Builder::new_current_thread()
             .enable_all()

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, Stdio, WasmBinaryType,
+    Engine, Entrypoint, Instance, RuntimeContext, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
 use tokio_util::sync::CancellationToken;
@@ -137,7 +137,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         "wasmtime"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         log::info!("setting up wasi");
         let Entrypoint {
             source,
@@ -147,7 +147,7 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         } = ctx.entrypoint();
 
         let wasm_bytes = &source.as_bytes()?;
-        self.execute(ctx, wasm_bytes, func, stdio).into_error_code()
+        self.execute(ctx, wasm_bytes, func).into_error_code()
     }
 
     fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
@@ -199,7 +199,6 @@ where
         ctx: &impl RuntimeContext,
         module: Module,
         func: &String,
-        stdio: Stdio,
     ) -> Result<i32> {
         log::debug!("execute module");
 
@@ -224,8 +223,6 @@ where
 
             log::debug!("running start function {func:?}");
 
-            stdio.redirect()?;
-
             start_func
                 .call_async(&mut store, &[], &mut [])
                 .await
@@ -238,7 +235,6 @@ where
         ctx: &impl RuntimeContext,
         component: Component,
         func: String,
-        stdio: Stdio,
     ) -> Result<i32> {
         log::info!("instantiating component");
 
@@ -246,8 +242,6 @@ where
             component.component_type().exports(&self.engine),
             func.as_str(),
         );
-
-        stdio.redirect()?;
 
         // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
         let status = match target {
@@ -312,13 +306,12 @@ where
         ctx: &impl RuntimeContext,
         component: Component,
         func: String,
-        stdio: Stdio,
     ) -> Result<i32> {
         log::debug!("loading wasm component");
 
         wasmtime_wasi::runtime::in_tokio(async move {
             tokio::select! {
-                status = self.execute_component_async(ctx, component, func, stdio) => {
+                status = self.execute_component_async(ctx, component, func) => {
                     status
                 }
                 status = self.handle_signals() => {
@@ -344,33 +337,27 @@ where
         wait_for_signal().await
     }
 
-    fn execute(
-        &self,
-        ctx: &impl RuntimeContext,
-        wasm_binary: &[u8],
-        func: String,
-        stdio: Stdio,
-    ) -> Result<i32> {
+    fn execute(&self, ctx: &impl RuntimeContext, wasm_binary: &[u8], func: String) -> Result<i32> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
                 log::debug!("loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
-                self.execute_module(ctx, module, &func, stdio)
+                self.execute_module(ctx, module, &func)
             }
             Some(WasmBinaryType::Component) => {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
-                self.execute_component(ctx, component, func, stdio)
+                self.execute_component(ctx, component, func)
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_module(ctx, module, &func, stdio)
+                    self.execute_module(ctx, module, &func)
                 }
                 Some(Precompiled::Component) => {
                     log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_component(ctx, component, func, stdio)
+                    self.execute_component(ctx, component, func)
                 }
                 None => {
                     bail!("invalid precompiled module")

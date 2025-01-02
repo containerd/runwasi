@@ -602,7 +602,6 @@ mod tests {
 
     use super::*;
     use crate::container::RuntimeContext;
-    use crate::sandbox::Stdio;
     use crate::testing::oci_helpers::ImageContent;
     use crate::testing::{oci_helpers, TEST_NAMESPACE};
 
@@ -992,11 +991,7 @@ mod tests {
             "fake"
         }
 
-        fn run_wasi(
-            &self,
-            _ctx: &impl RuntimeContext,
-            _stdio: Stdio,
-        ) -> std::result::Result<i32, anyhow::Error> {
+        fn run_wasi(&self, _ctx: &impl RuntimeContext) -> std::result::Result<i32, anyhow::Error> {
             panic!("not implemented")
         }
 

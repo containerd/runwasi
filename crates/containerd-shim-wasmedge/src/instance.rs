@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
 use wasmedge_sdk::config::{ConfigBuilder, HostRegistrationConfigOptions};
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::VmBuilder;
@@ -29,7 +29,7 @@ impl Engine for WasmEdgeEngine {
         "wasmedge"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx.envs();
         let Entrypoint {
@@ -57,8 +57,6 @@ impl Engine for WasmEdgeEngine {
         let vm = vm
             .register_module_from_bytes(&mod_name, wasm_bytes)
             .context("registering module")?;
-
-        stdio.redirect()?;
 
         log::debug!("running with method {func:?}");
         vm.run_func(Some(&mod_name), func, vec![])?;

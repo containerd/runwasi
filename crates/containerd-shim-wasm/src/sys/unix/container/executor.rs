@@ -56,7 +56,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             }
             InnerExecutor::Wasm => {
                 log::info!("calling start function");
-                match self.engine.run_wasi(&self.ctx(spec), self.stdio.take()) {
+                match self.engine.run_wasi(&self.ctx(spec)) {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
