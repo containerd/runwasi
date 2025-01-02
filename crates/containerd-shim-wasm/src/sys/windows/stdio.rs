@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Result};
 use std::os::windows::fs::OpenOptionsExt;
@@ -16,6 +16,16 @@ pub const STDOUT_FILENO: StdioRawFd = 1;
 pub const STDERR_FILENO: StdioRawFd = 2;
 
 pub struct StdioOwnedFd(AtomicCell<StdioRawFd>);
+
+pub fn open(path: impl AsRef<Path>) -> Result<File> {
+    // Containerd always passes a named pipe for stdin, stdout, and stderr so we can check if it is a pipe and open with overlapped IO
+    let mut options = OpenOptions::new();
+    options.read(true).write(true);
+    if path.as_ref().starts_with(r"\\.\pipe\") {
+        options.custom_flags(FILE_FLAG_OVERLAPPED);
+    }
+    options.open(path)
+}
 
 impl Drop for StdioOwnedFd {
     fn drop(&mut self) {
@@ -58,12 +68,6 @@ impl StdioOwnedFd {
     }
 
     pub fn try_from_path(path: impl AsRef<Path>) -> Result<Self> {
-        // Containerd always passes a named pipe for stdin, stdout, and stderr so we can check if it is a pipe and open with overlapped IO
-        let mut options = OpenOptions::new();
-        options.read(true).write(true);
-        if path.as_ref().starts_with(r"\\.\pipe\") {
-            options.custom_flags(FILE_FLAG_OVERLAPPED);
-        }
-        Self::try_from(options.open(path)?)
+        Self::try_from(open(path)?)
     }
 }

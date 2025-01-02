@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Result;
 use std::os::fd::{IntoRawFd, OwnedFd, RawFd};
 use std::path::Path;
@@ -9,6 +9,10 @@ pub use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 pub type StdioRawFd = RawFd;
 
 pub struct StdioOwnedFd(AtomicCell<StdioRawFd>);
+
+pub fn open(path: impl AsRef<Path>) -> Result<File> {
+    OpenOptions::new().read(true).write(true).open(path)
+}
 
 impl Drop for StdioOwnedFd {
     fn drop(&mut self) {
@@ -46,6 +50,6 @@ impl StdioOwnedFd {
     }
 
     pub fn try_from_path(path: impl AsRef<Path>) -> Result<Self> {
-        Self::try_from(OpenOptions::new().read(true).write(true).open(path)?)
+        Self::try_from(open(path)?)
     }
 }
