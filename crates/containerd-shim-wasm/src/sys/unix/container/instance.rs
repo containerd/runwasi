@@ -20,9 +20,10 @@ use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance_utils::determine_rootdir;
 use crate::sandbox::sync::WaitableCell;
 use crate::sandbox::{
-    containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig, Stdio,
+    containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
 };
 use crate::sys::container::executor::Executor;
+use crate::sys::stdio::open;
 
 static DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
@@ -44,7 +45,6 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let namespace = cfg.get_namespace();
         let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
         let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
-        let stdio = Stdio::init_from_cfg(cfg)?;
 
         // check if container is OCI image with wasm layers and attempt to read the module
         let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace).block_on()?
@@ -55,12 +55,21 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                 (vec![], Platform::default())
             });
 
-        let container = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-            .with_executor(Executor::new(engine, stdio, modules, platform))
-            .with_root_path(rootdir.clone())?
-            .as_init(&bundle)
-            .with_systemd(false)
-            .build()?;
+        let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
+            .with_executor(Executor::new(engine, modules, platform))
+            .with_root_path(rootdir.clone())?;
+
+        if let Ok(f) = open(cfg.get_stdin()) {
+            builder = builder.with_stdin(f);
+        }
+        if let Ok(f) = open(cfg.get_stdout()) {
+            builder = builder.with_stdout(f);
+        }
+        if let Ok(f) = open(cfg.get_stderr()) {
+            builder = builder.with_stderr(f);
+        }
+
+        let container = builder.as_init(&bundle).with_systemd(false).build()?;
 
         Ok(Self {
             id,

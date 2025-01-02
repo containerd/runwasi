@@ -14,7 +14,7 @@ use libcontainer::workload::{
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::{Engine, PathResolve, RuntimeContext, Source, Stdio, WasiContext};
+use crate::container::{Engine, PathResolve, RuntimeContext, Source, WasiContext};
 use crate::sandbox::oci::WasmLayer;
 
 #[derive(Clone)]
@@ -27,7 +27,6 @@ enum InnerExecutor {
 #[derive(Clone)]
 pub(crate) struct Executor<E: Engine> {
     engine: E,
-    stdio: Stdio,
     inner: OnceCell<InnerExecutor>,
     wasm_layers: Vec<WasmLayer>,
     platform: Platform,
@@ -51,12 +50,11 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             InnerExecutor::CantHandle => Err(LibcontainerExecutorError::CantHandle(E::name())),
             InnerExecutor::Linux => {
                 log::info!("executing linux container");
-                self.stdio.take().redirect().unwrap();
                 DefaultExecutor {}.exec(spec)
             }
             InnerExecutor::Wasm => {
                 log::info!("calling start function");
-                match self.engine.run_wasi(&self.ctx(spec), self.stdio.take()) {
+                match self.engine.run_wasi(&self.ctx(spec)) {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
@@ -84,10 +82,9 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
 }
 
 impl<E: Engine> Executor<E> {
-    pub fn new(engine: E, stdio: Stdio, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
+    pub fn new(engine: E, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
         Self {
             engine,
-            stdio,
             inner: Default::default(),
             wasm_layers,
             platform,

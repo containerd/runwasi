@@ -865,7 +865,6 @@ dependencies = [
  "containerd-client",
  "containerd-shim",
  "containerd-shim-wasm-test-modules",
- "crossbeam",
  "dbus",
  "env_logger",
  "futures",

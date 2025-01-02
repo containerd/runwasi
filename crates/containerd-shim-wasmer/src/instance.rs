@@ -1,5 +1,5 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext, Stdio};
+use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
@@ -17,7 +17,7 @@ impl Engine for WasmerEngine {
         "wasmer"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext, stdio: Stdio) -> Result<i32> {
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx
             .envs()
@@ -55,9 +55,6 @@ impl Engine for WasmerEngine {
             .fs(Box::new(fs))
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
-
-        log::info!("redirect stdio");
-        stdio.redirect()?;
 
         log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;

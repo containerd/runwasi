@@ -22,7 +22,6 @@ pub use instance::Instance;
 pub use path::PathResolve;
 pub use wasm::WasmBinaryType;
 
-pub use crate::sandbox::stdio::Stdio;
 use crate::sys::container::instance;
 
 #[cfg(test)]
