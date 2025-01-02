@@ -3,22 +3,8 @@ name = "containerd-shim-benchmarks"
 version.workspace = true
 edition.workspace = true
 
-[dependencies]
-containerd-shim-wasm = { path = "../../crates/containerd-shim-wasm", features = ["testing"] }
-containerd-shim-wasmedge = { path = "../../crates/containerd-shim-wasmedge" }
-containerd-shim-wasmtime = { path = "../../crates/containerd-shim-wasmtime" }
-wasmtime = { workspace = true }
-
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-
-[[bench]]
-name = "wasmtime-benchmarks"
-harness = false
-
-[[bench]]
-name = "wasmedge-benchmarks"
-harness = false
 
 [[bench]]
 name = "wasi-demo-app-benchmarks"

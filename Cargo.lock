@@ -830,11 +830,7 @@ dependencies = [
 name = "containerd-shim-benchmarks"
 version = "0.4.0"
 dependencies = [
- "containerd-shim-wasm",
- "containerd-shim-wasmedge",
- "containerd-shim-wasmtime",
  "criterion",
- "wasmtime",
 ]
 
 [[package]]
