@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1735778051932,
+  "lastUpdate": 1735863408465,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6416,6 +6416,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20961.4315,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "842b22ee91d5acd4c022a11440e968e84c786efc",
+          "message": "Merge pull request #788 from jprendes/use-youki-stdio\n\nUse youki's with_stdxx functions",
+          "timestamp": "2025-01-02T19:25:19Z",
+          "url": "https://github.com/containerd/runwasi/commit/842b22ee91d5acd4c022a11440e968e84c786efc"
+        },
+        "date": 1735863407974,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20973.582,
             "unit": "req/s"
           }
         ]
