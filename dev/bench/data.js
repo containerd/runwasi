@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1735863409667,
+  "lastUpdate": 1735863535497,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6011,6 +6011,76 @@ window.BENCHMARK_DATA = {
             "name": "stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime ... test stream4/Wasmtime",
             "value": 66543376,
             "range": "± 1201713",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "842b22ee91d5acd4c022a11440e968e84c786efc",
+          "message": "Merge pull request #788 from jprendes/use-youki-stdio\n\nUse youki's with_stdxx functions",
+          "timestamp": "2025-01-02T19:25:19Z",
+          "url": "https://github.com/containerd/runwasi/commit/842b22ee91d5acd4c022a11440e968e84c786efc"
+        },
+        "date": 1735863534365,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 139121554,
+            "range": "± 3913785",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 98600693,
+            "range": "± 2318131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 104195992,
+            "range": "± 3247707",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 103510356,
+            "range": "± 2315089",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 116956333,
+            "range": "± 5116857",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 108939632,
+            "range": "± 1721297",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 80230412,
+            "range": "± 2058896",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 70591456,
+            "range": "± 854902",
             "unit": "ns/iter"
           }
         ]
