@@ -1,6 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
+use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
@@ -20,7 +20,7 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
 
-pub type WasmtimeInstance = Instance<WasmtimeEngine<DefaultConfig>>;
+pub type WasmtimeInstance = Instance<WasmtimeEngine>;
 
 /// Represents the WASI API that the component is targeting.
 enum ComponentTarget<'a> {
@@ -53,34 +53,38 @@ impl<'a> ComponentTarget<'a> {
     }
 }
 
+#[derive(Clone, Default)]
+pub struct WasmtimeEngine;
+
+static PRECOMPILER: LazyLock<wasmtime::Engine> = LazyLock::new(|| {
+    let mut config = wasmtime::Config::new();
+
+    // Disable Wasmtime parallel compilation for the tests
+    // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+    config.parallel_compilation(!cfg!(test));
+    config.wasm_component_model(true); // enable component linking
+    config.async_support(true); // must be on
+
+    wasmtime::Engine::new(&config).expect("failed to create wasmtime precompilation engine")
+});
+
 #[derive(Clone)]
-pub struct WasmtimeEngine<T: WasiConfig> {
+pub struct WasmtimeEngineImpl {
     engine: wasmtime::Engine,
     cancel: CancellationToken,
-    config_type: PhantomData<T>,
 }
 
-#[derive(Clone)]
-pub struct DefaultConfig {}
-
-impl WasiConfig for DefaultConfig {
-    fn new_config() -> Config {
-        let mut config = wasmtime::Config::new();
-        config.wasm_component_model(true); // enable component linking
-        config
-    }
-}
-
-pub trait WasiConfig: Clone + Sync + Send + 'static {
-    fn new_config() -> Config;
-}
-
-impl<T: WasiConfig> Default for WasmtimeEngine<T> {
+impl Default for WasmtimeEngineImpl {
     fn default() -> Self {
-        let mut config = T::new_config();
+        let mut config = wasmtime::Config::new();
+
+        // Disable Wasmtime parallel compilation for the tests
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(!cfg!(test));
+        config.wasm_component_model(true); // enable component linking
         config.async_support(true); // must be on
 
-        if use_pooling_allocator_by_default().unwrap_or_default() {
+        if use_pooling_allocator_by_default() {
             let cfg = wasmtime::PoolingAllocationConfig::default();
             config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
         }
@@ -90,7 +94,6 @@ impl<T: WasiConfig> Default for WasmtimeEngine<T> {
                 .context("failed to create wasmtime engine")
                 .unwrap(),
             cancel: CancellationToken::new(),
-            config_type: PhantomData,
         }
     }
 }
@@ -132,7 +135,7 @@ impl WasiHttpView for WasiPreview2Ctx {
     }
 }
 
-impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
+impl Engine for WasmtimeEngine {
     fn name() -> &'static str {
         "wasmtime"
     }
@@ -147,14 +150,16 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
         } = ctx.entrypoint();
 
         let wasm_bytes = &source.as_bytes()?;
-        self.execute(ctx, wasm_bytes, func).into_error_code()
+        WasmtimeEngineImpl::default()
+            .execute(ctx, wasm_bytes, func)
+            .into_error_code()
     }
 
     fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
-            if self.engine.detect_precompiled(&layer.layer).is_some() {
+            if PRECOMPILER.detect_precompiled(&layer.layer).is_some() {
                 log::info!("Already precompiled");
                 compiled_layers.push(None);
                 continue;
@@ -163,8 +168,8 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
             use WasmBinaryType::*;
 
             let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(Module) => self.engine.precompile_module(&layer.layer)?,
-                Some(Component) => self.engine.precompile_component(&layer.layer)?,
+                Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
+                Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
                 None => {
                     log::warn!("Unknow WASM binary type");
                     continue;
@@ -179,17 +184,14 @@ impl<T: WasiConfig> Engine for WasmtimeEngine<T> {
 
     fn can_precompile(&self) -> Option<String> {
         let mut hasher = DefaultHasher::new();
-        self.engine
+        PRECOMPILER
             .precompile_compatibility_hash()
             .hash(&mut hasher);
         Some(hasher.finish().to_string())
     }
 }
 
-impl<T> WasmtimeEngine<T>
-where
-    T: std::clone::Clone + Sync + WasiConfig + Send + 'static,
-{
+impl WasmtimeEngineImpl {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
@@ -434,16 +436,20 @@ async fn wait_for_signal() -> Result<i32> {
 /// The pooling allocator is tailor made for the `wasi/http` use case. Check if we can use it.
 ///
 /// For more details refer to: <https://github.com/bytecodealliance/wasmtime/blob/v27.0.0/src/commands/serve.rs#L641>
-fn use_pooling_allocator_by_default() -> Result<bool> {
-    const BITS_TO_TEST: u32 = 42;
-    let mut config = Config::new();
-    config.wasm_memory64(true);
-    config.static_memory_maximum_size(1 << BITS_TO_TEST);
-    let engine = wasmtime::Engine::new(&config)?;
-    let mut store = Store::new(&engine, ());
-    let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
-
-    Ok(wasmtime::Memory::new(&mut store, ty).is_ok())
+fn use_pooling_allocator_by_default() -> bool {
+    static SUPPORTS_POOLING_ALLOCATOR: LazyLock<bool> = LazyLock::new(|| {
+        const BITS_TO_TEST: u32 = 42;
+        let mut config = Config::new();
+        config.wasm_memory64(true);
+        config.static_memory_maximum_size(1 << BITS_TO_TEST);
+        let Ok(engine) = wasmtime::Engine::new(&config) else {
+            return false;
+        };
+        let mut store = Store::new(&engine, ());
+        let ty = wasmtime::MemoryType::new64(0, Some(1 << (BITS_TO_TEST - 16)));
+        wasmtime::Memory::new(&mut store, ty).is_ok()
+    });
+    *SUPPORTS_POOLING_ALLOCATOR
 }
 
 pub trait IntoErrorCode {
