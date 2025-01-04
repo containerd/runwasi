@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1735949853737,
+  "lastUpdate": 1735949854898,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6967,6 +6967,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/containerd/runwasi/commit/842b22ee91d5acd4c022a11440e968e84c786efc"
         },
         "date": 1735863409422,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "94751dc3921327bbbbcb1cd7cdc4a37eb6027a00",
+          "message": "Merge pull request #782 from jprendes/maker-wasmtime\n\nMake WasmtimeEngine a marker struct",
+          "timestamp": "2025-01-03T19:46:52Z",
+          "url": "https://github.com/containerd/runwasi/commit/94751dc3921327bbbbcb1cd7cdc4a37eb6027a00"
+        },
+        "date": 1735949854685,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
