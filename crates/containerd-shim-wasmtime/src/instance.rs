@@ -1,10 +1,12 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeSet;
+use std::future::Future;
 use std::hash::{Hash, Hasher};
 use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, WasmBinaryType,
+    Engine, Entrypoint, Instance, PrecompiledLayer, RuntimeContext, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
 use tokio_util::sync::CancellationToken;
@@ -155,31 +157,42 @@ impl Engine for WasmtimeEngine {
             .into_error_code()
     }
 
-    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
-        let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
+    #[allow(clippy::manual_async_fn)]
+    fn precompile(
+        &self,
+        layers: &[WasmLayer],
+    ) -> impl Future<Output = Result<Vec<PrecompiledLayer>>> + Send {
+        async move {
+            let mut compiled_layers = Vec::<PrecompiledLayer>::new();
 
-        for layer in layers {
-            if PRECOMPILER.detect_precompiled(&layer.layer).is_some() {
-                log::info!("Already precompiled");
-                compiled_layers.push(None);
-                continue;
-            }
-
-            use WasmBinaryType::*;
-
-            let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
-                Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
-                None => {
-                    log::warn!("Unknow WASM binary type");
+            for layer in layers {
+                if PRECOMPILER.detect_precompiled(&layer.layer).is_some() {
+                    log::info!("Already precompiled");
                     continue;
                 }
-            };
 
-            compiled_layers.push(Some(compiled_layer));
+                use WasmBinaryType::*;
+
+                let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
+                    Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
+                    Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
+                    None => {
+                        log::warn!("Unknow WASM binary type");
+                        continue;
+                    }
+                };
+
+                let parent_digest = layer.config.digest().to_string();
+
+                compiled_layers.push(PrecompiledLayer {
+                    media_type: layer.config.media_type().to_string(),
+                    bytes: compiled_layer,
+                    parents: BTreeSet::from([parent_digest]),
+                });
+            }
+
+            Ok(compiled_layers)
         }
-
-        Ok(compiled_layers)
     }
 
     fn can_precompile(&self) -> Option<String> {

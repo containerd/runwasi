@@ -1,4 +1,6 @@
+use std::collections::BTreeSet;
 use std::fs::File;
+use std::future::Future;
 use std::io::Read;
 
 use anyhow::{bail, Context, Result};
@@ -60,10 +62,11 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// This is used to precompile the layers before they are run and will be called if `can_precompile` returns `true`.
     /// It is called only the first time a module is run and the resulting bytes will be cached in the containerd content store.  
     /// The cached, precompiled layers will be reloaded on subsequent runs.
-    /// The runtime is expected to return the same number of layers passed in, if the layer cannot be precompiled it should return `None` for that layer.
-    /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
-    fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
-        bail!("precompile not supported");
+    fn precompile(
+        &self,
+        _layers: &[WasmLayer],
+    ) -> impl Future<Output = Result<Vec<PrecompiledLayer>>> + Send {
+        async move { bail!("precompile not supported") }
     }
 
     /// Can_precompile lets the shim know if the runtime supports precompilation.
@@ -80,4 +83,15 @@ pub trait Engine: Clone + Send + Sync + 'static {
     fn can_precompile(&self) -> Option<String> {
         None
     }
+}
+
+/// A `PrecompiledLayer` represents the precompiled bytes of a layer and the digests of parent layers (if any) used to process it.
+#[derive(Clone)]
+pub struct PrecompiledLayer {
+    /// The media type this layer represents.
+    pub media_type: String,
+    /// The bytes of the precompiled layer.
+    pub bytes: Vec<u8>,
+    /// Digests of this layers' parents.
+    pub parents: BTreeSet<String>,
 }

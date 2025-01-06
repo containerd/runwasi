@@ -17,7 +17,7 @@ mod wasm;
 
 pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
-pub use engine::Engine;
+pub use engine::{Engine, PrecompiledLayer};
 pub use instance::Instance;
 pub use path::PathResolve;
 pub use wasm::WasmBinaryType;
