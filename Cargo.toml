@@ -47,7 +47,7 @@ windows-sys = "0.59"
 serial_test = "3"
 tracing = "0.1"
 hyper = "1.5.2"
-tokio = { version = "1.41.1", default-features = false }
+tokio = { version = "1.42.0", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 
 # wasmtime
