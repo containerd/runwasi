@@ -6,16 +6,18 @@
 
 ## Usage
 
+> Wasmtime shim v0.5.0 has OpenTelemetry tracing enabled by default
+
 To use OpenTelemetry tracing in your shim, you need to use the `opentelemetry` feature in the `containerd-shim-wasm` crate.
 ```toml
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 ```
 
-Then, you may use the `containerd_shim_wasm::sandbox::cli::shim_main_with_otel` function to run the shim with OpenTelemetry tracing.
+Then, you may use the `containerd_shim_wasm::sandbox::cli::shim_main` function to run the shim with OpenTelemetry tracing.
 
 ```rust
 fn main() {
-    shim_main_with_otel::<WasmtimeInstance>("wasmtime", version!(), revision!(), "v1", None);
+    shim_main::<WasmtimeInstance>("wasmtime", version!(), revision!(), "v1", None);
 }
 ```
 
@@ -23,7 +25,7 @@ You may also use the `containerd_shim_wasm::sandbox::shim::OtlpConfig` struct to
 
 ### Running containerd with OpenTelemetry
 
-You can run containerd with OpenTelemetry tracing by setting the following environment variables.
+You can configure / run containerd with OpenTelemetry tracing. Please refer to the [containerd documentation](https://github.com/containerd/containerd/blob/v2.0.0/docs/tracing.md#sending-traces-from-containerd-daemon) for more information.
 
 ```sh
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -45,7 +47,7 @@ You can access the Jeager UI at `http://localhost:16686`.
 
 ### Demo
 
-Assuming you have built or installed the `containerd-shim-wasmtime-v1` shim binary and the demo wasm image following README.md instructions,
+Assuming you installed the `containerd-shim-wasmtime-v1` shim binary and the demo wasm image following README.md instructions,
 you can run a the wasmtime shim with OpenTelemetry tracing by running the following command
 
 ```sh
