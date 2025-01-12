@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736554719090,
+  "lastUpdate": 1736641113250,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -2366,6 +2366,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20953.7302,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "21f8dcb3be2bc2cb36c30f98b7261ea3b01f0a12",
+          "message": "Merge pull request #791 from jprendes/bump-youki\n\n[chore] revert to versioned release of youki's libcontainer",
+          "timestamp": "2025-01-07T16:55:41Z",
+          "url": "https://github.com/containerd/runwasi/commit/21f8dcb3be2bc2cb36c30f98b7261ea3b01f0a12"
+        },
+        "date": 1736641112565,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20566.8417,
             "unit": "req/s"
           }
         ]
