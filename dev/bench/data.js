@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736900938029,
+  "lastUpdate": 1736900939123,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3332,6 +3332,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.5,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "336aa1c6c0ecddc353629c307c104edf07db4c31",
+          "message": "Merge pull request #777 from CaptainVincent/upgrade-wasmedge\n\nbump wasmedge-sdk from 0.13.2 to 0.14.0",
+          "timestamp": "2025-01-14T20:03:33Z",
+          "url": "https://github.com/containerd/runwasi/commit/336aa1c6c0ecddc353629c307c104edf07db4c31"
+        },
+        "date": 1736900938889,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
             "unit": "ms"
           }
         ]
