@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736900695064,
+  "lastUpdate": 1736900938029,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -2630,6 +2630,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20124.3738,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "336aa1c6c0ecddc353629c307c104edf07db4c31",
+          "message": "Merge pull request #777 from CaptainVincent/upgrade-wasmedge\n\nbump wasmedge-sdk from 0.13.2 to 0.14.0",
+          "timestamp": "2025-01-14T20:03:33Z",
+          "url": "https://github.com/containerd/runwasi/commit/336aa1c6c0ecddc353629c307c104edf07db4c31"
+        },
+        "date": 1736900937483,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20531.8491,
             "unit": "req/s"
           }
         ]
