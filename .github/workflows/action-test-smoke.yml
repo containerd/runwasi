@@ -36,11 +36,11 @@ jobs:
         with:
           name: test-img
           path: dist
-      - name: enable OTLP
+      - name: Enable OTLP
         if: ${{ inputs.runtime == 'wasmtime' }}
         run: |
-          sudo ./scripts/setup-otel.sh
-      - name: run
+          sudo ./scripts/setup-jeager-and-otel.sh
+      - name: Run wasi-demo-app using ctr
         timeout-minutes: 5
         run: |
           ls -alh dist
@@ -48,3 +48,8 @@ jobs:
           make load
           sudo cp -f dist/bin/* /usr/local/bin
           sudo ctr run --rm --runtime=io.containerd.${{ inputs.runtime }}.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
+      - name: Verify Jaeger traces
+        if: ${{ inputs.runtime == 'wasmtime' }}
+        run: |
+          sleep 5
+          sudo ./scripts/verify-jaeger-traces.sh

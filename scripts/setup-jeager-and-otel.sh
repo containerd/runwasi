@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 
 # start jeager endpoint 
 docker run -d -p16686:16686 -p4317:4317 -p4318:4318 -e COLLECTOR_OTLP_ENABLED=true jaegertracing/all-in-one:latest
@@ -11,7 +12,8 @@ mkdir -p /etc/systemd/system/containerd.service.d
 cat <<EOF > /etc/systemd/system/containerd.service.d/override.conf
 [Service]
 Environment="OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318"
-Environment="OTEL_SERVICE_NAME=wasmtime"
+Environment="OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf"
+Environment="OTEL_SERVICE_NAME=containerd"
 EOF
 
 systemctl daemon-reload
