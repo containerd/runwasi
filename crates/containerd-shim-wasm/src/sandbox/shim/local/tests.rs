@@ -24,7 +24,7 @@ pub struct InstanceStub {
 
 impl Instance for InstanceStub {
     type Engine = ();
-    fn new(_id: String, _cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, Error> {
+    fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
         Ok(InstanceStub {
             exit_code: WaitableCell::new(),
         })
