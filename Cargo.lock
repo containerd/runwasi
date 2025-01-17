@@ -3972,7 +3972,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.87",
@@ -7778,9 +7778,9 @@ dependencies = [
 
 [[package]]
 name = "zygote"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b96e95c06f0156974c3cbdac79e5454938c1d301fca4224f5e17f8020cf011a0"
+checksum = "8b78cf6140893151497b58da3c52d4e4dda37be26273b4acefe92a6f294d7cb6"
 dependencies = [
  "libc",
  "nix 0.29.0",
