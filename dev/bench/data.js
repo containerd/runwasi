@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737073267037,
+  "lastUpdate": 1737159352777,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -2851,6 +2851,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20926.7784,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ae1a9a4e5270d04752ad1f4c987da26b92b1f972",
+          "message": "Merge pull request #794 from Mossaka/jeager-integration-test\n\n.github/workflows/action-test-smoke: Add a step to verify the jeager",
+          "timestamp": "2025-01-16T23:33:45Z",
+          "url": "https://github.com/containerd/runwasi/commit/ae1a9a4e5270d04752ad1f4c987da26b92b1f972"
+        },
+        "date": 1737159352092,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20610.7147,
             "unit": "req/s"
           }
         ]
