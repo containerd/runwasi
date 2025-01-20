@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737332201657,
+  "lastUpdate": 1737332203000,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3877,6 +3877,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/containerd/runwasi/commit/ae1a9a4e5270d04752ad1f4c987da26b92b1f972"
         },
         "date": 1737245874340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ae1a9a4e5270d04752ad1f4c987da26b92b1f972",
+          "message": "Merge pull request #794 from Mossaka/jeager-integration-test\n\n.github/workflows/action-test-smoke: Add a step to verify the jeager",
+          "timestamp": "2025-01-16T23:33:45Z",
+          "url": "https://github.com/containerd/runwasi/commit/ae1a9a4e5270d04752ad1f4c987da26b92b1f972"
+        },
+        "date": 1737332202665,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
