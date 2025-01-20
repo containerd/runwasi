@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737332203000,
+  "lastUpdate": 1737332302053,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -2235,6 +2235,76 @@ window.BENCHMARK_DATA = {
             "name": "end-to-end/wamr/wasi-demo-oci:latest",
             "value": 67811014,
             "range": "± 959014",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ae1a9a4e5270d04752ad1f4c987da26b92b1f972",
+          "message": "Merge pull request #794 from Mossaka/jeager-integration-test\n\n.github/workflows/action-test-smoke: Add a step to verify the jeager",
+          "timestamp": "2025-01-16T23:33:45Z",
+          "url": "https://github.com/containerd/runwasi/commit/ae1a9a4e5270d04752ad1f4c987da26b92b1f972"
+        },
+        "date": 1737332301347,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 122974748,
+            "range": "± 4246031",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 76178061,
+            "range": "± 1239621",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 98478730,
+            "range": "± 4241719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 98436725,
+            "range": "± 834810",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 114299769,
+            "range": "± 4162490",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 105489600,
+            "range": "± 1007953",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 74633829,
+            "range": "± 3463394",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 66827828,
+            "range": "± 651372",
             "unit": "ns/iter"
           }
         ]
