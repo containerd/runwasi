@@ -56,7 +56,7 @@ opentelemetry-otlp = { version = "0.16.0", default-features = false, features = 
     "reqwest-client",
     "trace",
 ], optional = true }
-opentelemetry_sdk = { version = "0.23", default-features = false, features = [
+opentelemetry_sdk = { version = "0.27", default-features = false, features = [
     "rt-tokio",
 ], optional = true }
 tracing-opentelemetry = { version = "0.24", optional = true }
