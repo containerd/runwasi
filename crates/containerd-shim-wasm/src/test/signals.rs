@@ -18,36 +18,22 @@
 //! Once #755 is fixed we can remove the libc based implementation and
 //! remove the ignore attribute from the test.
 
+use std::fs::canonicalize;
 use std::future::pending;
+use std::io::{stderr, Write as _};
 use std::sync::mpsc::channel;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
-use tokio::sync::Notify;
 
 use crate::container::{Engine, Instance, RuntimeContext};
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
 pub struct SomeEngine;
-
-async fn ctrl_c(use_libc: bool) {
-    static CANCELLATION: LazyLock<Notify> = LazyLock::new(|| Notify::new());
-
-    fn on_ctr_c(_: libc::c_int) {
-        CANCELLATION.notify_waiters();
-    }
-
-    if use_libc {
-        unsafe { libc::signal(libc::SIGINT, on_ctr_c as _) };
-        CANCELLATION.notified().await;
-    } else {
-        let _ = tokio::signal::ctrl_c().await;
-    }
-}
 
 impl Engine for SomeEngine {
     fn name() -> &'static str {
@@ -61,16 +47,16 @@ impl Engine for SomeEngine {
             .build()?
             .block_on(async move {
                 use tokio::time::sleep;
-                let use_libc = std::env::var("USE_LIBC").unwrap_or_default();
-                let use_libc = !use_libc.is_empty() && use_libc != "0";
                 let signal = async {
                     println!("{name}> waiting for signal!");
-                    ctrl_c(use_libc).await;
+                    let _ = tokio::signal::ctrl_c().await;
                     println!("{name}> received signal, bye!");
                 };
                 let task = async {
                     sleep(Duration::from_millis(10)).await;
-                    eprintln!("{name}> ready");
+                    // use writeln to avoid output capturing from the
+                    // testing framework
+                    let _ = writeln!(stderr(), "{name}> ready");
                     pending().await
                 };
                 tokio::select! {
@@ -92,23 +78,30 @@ impl Drop for KillGuard {
 }
 
 #[test]
-#[ignore = "this currently fails due to tokio's global state"]
 fn test_handling_signals() -> Result<()> {
+    zygote::Zygote::global();
+
     // use a thread scope to ensure we join all threads at the end
     std::thread::scope(|s| -> Result<()> {
         let mut containers = vec![];
 
         for i in 0..20 {
-            let container = WasiTest::<SomeInstance>::builder()?
+            let builder = WasiTest::<SomeInstance>::builder()?
                 .with_name(format!("test-{i}"))
                 .with_start_fn(format!("test-{i}"))
-                .with_stdout("/proc/self/fd/1")?
-                .with_wasm(HELLO_WORLD)?
-                .build()?;
+                .with_wasm(HELLO_WORLD)?;
+
+            // In CI /proc/self/fd/1 doesn't seem to be available
+            let builder = match canonicalize("/proc/self/fd/1") {
+                Ok(stdout) => builder.with_stdout(stdout)?,
+                _ => builder,
+            };
+
+            let container = builder.build()?;
             containers.push(Arc::new(container));
         }
 
-        let guard: Vec<_> = containers.iter().cloned().map(KillGuard).collect();
+        let _guard: Vec<_> = containers.iter().cloned().map(KillGuard).collect();
 
         for container in containers.iter() {
             container.start()?;
@@ -147,8 +140,6 @@ fn test_handling_signals() -> Result<()> {
             println!("shim> received exit from container test-{id} (expected test-{i})");
             assert_eq!(id, i);
         }
-
-        drop(guard);
 
         Ok(())
     })

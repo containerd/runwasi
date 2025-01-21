@@ -8,12 +8,14 @@ use std::process;
 
 use anyhow::Context;
 use oci_spec::image::Descriptor;
+use serde::{Deserialize, Serialize};
 
 use super::error::Result;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WasmLayer {
     pub config: Descriptor,
+    #[serde(with = "serde_bytes")]
     pub layer: Vec<u8>,
 }
 
