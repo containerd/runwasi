@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737419023372,
+  "lastUpdate": 1737419025225,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4006,6 +4006,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4c197f672e6a87ac8b7e0eb9dea66365dab86f7a",
+          "message": "Merge pull request #803 from containerd/dependabot/cargo/patch-3f7a791fec\n\nchore(deps): bump the patch group with 3 updates",
+          "timestamp": "2025-01-20T17:22:09Z",
+          "url": "https://github.com/containerd/runwasi/commit/4c197f672e6a87ac8b7e0eb9dea66365dab86f7a"
+        },
+        "date": 1737419024626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
             "unit": "ms"
           }
         ]
