@@ -25,18 +25,16 @@ if [ "$SHIM_MEM" == "" ] || [ "$ZYGOTE_MEM" == "" ]; then
     exit 1
 fi
 
+TOTAL_MEM=$(( $SHIM_MEM + $ZYGOTE_MEM ))
+
 # Print the JSON for the benchmark report
 cat <<EOF
 [
     {
-        "name": "Shim memory usage",
+        "name": "$RUNTIME/memory-usage",
         "unit": "kB",
-        "value": $SHIM_MEM
-    },
-    {
-        "name": "Zygote memory usage",
-        "unit": "kB",
-        "value": $ZYGOTE_MEM
+        "value": $TOTAL_MEM,
+        "extra": "shim: $SHIM_MEM kB\nzygote: $ZYGOTE_MEM kB"
     }
 ]
 EOF
