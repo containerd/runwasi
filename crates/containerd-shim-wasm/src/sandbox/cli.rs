@@ -41,6 +41,9 @@ fn get_mem(pid: u32) -> (usize, usize) {
         .lines()
     {
         let line = line.trim();
+        // VmPeak is the maximum total virtual memory used so far.
+        // VmHWM (high water mark) is the maximum resident set memory used so far.
+        // See: https://man7.org/linux/man-pages/man5/proc_pid_status.5.html
         if let Some(rest) = line.strip_prefix("VmPeak:") {
             if let Some(rest) = rest.strip_suffix("kB") {
                 total = rest.trim().parse().unwrap_or(0);
