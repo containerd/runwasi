@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737419141545,
+  "lastUpdate": 1737505047063,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3239,6 +3239,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20631.6203,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "afe5c9c6e61111a5dae1b76fc8d4d87f26f9ac10",
+          "message": "Merge pull request #775 from jprendes/zygote\n\nUse Zygote process",
+          "timestamp": "2025-01-21T18:41:23Z",
+          "url": "https://github.com/containerd/runwasi/commit/afe5c9c6e61111a5dae1b76fc8d4d87f26f9ac10"
+        },
+        "date": 1737505046334,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19496.2671,
             "unit": "req/s"
           }
         ]
