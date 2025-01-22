@@ -17,8 +17,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch submodules
-        run: git submodule update --init --recursive
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
@@ -54,14 +52,56 @@ jobs:
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
           auto-push: ${{ github.event_name == 'schedule' }}
+
+  benchmark-mem:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - name: Setup build environment
+        shell: bash
+        run: |
+          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          ./scripts/setup-$os.sh
+      - name: Build and load shims and wasi-demo-app
+        shell: bash
+        run: |
+          make OPT_PROFILE=release build install test-image load test-image/oci load/oci
+      - name: Run Benchmarks
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for RUNTIME in wasmtime wasmedge wasmer wamr; do
+            sudo ./scripts/benchmark-mem.sh $RUNTIME > bench-mem-$RUNTIME.json
+          done
+          cat bench-mem-* | jq -s 'flatten(1)' > bench-mem.json
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1.20.4
+        with:
+          name: Criterion.rs Benchmark
+          tool: 'customSmallerIsBetter'
+          output-file-path: bench-mem.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # my experimental local benchmarking seems to have a 20% margin of error. 
+          # So I set the alert threshold to 130% of the previous benchmark result.
+          # If the current benchmark result is more than 130% of the previous benchmark result, it will fail.
+          alert-threshold: '130%'
+          fail-on-alert: ${{ github.event_name == 'schedule' }}
+          alert-comment-cc-users: '@runwasi-committers'
+          # Enable Job Summary
+          summary-always: true
+          # Automatically push the benchmark result to gh-pages branch
+          # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
+          auto-push: ${{ github.event_name == 'schedule' }}
   
   benchmark-http:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch submodules
-        run: git submodule update --init --recursive
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile

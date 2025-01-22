@@ -32,6 +32,42 @@ macro_rules! revision {
     };
 }
 
+#[cfg(target_os = "linux")]
+fn get_mem(pid: u32) -> (usize, usize) {
+    let mut rss = 0;
+    let mut total = 0;
+    for line in std::fs::read_to_string(format!("/proc/{pid}/status"))
+        .unwrap()
+        .lines()
+    {
+        let line = line.trim();
+        // VmPeak is the maximum total virtual memory used so far.
+        // VmHWM (high water mark) is the maximum resident set memory used so far.
+        // See: https://man7.org/linux/man-pages/man5/proc_pid_status.5.html
+        if let Some(rest) = line.strip_prefix("VmPeak:") {
+            if let Some(rest) = rest.strip_suffix("kB") {
+                total = rest.trim().parse().unwrap_or(0);
+            }
+        } else if let Some(rest) = line.strip_prefix("VmHWM:") {
+            if let Some(rest) = rest.strip_suffix("kB") {
+                rss = rest.trim().parse().unwrap_or(0);
+            }
+        }
+    }
+    (rss, total)
+}
+
+#[cfg(target_os = "linux")]
+fn log_mem() {
+    let pid = std::process::id();
+    let (rss, tot) = get_mem(pid);
+    log::info!("Shim peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
+
+    let pid = zygote::Zygote::global().run(|_| std::process::id(), ());
+    let (rss, tot) = get_mem(pid);
+    log::info!("Zygote peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
+}
+
 /// Main entry point for the shim.
 ///
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
@@ -70,6 +106,9 @@ pub fn shim_main<'a, I>(
     {
         shim_main_inner::<I>(name, version, revision, shim_version, config);
     }
+
+    #[cfg(target_os = "linux")]
+    log_mem();
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
