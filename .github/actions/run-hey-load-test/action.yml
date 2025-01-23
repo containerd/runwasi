@@ -34,6 +34,9 @@ runs:
         summary-always: true
         alert-threshold: "130%"
         fail-on-alert: ${{ github.event_name == 'schedule' }}
+        # Enable comment to the PR
+        comment-always: ${{ github.event_name != 'schedule' }}
+
     - name: Report Latency results
       if : ${{ github.event_name == 'schedule' }}
       uses: benchmark-action/github-action-benchmark@v1.20.4
@@ -67,3 +70,4 @@ runs:
         alert-threshold: "130%"
         fail-on-alert: false
         external-data-json-path: ./cache/latency_results.json
+        comment-always: true
