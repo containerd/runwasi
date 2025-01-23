@@ -52,6 +52,8 @@ jobs:
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
           auto-push: ${{ github.event_name == 'schedule' }}
+          # Enable comment to the PR
+          comment-always: ${{ github.event_name != 'schedule' }}
 
   benchmark-mem:
     runs-on: ubuntu-latest
@@ -96,6 +98,8 @@ jobs:
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
           auto-push: ${{ github.event_name == 'schedule' }}
+          # Enable comment to the PR
+          comment-always: ${{ github.event_name != 'schedule' }}
   
   benchmark-http:
     runs-on: ubuntu-latest
