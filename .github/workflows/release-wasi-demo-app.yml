@@ -37,46 +37,65 @@ jobs:
           toolchain: stable
           target: wasm32-wasip1
           override: true
+
+      - name: Convert repository name to lowercase
+        id: prep
+        run: echo "::set-output name=repo::$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+
+      - name: login to GitHub container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: enable containerd image store
+        run: |
+          echo '{ "features": { "containerd-snapshotter": true } }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info -f '{{ .DriverStatus }}'
+      
       - name: Build oci tarballs
         run: |
-          make load
-          make load/oci
-          sudo ctr image ls
+          make docker/load
+          make docker/load/oci
+          docker image ls
+
       - name: Tagging images
         run: |
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-app:latest
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:${{ inputs.version }}
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:latest
 
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ github.repository }}/wasi-demo-oci:latest
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:${{ inputs.version }}
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:latest
 
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
-          sudo ctr image tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:latest
       
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-app:latest
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:${{ inputs.version }}
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:latest
 
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci:latest
-          
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}
-          sudo ctr images push --user ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:latest
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:${{ inputs.version }}
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:latest
+
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:${{ inputs.version }}
+          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:latest
 
       - name: Display image digests
         id: get_digests
         run: |
-          digest_wasi_demo_app=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-app:${{ inputs.version }}" | awk '{print $3}')
+          digest_wasi_demo_app=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app --format '{{ .Id }}' --type image)
           echo "Digest for wasi-demo-app: $digest_wasi_demo_app"
           echo "wasi_demo_app_digest=$digest_wasi_demo_app" >> $GITHUB_OUTPUT
 
-          digest_wasi_demo_oci=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci:${{ inputs.version }}" | awk '{print $3}')
+          digest_wasi_demo_oci=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci --format '{{ .Id }}' --type image)
           echo "Digest for wasi-demo-oci: $digest_wasi_demo_oci"
           echo "wasi_demo_oci_digest=$digest_wasi_demo_oci" >> $GITHUB_OUTPUT
 
-          digest_wasi_demo_oci_artifact=$(sudo ctr images ls | grep "ghcr.io/${{ github.repository }}/wasi-demo-oci-artifact:${{ inputs.version }}" | awk '{print $3}')
+          digest_wasi_demo_oci_artifact=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact --format '{{ .Id }}' --type image)
           echo "Digest for wasi-demo-oci-artifact: $digest_wasi_demo_oci_artifact"
           echo "wasi_demo_oci_artifact_digest=$digest_wasi_demo_oci_artifact" >> $GITHUB_OUTPUT
 
