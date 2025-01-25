@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737764181016,
+  "lastUpdate": 1737764182064,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3668,6 +3668,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20736.8698,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "827fbd495244a4455b1a5c5425ee40631f0057a6",
+          "message": "Merge pull request #808 from jprendes/benchmark-memory\n\nBenchmark memory",
+          "timestamp": "2025-01-22T16:53:36Z",
+          "url": "https://github.com/containerd/runwasi/commit/827fbd495244a4455b1a5c5425ee40631f0057a6"
+        },
+        "date": 1737764181549,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19154.3339,
             "unit": "req/s"
           }
         ]
