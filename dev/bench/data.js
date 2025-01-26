@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737850614709,
+  "lastUpdate": 1737850615736,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4764,6 +4764,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.8,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "827fbd495244a4455b1a5c5425ee40631f0057a6",
+          "message": "Merge pull request #808 from jprendes/benchmark-memory\n\nBenchmark memory",
+          "timestamp": "2025-01-22T16:53:36Z",
+          "url": "https://github.com/containerd/runwasi/commit/827fbd495244a4455b1a5c5425ee40631f0057a6"
+        },
+        "date": 1737850615503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
             "unit": "ms"
           }
         ]
