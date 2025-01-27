@@ -19,6 +19,12 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
+      - name: Sanitize image name
+        run: |
+          image="${{ inputs.image-name }}"
+          image="${image//_/-}"
+          echo "image=$image" >> $GITHUB_ENV
+
       - name: Install cosign
         uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
 
@@ -45,22 +51,22 @@ jobs:
           SYFT=$(which syft)
           sudo $SYFT \
             -o spdx-json \
-            --file ${{ inputs.image-name }}-sbom.spdx \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ inputs.image-digest }}
+            --file $image-sbom.spdx \
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/$image@${{ inputs.image-digest }}
 
       - name: Sign SBOM file
         run: |
           cosign sign-blob --yes \
-            --output-certificate ${{ inputs.image-name }}-sbom.spdx.cert \
-            --output-signature ${{ inputs.image-name }}-sbom.spdx.sig \
-            ${{ inputs.image-name }}-sbom.spdx
+            --output-certificate $image-sbom.spdx.cert \
+            --output-signature $image-sbom.spdx.sig \
+            $image-sbom.spdx
 
       - name: Attach SBOM to container image
         shell: bash
         run: |
           cosign attach \
-            sbom --sbom ${{ inputs.image-name }}-sbom.spdx \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}@${{ inputs.image-digest }}
+            sbom --sbom $image-sbom.spdx \
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/$image@${{ inputs.image-digest }}
 
       - name: Sign SBOM file pushed to OCI registry
         shell: bash
@@ -68,10 +74,10 @@ jobs:
           set -e
           SBOM_TAG="$(echo ${{ inputs.image-digest }} | sed -e 's/:/-/g').sbom"
           cosign sign --yes \
-            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/${{ inputs.image-name }}:${SBOM_TAG}
+            ghcr.io/${{ env.IMG_REPOSITORY_NAME }}/$image:${SBOM_TAG}
 
       - name: Upload SBOMs as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sbom
-          path: ${{ inputs.image-name }}-sbom-*
+          path: $image-sbom-*

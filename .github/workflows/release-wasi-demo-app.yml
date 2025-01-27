@@ -17,6 +17,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact"
 
 jobs:
   release-wasi-demo:
@@ -24,9 +25,9 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     outputs:
-      wasi_demo_app_digest: ${{ steps.get_digests.outputs.wasi_demo_app_digest }}
-      wasi_demo_oci_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_digest }}
-      wasi_demo_oci_artifact_digest: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact_digest }}
+      wasi_demo_app: ${{ steps.get_digests.outputs.wasi_demo_app }}
+      wasi_demo_oci: ${{ steps.get_digests.outputs.wasi_demo_oci }}
+      wasi_demo_oci_artifact: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup build env
@@ -40,16 +41,16 @@ jobs:
 
       - name: Convert repository name to lowercase
         id: prep
-        run: echo "::set-output name=repo::$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+        run: echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-      - name: login to GitHub container registry
+      - name: Login to GitHub container registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: enable containerd image store
+      - name: Enable containerd image store
         run: |
           echo '{ "features": { "containerd-snapshotter": true } }' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
@@ -63,96 +64,49 @@ jobs:
 
       - name: Tagging images
         run: |
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:${{ inputs.version }}
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-app:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:latest
-
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:${{ inputs.version }}
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:latest
-
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:${{ inputs.version }}
-          docker tag ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:latest
+          for image in $IMAGES; do
+            docker tag ghcr.io/containerd/runwasi/$image:latest ghcr.io/${{ steps.prep.outputs.repo }}/$image:${{ inputs.version }}
+            docker tag ghcr.io/containerd/runwasi/$image:latest ghcr.io/${{ steps.prep.outputs.repo }}/$image:latest
+          done
       
       - name: Push images to ghcr.io
         if: ${{ inputs.dry_run == false }}
         run: |
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:${{ inputs.version }}
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app:latest
-
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:${{ inputs.version }}
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci:latest
-
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:${{ inputs.version }}
-          docker push ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact:latest
+          for image in $IMAGES; do
+            docker push ghcr.io/${{ steps.prep.outputs.repo }}/$image:${{ inputs.version }}
+            docker push ghcr.io/${{ steps.prep.outputs.repo }}/$image:latest
+          done
 
       - name: Display image digests
         id: get_digests
         run: |
-          digest_wasi_demo_app=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-app --format '{{ .Id }}' --type image)
-          echo "Digest for wasi-demo-app: $digest_wasi_demo_app"
-          echo "wasi_demo_app_digest=$digest_wasi_demo_app" >> $GITHUB_OUTPUT
-
-          digest_wasi_demo_oci=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci --format '{{ .Id }}' --type image)
-          echo "Digest for wasi-demo-oci: $digest_wasi_demo_oci"
-          echo "wasi_demo_oci_digest=$digest_wasi_demo_oci" >> $GITHUB_OUTPUT
-
-          digest_wasi_demo_oci_artifact=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/wasi-demo-oci-artifact --format '{{ .Id }}' --type image)
-          echo "Digest for wasi-demo-oci-artifact: $digest_wasi_demo_oci_artifact"
-          echo "wasi_demo_oci_artifact_digest=$digest_wasi_demo_oci_artifact" >> $GITHUB_OUTPUT
-
-  sign-wasi-demo-app:
+          for image in $IMAGES; do
+            DIGEST=$(docker inspect ghcr.io/${{ steps.prep.outputs.repo }}/$image --format '{{ .Id }}' --type image)
+            echo "Digest for $image: $DIGEST"
+            sanitized_image="${image//-/_}"
+            echo "$sanitized_image=$DIGEST" >> $GITHUB_OUTPUT
+          done
+  
+  sign:
     if: ${{ inputs.dry_run == false }}
-    needs:
+    needs: 
       - release-wasi-demo
+    strategy:
+      matrix:
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact"]
     uses: ./.github/workflows/sign.yml
     with:
-      image-name: "wasi-demo-app"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
+      image-name: ${{ matrix.image }}
+      image-digest: ${{ needs.release-wasi-demo.outputs[matrix.image] }}
 
-  sbom-wasi-demo-app:
+  sbom:
     if: ${{ inputs.dry_run == false }}
     needs:
       - release-wasi-demo
+    strategy:
+      matrix:
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact"]
     uses: ./.github/workflows/sbom.yml
     with:
-      image-name: "wasi-demo-app"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_app_digest }}
-      
-  
-  sign-wasi-demo-oci:
-    if: ${{ inputs.dry_run == false }}
-    needs:
-      - release-wasi-demo
-    uses: ./.github/workflows/sign.yml
-    with:
-      image-name: "wasi-demo-oci"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
-      
-  
-  sbom-wasi-demo-oci:
-    if: ${{ inputs.dry_run == false }}
-    needs:
-      - release-wasi-demo
-    uses: ./.github/workflows/sbom.yml
-    with:
-      image-name: "wasi-demo-oci"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_digest }}
-      
-    
-  sign-wasi-demo-oci-artifact:
-    if: ${{ inputs.dry_run == false }}
-    needs:
-      - release-wasi-demo
-    uses: ./.github/workflows/sign.yml
-    with:
-      image-name: "wasi-demo-oci-artifact"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
-      
-  
-  sbom-wasi-demo-oci-artifact:
-    if: ${{ inputs.dry_run == false }}
-    needs:
-      - release-wasi-demo
-    uses: ./.github/workflows/sbom.yml
-    with:
-      image-name: "wasi-demo-oci-artifact"
-      image-digest: ${{ needs.release-wasi-demo.outputs.wasi_demo_oci_artifact_digest }}
+      image-name: ${{ matrix.image }}
+      image-digest: ${{ needs.release-wasi-demo.outputs[matrix.image] }}
