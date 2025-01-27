@@ -17,7 +17,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact"
+  IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact wasi-http"
 
 jobs:
   release-wasi-demo:
@@ -28,6 +28,7 @@ jobs:
       wasi_demo_app: ${{ steps.get_digests.outputs.wasi_demo_app }}
       wasi_demo_oci: ${{ steps.get_digests.outputs.wasi_demo_oci }}
       wasi_demo_oci_artifact: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact }}
+      wasi_http: ${{ steps.get_digests.outputs.wasi_http }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup build env
@@ -60,6 +61,7 @@ jobs:
         run: |
           make docker/load
           make docker/load/oci
+          make docker/load/http
           docker image ls
 
       - name: Tagging images
@@ -93,7 +95,7 @@ jobs:
       - release-wasi-demo
     strategy:
       matrix:
-        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact"]
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_http"]
     uses: ./.github/workflows/sign.yml
     with:
       image-name: ${{ matrix.image }}
@@ -105,7 +107,7 @@ jobs:
       - release-wasi-demo
     strategy:
       matrix:
-        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact"]
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_http"]
     uses: ./.github/workflows/sbom.yml
     with:
       image-name: ${{ matrix.image }}
