@@ -107,10 +107,6 @@ The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish
 
 ## `wasi-demo-app` Release Process
 
-
-### wasi-demo-app Release Sequence
-
-
 ### Overview 
 
 To release a new version of the wasi-demo-app images, run the release-wasi-demo-app.yml workflow using the following command, substituting the correct version:
