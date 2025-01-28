@@ -39,7 +39,7 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1.20.4
         with:
-          name: Criterion.rs Benchmark
+          name: End-to-End Benchmark
           tool: 'cargo'
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,7 +85,7 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1.20.4
         with:
-          name: Criterion.rs Benchmark
+          name: Memory Benchmark
           tool: 'customSmallerIsBetter'
           output-file-path: bench-mem.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
