@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim-wasm = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 log = { workspace = true }
 
 # may need to bump wasmedge version in scripts/setup-windows.sh
