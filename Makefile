@@ -82,6 +82,10 @@ build-%:
 build-oci-tar-builder:
 	$(CARGO) build $(TARGET_FLAG) -p oci-tar-builder $(FEATURES_$*) $(RELEASE_FLAG)
 
+.PHONY: publish-check
+publish-check:
+	$(CARGO) publish -p containerd-shim-wasm --dry-run --verbose --locked
+
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
 
