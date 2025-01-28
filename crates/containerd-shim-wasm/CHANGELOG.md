@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Removed `containerd_shim_wasm::sandbox::instance_utils::get_instance_root` and `containerd_shim_wasm::sandbox::instance_utils::instance_exists` functions ([#763](https://github.com/containerd/runwasi/pull/763))
 - Removed `Engine` generic from `InstanceConfig` ([#774](https://github.com/containerd/runwasi/pull/774))
 
+### Fixed
+- Fixed the undefined behavior issue in forked processes ([#357](https://github.com/containerd/runwasi/issues/357)) in [#775](https://github.com/containerd/runwasi/pull/775), which decouples the global state of the shim from the state of the container process. 
+- Fixed the issue related to signal handlings in containers ([#755](https://github.com/containerd/runwasi/issues/755)). The core of the issue was that the use of Tokio signal handlings is shared between the shim and the container process, and this shared state leads to broken signal handling. It was fixed by [#775](https://github.com/containerd/runwasi/pull/775).
+
 ## [v0.8.0] — 2024-12-04
 
 ### Added
