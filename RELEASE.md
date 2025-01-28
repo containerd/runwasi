@@ -1,8 +1,27 @@
-# Releasing a new crate version
+# Release Process
 
-This document describes the steps to release a new version of the crate.
+This document describes the steps to release a new version of the crate or wasi-demo-app images.
 
-## Overview
+## Table of Contents
+
+1. [Crate Release Process](#crate-release-process)
+   - [Overview](#overview)
+   - [Input Values for Release.yml](#input-values-for-releaseyml)
+   - [Crate Release Sequence](#crate-release-sequence)
+   - [Release Steps](#release-steps)
+   - [Local Development vs. Release](#local-development-vs-release)
+   - [Verify signing](#verify-signing)
+   - [First time release of a crate](#first-time-release-of-a-crate)
+   - [Release workflow summary](#release-workflow-summary)
+2. [wasi-demo-app Release Process](#wasi-demo-app-release-process)
+   - [Overview](#overview-1)
+   - [Verify signing](#verify-signing-1)
+
+
+
+## Crate Release Process
+
+### Overview
 
 To create a new release, either run the release.yml workflow as a workload_dispatch trigger through the GitHub UI, or via the following command substituting the proper values for crate and version.
 ```bash
@@ -20,7 +39,7 @@ Must release the creates in this order due to dependencies:
 1. `containerd-shim-wasm`
 2. All runtime-related crates.
 
-## Release Steps
+### Release Steps
 
 1. Open a PR to bump crate versions and dependency versions in `Cargo.toml` for that crate, and change the "Unreleased" section in the `CHANGELOG.md` to the new version.
 2. PR can be merged after 2 LGTMs
@@ -33,7 +52,7 @@ Must release the creates in this order due to dependencies:
 >
 > For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.
 
-## Local Development vs. Release
+### Local Development vs. Release
 Locally, crates reference local paths. During release, they target published versions.
 Use both `path` and `version` fields in the workspace `Cargo.toml`:
 
@@ -43,7 +62,7 @@ e.g.
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
 ```
 
-## Verify signing
+### Verify signing
 
 The release pipeline uses `cosign` to sign the release blobs, if any. It uses Github's OIDC token to authenticate with Sigstore to prove identity and outputs a `.bundle` file, which contains a signature and a key. This file can be verified using `cosign verify-blob` command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):
 
@@ -56,7 +75,7 @@ containerd-shim-wasmtime-v1
 
 In the Github release page, please provide the above command in the instructions for the consumer to verify the release.
 
-## First time release of a crate
+### First time release of a crate
 
 If the crate has never been published to crates.io before then ownership of the crate will need to be configured.
 The containerd/runwasi-committers team will need to be added as an owner of the crate.
@@ -72,7 +91,7 @@ Alternatively, the cargo cli does support setting the token via an environment v
 
 Now all members of the containerd/runwasi-committers team will have access to manage the crate (after they have accepted the invite to the crate).
 
-## Release workflow summary
+### Release workflow summary
 
 The workflow performs the following steps:
 - Verifies inputs
@@ -85,3 +104,21 @@ The workflow performs the following steps:
 - Creates a GitHub release for that crate (attaching any artifacts)
 
 The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.
+
+## `wasi-demo-app` Release Process
+
+### Overview 
+
+To release a new version of the wasi-demo-app images, run the release-wasi-demo-app.yml workflow using the following command, substituting the correct version:
+
+```bash
+gh workflow run release-wasi-demo-app.yml -f dry_run=false -f version=0.1.0
+```
+
+### Verify signing
+
+To verify the signature of the release, run the following command:
+
+```bash
+cosign verify ghcr.io/containerd/runwasi/wasi-demo-app:0.1.0 --certificate-identity https://github.com/containerd/runwasi/.github/workflows/sign.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```

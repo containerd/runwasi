@@ -218,6 +218,9 @@ dist/img-oci-artifact.tar: target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.
 load: dist/img.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 
+docker/load: dist/img.tar
+	docker load -i $<
+
 CTR_VERSION := $(shell sudo ctr version | sed -n -e '/Version/ {s/.*: *//p;q;}')
 load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 	@echo $(CTR_VERSION)\\nv1.7.7 | sort -crV || @echo $(CTR_VERSION)\\nv1.6.25 | sort -crV || (echo "containerd version must be 1.7.7+ or 1.6.25+ was $(CTR_VERSION)" && exit 1)
@@ -225,9 +228,16 @@ load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms dist/img-oci-artifact.tar
 
+docker/load/oci: dist/img-oci.tar dist/img-oci-artifact.tar
+	docker load -i dist/img-oci.tar
+	docker load -i dist/img-oci-artifact.tar
+
 .PHONY: load/http
 load/http: dist/http-img-oci.tar
 	sudo ctr -n $(CONTAINERD_NAMESPACE) image import --all-platforms $<
+
+docker/load/http: dist/http-img-oci.tar
+	docker load -i $<
 
 target/wasm32-wasip1/$(OPT_PROFILE)/img-oci.tar: target/wasm32-wasip1/$(OPT_PROFILE)/wasi-demo-app.wasm
 	mkdir -p ${CURDIR}/bin/$(OPT_PROFILE)/

@@ -1,0 +1,42 @@
+name: Sign image
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        type: string
+        required: true
+      image-digest:
+        type: string
+        required: true
+
+jobs:
+  sign:
+    name: Sign image
+    permissions:
+      packages: write
+      id-token: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sanitize image name
+        run: |
+          image="${{ inputs.image-name }}"
+          image="${image//_/-}"
+          echo "image=$image" >> $GITHUB_ENV
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Sign container image
+        run: |
+          IMG_REPOSITORY_NAME=$( echo ${{ github.repository }} | awk '{print tolower($0)}' )
+          cosign sign --yes \
+            ghcr.io/${IMG_REPOSITORY_NAME}/$image@${{ inputs.image-digest }}
