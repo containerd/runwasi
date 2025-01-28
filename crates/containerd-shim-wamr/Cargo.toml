@@ -6,7 +6,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-containerd-shim-wasm = { workspace = true }
+containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 log = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
