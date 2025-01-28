@@ -24,10 +24,8 @@ spec:
       containers:
         - name: demo
           image: ghcr.io/containerd/runwasi/wasi-demo-oci:latest
-          imagePullPolicy: Never
         - name: demo-artifact
           image: ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest
-          imagePullPolicy: Never
           command: ["wasi-demo.wasm"]
         - name: nginx
           image: docker.io/nginx:latest

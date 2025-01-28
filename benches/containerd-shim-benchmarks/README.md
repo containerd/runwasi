@@ -10,12 +10,9 @@ make build
 sudo make install
 ```
 
-Then, build and load the wasi-demo-app:
+Then, pull the wasi-demo-app:
 ```bash
-make test-image
-make load
-make test-image/oci
-make load/oci
+sudo make pull
 ```
 
 To run all benchmarks:
