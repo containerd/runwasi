@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Remove custom stdio redicrection: The `run_wasi` method doesn't receive the `Stdio` object anymore, and redirection is done before the method is called ([#788](https://github.com/containerd/runwasi/pull/788))
 - Require `Engine` generic in `Instance` to implement `Default` ([#774](https://github.com/containerd/runwasi/pull/774))
 - The method `Instance::new` now takes an `&InstanceConfig` instead of `Option<&InstanceConfig>` ([#774](https://github.com/containerd/runwasi/pull/774))
+- Bumped containerd-shim to v0.8.0.
 
 ### Removed
 - Removed `containerd_shim_wasm::sandbox::instance_utils::get_instance_root` and `containerd_shim_wasm::sandbox::instance_utils::instance_exists` functions ([#763](https://github.com/containerd/runwasi/pull/763))
