@@ -59,6 +59,10 @@ jobs:
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
+      - name: Check if crate is ready to publish
+        if: ${{ inputs.runtime == 'common' }}
+        shell: bash
+        run: make publish-check
       - name: Run tests
         timeout-minutes: 5
         run: |
