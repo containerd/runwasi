@@ -65,7 +65,7 @@ jobs:
           make test-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Run stress tests
-        if: ${{ inputs.runtime != 'common' }}
+        if: ${{ inputs.runtime != 'common' && inputs.binprefix == 'containerd-shim-' }}
         timeout-minutes: 5
         run: |
           make dist-${{ inputs.runtime }}
