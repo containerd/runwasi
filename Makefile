@@ -84,7 +84,7 @@ build-oci-tar-builder:
 
 .PHONY: publish-check
 publish-check:
-	$(CARGO) publish -p containerd-shim-wasm --dry-run --verbose --locked
+	cargo publish -p containerd-shim-wasm --dry-run --verbose --locked
 
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
