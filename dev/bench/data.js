@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738023636923,
+  "lastUpdate": 1738023638044,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -5104,6 +5104,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "2de3b53d46735f88d3ec55f940afd5c1cecd90ca",
+          "message": "Merge pull request #811 from containerd/dependabot/cargo/patch-d4f9f10358\n\nchore(deps): bump clap from 4.5.26 to 4.5.27 in the patch group",
+          "timestamp": "2025-01-27T16:57:55Z",
+          "url": "https://github.com/containerd/runwasi/commit/2de3b53d46735f88d3ec55f940afd5c1cecd90ca"
+        },
+        "date": 1738023637786,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.5,
             "unit": "ms"
           }
         ]
