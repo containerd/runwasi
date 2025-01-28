@@ -55,9 +55,6 @@ jobs:
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
-      - name: Install binaries
-        if: ${{ inputs.runtime != 'common' }}
-        run: make dist-${{ inputs.runtime }}
       - name: Check if crate is ready to publish
         if: ${{ inputs.runtime == 'common' }}
         shell: bash
@@ -66,8 +63,13 @@ jobs:
         timeout-minutes: 5
         run: |
           make test-${{ inputs.runtime }}
-          make test/stress-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
+      - name: Run stress tests
+        if: ${{ inputs.runtime != 'common' }}
+        timeout-minutes: 5
+        run: |
+          make dist-${{ inputs.runtime }}
+          make test/stress-${{ inputs.runtime }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
         uses: ./.github/actions/sign
