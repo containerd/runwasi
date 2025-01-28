@@ -598,7 +598,6 @@ mod tests {
     use std::sync::Arc;
 
     use oci_tar_builder::WASM_LAYER_MEDIA_TYPE;
-    use rand::prelude::*;
 
     use super::*;
     use crate::container::RuntimeContext;
@@ -946,7 +945,7 @@ mod tests {
     }
 
     fn random_number() -> u32 {
-        let x: u32 = random();
+        let x: u32 = rand::random();
         x
     }
 
