@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738023638044,
+  "lastUpdate": 1738023668300,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3026,6 +3026,52 @@ window.BENCHMARK_DATA = {
             "value": 72804324,
             "range": "± 1508288",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "2de3b53d46735f88d3ec55f940afd5c1cecd90ca",
+          "message": "Merge pull request #811 from containerd/dependabot/cargo/patch-d4f9f10358\n\nchore(deps): bump clap from 4.5.26 to 4.5.27 in the patch group",
+          "timestamp": "2025-01-27T16:57:55Z",
+          "url": "https://github.com/containerd/runwasi/commit/2de3b53d46735f88d3ec55f940afd5c1cecd90ca"
+        },
+        "date": 1738023667218,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15916,
+            "unit": "kB",
+            "extra": "shim: 10624 kB\nzygote: 5292 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66748,
+            "unit": "kB",
+            "extra": "shim: 51968 kB\nzygote: 14780 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 19700,
+            "unit": "kB",
+            "extra": "shim: 13696 kB\nzygote: 6004 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22768,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 6640 kB"
           }
         ]
       }
