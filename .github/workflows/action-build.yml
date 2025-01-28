@@ -55,6 +55,9 @@ jobs:
         run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
       - name: Build
         run: make build-${{ inputs.runtime }}
+      - name: Install binaries
+        if: ${{ inputs.runtime != 'common' }}
+        run: make dist-${{ inputs.runtime }}
       - name: Check if crate is ready to publish
         if: ${{ inputs.runtime == 'common' }}
         shell: bash
@@ -63,6 +66,7 @@ jobs:
         timeout-minutes: 5
         run: |
           make test-${{ inputs.runtime }}
+          make test/stress-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
@@ -73,7 +77,6 @@ jobs:
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
         run: |
-          make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             tar -czf dist/${{ inputs.binprefix }}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .
