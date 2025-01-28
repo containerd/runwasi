@@ -846,9 +846,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim"
-version = "0.7.4"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a7db624a85172d3d66c8408e8a7ec8519b6506cc7437947c31ec3730dfd8b05"
+checksum = "6a6ddc50d113188cb707839b8670faabdbab39c052846e2430ea8d47d893b18d"
 dependencies = [
  "cgroups-rs",
  "command-fds",
@@ -859,15 +859,17 @@ dependencies = [
  "log",
  "mio",
  "nix 0.29.0",
- "oci-spec 0.6.7",
+ "oci-spec",
  "os_pipe",
  "page_size",
  "prctl",
  "serde",
  "serde_json",
+ "sha2",
  "signal-hook",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "time",
+ "which 7.0.1",
  "windows-sys 0.52.0",
 ]
 
@@ -880,9 +882,9 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-protos"
-version = "0.7.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11496b458083e0e6c6f7a3473b33bb2af0f1ab6a39cdaf9f1bb1f6044f43bc51"
+checksum = "fb8db604974f81d1e350d30f274872f43b45e79203ebb8b1ff714e7b18d24e81"
 dependencies = [
  "protobuf 3.2.0",
  "ttrpc",
@@ -918,7 +920,7 @@ dependencies = [
  "libcontainer",
  "log",
  "nix 0.29.0",
- "oci-spec 0.7.1",
+ "oci-spec",
  "oci-tar-builder",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -1787,6 +1789,12 @@ dependencies = [
  "log",
  "regex",
 ]
+
+[[package]]
+name = "env_home"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
 
 [[package]]
 name = "env_logger"
@@ -2809,7 +2817,7 @@ checksum = "a2c44a1aff9c0ae6809dab6a76ec99532d144951031ed07234d086a182e1091d"
 dependencies = [
  "fixedbitset 0.5.7",
  "nix 0.28.0",
- "oci-spec 0.7.1",
+ "oci-spec",
  "procfs",
  "serde",
  "thiserror 2.0.11",
@@ -2830,7 +2838,7 @@ dependencies = [
  "libseccomp",
  "nc",
  "nix 0.28.0",
- "oci-spec 0.7.1",
+ "oci-spec",
  "once_cell",
  "prctl",
  "procfs",
@@ -3343,7 +3351,7 @@ dependencies = [
  "http-auth",
  "jwt",
  "lazy_static",
- "oci-spec 0.7.1",
+ "oci-spec",
  "olpc-cjson",
  "regex",
  "reqwest 0.12.9",
@@ -3354,21 +3362,6 @@ dependencies = [
  "tokio",
  "tracing",
  "unicase",
-]
-
-[[package]]
-name = "oci-spec"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdf88ddc01cc6bccbe1044adb6a29057333f523deadcb4953c011a73158cfa5e"
-dependencies = [
- "derive_builder 0.20.2",
- "getset",
- "serde",
- "serde_json",
- "strum",
- "strum_macros",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3395,7 +3388,7 @@ dependencies = [
  "clap",
  "indexmap 2.7.1",
  "log",
- "oci-spec 0.7.1",
+ "oci-spec",
  "oci-wasm",
  "serde",
  "serde_json",
@@ -3941,7 +3934,7 @@ dependencies = [
  "prost 0.8.0",
  "prost-types 0.8.0",
  "tempfile",
- "which",
+ "which 4.4.2",
 ]
 
 [[package]]
@@ -4077,7 +4070,7 @@ dependencies = [
  "protobuf-support",
  "tempfile",
  "thiserror 1.0.69",
- "which",
+ "which 4.4.2",
 ]
 
 [[package]]
@@ -5222,7 +5215,7 @@ dependencies = [
  "humantime",
  "log",
  "nix 0.29.0",
- "oci-spec 0.7.1",
+ "oci-spec",
  "prost 0.13.4",
  "prost-types 0.13.4",
  "tempfile",
@@ -5956,12 +5949,13 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "ttrpc"
-version = "0.8.2"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e376927d4422245ae3e0a0d7df0e805f99652536999b5c671144de9fe4120d8c"
+checksum = "2c580c498a547b4c083ec758be543e11a0772e03013aef4cdb1fbe77c8b62cae"
 dependencies = [
  "byteorder",
  "crossbeam",
+ "home",
  "libc",
  "log",
  "nix 0.26.4",
@@ -6004,7 +5998,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "static_assertions",
 ]
 
@@ -6349,7 +6343,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
- "oci-spec 0.7.1",
+ "oci-spec",
  "oci-tar-builder",
  "sha256",
  "tar",
@@ -7308,6 +7302,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "which"
+version = "7.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4a9e33648339dc1642b0e36e21b3385e6148e289226f657c809dee59df5028"
+dependencies = [
+ "either",
+ "env_home",
+ "rustix",
+ "winsafe",
+]
+
+[[package]]
 name = "wiggle"
 version = "27.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7611,6 +7617,12 @@ dependencies = [
  "cfg-if 1.0.0",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "winsafe"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
 
 [[package]]
 name = "winx"
