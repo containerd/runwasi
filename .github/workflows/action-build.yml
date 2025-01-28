@@ -67,6 +67,7 @@ jobs:
       - name: Run stress tests
         if: ${{ inputs.runtime != 'common' && inputs.binprefix == 'containerd-shim-' }}
         timeout-minutes: 5
+        shell: bash
         run: |
           make dist-${{ inputs.runtime }}
           make test/stress-${{ inputs.runtime }}
