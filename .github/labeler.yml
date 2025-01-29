@@ -1,0 +1,44 @@
+# Crate labels
+C-containerd-shim-wasm:
+    - any-glob-to-any-file: crates/containerd-shim-wasm/**/*
+
+C-wamr:
+  - changed-files:
+    - any-glob-to-any-file: crates/containerd-shim-wamr/**/*
+
+C-wasmedge:
+  - changed-files:
+    - any-glob-to-any-file: crates/containerd-shim-wasmedge/**/*
+
+C-wasmer:
+  - changed-files:
+    - any-glob-to-any-file: crates/containerd-shim-wasmer/**/*
+
+C-wasmtime:
+  - changed-files:
+    - any-glob-to-any-file: crates/containerd-shim-wasmtime/**/*
+    
+C-common:
+  - changed-files:
+    - any-glob-to-any-file: 
+      - crates/containerd-shim-wasm-test-modules/**/*
+      - crates/oci-tar-builder/**/*
+      - crates/wasi-demo-app/**/*
+      - crates/stress-test/**/*
+
+# Change type labels
+T-CI:
+  - changed-files:
+    - any-glob-to-any-file: [".github/**", "scripts/**", "cross/**", "Makefile"]
+
+T-docs:
+  - changed-files:
+    - any-glob-to-any-file: ["docs/**", "*.md", "CONTRIBUTING.md", "RELEASE.md"]
+
+T-tests:
+  - changed-files:
+    - any-glob-to-any-file: ["test/**"]
+
+T-benchmarks:
+  - changed-files:
+    - any-glob-to-any-file: ["benches/**"]
