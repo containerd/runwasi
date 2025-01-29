@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738023756561,
+  "lastUpdate": 1738110595463,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3142,6 +3142,52 @@ window.BENCHMARK_DATA = {
             "value": 67265975,
             "range": "± 1053924",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5088658f35e14f4f82108d1fa459ee3a7bf56671",
+          "message": "Merge pull request #733 from Mossaka/pub-wasi-demo-app\n\n.github/workflows: add wasi-demo-app to the publish pipeline",
+          "timestamp": "2025-01-28T22:34:09Z",
+          "url": "https://github.com/containerd/runwasi/commit/5088658f35e14f4f82108d1fa459ee3a7bf56671"
+        },
+        "date": 1738110594867,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 18132,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 5844 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 68980,
+            "unit": "kB",
+            "extra": "shim: 53504 kB\nzygote: 15476 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 21400,
+            "unit": "kB",
+            "extra": "shim: 14848 kB\nzygote: 6552 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22328,
+            "unit": "kB",
+            "extra": "shim: 16000 kB\nzygote: 6328 kB"
           }
         ]
       }
