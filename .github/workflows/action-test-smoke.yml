@@ -43,7 +43,7 @@ jobs:
           ls -alh dist
           ls -alh dist/bin
           sudo cp -f dist/bin/* /usr/local/bin
-          sudo make pull-app
+          make pull-app
           sudo ctr run --rm --runtime=io.containerd.${{ inputs.runtime }}.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
       - name: Verify Jaeger traces
         run: |

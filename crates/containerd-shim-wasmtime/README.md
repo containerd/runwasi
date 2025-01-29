@@ -60,7 +60,7 @@ cargo run --bin oci-tar-builder -- \
 - Pull the image:
 
 ```shell
-sudo make pull-http
+make pull-http
 ```
 
 - Run the image:

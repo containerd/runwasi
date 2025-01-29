@@ -220,16 +220,16 @@ pull: pull-app pull-oci pull-oci-artifact pull-http
 	echo "Pulled all images"
 
 pull-app:
-	ctr image pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
+	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
 
 pull-oci:
-	ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci:latest
+	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci:latest
 
 pull-oci-artifact:
-	ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest
+	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest
 
 pull-http:
-	ctr image pull ghcr.io/containerd/runwasi/wasi-http:latest
+	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-http:latest
 
 docker/load: dist/img.tar
 	docker load -i $<

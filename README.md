@@ -149,7 +149,7 @@ sudo make install
 Pull the test image:
 
 ```
-sudo make pull-app
+make pull-app
 ```
 
 ### Demo 1 using container image that contains a Wasm module.
@@ -187,7 +187,7 @@ To learn more about this approach checkout the [design document](https://docs.go
 Pull the OCI image with WASM layers image:
 
 ```
-sudo make pull
+make pull
 ```
 
 Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`

@@ -12,7 +12,7 @@ sudo make install
 
 Then, pull the wasi-demo-app:
 ```bash
-sudo make pull
+make pull
 ```
 
 To run all benchmarks:
