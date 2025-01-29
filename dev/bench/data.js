@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738110595463,
+  "lastUpdate": 1738110597960,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4240,6 +4240,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20216.6706,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5088658f35e14f4f82108d1fa459ee3a7bf56671",
+          "message": "Merge pull request #733 from Mossaka/pub-wasi-demo-app\n\n.github/workflows: add wasi-demo-app to the publish pipeline",
+          "timestamp": "2025-01-28T22:34:09Z",
+          "url": "https://github.com/containerd/runwasi/commit/5088658f35e14f4f82108d1fa459ee3a7bf56671"
+        },
+        "date": 1738110596808,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19423.1136,
             "unit": "req/s"
           }
         ]
