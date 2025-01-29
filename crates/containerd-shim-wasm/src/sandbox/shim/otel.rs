@@ -35,10 +35,11 @@ pub use opentelemetry_otlp::{
 };
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::{runtime, trace as sdktrace};
-use tracing::Span;
-use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+use tracing::span::{Attributes, Id};
+use tracing::{Span, Subscriber};
+use tracing_opentelemetry::{OpenTelemetrySpanExt as _, OtelData};
 use tracing_subscriber::layer::SubscriberExt as _;
-use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Layer, Registry};
 
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_JSON: &str = "http/json";
 const OTEL_EXPORTER_OTLP_PROTOCOL_HTTP_PROTOBUF: &str = "http/protobuf";
@@ -91,7 +92,10 @@ impl Config {
 
         let filter = EnvFilter::try_new("info,h2=off")?;
 
-        let subscriber = Registry::default().with(telemetry).with(filter);
+        let subscriber = Registry::default()
+            .with(telemetry)
+            .with(filter)
+            .with(SpanNamingLayer);
 
         tracing::subscriber::set_global_default(subscriber)?;
         Ok(ShutdownGuard)
@@ -177,6 +181,31 @@ fn traces_protocol_from_env() -> anyhow::Result<Protocol> {
         ))?,
     };
     Ok(protocol)
+}
+
+/// A layer that renames spans to include the target in the span name.
+struct SpanNamingLayer;
+
+impl<S> Layer<S> for SpanNamingLayer
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    fn on_new_span(
+        &self,
+        attrs: &Attributes<'_>,
+        id: &Id,
+        ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        let span = ctx.span(id).expect("Span not found");
+        let mut extensions = span.extensions_mut();
+
+        if let Some(otel_data) = extensions.get_mut::<OtelData>() {
+            let target = attrs.metadata().target();
+            let original_name = attrs.metadata().name();
+            let new_name = format!("{}::{}", target, original_name);
+            otel_data.builder.name = new_name.into();
+        }
+    }
 }
 
 #[cfg(test)]
