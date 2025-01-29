@@ -28,7 +28,8 @@ jobs:
       - name: Build and load shims and wasi-demo-app
         shell: bash
         run: |
-          make OPT_PROFILE=release build install pull
+          make OPT_PROFILE=release build install 
+          sudo make pull
       - name: Run Benchmarks
         shell: bash
         run: |
@@ -69,7 +70,8 @@ jobs:
       - name: Build and load shims and wasi-demo-app
         shell: bash
         run: |
-          make OPT_PROFILE=release build install pull          
+          make OPT_PROFILE=release build install
+          sudo make pull          
       - name: Run Benchmarks
         shell: bash
         run: |
@@ -113,7 +115,8 @@ jobs:
       - name: Build and load shims and wasi-demo-app
         shell: bash
         run: |
-          make OPT_PROFILE=release build install pull
+          make OPT_PROFILE=release build install
+          sudo make pull
       - name: Start wasmtime shim
         shell: bash
         run: |
