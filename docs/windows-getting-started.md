@@ -15,8 +15,7 @@ To finish off installing pre-requisites, install Rust following [this](https://w
 After following these steps and navigating to the runwasi directory in your terminal:
 - run `make build`,
 - run `make install`,
-- run `make test-image`, and
-- run `make load`.
+- run `make pull-app`.
 
 After this, you can execute an example, like: `ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm`.
 

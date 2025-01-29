@@ -18,9 +18,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-        shell: bash
+      - uses: ./.github/actions/setup-env
       - name: Download artifacts
         uses: actions/download-artifact@master
         with:
@@ -44,8 +42,8 @@ jobs:
         run: |
           ls -alh dist
           ls -alh dist/bin
-          make load
           sudo cp -f dist/bin/* /usr/local/bin
+          make pull-app
           sudo ctr run --rm --runtime=io.containerd.${{ inputs.runtime }}.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
       - name: Verify Jaeger traces
         run: |

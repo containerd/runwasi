@@ -146,11 +146,10 @@ sudo make install
 
 > Note: `make build` will only build one binary. The `make install` command copies the binary to $PATH and uses symlinks to create all the component described above.
 
-Build the test image and load it into containerd:
+Pull the test image:
 
 ```
-make test-image
-make load
+make pull-app
 ```
 
 ### Demo 1 using container image that contains a Wasm module.
@@ -185,11 +184,10 @@ To learn more about this approach checkout the [design document](https://docs.go
 
 > **Note**: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both `containerd` and `ctr` you will end up with an error message such as `mismatched image rootfs and manifest layers` at the import and run steps. Latest versions of k3s and kind have the necessary containerd versions.
 
-Build and import the OCI image with WASM layers image:
+Pull the OCI image with WASM layers image:
 
 ```
-make test-image/oci
-make load/oci
+make pull
 ```
 
 Run the image with `sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci`
@@ -205,8 +203,6 @@ exiting
 The [CNCF tag-runtime wasm working group](https://tag-runtime.cncf.io/wgs/wasm/charter/) has a [OCI Artifact format for Wasm](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).  This is a new Artifact type that enable the usage across projects beyond just runwasi, see the https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/#implementations
 
 ```
-make test-image/oci
-make load/oci
 make test/k8s-oci-wasmtime
 ```
 

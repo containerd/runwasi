@@ -31,8 +31,7 @@ jobs:
       wasi_http: ${{ steps.get_digests.outputs.wasi_http }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
+      - uses: ./.github/actions/setup-env
       - name: Install Rust and wasm32-wasi target
         uses: actions-rs/toolchain@v1
         with:

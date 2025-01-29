@@ -1,0 +1,11 @@
+name: Build artifacts and pull images
+description: 'Build artifacts and pull images'
+
+runs:
+  using: composite
+  steps:
+    - name: Build and pull
+      shell: bash
+      run: |
+        set -euxo pipefail
+        make OPT_PROFILE=release build install pull

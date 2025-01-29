@@ -161,9 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Setup build env
-      run: ./scripts/setup-linux.sh
-      shell: bash
+    - uses: ./.github/actions/setup-env
     - uses: actions-rust-lang/setup-rust-toolchain@v1
     - uses: Swatinem/rust-cache@v2
     - name: Check documentation

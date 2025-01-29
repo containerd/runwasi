@@ -16,6 +16,5 @@ EOF
 systemctl daemon-reload
 systemctl restart k3s-runwasi
 while ! bin/k3s ctr version; do sleep 1; done
-bin/k3s ctr image import --all-platforms $2
 while [ "$(bin/k3s kubectl get pods --all-namespaces --no-headers | wc -l)" == "0" ]; do sleep 1; done
 while [ "$(bin/k3s kubectl get pods --all-namespaces --no-headers | grep -vE "Completed|Running" | wc -l)" != "0" ]; do sleep 1; done

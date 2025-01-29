@@ -20,15 +20,8 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build environment
-        shell: bash
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-      - name: Build and load shims and wasi-demo-app
-        shell: bash
-        run: |
-          make OPT_PROFILE=release build install test-image load test-image/oci load/oci
+      - uses: ./.github/actions/setup-env
+      - uses: ./.github/actions/build
       - name: Run Benchmarks
         shell: bash
         run: |
@@ -61,15 +54,8 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build environment
-        shell: bash
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-      - name: Build and load shims and wasi-demo-app
-        shell: bash
-        run: |
-          make OPT_PROFILE=release build install test-image load test-image/oci load/oci
+      - uses: ./.github/actions/setup-env
+      - uses: ./.github/actions/build
       - name: Run Benchmarks
         shell: bash
         run: |
@@ -105,15 +91,8 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build environment
-        shell: bash
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-      - name: Build and load shims and wasi-demo-app
-        shell: bash
-        run: |
-          make OPT_PROFILE=release build install test-image/http load/http
+      - uses: ./.github/actions/setup-env
+      - uses: ./.github/actions/build
       - name: Start wasmtime shim
         shell: bash
         run: |

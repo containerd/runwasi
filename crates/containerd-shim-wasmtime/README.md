@@ -57,10 +57,10 @@ cargo run --bin oci-tar-builder -- \
     -o ./dist/wasi-http-img-oci.tar
 ```
 
-- Import the image:
+- Pull the image:
 
 ```shell
-sudo ctr image import --all-platforms ./dist/wasi-http-img-oci.tar
+make pull-http
 ```
 
 - Run the image:
