@@ -24,9 +24,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
-        shell: bash
+      - uses: ./.github/actions/setup-env
       - name: Download artifacts
         uses: actions/download-artifact@master
         with:

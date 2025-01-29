@@ -1,0 +1,9 @@
+name: Setup Environment
+description: 'Common environment setup'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup OS dependencies
+      shell: bash
+      run: ./scripts/setup-$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]').sh

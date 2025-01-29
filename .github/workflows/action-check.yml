@@ -22,11 +22,7 @@ jobs:
         with:
           components: rustfmt, clippy
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
-      - name: Setup build env
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-        shell: bash
+      - uses: ./.github/actions/setup-env
       - run: 
           # needed to run rustfmt in nightly toolchain
           rustup toolchain install nightly --component rustfmt

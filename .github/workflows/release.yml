@@ -127,8 +127,7 @@ jobs:
         run: |
           echo "::notice::Running job with dry_run: '${{ inputs.dry_run }}', crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
       - uses: actions/checkout@v4
-      - name: Setup build env
-        run: ./scripts/setup-linux.sh
+      - uses: ./.github/actions/setup-env
       - name: Download artifacts
         if: ${{ matrix.is_shim == 'true' }}
         uses: actions/download-artifact@master

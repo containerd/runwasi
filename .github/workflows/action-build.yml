@@ -41,11 +41,7 @@ jobs:
         run: |
           echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
       - uses: actions/checkout@v4
-      - name: Setup build env
-        run: |
-          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
-          ./scripts/setup-$os.sh
-        shell: bash
+      - uses: ./.github/actions/setup-env
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
           RUST_CACHE_KEY_OS: rust-cache-${{ inputs.os }}-${{ inputs.slug }}
