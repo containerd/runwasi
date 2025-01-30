@@ -12,7 +12,7 @@ struct Options {
     root: Option<PathBuf>,
 }
 
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
 pub fn determine_rootdir(
     bundle: impl AsRef<Path>,
     namespace: &str,

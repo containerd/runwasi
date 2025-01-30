@@ -171,7 +171,7 @@ impl Engine for WasmtimeEngine {
                 Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
                 Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
                 None => {
-                    log::warn!("Unknow WASM binary type");
+                    log::warn!("Unknown WASM binary type");
                     continue;
                 }
             };
@@ -218,12 +218,12 @@ impl WasmtimeEngineImpl {
             let instance: wasmtime::Instance =
                 module_linker.instantiate_async(&mut store, &module).await?;
 
-            log::info!("getting start function");
+            log::debug!("getting start function");
             let start_func = instance
                 .get_func(&mut store, func)
                 .context("module does not have a WASI start function")?;
 
-            log::debug!("running start function {func:?}");
+            log::info!("running start function {func:?}");
 
             start_func
                 .call_async(&mut store, &[], &mut [])

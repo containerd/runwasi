@@ -6,11 +6,11 @@ TRACE_DATA=$(curl -s "http://localhost:16686/api/traces?service=containerd&limit
 
 PREFIX="containerd_shim_wasm::sandbox"
 REQUIRED_OPS=(
-    "${PREFIX}::shim::local::task_create"
-    "${PREFIX}::shim::local::task_wait"
-    "${PREFIX}::shim::local::task_start"
-    "${PREFIX}::shim::local::task_delete"
-    "${PREFIX}::shim::local::task_state"
+    "${PREFIX}::shim::local::create"
+    "${PREFIX}::shim::local::wait"
+    "${PREFIX}::shim::local::start"
+    "${PREFIX}::shim::local::delete"
+    "${PREFIX}::shim::local::state"
     "${PREFIX}::shim::cli::wait"
     "${PREFIX}::shim::local::shutdown"
     "${PREFIX}::cli::shim_main_inner"

@@ -26,7 +26,9 @@ use std::collections::HashMap;
 use std::env;
 
 use opentelemetry::global::{self, set_text_map_propagator};
+use opentelemetry::propagation::Extractor;
 use opentelemetry::trace::TraceError;
+use opentelemetry::Context;
 use opentelemetry_otlp::{
     Protocol, SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
 };
@@ -206,6 +208,26 @@ where
             otel_data.builder.name = new_name.into();
         }
     }
+}
+
+/// MetadataExtractor is a wrapper around HashMap<String, Vec<String>> which is the type
+/// as TtrpcContext.meatdata. It implements the Extractor trait from opentelemetry.
+struct MetadataExtractor<'a>(pub &'a HashMap<String, Vec<String>>);
+
+impl Extractor for MetadataExtractor<'_> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.first()).map(|s| s.as_str())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
+
+/// extract_context extracts the context from the metadata HashMap.
+pub(crate) fn extract_context(metadata: &HashMap<String, Vec<String>>) -> Context {
+    let extractor = MetadataExtractor(metadata);
+    opentelemetry::global::get_text_map_propagator(|propagator| propagator.extract(&extractor))
 }
 
 #[cfg(test)]
@@ -398,5 +420,20 @@ mod tests {
             let result = Config::build_from_env();
             assert!(result.is_err());
         });
+    }
+
+    #[test]
+    fn test_metadata_extractor() {
+        let mut metadata = HashMap::new();
+        metadata.insert("key".to_string(), vec!["value".to_string()]);
+        metadata.insert("key2".to_string(), vec!["value2".to_string()]);
+
+        let extractor = MetadataExtractor(&metadata);
+        assert_eq!(extractor.get("key"), Some("value"));
+        let mut keys = extractor.keys();
+        keys.sort();
+        assert_eq!(keys, vec!["key", "key2"]);
+
+        assert_eq!(extractor.get("key2"), Some("value2"));
     }
 }
