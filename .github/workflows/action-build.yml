@@ -64,6 +64,17 @@ jobs:
         run: |
           make test-${{ inputs.runtime }}
         if: ${{ inputs.arch == 'x86_64' }}
+      - name: Install binaries
+        if: ${{ inputs.runtime != 'common' }}
+        shell: bash
+        run: |  
+          make dist-${{ inputs.runtime }}
+      - name: Run stress tests
+        if: ${{ inputs.runtime != 'common' && inputs.binprefix == 'containerd-shim-' && inputs.arch == 'x86_64' && runner.os == 'Linux' }}
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          make test/stress-${{ inputs.runtime }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
         uses: ./.github/actions/sign
@@ -73,7 +84,6 @@ jobs:
         if: ${{ inputs.runtime != 'common' }}
         shell: bash
         run: |
-          make dist-${{ inputs.runtime }}
           # Check if there's any files to archive as tar fails otherwise
           if stat dist/bin/* >/dev/null 2>&1; then
             tar -czf dist/${{ inputs.binprefix }}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz -C dist/bin .

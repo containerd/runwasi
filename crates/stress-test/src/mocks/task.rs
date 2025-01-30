@@ -47,19 +47,21 @@ impl Task {
         )
         .await?;
 
-        let stdout = canonicalize("/proc/self/fd/1").await?;
-        symlink(stdout, dir.path().join("stdout")).await?;
+        if let Ok(stdout) = canonicalize("/proc/self/fd/1").await {
+            symlink(stdout, dir.path().join("stdout")).await?;
+        }
 
         Ok(Self { id, dir, client })
     }
 
     pub async fn create(&self, verbose: bool) -> Result<()> {
+        let stdout = self.dir.path().join("stdout");
         let res = self
             .client
             .create(CreateTaskRequest {
                 id: self.id.clone(),
                 bundle: self.dir.path().to_string_lossy().into_owned(),
-                stdout: if !verbose {
+                stdout: if !verbose || !stdout.exists() {
                     String::new()
                 } else {
                     self.dir

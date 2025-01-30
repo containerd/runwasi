@@ -17,8 +17,6 @@ runs:
     - name: Sign the binaries
       shell: bash
       run: |
-        make dist-${{ inputs.runtime }}
-        
         # Check if there's any files to archive as tar fails otherwise
         if stat dist/bin/* >/dev/null 2>&1; then
           echo "::notice::Signing the binary"
