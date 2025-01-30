@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738196953049,
+  "lastUpdate": 1738197103357,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3304,6 +3304,76 @@ window.BENCHMARK_DATA = {
             "value": 22324,
             "unit": "kB",
             "extra": "shim: 16128 kB\nzygote: 6196 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "eac36202437fbf736d9980ce80d63a50c159796a",
+          "message": "Merge pull request #822 from Mossaka/span-naming\n\nfeat(otel): modify the span naming logic",
+          "timestamp": "2025-01-29T19:49:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/eac36202437fbf736d9980ce80d63a50c159796a"
+        },
+        "date": 1738197102217,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 143478183,
+            "range": "± 4130095",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 85199684,
+            "range": "± 1160936",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 118354723,
+            "range": "± 5929789",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 125136173,
+            "range": "± 2121307",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 135065490,
+            "range": "± 3751529",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 132357123,
+            "range": "± 1377627",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 81905097,
+            "range": "± 2918608",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 83416364,
+            "range": "± 1479226",
+            "unit": "ns/iter"
           }
         ]
       }
