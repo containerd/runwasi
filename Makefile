@@ -140,7 +140,9 @@ test-doc:
 	RUST_LOG=trace $(CARGO) test --doc -- --test-threads=1
 
 test/stress-%: dist-%
-	RUST_LOG=trace $(CARGO) run -p stress-test $(TARGET_FLAG) -- $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=2s
+	# Do not use trace logging as that negatively impacts performance.
+	# Do not use cross (always use cargo) to avoid the qemu environment.
+	cargo run -p stress-test $(TARGET_FLAG) -- $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=2s
 
 generate-doc:
 	RUST_LOG=trace $(CARGO) doc --workspace --all-features --no-deps --document-private-items --exclude wasi-demo-app
