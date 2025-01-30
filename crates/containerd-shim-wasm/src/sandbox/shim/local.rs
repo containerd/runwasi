@@ -20,7 +20,9 @@ use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
 use log::debug;
 use oci_spec::runtime::Spec;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
+use super::otel::extract_context;
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::instance_data::InstanceData;
@@ -326,41 +328,60 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 }
 
 impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn create(&self, _: &TtrpcContext, req: CreateTaskRequest) -> TtrpcResult<CreateTaskResponse> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, level = "Info"))]
+    fn create(
+        &self,
+        ctx: &TtrpcContext,
+        req: CreateTaskRequest,
+    ) -> TtrpcResult<CreateTaskResponse> {
         debug!("create: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         Ok(self.task_create(req)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn start(&self, _: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
+    fn start(&self, ctx: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
         debug!("start: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         Ok(self.task_start(req)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn kill(&self, _: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
+    fn kill(&self, ctx: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
         debug!("kill: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         Ok(self.task_kill(req)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn delete(&self, _: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
+    fn delete(&self, ctx: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
         debug!("delete: {:?}", req);
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
         Ok(self.task_delete(req)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn wait(&self, _: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
+    fn wait(&self, ctx: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
         debug!("wait: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
         {
             use tracing::{span, Level, Span};
+            let parent_span = Span::current();
+            parent_span.set_parent(extract_context(&ctx.metadata));
 
             let (tx, rx) = std::sync::mpsc::channel();
             // Start a thread to export interval span for long wait
-            let parent_span = Span::current();
+
             let _ = thread::spawn(move || loop {
                 let current_span =
                     span!(parent: &parent_span, Level::INFO, "task wait 60s interval");
@@ -381,8 +402,12 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn connect(&self, _: &TtrpcContext, req: ConnectRequest) -> TtrpcResult<ConnectResponse> {
+    fn connect(&self, ctx: &TtrpcContext, req: ConnectRequest) -> TtrpcResult<ConnectResponse> {
         debug!("connect: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         let i = self.get_instance(req.id())?;
         let shim_pid = std::process::id();
         let task_pid = i.pid().unwrap_or_default();
@@ -394,14 +419,22 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn state(&self, _: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
+    fn state(&self, ctx: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
         debug!("state: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         Ok(self.task_state(req)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn shutdown(&self, _: &TtrpcContext, _: ShutdownRequest) -> TtrpcResult<Empty> {
+    fn shutdown(&self, ctx: &TtrpcContext, _: ShutdownRequest) -> TtrpcResult<Empty> {
         debug!("shutdown");
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         if self.is_empty() {
             self.exit.signal();
         }
@@ -409,8 +442,12 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
-    fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
+    fn stats(&self, ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
         debug!("stats: {:?}", req);
+
+        #[cfg(feature = "opentelemetry")]
+        tracing::Span::current().set_parent(extract_context(&ctx.metadata));
+
         Ok(self.task_stats(req)?)
     }
 }
