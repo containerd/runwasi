@@ -1,5 +1,6 @@
 # Crate labels
 C-containerd-shim-wasm:
+  - changed-files:
     - any-glob-to-any-file: crates/containerd-shim-wasm/**/*
 
 C-wamr:
