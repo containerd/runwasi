@@ -430,7 +430,9 @@ mod tests {
 
         let extractor = MetadataExtractor(&metadata);
         assert_eq!(extractor.get("key"), Some("value"));
-        assert_eq!(extractor.keys(), vec!["key", "key2"]);
+        let mut keys = extractor.keys();
+        keys.sort();
+        assert_eq!(keys, vec!["key", "key2"]);
 
         assert_eq!(extractor.get("key2"), Some("value2"));
     }
