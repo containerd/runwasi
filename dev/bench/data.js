@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738110742618,
+  "lastUpdate": 1738196219144,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3258,6 +3258,52 @@ window.BENCHMARK_DATA = {
             "value": 73824887,
             "range": "± 1146096",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "eac36202437fbf736d9980ce80d63a50c159796a",
+          "message": "Merge pull request #822 from Mossaka/span-naming\n\nfeat(otel): modify the span naming logic",
+          "timestamp": "2025-01-29T19:49:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/eac36202437fbf736d9980ce80d63a50c159796a"
+        },
+        "date": 1738196218063,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 18132,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 5844 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 69620,
+            "unit": "kB",
+            "extra": "shim: 53888 kB\nzygote: 15732 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 21272,
+            "unit": "kB",
+            "extra": "shim: 14720 kB\nzygote: 6552 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22324,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 6196 kB"
           }
         ]
       }
