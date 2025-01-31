@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738197103357,
+  "lastUpdate": 1738282609959,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3374,6 +3374,52 @@ window.BENCHMARK_DATA = {
             "value": 83416364,
             "range": "± 1479226",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "56ea23f51a12b0b33cf9e471532075f5eca1092b",
+          "message": "Merge pull request #827 from Mossaka/ctx-propogation-from-containerd\n\nfeat(otel): add context propogation from containerd to the shim",
+          "timestamp": "2025-01-30T18:08:18Z",
+          "url": "https://github.com/containerd/runwasi/commit/56ea23f51a12b0b33cf9e471532075f5eca1092b"
+        },
+        "date": 1738282609472,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 18260,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 5972 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 68852,
+            "unit": "kB",
+            "extra": "shim: 53504 kB\nzygote: 15348 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 21144,
+            "unit": "kB",
+            "extra": "shim: 14720 kB\nzygote: 6424 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22456,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 6200 kB"
           }
         ]
       }
