@@ -1,0 +1,19 @@
+[package]
+name = "stress-test-c8d"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+prost-types = "0.13"
+tokio = { version = "1.0", features = ["full"] }
+tonic = "0.12"
+oci-spec.workspace = true
+clap = { version = "4", features = ["derive"] }
+env_logger = { workspace = true }
+containerd-client = "0.6.0"
+serde_json.workspace = true
