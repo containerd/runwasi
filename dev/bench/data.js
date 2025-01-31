@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738282637355,
+  "lastUpdate": 1738282639121,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -5660,6 +5660,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.5,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "56ea23f51a12b0b33cf9e471532075f5eca1092b",
+          "message": "Merge pull request #827 from Mossaka/ctx-propogation-from-containerd\n\nfeat(otel): add context propogation from containerd to the shim",
+          "timestamp": "2025-01-30T18:08:18Z",
+          "url": "https://github.com/containerd/runwasi/commit/56ea23f51a12b0b33cf9e471532075f5eca1092b"
+        },
+        "date": 1738282638508,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.8,
             "unit": "ms"
           }
         ]
