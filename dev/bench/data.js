@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738541870022,
+  "lastUpdate": 1738541872034,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4955,6 +4955,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 19507.8723,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "01c52273dc86cecb432372c368f777883465e476",
+          "message": "Merge pull request #829 from Mossaka/fix-labeler\n\n.github/labeler: add the missing changed-files to containerd-shim-wasm",
+          "timestamp": "2025-01-31T01:53:20Z",
+          "url": "https://github.com/containerd/runwasi/commit/01c52273dc86cecb432372c368f777883465e476"
+        },
+        "date": 1738541871018,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20741.0538,
             "unit": "req/s"
           }
         ]
