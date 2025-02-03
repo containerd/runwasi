@@ -10,9 +10,7 @@ use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::container::Container;
 use libcontainer::signal::Signal;
 use libcontainer::syscall::syscall::SyscallType;
-use nix::errno::Errno;
-use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
-use nix::unistd::Pid;
+use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
 use zygote::{WireError, Zygote};
 
@@ -24,6 +22,7 @@ use crate::sandbox::{
     containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
 };
 use crate::sys::container::executor::Executor;
+use crate::sys::pid_fd::PidFd;
 use crate::sys::stdio::open;
 
 const DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
@@ -107,6 +106,9 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
         let mut container = self.container.lock().expect("Poisoned mutex");
         let pid = container.pid().context("failed to get pid")?.as_raw();
 
+        // Use a pidfd FD so that we can wait for the process to exit asynchronously.
+        let pidfd = PidFd::new(pid)?;
+
         container.start()?;
 
         let exit_code = self.exit_code.clone();
@@ -114,13 +116,12 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
             // move the exit code guard into this thread
             let _guard = guard;
 
-            let status = match waitid(WaitID::Pid(Pid::from_raw(pid)), WaitPidFlag::WEXITED) {
+            let status = match pidfd.wait().block_on() {
                 Ok(WaitStatus::Exited(_, status)) => status,
-                Ok(WaitStatus::Signaled(_, sig, _)) => sig as i32,
-                Ok(_) => 0,
-                Err(Errno::ECHILD) => {
-                    log::info!("no child process");
-                    0
+                Ok(WaitStatus::Signaled(_, sig, _)) => 128 + sig as i32,
+                Ok(res) => {
+                    log::error!("waitpid unexpected result: {res:?}");
+                    137
                 }
                 Err(e) => {
                     log::error!("waitpid failed: {e}");
@@ -130,7 +131,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
             let _ = exit_code.set((status, Utc::now()));
         });
 
-        Ok(pid as u32)
+        Ok(pid as _)
     }
 
     /// Send a signal to the instance
