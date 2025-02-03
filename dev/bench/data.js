@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738455573291,
+  "lastUpdate": 1738541870022,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3722,6 +3722,52 @@ window.BENCHMARK_DATA = {
             "value": 82579842,
             "range": "± 1210545",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "01c52273dc86cecb432372c368f777883465e476",
+          "message": "Merge pull request #829 from Mossaka/fix-labeler\n\n.github/labeler: add the missing changed-files to containerd-shim-wasm",
+          "timestamp": "2025-01-31T01:53:20Z",
+          "url": "https://github.com/containerd/runwasi/commit/01c52273dc86cecb432372c368f777883465e476"
+        },
+        "date": 1738541868938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 18260,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 5972 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 69380,
+            "unit": "kB",
+            "extra": "shim: 53888 kB\nzygote: 15492 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 21656,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 6424 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22328,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 6200 kB"
           }
         ]
       }
