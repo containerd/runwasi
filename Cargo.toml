@@ -9,7 +9,8 @@ members = [
     "crates/containerd-shim-wasmer",
     "crates/containerd-shim-wamr",
     "crates/stress-test",
-    "benches/containerd-shim-benchmarks",
+    "crates/stress-test-c8d",
+    "benches/containerd-shim-benchmarks", 
 ]
 resolver = "2"
 
