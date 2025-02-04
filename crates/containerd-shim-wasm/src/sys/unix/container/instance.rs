@@ -1,21 +1,17 @@
 use std::marker::PhantomData;
 use std::path::Path;
-use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Context;
 use chrono::{DateTime, Utc};
 use libcontainer::container::builder::ContainerBuilder;
-use libcontainer::container::Container;
-use libcontainer::signal::Signal;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::errno::Errno;
 use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
 use oci_spec::image::Platform;
-use zygote::{WireError, Zygote};
 
+use super::container::Container;
 use crate::container::Engine;
 use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance_utils::determine_rootdir;
@@ -30,7 +26,7 @@ const DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
-    container: Mutex<Container>,
+    container: Container,
     id: String,
     _phantom: PhantomData<E>,
 }
@@ -49,48 +45,44 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
                 (vec![], Platform::default())
             });
 
-        let (root, state) = Zygote::global()
-            .run(
-                |(id, cfg, modules, platform)| -> Result<_, WireError> {
-                    let namespace = cfg.get_namespace();
+        let container = Container::build(
+            |(id, cfg, modules, platform)| {
+                let namespace = cfg.get_namespace();
 
-                    let bundle = cfg.get_bundle().to_path_buf();
-                    let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-                    let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
-                    let engine = E::default();
+                let bundle = cfg.get_bundle().to_path_buf();
+                let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
+                let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
+                let engine = E::default();
 
-                    let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-                        .with_executor(Executor::new(engine, modules, platform))
-                        .with_root_path(rootdir.clone())?;
+                let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
+                    .with_executor(Executor::new(engine, modules, platform))
+                    .with_root_path(rootdir.clone())?;
 
-                    if let Ok(f) = open(cfg.get_stdin()) {
-                        builder = builder.with_stdin(f);
-                    }
-                    if let Ok(f) = open(cfg.get_stdout()) {
-                        builder = builder.with_stdout(f);
-                    }
-                    if let Ok(f) = open(cfg.get_stderr()) {
-                        builder = builder.with_stderr(f);
-                    }
+                if let Ok(f) = open(cfg.get_stdin()) {
+                    builder = builder.with_stdin(f);
+                }
+                if let Ok(f) = open(cfg.get_stdout()) {
+                    builder = builder.with_stdout(f);
+                }
+                if let Ok(f) = open(cfg.get_stderr()) {
+                    builder = builder.with_stderr(f);
+                }
 
-                    let Container { root, state } = builder
-                        .as_init(&bundle)
-                        .as_sibling(true)
-                        .with_systemd(false)
-                        .build()?;
+                let container = builder
+                    .as_init(&bundle)
+                    .as_sibling(true)
+                    .with_systemd(false)
+                    .build()?;
 
-                    // Container is not serializable, but its parts are
-                    Ok((root, state))
-                },
-                (id.clone(), cfg.clone(), modules, platform),
-            )
-            .map_err(|e| SandboxError::Others(e.to_string()))?;
-        let container = Container { root, state };
+                Ok(container)
+            },
+            (id.clone(), cfg.clone(), modules, platform),
+        )?;
 
         Ok(Self {
             id,
             exit_code: WaitableCell::new(),
-            container: Mutex::new(container),
+            container,
             _phantom: Default::default(),
         })
     }
@@ -104,10 +96,8 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
         // make sure we have an exit code by the time we finish (even if there's a panic)
         let guard = self.exit_code.set_guard_with(|| (137, Utc::now()));
 
-        let mut container = self.container.lock().expect("Poisoned mutex");
-        let pid = container.pid().context("failed to get pid")?.as_raw();
-
-        container.start()?;
+        let pid = self.container.pid()?;
+        self.container.start()?;
 
         let exit_code = self.exit_code.clone();
         thread::spawn(move || {
@@ -137,15 +127,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn kill(&self, signal: u32) -> Result<(), SandboxError> {
         log::info!("sending signal {signal} to instance: {}", self.id);
-        let signal = Signal::try_from(signal as i32).map_err(|err| {
-            SandboxError::InvalidArgument(format!("invalid signal number: {}", err))
-        })?;
-
-        self.container
-            .lock()
-            .expect("Poisoned mutex")
-            .kill(signal, true)?;
-
+        self.container.kill(signal)?;
         Ok(())
     }
 
@@ -154,10 +136,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete(&self) -> Result<(), SandboxError> {
         log::info!("deleting instance: {}", self.id);
-        self.container
-            .lock()
-            .expect("Poisoned mutex")
-            .delete(true)?;
+        self.container.delete()?;
         Ok(())
     }
 
