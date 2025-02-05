@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738628587977,
+  "lastUpdate": 1738714623469,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -3954,6 +3954,52 @@ window.BENCHMARK_DATA = {
             "value": 83079666,
             "range": "± 1065089",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4f5a50741a47e82a32a8742a75a5261d11198576",
+          "message": "Merge pull request #834 from containerd/dependabot/cargo/wat-1.224.0\n\nchore(deps): bump wat from 1.223.0 to 1.224.0",
+          "timestamp": "2025-02-03T18:48:42Z",
+          "url": "https://github.com/containerd/runwasi/commit/4f5a50741a47e82a32a8742a75a5261d11198576"
+        },
+        "date": 1738714623022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 18004,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 5716 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 69236,
+            "unit": "kB",
+            "extra": "shim: 53760 kB\nzygote: 15476 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 21784,
+            "unit": "kB",
+            "extra": "shim: 15104 kB\nzygote: 6680 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 22456,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 6200 kB"
           }
         ]
       }
