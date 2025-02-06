@@ -1,4 +1,5 @@
 //! Common utilities for the containerd shims.
+
 use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,12 @@ struct Options {
     root: Option<PathBuf>,
 }
 
+/// Determine the root directory for the container runtime.
+///
+/// If the `bundle` directory contains an `options.json` file, the root directory is read from the
+/// file. Otherwise, the root directory is determined by joining the `rootdir` and `namespace`.
+///
+/// The default root directory is `/run/containerd/<wasm engine name>/<namespace>`.
 #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
 pub fn determine_rootdir(
     bundle: impl AsRef<Path>,

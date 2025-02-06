@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+/// PathResolve allows to resolve a file path in a set of directories.
 pub trait PathResolve {
     // Resolve the path of a file give a set of directories as the `which` unix
     // command would do with components of the `PATH` environment variable, and

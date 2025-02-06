@@ -19,7 +19,7 @@ pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
 pub use engine::Engine;
 pub use instance::Instance;
-pub use path::PathResolve;
+pub(crate) use path::PathResolve;
 pub use wasm::WasmBinaryType;
 
 use crate::sys::container::instance;

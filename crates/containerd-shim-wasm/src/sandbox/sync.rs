@@ -1,3 +1,5 @@
+//! Synchronization primitives (e.g. `WaitableCell`) for the sandbox.
+
 use std::cell::OnceCell;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
