@@ -51,7 +51,7 @@ Use `oci-tar-builder` to create an OCI image with our `http-handler`. Assuming o
 
 ```shell
 cargo run --bin oci-tar-builder -- \
-    --name wasi-http \
+    --name wasi-demo-http \
     --repo ghcr.io/containerd/runwasi \
     --tag latest --module wasi-http.wasm \
     -o ./dist/wasi-http-img-oci.tar
@@ -67,7 +67,7 @@ make pull-http
 
 ```shell
 sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 \
-    ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm
+    ghcr.io/containerd/runwasi/wasi-demo-http:latest wasi-http /wasi-http.wasm
 ```
 
 - Finally, assuming our handler will respond to `GET` requests at `/`, we can

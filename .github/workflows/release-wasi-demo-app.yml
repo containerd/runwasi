@@ -17,7 +17,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact wasi-http"
+  IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact wasi-demo-http"
 
 jobs:
   release-wasi-demo:
@@ -28,7 +28,7 @@ jobs:
       wasi_demo_app: ${{ steps.get_digests.outputs.wasi_demo_app }}
       wasi_demo_oci: ${{ steps.get_digests.outputs.wasi_demo_oci }}
       wasi_demo_oci_artifact: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact }}
-      wasi_http: ${{ steps.get_digests.outputs.wasi_http }}
+      wasi_demo_http: ${{ steps.get_digests.outputs.wasi_demo_http }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
@@ -94,7 +94,7 @@ jobs:
       - release-wasi-demo
     strategy:
       matrix:
-        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_http"]
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_demo_http"]
     uses: ./.github/workflows/sign.yml
     with:
       image-name: ${{ matrix.image }}
@@ -106,7 +106,7 @@ jobs:
       - release-wasi-demo
     strategy:
       matrix:
-        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_http"]
+        image: ["wasi_demo_app", "wasi_demo_oci", "wasi_demo_oci_artifact", "wasi_demo_http"]
     uses: ./.github/workflows/sbom.yml
     with:
       image-name: ${{ matrix.image }}
