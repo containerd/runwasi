@@ -75,7 +75,7 @@ libcontainer = { workspace = true, features = [
     "v2",
 ] }
 nix = { workspace = true, features = ["sched", "mount"] }
-containerd-client = "0.6.0"
+containerd-client = "0.8.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
