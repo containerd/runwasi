@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+- `containerd_shim_wasm::container::PathResolve` is now a private module ([#837](https://github.com/containerd/runwasi/pull/837))
+
 ## [v0.9.0] - 2025-01-27
 
 ### Added

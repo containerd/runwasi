@@ -104,7 +104,7 @@ impl Engine for MyEngine {
 }
 
 fn main() {
-    shim::run::<ShimCli<Instance<Engine>>>("io.containerd.myshim.v1", opts);
+    shim::run::<ShimCli<Instance<MyEngine>>>("io.containerd.myshim.v1", opts);
 }
 ```
 

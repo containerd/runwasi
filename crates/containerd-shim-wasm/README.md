@@ -2,46 +2,116 @@
 
 # containerd-shim-wasm
 
-A library to help build containerd shims for wasm workloads.
+A library to help build containerd shims for Wasm workloads.
 
 ## Usage
 
-Implement the `Instance` trait, then call `run`, for example,
-```rust,no_run
-use std::time::Duration;
-use chrono::{DateTime, Utc};
+There are two ways to implement a shim:
+1. Using the `Instance` trait
+2. Using the `Engine` trait
 
-use containerd_shim as shim;
-use containerd_shim_wasm::sandbox::{Error, Instance, InstanceConfig, ShimCli};
+What trait to use depends on how much control you need over the container lifecycle and the level of sandboxing you want to provide. The main difference is that the `Engine` trait uses [Youki](https://github.com/youki-dev/youki)'s `libcontainer` crate to manage the container lifecycle, such as creating the container, starting it, and deleting it, and youki handles container sandbox for you. The `Instance` trait gives you more control over the container lifecycle.
+
+### Using the Engine trait
+
+Implement the `Engine` trait for a simpler integration:
+
+```rust,no_run
+use containerd_shim_wasm::{
+    container::{Instance, Engine, RuntimeContext},
+    sandbox::cli::{revision, shim_main, version},
+    Config,
+};
+use anyhow::Result;
+
+#[derive(Clone, Default)]
+struct MyEngine;
+
+impl Engine for MyEngine {
+    fn name() -> &'static str {
+        "my-engine"
+    }
+
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+        // Implement your Wasm runtime logic here
+        Ok(0)
+    }
+}
+
+shim_main::<Instance<MyEngine>>(
+    "my-engine",
+    version!(),
+    revision!(),
+    "v1",
+    None,
+);
+```
+
+The `Engine` trait provides optional methods you can override:
+
+- `can_handle()` - Validates that the runtime can run the container (checks Wasm file headers by default)
+- `supported_layers_types()` - Returns supported OCI layer types 
+- `precompile()` - Allows precompilation of Wasm modules
+- `can_precompile()` - Indicates if the runtime supports precompilation
+
+### Using the Instance trait directly
+
+For more control, implement the `Instance` trait:
+
+```rust,no_run
+use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Error};
+use containerd_shim_wasm::container::{Engine, RuntimeContext};
+use chrono::{DateTime, Utc};
+use std::time::Duration;
+use anyhow::Result;
+
+#[derive(Clone, Default)]
+struct MyEngine;
+
+impl Engine for MyEngine {
+    fn name() -> &'static str {
+        "my-engine"
+    }
+
+    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+        Ok(0)
+    }
+}
 
 struct MyInstance {
-    // ...
+    engine: MyEngine,
 }
 
 impl Instance for MyInstance {
-    type Engine = ();
+    type Engine = MyEngine;
 
-   fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
-       todo!();
+    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
+        Ok(MyInstance { engine: MyEngine })
     }
+
     fn start(&self) -> Result<u32, Error> {
-       todo!();
+        Ok(1)
     }
+
     fn kill(&self, signal: u32) -> Result<(), Error> {
-       todo!();
+        Ok(())
     }
+
     fn delete(&self) -> Result<(), Error> {
-       todo!();
+        Ok(())
     }
+
     fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
-       todo!();
+        Some((0, Utc::now()))
     }
 }
-
-shim::run::<ShimCli<MyInstance>>("io.containerd.myshim.v1", None);
 ```
 
-containerd expects the shim binary to be installed into `$PATH` (as seen by the containerd process) with a binary name like `containerd-shim-myshim-v1` which maps to the `io.containerd.myshim.v1` runtime which would need to be configured in containerd. It (containerd) also supports specifying a path to the shim binary but needs to be configured to do so.
+### Running the shim
+
+containerd expects the shim binary to be installed into `$PATH` (as seen by the containerd process) with a binary name like `containerd-shim-myshim-v1` which maps to the `io.containerd.myshim.v1` runtime. It can be [configured in containerd](https://github.com/containerd/containerd/blob/main/core/runtime/v2/README.md#configuring-runtimes).
 
 This crate is not tied to any specific wasm engine.
 
+Check out these projects that build on top of runwasi:
+- [spinframework/containerd-shim-spin](https://github.com/spinframework/containerd-shim-spin)
