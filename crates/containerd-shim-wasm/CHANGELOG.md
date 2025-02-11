@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- `Engine` trait now creates a dedicated Zygote process for each container to avoid the issue of libcontainer trying to change the shim process's global state. ([#828](https://github.com/containerd/runwasi/pull/828))
+
 ### Removed
 - `containerd_shim_wasm::container::PathResolve` is now a private module ([#837](https://github.com/containerd/runwasi/pull/837))
 
