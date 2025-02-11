@@ -129,10 +129,6 @@ And make sure the shim binary must be in $PATH (that is the $PATH that container
 
 This shim runs one per pod.
 
-## Contributing
-
-To begin contributing, learn to build and test the project or to add a new shim please read our [CONTRIBUTING.md](./CONTRIBUTING.md)
-
 ## Demo
 
 ### Installing the shims for use with Containerd
@@ -208,5 +204,146 @@ make test/k8s-oci-wasmtime
 
 > note: We are using a kubernetes cluster to run here since containerd's ctr has a bug that results in ctr: `unknown image config media type application/vnd.wasm.config.v0+json`
 
+### Demo 4: Running on Kubernetes
+
+You can run WebAssembly workloads on Kubernetes using either Kind or k3s.
+
+#### Using Kind
+
+1. Install and configure dependencies:
+```bash
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/
+
+make build-wasmtime
+sudo make install-wasmtime
+```
+
+2. Create a Kind configuration:
+```yaml
+# kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: runwasi-cluster
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /usr/local/bin/containerd-shim-wasmtime-v1
+    containerPath: /usr/local/bin/containerd-shim-wasmtime-v1
+```
+
+3. Create and configure the cluster:
+```bash
+kind create cluster --name runwasi-cluster --config kind-config.yaml
+
+kubectl cluster-info --context kind-runwasi-cluster
+
+cat << EOF | docker exec -i runwasi-cluster-control-plane tee /etc/containerd/config.toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+docker exec runwasi-cluster-control-plane systemctl restart containerd
+```
+
+4. Deploy the demo application:
+```bash
+kubectl --context kind-runwasi-cluster apply -f test/k8s/deploy.yaml
+```
+
+5. Check the logs:
+```bash
+kubectl --context kind-runwasi-cluster logs -l app=wasi-demo
+```
+where you should see the output of the demo application: 
+
+```console
+This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+```
+
+#### Using k3s
+
+1. Install k3s and build the shim:
+```bash
+curl -sfL https://get.k3s.io | sh -
+
+make build-wasmtime
+sudo make install-wasmtime
+```
+
+2. Configure k3s to use the Wasm runtime:
+```bash
+sudo mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+
+cat << EOF | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+sudo systemctl restart k3s
+```
+
+3. Deploy the demo application:
+```bash
+sudo k3s kubectl apply -f test/k8s/deploy.yaml
+```
+
+4. Check the deployment:
+```bash
+sudo k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s
+
+sudo k3s kubectl get pods
+sudo k3s kubectl logs -l app=wasi-demo
+```
+
+You should see "This is a song that never ends." repeated in the logs.
+
+5. Clean up when done:
+```bash
+sudo k3s kubectl delete -f test/k8s/deploy.yaml
+
+# Optionally uninstall k3s
+/usr/local/bin/k3s-uninstall.sh
+```
+
+#### The `deploy.yaml` file
+
+The deployment includes:
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: wasm
+handler: wasm
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasi-demo
+spec:
+  # ...
+  template:
+    spec:
+      runtimeClassName: wasm # Use the wasm runtime class
+      containers:
+      - name: demo
+        image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
+```
+
+
+To see demos for other runtimes, replace `wasmtime` with `wasmedge`, `wasmer`, or `wamr` in the above commands.
+
+In addition, check out the [Kubernetes + Containerd + Runwasi](https://wasmedge.org/docs/develop/deploy/kubernetes/kubernetes-containerd-runwasi) for more on how to run WasmEdge on Kubernetes. 
+
+
 ### WASI/HTTP Demo for `wasmtime-shim`
 See [wasmtime-shim documentation](./crates/containerd-shim-wasmtime/README.md#WASI/HTTP).
+
+
+## Contributing
+
+To begin contributing, learn to build and test the project or to add a new shim please read our [CONTRIBUTING.md](./CONTRIBUTING.md)
