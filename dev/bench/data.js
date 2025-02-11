@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739146757323,
+  "lastUpdate": 1739233770584,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6053,6 +6053,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20619.9273,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "296fe4a551b912e4e3b9da48a0d84696c72472a8",
+          "message": "Merge pull request #846 from containerd/dependabot/cargo/wat-1.225.0\n\nchore(deps): bump wat from 1.224.0 to 1.225.0",
+          "timestamp": "2025-02-10T17:54:02Z",
+          "url": "https://github.com/containerd/runwasi/commit/296fe4a551b912e4e3b9da48a0d84696c72472a8"
+        },
+        "date": 1739233769954,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19696.1747,
             "unit": "req/s"
           }
         ]
