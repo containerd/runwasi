@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739319451732,
+  "lastUpdate": 1739319453491,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7700,6 +7700,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.6,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e48c69d85f5e8f150e20b5f18b7c418ae004ee5d",
+          "message": "Merge pull request #828 from jprendes/dedicated-zygote\n\nUse a dedicated zygote process per container",
+          "timestamp": "2025-02-11T23:19:49Z",
+          "url": "https://github.com/containerd/runwasi/commit/e48c69d85f5e8f150e20b5f18b7c418ae004ee5d"
+        },
+        "date": 1739319452846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
             "unit": "ms"
           }
         ]
