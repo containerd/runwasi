@@ -5216,16 +5216,21 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
- "containerd-shim-wasm-test-modules",
+ "containerd-client",
  "env_logger",
+ "futures",
  "humantime",
  "log",
  "nix 0.29.0",
  "oci-spec",
  "prost 0.13.4",
  "prost-types 0.13.4",
+ "serde_json",
  "tempfile",
  "tokio",
+ "tokio-async-drop",
+ "tonic 0.12.3",
+ "trait-variant",
  "trapeze",
 ]
 
@@ -5237,6 +5242,7 @@ dependencies = [
  "clap",
  "containerd-client",
  "env_logger",
+ "humantime",
  "oci-spec",
  "prost-types 0.13.4",
  "serde_json",
@@ -5546,6 +5552,12 @@ dependencies = [
  "tokio-macros",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "tokio-async-drop"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e57fbf1da3f18c8a95469f8973c138b0a99f4ae761885c3646b0c61139b0522"
 
 [[package]]
 name = "tokio-io-timeout"
@@ -5914,6 +5926,17 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-serde",
+]
+
+[[package]]
+name = "trait-variant"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70977707304198400eb4835a78f6a9f928bf41bba420deb8fdb175cd965d77a7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
