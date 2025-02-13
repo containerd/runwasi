@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739319545815,
+  "lastUpdate": 1739405835263,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4882,6 +4882,52 @@ window.BENCHMARK_DATA = {
             "value": 84110038,
             "range": "± 1036608",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e48c69d85f5e8f150e20b5f18b7c418ae004ee5d",
+          "message": "Merge pull request #828 from jprendes/dedicated-zygote\n\nUse a dedicated zygote process per container",
+          "timestamp": "2025-02-11T23:19:49Z",
+          "url": "https://github.com/containerd/runwasi/commit/e48c69d85f5e8f150e20b5f18b7c418ae004ee5d"
+        },
+        "date": 1739405834223,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14300,
+            "unit": "kB",
+            "extra": "shim: 11648 kB\nzygote: 2652 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65108,
+            "unit": "kB",
+            "extra": "shim: 52992 kB\nzygote: 12116 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 17188,
+            "unit": "kB",
+            "extra": "shim: 13952 kB\nzygote: 3236 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 18628,
+            "unit": "kB",
+            "extra": "shim: 15488 kB\nzygote: 3140 kB"
           }
         ]
       }
