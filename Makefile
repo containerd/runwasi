@@ -220,21 +220,12 @@ dist/img-oci-artifact.tar: target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.
 	@mkdir -p "dist/"
 	cp "$<" "$@"
 
-.PHONY: pull pull-app pull-oci pull-oci-artifact pull-http
+.PHONY: pull pull-%
 pull: pull-app pull-oci pull-oci-artifact pull-http
 	echo "Pulled all images"
 
-pull-app:
-	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
-
-pull-oci:
-	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci:latest
-
-pull-oci-artifact:
-	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest
-
-pull-http:
-	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-http:latest
+pull-%:
+	sudo ctr image pull ghcr.io/containerd/runwasi/wasi-demo-$*:latest
 
 docker/load: dist/img.tar
 	docker load -i $<
@@ -260,7 +251,7 @@ target/wasm32-wasip1/$(OPT_PROFILE)/img-oci-artifact.tar: target/wasm32-wasip1/$
 dist/http-img-oci.tar: crates/containerd-shim-wasm-test-modules/src/modules/hello_wasi_http.wasm
 	@mkdir -p "dist/"
 	cargo run --bin oci-tar-builder -- \
-		--name wasi-http \
+		--name wasi-demo-http \
 		--repo ghcr.io/containerd/runwasi \
 		--tag latest \
 		--module $< \
