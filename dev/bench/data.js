@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739405943612,
+  "lastUpdate": 1739492241097,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -4998,6 +4998,52 @@ window.BENCHMARK_DATA = {
             "value": 80810481,
             "range": "± 1129192",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ab57831fb26c8d673dbb48443761153039103753",
+          "message": "Merge pull request #840 from containerd/issue825\n\nchange: Rename the image wasi-http to wasi-demo-http",
+          "timestamp": "2025-02-13T19:48:26Z",
+          "url": "https://github.com/containerd/runwasi/commit/ab57831fb26c8d673dbb48443761153039103753"
+        },
+        "date": 1739492239997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14300,
+            "unit": "kB",
+            "extra": "shim: 11520 kB\nzygote: 2780 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 64508,
+            "unit": "kB",
+            "extra": "shim: 52352 kB\nzygote: 12156 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 17060,
+            "unit": "kB",
+            "extra": "shim: 13952 kB\nzygote: 3108 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 18624,
+            "unit": "kB",
+            "extra": "shim: 15488 kB\nzygote: 3136 kB"
           }
         ]
       }
