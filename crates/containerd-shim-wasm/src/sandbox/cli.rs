@@ -159,8 +159,8 @@ fn log_mem() {
 pub fn shim_main<'a, I>(
     name: &str,
     version: &str,
-    revision: impl Into<Option<&'a str>>,
-    shim_version: impl Into<Option<&'a str>>,
+    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
+    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,
@@ -194,12 +194,12 @@ pub fn shim_main<'a, I>(
     log_mem();
 }
 
-#[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
+#[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
 fn shim_main_inner<'a, I>(
     name: &str,
     version: &str,
-    revision: impl Into<Option<&'a str>>,
-    shim_version: impl Into<Option<&'a str>>,
+    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
+    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,

@@ -10,7 +10,7 @@ use super::error::Error;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct InstanceConfig {
     /// Optional stdin named pipe path.
     stdin: PathBuf,
@@ -122,7 +122,7 @@ pub trait Instance: 'static {
 
     /// Waits for the instance to finish and returns its exit code
     /// This is a blocking call.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), parent = tracing::Span::current(), level = "Info"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn wait(&self) -> (u32, DateTime<Utc>) {
         self.wait_timeout(None).unwrap()
     }
