@@ -35,6 +35,7 @@ static PRECOMPILE_PREFIX: &str = "runwasi.io/precompiled";
 // Conservatively set the max to 15MB to leave room for message overhead
 static MAX_WRITE_CHUNK_SIZE_BYTES: i64 = 1024 * 1024 * 15;
 
+#[derive(Debug)]
 pub struct Client {
     inner: Channel,
     namespace: String,
@@ -57,10 +58,10 @@ impl WriteContent {
 // sync wrapper implementation from https://tokio.rs/tokio/topics/bridging
 impl Client {
     // wrapper around connection that will establish a connection and create a client
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     pub async fn connect(
-        address: impl AsRef<Path>,
-        namespace: impl Into<String>,
+        address: impl AsRef<Path> + std::fmt::Debug,
+        namespace: impl Into<String> + std::fmt::Debug,
     ) -> Result<Client> {
         let inner = containerd_client::connect(address.as_ref())
             .await
@@ -73,8 +74,8 @@ impl Client {
     }
 
     // wrapper around read that will read the entire content file
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
-    async fn read_content(&self, digest: impl ToString) -> Result<Vec<u8>> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
+    async fn read_content(&self, digest: impl ToString + std::fmt::Debug) -> Result<Vec<u8>> {
         let req = ReadContentRequest {
             digest: digest.to_string(),
             ..Default::default()
@@ -93,8 +94,8 @@ impl Client {
 
     // used in tests to clean up content
     #[allow(dead_code)]
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
-    async fn delete_content(&self, digest: impl ToString) -> Result<()> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
+    async fn delete_content(&self, digest: impl ToString + std::fmt::Debug) -> Result<()> {
         let req = DeleteContentRequest {
             digest: digest.to_string(),
         };
@@ -107,7 +108,7 @@ impl Client {
     }
 
     // wrapper around lease that will create a lease and return a guard that will delete the lease when dropped
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn lease(&self, reference: String) -> Result<LeaseGuard> {
         let mut lease_labels = HashMap::new();
         // Unwrap is safe here since 24 hours is a valid time
@@ -136,7 +137,7 @@ impl Client {
         ))
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn save_content(
         &self,
         data: Vec<u8>,
@@ -258,7 +259,7 @@ impl Client {
         Ok(WriteContent { lease, digest })
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn get_info(&self, content_digest: &Digest) -> Result<Info> {
         let req = InfoRequest {
             digest: content_digest.to_string(),
@@ -276,7 +277,7 @@ impl Client {
         Ok(info)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn update_info(&self, info: Info) -> Result<Info> {
         let mut req = UpdateRequest {
             info: Some(info.clone()),
@@ -299,8 +300,8 @@ impl Client {
         Ok(info)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
-    async fn get_image(&self, image_name: impl ToString) -> Result<Image> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
+    async fn get_image(&self, image_name: impl ToString + std::fmt::Debug) -> Result<Image> {
         let name = image_name.to_string();
         let req = GetImageRequest { name };
         let req = with_namespace!(req, self.namespace);
@@ -319,7 +320,7 @@ impl Client {
         Ok(image)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     fn extract_image_content_sha(&self, image: &Image) -> Result<String> {
         let digest = image
             .target
@@ -335,8 +336,11 @@ impl Client {
         Ok(digest)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
-    async fn get_container(&self, container_name: impl ToString) -> Result<Container> {
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
+    async fn get_container(
+        &self,
+        container_name: impl ToString + std::fmt::Debug,
+    ) -> Result<Container> {
         let id = container_name.to_string();
         let req = GetContainerRequest { id };
         let req = with_namespace!(req, self.namespace);
@@ -355,7 +359,7 @@ impl Client {
         Ok(container)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn get_image_manifest_and_digest(
         &self,
         image_name: &str,
@@ -370,10 +374,13 @@ impl Client {
     // load module will query the containerd store to find an image that has an OS of type 'wasm'
     // If found it continues to parse the manifest and return the layers that contains the WASM modules
     // and possibly other configuration layers.
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(engine), level = "Debug")
+    )]
     pub async fn load_modules<T: Engine>(
         &self,
-        containerd_id: impl ToString,
+        containerd_id: impl ToString + std::fmt::Debug,
         engine: &T,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id.to_string()).await?;
@@ -508,7 +515,7 @@ impl Client {
         Ok((layers, platform))
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Debug"))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
     async fn read_wasm_layer(
         &self,
         original_config: &oci_spec::image::Descriptor,
@@ -949,7 +956,7 @@ mod tests {
         x
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     struct FakePrecomiplerEngine {
         precompile_id: Option<String>,
         precompiled_layers: HashMap<String, Vec<u8>>,

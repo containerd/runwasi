@@ -53,7 +53,7 @@ impl<'a> ComponentTarget<'a> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct WasmtimeEngine;
 
 static PRECOMPILER: LazyLock<wasmtime::Engine> = LazyLock::new(|| {
