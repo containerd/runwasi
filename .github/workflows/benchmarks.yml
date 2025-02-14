@@ -96,7 +96,7 @@ jobs:
       - name: Start wasmtime shim
         shell: bash
         run: |
-          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm &
+          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-http:latest wasi-http /wasi-http.wasm &
           sleep 1
       - name: Wait for wasmtime shim to start
         shell: bash
@@ -104,6 +104,7 @@ jobs:
           while ! curl -s http://127.0.0.1:8080 > /dev/null; do
             sleep 1
           done
+        timeout-minutes: 5
       - name: Run HTTP throughput and latency benchmarks
         if: success()
         uses: ./.github/actions/run-hey-load-test
