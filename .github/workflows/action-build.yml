@@ -74,6 +74,8 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: |
+          set -euox pipefail
+          sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
           make test/stress-${{ inputs.runtime }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
