@@ -142,7 +142,12 @@ test-doc:
 test/stress-%: dist-%
 	# Do not use trace logging as that negatively impacts performance.
 	# Do not use cross (always use cargo) to avoid the qemu environment.
-	cargo run -p stress-test $(TARGET_FLAG) -- $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=2s
+	cargo run -p stress-test $(TARGET_FLAG) -- $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=5s
+
+test/stress-c8d-%: dist-%
+	# Do not use trace logging as that negatively impacts performance.
+	# Do not use cross (always use cargo) to avoid the qemu environment.
+	cargo run -p stress-test $(TARGET_FLAG) -- --containerd $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=5s
 
 generate-doc:
 	RUST_LOG=trace $(CARGO) doc --workspace --all-features --no-deps --document-private-items --exclude wasi-demo-app
