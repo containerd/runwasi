@@ -98,7 +98,6 @@ async fn main_impl() -> Result<()> {
 async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let Cli {
         shim,
-        verbose,
         container_output,
         parallel,
         count,
@@ -122,6 +121,7 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let barrier = Arc::new(Barrier::new(count + 1));
     let start = Arc::new(OnceCell::new());
     let mut tracker = FuturesUnordered::new();
+    let setup_start = Instant::now();
 
     for _ in 0..count {
         let shim = shim.clone();
@@ -164,11 +164,15 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let mut incomplete = count;
     let mut success = 0;
     let mut failed = 0;
+    let mut clear_line = false;
 
     loop {
         tokio::select! {
             _ = &mut setup_done => {
+                let elapsed = setup_start.elapsed();
+                let elapsed = format_duration(elapsed);
                 eprint!("\x1b[2K");
+                eprintln!("> Setup took {elapsed}");
                 eprintln!("> Waiting for tasks to finish.");
                 eprintln!("  Press Ctrl-C to terminate.\x1b[A");
             }
@@ -183,24 +187,27 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
                 break;
             }
             res = tracker.next() => {
+                eprint!("\x1b[2K");
+                if clear_line {
+                    eprint!("\x1b[A\x1b[2K");
+                }
                 let Some(res): Option<Result<()>> = res else {
+                    eprintln!();
                     break;
                 };
                 match res {
                     Ok(()) => {
                         incomplete -= 1;
                         success += 1;
-                        if verbose {
-                            eprint!("\x1b[2K");
-                            eprintln!("> {} .. [OK]", count - tracker.len());
-                            eprintln!("  Press Ctrl-C to terminate.\x1b[A");
-                        }
+                        clear_line = true;
+                        eprintln!("> \x1b[32m{} .. [OK]\x1b[0m", count - tracker.len());
+                        eprintln!("  Press Ctrl-C to terminate.\x1b[A");
                     }
                     Err(err) => {
                         incomplete -= 1;
                         failed += 1;
-                        eprint!("\x1b[2K");
-                        eprintln!("> {} .. {err}", count - tracker.len());
+                        clear_line = false;
+                        eprintln!("> \x1b[31m{} .. {err}\x1b[0m", count - tracker.len());
                         eprintln!("  Press Ctrl-C to terminate.\x1b[A");
                     }
                 }
