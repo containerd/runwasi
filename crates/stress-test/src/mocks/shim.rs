@@ -6,18 +6,22 @@ use oci_spec::runtime::SpecBuilder;
 use tempfile::{tempdir_in, TempDir};
 use tokio::fs::{canonicalize, symlink};
 use tokio::process::Command;
+use tokio_async_drop::tokio_async_drop;
 use trapeze::Client;
 
 use super::Task;
-use crate::utils::hash;
+use crate::containerd;
+use crate::protos::containerd::task::v2::{ShutdownRequest, Task as _};
 
 pub struct Shim {
-    pub(super) dir: TempDir,
-    pub(super) client: Client,
+    dir: TempDir,
+    client: Client,
+    containerd: containerd::Client,
 }
 
 impl Shim {
     pub(super) async fn new(
+        containerd: containerd::Client,
         scratch: impl AsRef<Path>,
         verbose: bool,
         binary: impl AsRef<Path>,
@@ -41,13 +45,13 @@ impl Shim {
 
         info!("Starting shim");
 
-        let hash = hash(dir.path());
+        let pid = std::process::id();
         let output = Command::new(binary.as_ref())
             .args([
                 "-namespace",
-                &format!("shim-benchmark-{hash}"),
+                &format!("shim-benchmark-{pid}"),
                 "-id",
-                &format!("shim-benchmark-{hash}"),
+                &format!("shim-benchmark-{pid}"),
                 "-address",
                 "/run/containerd/containerd.sock",
                 "start",
@@ -63,10 +67,43 @@ impl Shim {
         info!("Connecting to {address}");
         let client = Client::connect(address).await?;
 
-        Ok(Shim { dir, client })
+        Ok(Shim {
+            dir,
+            client,
+            containerd,
+        })
     }
+}
 
-    pub async fn task(&self) -> Result<Task> {
-        Task::new(&self.dir, self.client.clone()).await
+impl crate::traits::Shim for Shim {
+    type Task = Task;
+
+    async fn task<T: Into<String>>(
+        &self,
+        image: impl Into<String>,
+        args: impl IntoIterator<Item = T>,
+    ) -> Result<Task> {
+        Task::new(
+            self.containerd.clone(),
+            &self.dir,
+            image.into(),
+            args,
+            self.client.clone(),
+        )
+        .await
+    }
+}
+
+impl Drop for Shim {
+    fn drop(&mut self) {
+        tokio_async_drop!({
+            let _ = self
+                .client
+                .shutdown(ShutdownRequest {
+                    now: true,
+                    ..Default::default()
+                })
+                .await;
+        })
     }
 }
