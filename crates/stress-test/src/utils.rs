@@ -1,21 +1,21 @@
 use std::future::{pending, Future};
-use std::hash::{DefaultHasher, Hash, Hasher as _};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use nix::sys::signal::kill;
 use nix::sys::signal::Signal::SIGKILL;
 use nix::sys::wait::{waitpid, WaitPidFlag};
 use nix::unistd::Pid;
-use tokio::select;
-use tokio::signal::ctrl_c;
-use tokio::sync::Notify;
-use tokio::time::{sleep, Duration};
+use tokio::sync::Mutex;
+use tokio::time::sleep;
 
-pub fn hash(value: impl Hash) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    value.hash(&mut hasher);
-    hasher.finish()
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+pub fn make_task_id() -> String {
+    let pid = std::process::id();
+    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+    format!("shim-stress-test-{pid}-task-{n}")
 }
 
 pub async fn reap_children() -> Result<()> {
@@ -39,58 +39,27 @@ pub async fn reap_children() -> Result<()> {
     }
 }
 
-pub trait TryFutureEx<E> {
-    fn or_ctrl_c(self) -> impl Future<Output = Result<E>> + Send;
-    fn with_watchdog(
-        self,
-        t: Duration,
-        ping: Arc<Notify>,
-    ) -> impl Future<Output = Result<E>> + Send;
-}
-
-impl<E: Default, T: Future<Output = Result<E>> + Send> TryFutureEx<E> for T {
-    async fn or_ctrl_c(self) -> Result<E> {
-        select! {
-            val = self => { val },
-            _ = ctrl_c() => {
-                println!();
-                bail!("Terminated");
-            }
-        }
-    }
-
-    async fn with_watchdog(self, t: Duration, ping: Arc<Notify>) -> Result<E> {
-        let timeout = |t: Duration| async move {
-            if t.is_zero() {
-                pending().await
-            } else {
-                sleep(t).await
-            }
-        };
-
-        let mut timer = timeout(t.clone());
-
-        let fut = self;
-        tokio::pin!(fut);
-
-        loop {
-            select! {
-                val = &mut fut => { return val; },
-                _ = ping.notified() => { timer = timeout(t.clone()); }
-                _ = timer => { bail!("Timeout"); }
-            }
-        }
+pub async fn watchdog(timeout: Duration) {
+    if timeout.is_zero() {
+        pending().await
+    } else {
+        sleep(timeout).await
     }
 }
 
-pub trait DropIf {
-    fn drop_if(&mut self, cond: bool);
-}
+pub struct RunOnce(Mutex<bool>);
 
-impl<T> DropIf for Option<T> {
-    fn drop_if(&mut self, cond: bool) {
-        if cond {
-            self.take();
+impl RunOnce {
+    pub fn new() -> Self {
+        Self(Mutex::new(false))
+    }
+
+    pub async fn try_run(&self, fut: impl Future<Output = Result<()>>) -> Result<()> {
+        let mut done = self.0.lock().await;
+        if !*done {
+            fut.await?;
+            *done = true;
         }
+        Ok(())
     }
 }

@@ -74,7 +74,17 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: |
+          set -euox pipefail
+          sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
           make test/stress-${{ inputs.runtime }}
+      - name: Run stress tests with containerd
+        if: ${{ inputs.runtime != 'common' && inputs.binprefix == 'containerd-shim-' && inputs.arch == 'x86_64' && runner.os == 'Linux' }}
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euox pipefail
+          sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
+          make test/stress-c8d-${{ inputs.runtime }}
       - name: Sign the binary
         if: ${{ inputs.runtime != 'common' && inputs.slug != 'windows' && inputs.sign }}
         uses: ./.github/actions/sign
