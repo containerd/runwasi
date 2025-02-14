@@ -22,7 +22,7 @@ pub struct InstanceConfig {
     bundle: PathBuf,
     /// Namespace for containerd
     namespace: String,
-    /// GRPC address back to main containerd
+    /// ttrpc address back to main containerd
     containerd_address: String,
 }
 
