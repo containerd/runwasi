@@ -69,6 +69,13 @@ KIND_CLUSTER_NAME ?= containerd-wasm
 
 export
 
+STRESS_TEST_COUNT ?= 100
+STRESS_TEST_PARALLEL ?= $$(nproc || echo 10)
+STRESS_TEST_TIMEOUT ?= 5s
+STRESS_TEST_IMAGE ?= ghcr.io/containerd/runwasi/wasi-demo-app:latest
+STRESS_TEST_JSON ?= 
+STRESS_TEST_JSON_FLAG = $(if $(STRESS_TEST_JSON),--json-output $(STRESS_TEST_JSON),)
+
 .PHONY: build build-common build-wasm build-%
 build: build-wasm $(RUNTIMES:%=build-%);
 
@@ -142,12 +149,25 @@ test-doc:
 test/stress-%: dist-%
 	# Do not use trace logging as that negatively impacts performance.
 	# Do not use cross (always use cargo) to avoid the qemu environment.
-	cargo run -p stress-test $(TARGET_FLAG) -- $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=5s
+	cargo run -p stress-test $(TARGET_FLAG) -- \
+		$(PWD)/dist/bin/containerd-shim-$*-v1 \
+		--count=$(STRESS_TEST_COUNT) \
+		--parallel=$(STRESS_TEST_PARALLEL) \
+		--timeout=$(STRESS_TEST_TIMEOUT) \
+		--image=$(STRESS_TEST_IMAGE) \
+		$(STRESS_TEST_JSON_FLAG)
 
 test/stress-c8d-%: dist-%
 	# Do not use trace logging as that negatively impacts performance.
 	# Do not use cross (always use cargo) to avoid the qemu environment.
-	cargo run -p stress-test $(TARGET_FLAG) -- --containerd $(PWD)/dist/bin/containerd-shim-$*-v1 --count=100 --parallel=$$(nproc || echo 10) --timeout=5s
+	cargo run -p stress-test $(TARGET_FLAG) -- \
+		--containerd \
+		$(PWD)/dist/bin/containerd-shim-$*-v1 \
+		--count=$(STRESS_TEST_COUNT) \
+		--parallel=$(STRESS_TEST_PARALLEL) \
+		--timeout=$(STRESS_TEST_TIMEOUT) \
+		--image=$(STRESS_TEST_IMAGE) \
+		$(STRESS_TEST_JSON_FLAG)
 
 generate-doc:
 	RUST_LOG=trace $(CARGO) doc --workspace --all-features --no-deps --document-private-items --exclude wasi-demo-app

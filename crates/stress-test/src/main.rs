@@ -5,8 +5,7 @@ mod traits;
 mod utils;
 
 use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::sync::Arc;
 use std::time::Instant;
@@ -18,7 +17,6 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _};
 use humantime::{format_duration, parse_duration};
 use nix::sys::prctl::set_child_subreaper;
-use regex::Regex;
 use serde::Serialize;
 use tokio::signal::ctrl_c;
 use tokio::sync::{Barrier, OnceCell, Semaphore};
@@ -112,8 +110,19 @@ async fn main_impl() -> Result<()> {
     }
 }
 
+fn get_runtime(path: &Path) -> Option<&str> {
+    let runtime = path
+        .file_name()?
+        .to_str()?
+        .strip_prefix("containerd-shim-")?
+        .split_once('-')?
+        .0;
+    Some(runtime)
+}
+
 async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let Cli {
+        containerd,
         shim: shim_path,
         container_output,
         parallel,
@@ -246,48 +255,23 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     println!("\x1b[32m  elapsed time: {duration}\x1b[0m");
     println!("\x1b[32m  throuput: {throuput} tasks/s\x1b[0m");
 
-    let re = Regex::new(r"containerd-shim-(\w+)").unwrap();
-    let shim_path_str = shim_path.to_string_lossy();
-    let shim = re
-        .captures(&shim_path_str)
-        .and_then(|c| c.get(1))
-        .map(|m| m.as_str())
-        .unwrap_or("wasmtime");
+    let shim = get_runtime(&shim_path).unwrap_or("unknown");
+    let containerd_shim = if containerd { "containerd" } else { "mock" };
 
     if let Some(json_output) = json_output {
-        let results = vec![
-            BenchmarkResult {
-                name: format!("Stress Test Tasks Throughput - {}", shim),
-                unit: "tasks/s".to_string(),
-                value: throuput,
-                extra: Some(format!(
-                    "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
-                    image, count, parallel, duration
-                )),
-            },
-            BenchmarkResult {
-                name: format!("Stress Test Tasks Elapsed Time - {}", shim),
-                unit: "s".to_string(),
-                value: elapsed.as_secs_f64(),
-                extra: Some(format!(
-                    "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
-                    image, count, parallel, duration
-                )),
-            },
-            BenchmarkResult {
-                name: format!("Stress Test Tasks Setup Time - {}", shim),
-                unit: "s".to_string(),
-                value: setup_start.elapsed().as_secs_f64(),
-                extra: Some(format!(
-                    "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
-                    image, count, parallel, duration
-                )),
-            },
-        ];
-        let json = serde_json::to_string_pretty(&results)?;
-        let mut file = File::create(json_output)?;
-        file.write_all(json.as_bytes())?;
+        let results = vec![BenchmarkResult {
+            name: format!(
+                "Stress Test Tasks Throughput with {} service - {}",
+                containerd_shim, shim
+            ),
+            unit: "tasks/s".to_string(),
+            value: throuput,
+            extra: Some(format!(
+                "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
+                image, count, parallel, duration
+            )),
+        }];
+        serde_json::to_writer_pretty(&mut File::create(json_output)?, &results)?;
     }
-
     Ok(())
 }

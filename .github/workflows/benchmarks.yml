@@ -115,3 +115,49 @@ jobs:
         shell: bash
         run: |
           sudo ctr task kill -s SIGKILL wasi-http
+
+  benchmark-stress:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - uses: ./.github/actions/setup-env
+      - name: Setup build profile
+        shell: bash
+        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
+      - uses: ./.github/actions/build
+      - name: Run Stress Tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for RUNTIME in wasmtime wasmedge wasmer wamr; do
+            # Run containerd stress test
+            make test/stress-c8d-$RUNTIME \
+              STRESS_TEST_COUNT=1000 \
+              STRESS_TEST_TIMEOUT=10s \
+              STRESS_TEST_JSON=stress-bench-c8d-$RUNTIME.json \
+              STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-app:latest
+            
+            # Run non-containerd stress test
+            make OPT_PROFILE=release test/stress-$RUNTIME \
+              STRESS_TEST_COUNT=1000 \
+              STRESS_TEST_TIMEOUT=10s \
+              STRESS_TEST_JSON=stress-bench-$RUNTIME.json \
+              STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-app:latest
+          done
+          cat stress-bench-*.json | jq -s 'flatten(1)' > stress-bench.json
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1.20.4
+        with:
+          name: Stress Test Benchmark
+          tool: 'customBiggerIsBetter'
+          output-file-path: stress-bench.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          alert-threshold: '130%'
+          fail-on-alert: ${{ github.event_name == 'schedule' }}
+          alert-comment-cc-users: '@runwasi-committers'
+          summary-always: true
+          auto-push: ${{ github.event_name == 'schedule' }}

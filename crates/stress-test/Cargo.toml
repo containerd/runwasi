@@ -27,7 +27,6 @@ tonic = "0.12"
 serde_json = { workspace = true }
 serde = { workspace = true }
 futures = "0.3"
-regex = "1.11.1"
 
 
 [package.metadata.cargo-machete]
