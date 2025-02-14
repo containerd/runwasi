@@ -17,15 +17,17 @@ tokio-async-drop = "0.1.0"
 humantime = "2.1.0"
 tempfile = { workspace = true }
 oci-spec = { workspace = true }
-clap = { version = "4", features = [ "derive"] }
+clap = { version = "4", features = ["derive"] }
 log = { workspace = true }
 env_logger = { workspace = true }
 nix = { workspace = true, features = ["process", "signal", "mount"] }
 trait-variant = "0.1"
 containerd-client = "0.6.0"
 tonic = "0.12"
-serde_json.workspace = true
+serde_json = { workspace = true }
+serde = { workspace = true }
 futures = "0.3"
+regex = "1.11.1"
 
 
 [package.metadata.cargo-machete]
