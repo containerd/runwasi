@@ -4,8 +4,9 @@
 
 --- 
 
-- [Release](../../RELEASE.md)
 - [Contributing](../../CONTRIBUTING.md)
+- [Documentation](developer/docs.md)
+- [Release](../../RELEASE.md)
 
 ---
 
