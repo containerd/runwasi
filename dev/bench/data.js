@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739665129406,
+  "lastUpdate": 1739665131269,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -8326,6 +8326,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.8999999999999995,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "dfbc79a5dce63910f81d901effa226e874ccd845",
+          "message": "Merge pull request #830 from Mossaka/stress-test-c8d\n\nfeat(stress-test): changes the stress-test crate to run workloads with Containerd",
+          "timestamp": "2025-02-14T21:44:40Z",
+          "url": "https://github.com/containerd/runwasi/commit/dfbc79a5dce63910f81d901effa226e874ccd845"
+        },
+        "date": 1739665130647,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.2,
             "unit": "ms"
           }
         ]
