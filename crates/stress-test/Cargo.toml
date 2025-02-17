@@ -22,7 +22,7 @@ log = { workspace = true }
 env_logger = { workspace = true }
 nix = { workspace = true, features = ["process", "signal", "mount"] }
 trait-variant = "0.1"
-containerd-client = "0.6.0"
+containerd-client = "0.8.0"
 tonic = "0.12"
 serde_json = { workspace = true }
 serde = { workspace = true }
