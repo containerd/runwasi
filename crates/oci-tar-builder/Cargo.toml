@@ -16,7 +16,7 @@ oci-spec = { workspace = true, features = ["runtime"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-clap = { version = "4.5.28", features = ["derive"] }
+clap = { version = "4.5.29", features = ["derive"] }
 indexmap = "2.7.1"
 oci-wasm = { version = "0.2.1", default-features = false, features = ["rustls-tls"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
