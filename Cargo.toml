@@ -23,7 +23,6 @@ homepage = "https://github.com/containerd/runwasi"
 
 [workspace.dependencies]
 anyhow = "1.0"
-cap-std = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.8"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.9.0" }

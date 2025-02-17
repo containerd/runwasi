@@ -4,7 +4,8 @@ mod protos;
 mod traits;
 mod utils;
 
-use std::path::PathBuf;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::sync::Arc;
 use std::time::Instant;
@@ -16,6 +17,7 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _};
 use humantime::{format_duration, parse_duration};
 use nix::sys::prctl::set_child_subreaper;
+use serde::Serialize;
 use tokio::signal::ctrl_c;
 use tokio::sync::{Barrier, OnceCell, Semaphore};
 use tokio::time::Duration;
@@ -28,6 +30,15 @@ enum Step {
     Start,
     Wait,
     Delete,
+}
+
+#[derive(Serialize)]
+struct BenchmarkResult {
+    name: String,
+    unit: String,
+    value: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    extra: Option<String>,
 }
 
 #[derive(Parser)]
@@ -65,6 +76,10 @@ struct Cli {
     /// Image to use for the test
     image: String,
 
+    #[arg(long)]
+    /// Output the benchmark results to a JSON file
+    json_output: Option<PathBuf>,
+
     /// Path to the shim binary
     shim: PathBuf,
 
@@ -95,21 +110,33 @@ async fn main_impl() -> Result<()> {
     }
 }
 
+fn get_runtime(path: &Path) -> Option<&str> {
+    let runtime = path
+        .file_name()?
+        .to_str()?
+        .strip_prefix("containerd-shim-")?
+        .split_once('-')?
+        .0;
+    Some(runtime)
+}
+
 async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let Cli {
-        shim,
+        containerd,
+        shim: shim_path,
         container_output,
         parallel,
         count,
         timeout,
         image,
+        json_output,
         args,
         ..
     } = cli;
 
     println!("\x1b[1mUsing image {image:?} with arguments {args:?}\x1b[0m");
 
-    let shim = c8d.start_shim(shim).await?;
+    let shim = c8d.start_shim(shim_path.clone()).await?;
     let shim = Arc::new(shim);
 
     // create a "pause" container to keep the shim running
@@ -222,11 +249,29 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
 
     let elapsed = start.get().unwrap().elapsed();
     let throuput = count as f64 / elapsed.as_secs_f64();
-    let elapsed = format_duration(elapsed);
+    let duration = format_duration(elapsed);
 
     println!("\x1b[32m{success} tasks succeeded\x1b[0m");
-    println!("\x1b[32m  elapsed time: {elapsed}\x1b[0m");
+    println!("\x1b[32m  elapsed time: {duration}\x1b[0m");
     println!("\x1b[32m  throuput: {throuput} tasks/s\x1b[0m");
 
+    let shim = get_runtime(&shim_path).unwrap_or("unknown");
+    let containerd_shim = if containerd { "containerd" } else { "mock" };
+
+    if let Some(json_output) = json_output {
+        let results = vec![BenchmarkResult {
+            name: format!(
+                "Stress Test Tasks Throughput with {} service - {}",
+                containerd_shim, shim
+            ),
+            unit: "tasks/s".to_string(),
+            value: throuput,
+            extra: Some(format!(
+                "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
+                image, count, parallel, duration
+            )),
+        }];
+        serde_json::to_writer_pretty(&mut File::create(json_output)?, &results)?;
+    }
     Ok(())
 }
