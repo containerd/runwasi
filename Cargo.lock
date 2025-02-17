@@ -940,7 +940,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "ttrpc-codegen",
- "wasmparser 0.224.0",
+ "wasmparser 0.225.0",
  "wat",
  "windows-sys 0.59.0",
  "zygote",
@@ -6461,7 +6461,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7249cf8cb0c6b9cb42bce90c0a5feb276fbf963fa385ff3d818ab3d90818ed6"
 dependencies = [
  "leb128",
- "wasmparser 0.224.0",
+ "wasmparser 0.224.1",
 ]
 
 [[package]]
@@ -6488,7 +6488,7 @@ dependencies = [
  "spdx",
  "url",
  "wasm-encoder 0.224.0",
- "wasmparser 0.224.0",
+ "wasmparser 0.224.1",
 ]
 
 [[package]]
@@ -6910,15 +6910,14 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.224.0"
+version = "0.224.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65881a664fdd43646b647bb27bf186ab09c05bf56779d40aed4c6dce47d423f5"
+checksum = "04f17a5917c2ddd3819e84c661fae0d6ba29d7b9c1f0e96c708c65a9c4188e11"
 dependencies = [
  "bitflags 2.6.0",
  "hashbrown 0.15.2",
  "indexmap 2.7.1",
  "semver",
- "serde",
 ]
 
 [[package]]
@@ -6928,8 +6927,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36e5456165f81e64cb9908a0fe9b9d852c2c74582aa3fe2be3c2da57f937d3ae"
 dependencies = [
  "bitflags 2.6.0",
+ "hashbrown 0.15.2",
  "indexmap 2.7.1",
  "semver",
+ "serde",
 ]
 
 [[package]]
@@ -7708,7 +7709,7 @@ dependencies = [
  "serde_json",
  "wasm-encoder 0.224.0",
  "wasm-metadata",
- "wasmparser 0.224.0",
+ "wasmparser 0.224.1",
  "wit-parser 0.224.0",
 ]
 
@@ -7745,7 +7746,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "unicode-xid",
- "wasmparser 0.224.0",
+ "wasmparser 0.224.1",
 ]
 
 [[package]]
