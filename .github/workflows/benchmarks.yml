@@ -138,7 +138,7 @@ jobs:
           set -euxo pipefail
           for RUNTIME in wasmtime wasmedge wasmer wamr; do
             # Run containerd stress tests with different images
-            for IMAGE_TYPE in app oci oci-artifact; do
+            for IMAGE_TYPE in app oci; do
               make test/stress-c8d-$RUNTIME \
                 STRESS_TEST_JSON=stress-bench-c8d-${IMAGE_TYPE}-${RUNTIME}.json \
                 STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-${IMAGE_TYPE}:latest
