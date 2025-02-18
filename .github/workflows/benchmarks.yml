@@ -127,25 +127,26 @@ jobs:
       - uses: ./.github/actions/setup-env
       - name: Setup build profile
         shell: bash
-        run: echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
+        run: |
+          echo "OPT_PROFILE=release" >> ${GITHUB_ENV}
+          echo "STRESS_TEST_COUNT=1000" >> ${GITHUB_ENV}
+          echo "STRESS_TEST_TIMEOUT=10s" >> ${GITHUB_ENV}
       - uses: ./.github/actions/build
       - name: Run Stress Tests
         shell: bash
         run: |
           set -euxo pipefail
           for RUNTIME in wasmtime wasmedge wasmer wamr; do
-            # Run containerd stress test
-            make test/stress-c8d-$RUNTIME \
-              STRESS_TEST_COUNT=1000 \
-              STRESS_TEST_TIMEOUT=10s \
-              STRESS_TEST_JSON=stress-bench-c8d-$RUNTIME.json \
-              STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-app:latest
-            
+            # Run containerd stress tests with different images
+            for IMAGE_TYPE in app oci oci-artifact; do
+              make test/stress-c8d-$RUNTIME \
+                STRESS_TEST_JSON=stress-bench-c8d-${IMAGE_TYPE}-${RUNTIME}.json \
+                STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-${IMAGE_TYPE}:latest
+            done
+
             # Run non-containerd stress test
-            make OPT_PROFILE=release test/stress-$RUNTIME \
-              STRESS_TEST_COUNT=1000 \
-              STRESS_TEST_TIMEOUT=10s \
-              STRESS_TEST_JSON=stress-bench-$RUNTIME.json \
+            make test/stress-$RUNTIME \
+              STRESS_TEST_JSON=stress-bench-${RUNTIME}.json \
               STRESS_TEST_IMAGE=ghcr.io/containerd/runwasi/wasi-demo-app:latest
           done
           cat stress-bench-*.json | jq -s 'flatten(1)' > stress-bench.json
