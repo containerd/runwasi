@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739924263560,
+  "lastUpdate": 1739924265031,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -5578,6 +5578,52 @@ window.BENCHMARK_DATA = {
             "value": 85756565,
             "range": "± 1075745",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "472f431542f5a7e37168bc7dd974d011f56ad207",
+          "message": "Merge pull request #855 from containerd/add-stress-test-to-benchmark\n\nAdd stress-test to the benchmark CI",
+          "timestamp": "2025-02-17T23:05:06Z",
+          "url": "https://github.com/containerd/runwasi/commit/472f431542f5a7e37168bc7dd974d011f56ad207"
+        },
+        "date": 1739924264532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14188,
+            "unit": "kB",
+            "extra": "shim: 11520 kB\nzygote: 2668 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 64780,
+            "unit": "kB",
+            "extra": "shim: 52480 kB\nzygote: 12300 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 17512,
+            "unit": "kB",
+            "extra": "shim: 14336 kB\nzygote: 3176 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 18768,
+            "unit": "kB",
+            "extra": "shim: 15488 kB\nzygote: 3280 kB"
           }
         ]
       }
