@@ -1,7 +1,7 @@
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use containerd_client::types::Mount;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, Spec, SpecBuilder, UserBuilder};
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 use tokio_async_drop::tokio_async_drop;
 
 use super::Client;
@@ -99,7 +99,10 @@ impl crate::traits::Task for Task {
         let status = self.containerd.wait_task(&self.id).await?;
         let stdout = std::fs::read_to_string(self.dir.path().join("stdout")).unwrap_or_default();
         let stderr = std::fs::read_to_string(self.dir.path().join("stderr")).unwrap_or_default();
-        ensure!(status == 0, "Exit status {status}, stdout: {stdout:?}, stderr: {stderr:?}");
+        ensure!(
+            status == 0,
+            "Exit status {status}, stdout: {stdout:?}, stderr: {stderr:?}"
+        );
         Ok(())
     }
 

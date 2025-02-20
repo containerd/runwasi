@@ -360,7 +360,9 @@ impl Client {
         stdout: impl Into<String>,
         stderr: impl Into<String>,
     ) -> Result<()> {
-        self.0.create_task(container_id, mounts, stdout, stderr).await
+        self.0
+            .create_task(container_id, mounts, stdout, stderr)
+            .await
     }
 
     pub async fn start_task(&self, container_id: impl Into<String>) -> Result<()> {
@@ -408,6 +410,9 @@ mod test {
             String::from("sha256:4d851d7c3ef9a3cb8c6553806846038c3c81498e1f6d6dc60bb03291f223b99a"),
         ];
         let chain_id = super::chain_id(diffs);
-        assert_eq!(chain_id, "sha256:0f8505411d5fe958101c5e6b6e31c61262a05f7aff548bf7742ff1ad24d6bf88");
+        assert_eq!(
+            chain_id,
+            "sha256:0f8505411d5fe958101c5e6b6e31c61262a05f7aff548bf7742ff1ad24d6bf88"
+        );
     }
 }

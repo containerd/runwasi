@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use nix::NixPath;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder, UserBuilder};
-use tempfile::{tempdir_in, TempDir};
+use tempfile::{TempDir, tempdir_in};
 use tokio::fs::{create_dir_all, write};
 use tokio_async_drop::tokio_async_drop;
 
@@ -48,7 +48,10 @@ impl Task {
             format!("sandbox-{}", std::process::id()),
         )];
 
-        let root = RootBuilder::default().path("rootfs").build()?;
+        let root = RootBuilder::default()
+            .path("rootfs")
+            .readonly(false)
+            .build()?;
 
         let spec = SpecBuilder::default()
             .version("1.1.0")
@@ -106,12 +109,8 @@ impl crate::traits::Task for Task {
     }
 
     async fn wait(&self) -> Result<()> {
-<<<<<<< HEAD
-        self.client
-=======
         let status = self
             .client
->>>>>>> babd163 ([stress-test] fail and print stdout/stderr if container exit status is not 0)
             .wait(WaitRequest {
                 id: self.id.clone(),
                 ..Default::default()
