@@ -9,10 +9,8 @@ pub struct Containerd {
 }
 
 impl Containerd {
-    pub async fn new() -> Result<Self> {
-        Ok(Self {
-            containerd: Client::default().await?,
-        })
+    pub async fn new(client: Client) -> Result<Self> {
+        Ok(Self { containerd: client })
     }
 }
 

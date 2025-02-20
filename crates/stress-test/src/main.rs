@@ -79,7 +79,6 @@ struct Cli {
     /// Path to the shim binary
     shim: PathBuf,
 
-    #[clap(default_values = ["echo", "hello"])]
     /// Arguments to pass to the image
     args: Vec<String>,
 }
@@ -95,13 +94,23 @@ async fn main() -> Result<()> {
 async fn main_impl() -> Result<()> {
     env_logger::try_init()?;
 
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+
+    let client = containerd::Client::default().await?;
+
+    if cli.args.is_empty() {
+        if cli.image == "ghcr.io/containerd/runwasi/wasi-demo-app:latest" {
+            cli.args = vec!["/wasi-demo-app.wasm".into(), "echo".into(), "hello".into()];
+        } else {
+            cli.args = client.entrypoint(&cli.image).await?;
+        }
+    }
 
     if cli.containerd {
-        let containerd = containerd::Containerd::new().await?;
+        let containerd = containerd::Containerd::new(client).await?;
         run_stress_test(cli, containerd).await
     } else {
-        let containerd = mocks::Containerd::new(cli.verbose).await?;
+        let containerd = mocks::Containerd::new(client, cli.verbose).await?;
         run_stress_test(cli, containerd).await
     }
 }

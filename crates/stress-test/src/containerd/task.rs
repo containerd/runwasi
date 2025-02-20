@@ -31,15 +31,9 @@ impl Task {
         let runtime = runtime.into();
 
         let id = make_task_id();
-        let entrypoint = containerd.entrypoint(&image).await?;
         let mounts = containerd.get_mounts(&id, &image).await?;
 
-        let mut args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
-        if args.is_empty() {
-            args = entrypoint;
-        } else if let Some(argv0) = entrypoint.into_iter().next() {
-            args.insert(0, argv0);
-        }
+        let args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
 
         let process = ProcessBuilder::default()
             .user(UserBuilder::default().build().unwrap())
