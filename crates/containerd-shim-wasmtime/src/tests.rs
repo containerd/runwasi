@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use WasmtimeTestInstance as WasiInstance;
 use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::testing::modules::*;
-use containerd_shim_wasm::testing::{oci_helpers, WasiTest};
+use containerd_shim_wasm::testing::{WasiTest, oci_helpers};
 use serial_test::serial;
-use WasmtimeTestInstance as WasiInstance;
 
 use crate::instance::WasmtimeEngine;
 

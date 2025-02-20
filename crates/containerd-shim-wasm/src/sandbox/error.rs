@@ -2,8 +2,8 @@
 //! This handles converting to the appropriate ttrpc error codes
 
 use anyhow::Error as AnyError;
-use containerd_shim::protos::ttrpc;
 use containerd_shim::Error as ShimError;
+use containerd_shim::protos::ttrpc;
 use oci_spec::OciSpecError;
 use thiserror::Error;
 

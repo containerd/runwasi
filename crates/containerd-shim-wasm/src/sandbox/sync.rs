@@ -86,7 +86,7 @@ impl<T> WaitableCell<T> {
     /// The function `f` will always be called, regardless of whether the `WaitableCell` has a value or not.
     /// The `WaitableCell` is going to be set even in the case of an unwind. In this case, ff the function `f`
     /// panics it will cause an abort, so it's recommended to avoid any panics in `f`.
-    pub fn set_guard_with<R: Into<T>>(&self, f: impl FnOnce() -> R) -> impl Drop {
+    pub fn set_guard_with<R: Into<T>, F: FnOnce() -> R>(&self, f: F) -> impl Drop + use<F, T, R> {
         let cell = (*self).clone();
         WaitableCellSetGuard { f: Some(f), cell }
     }

@@ -3,25 +3,25 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use containerd_shim_wasm::container::RuntimeContext;
 use hyper::server::conn::http1;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
-use wasmtime::component::ResourceTable;
 use wasmtime::Store;
-use wasmtime_wasi_http::bindings::http::types::Scheme;
+use wasmtime::component::ResourceTable;
 use wasmtime_wasi_http::bindings::ProxyPre;
+use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::instance::{envs_from_ctx, WasiPreview2Ctx};
+use crate::instance::{WasiPreview2Ctx, envs_from_ctx};
 
 const DEFAULT_ADDR: SocketAddr =
     SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), 8080);

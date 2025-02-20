@@ -1,7 +1,7 @@
 //! Testing utilities used across different modules
 
 use std::collections::HashMap;
-use std::fs::{self, create_dir, read, read_to_string, write, File};
+use std::fs::{self, File, create_dir, read, read_to_string, write};
 use std::marker::PhantomData;
 use std::ops::Add;
 #[cfg(unix)]
@@ -11,12 +11,12 @@ use std::os::windows::fs::symlink_file as symlink;
 use std::path::Path;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 pub use containerd_shim_wasm_test_modules as modules;
 use libc::{SIGINT, SIGTERM};
 use oci_spec::runtime::{
-    get_default_namespaces, LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder,
-    RootBuilder, SpecBuilder,
+    LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder, RootBuilder, SpecBuilder,
+    get_default_namespaces,
 };
 
 use crate::sandbox::{Instance, InstanceConfig};
@@ -311,11 +311,11 @@ where
 }
 
 pub mod oci_helpers {
-    use std::fs::{write, File};
+    use std::fs::{File, write};
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
 
-    use anyhow::{bail, Result};
+    use anyhow::{Result, bail};
     use oci_spec::image::{self as spec, Arch};
     use oci_tar_builder::Builder;
 

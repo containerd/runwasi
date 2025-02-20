@@ -28,7 +28,7 @@ use super::otel::extract_context;
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::instance_data::InstanceData;
-use crate::sandbox::{oci, Error, Result};
+use crate::sandbox::{Error, Result, oci};
 use crate::sys::metrics::get_metrics;
 
 #[cfg(test)]
@@ -383,19 +383,21 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
         #[cfg(feature = "opentelemetry")]
         {
-            use tracing::{span, Level, Span};
+            use tracing::{Level, Span, span};
             let parent_span = Span::current();
             parent_span.set_parent(extract_context(&_ctx.metadata));
 
             let (tx, rx) = std::sync::mpsc::channel();
             // Start a thread to export interval span for long wait
 
-            let _ = thread::spawn(move || loop {
-                let current_span =
-                    span!(parent: &parent_span, Level::INFO, "task wait 60s interval");
-                let _enter = current_span.enter();
-                if rx.recv_timeout(Duration::from_secs(60)).is_ok() {
-                    break;
+            let _ = thread::spawn(move || {
+                loop {
+                    let current_span =
+                        span!(parent: &parent_span, Level::INFO, "task wait 60s interval");
+                    let _enter = current_span.enter();
+                    if rx.recv_timeout(Duration::from_secs(60)).is_ok() {
+                        break;
+                    }
                 }
             });
             let result = self.task_wait(req)?;

@@ -3,8 +3,8 @@
 use std::mem::ManuallyDrop;
 
 use anyhow::Context as _;
-use containerd_client::services::v1::leases_client::LeasesClient;
 use containerd_client::services::v1::DeleteRequest;
+use containerd_client::services::v1::leases_client::LeasesClient;
 use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
 use tonic::Request;

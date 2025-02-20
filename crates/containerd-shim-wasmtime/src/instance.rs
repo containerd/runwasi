@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::LazyLock;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use containerd_shim_wasm::container::{
     Engine, Entrypoint, Instance, RuntimeContext, WasmBinaryType,
 };
@@ -416,7 +416,7 @@ fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuild
 async fn wait_for_signal() -> Result<i32> {
     #[cfg(unix)]
     {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
         let mut sigquit = signal(SignalKind::quit())?;
         let mut sigterm = signal(SignalKind::terminate())?;
 

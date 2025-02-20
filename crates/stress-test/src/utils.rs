@@ -1,11 +1,11 @@
-use std::future::{pending, Future};
+use std::future::{Future, pending};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use anyhow::Result;
-use nix::sys::signal::kill;
 use nix::sys::signal::Signal::SIGKILL;
-use nix::sys::wait::{waitpid, WaitPidFlag};
+use nix::sys::signal::kill;
+use nix::sys::wait::{WaitPidFlag, waitpid};
 use nix::unistd::Pid;
 use tokio::sync::Mutex;
 use tokio::time::sleep;

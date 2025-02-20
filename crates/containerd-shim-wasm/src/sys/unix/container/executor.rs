@@ -5,7 +5,7 @@ use std::io::Read;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,

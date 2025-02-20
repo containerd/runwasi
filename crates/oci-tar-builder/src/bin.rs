@@ -82,7 +82,7 @@ async fn generate_wasm_artifact(args: Args, out_dir: PathBuf) -> Result<(), anyh
                 out_dir.display(),
                 e
             );
-            fs::remove_file(out_dir).unwrap_or(print!("Failed to clean up oci tar file on error"));
+            fs::remove_file(out_dir).context("Failed to clean up oci tar file on error")?;
         }
     }
 
@@ -180,7 +180,7 @@ fn generate_wasi_image(args: Args, out_dir: PathBuf) -> Result<(), anyhow::Error
                 out_dir.display(),
                 e
             );
-            fs::remove_file(out_dir).unwrap_or(print!("Failed to remove temporary file"));
+            fs::remove_file(out_dir).context("Failed to remove temporary file")?;
         }
     }
 

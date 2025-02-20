@@ -1,8 +1,8 @@
 use std::time::Duration;
 
+use containerd_shim_wasm::testing::WasiTest;
 //use containerd_shim_wasm::sandbox::Instance;
 use containerd_shim_wasm::testing::modules::*;
-use containerd_shim_wasm::testing::WasiTest;
 use serial_test::serial;
 
 use crate::instance::WasmEdgeInstance as WasiInstance;
@@ -123,7 +123,7 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 fn get_wasmedge_binary_path() -> std::path::PathBuf {
     use std::os::unix::prelude::OsStrExt;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn WasmEdge_VersionGet() -> *const libc::c_char;
     }
 

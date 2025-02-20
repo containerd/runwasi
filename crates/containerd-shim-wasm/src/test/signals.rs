@@ -20,13 +20,13 @@
 
 use std::fs::canonicalize;
 use std::future::pending;
-use std::io::{stderr, Write as _};
-use std::sync::mpsc::channel;
+use std::io::{Write as _, stderr};
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread::sleep;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
 
 use crate::container::{Engine, Instance, RuntimeContext};

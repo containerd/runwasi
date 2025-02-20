@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::errno::Errno;
-use nix::sys::wait::{waitid, Id as WaitID, WaitPidFlag, WaitStatus};
+use nix::sys::wait::{Id as WaitID, WaitPidFlag, WaitStatus, waitid};
 use nix::unistd::Pid;
 use oci_spec::image::Platform;
 
@@ -17,7 +17,7 @@ use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance_utils::determine_rootdir;
 use crate::sandbox::sync::WaitableCell;
 use crate::sandbox::{
-    containerd, Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
+    Error as SandboxError, Instance as SandboxInstance, InstanceConfig, containerd,
 };
 use crate::sys::container::executor::Executor;
 use crate::sys::stdio::open;
@@ -94,7 +94,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     fn start(&self) -> Result<u32, SandboxError> {
         log::info!("starting instance: {}", self.id);
         // make sure we have an exit code by the time we finish (even if there's a panic)
-        let guard = self.exit_code.set_guard_with(|| (137, Utc::now()));
+        let guard = self.exit_code.clone().set_guard_with(|| (137, Utc::now()));
 
         let pid = self.container.pid()?;
         self.container.start()?;

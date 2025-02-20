@@ -13,8 +13,8 @@ use containerd_client::services::v1::{
     InfoRequest, ReadContentRequest, UpdateRequest, WriteAction, WriteContentRequest,
     WriteContentResponse,
 };
-use containerd_client::tonic::transport::Channel;
 use containerd_client::tonic::Streaming;
+use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
 use futures::TryStreamExt;
 use oci_spec::image::{Arch, Digest, ImageManifest, MediaType, Platform};
@@ -601,15 +601,15 @@ async fn send_message(
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use std::sync::atomic::{AtomicI32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicI32, Ordering};
 
     use oci_tar_builder::WASM_LAYER_MEDIA_TYPE;
 
     use super::*;
     use crate::container::RuntimeContext;
     use crate::testing::oci_helpers::ImageContent;
-    use crate::testing::{oci_helpers, TEST_NAMESPACE};
+    use crate::testing::{TEST_NAMESPACE, oci_helpers};
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_save_content() {

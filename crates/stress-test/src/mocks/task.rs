@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::info;
 use nix::NixPath;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder, UserBuilder};
-use tempfile::{tempdir_in, TempDir};
+use tempfile::{TempDir, tempdir_in};
 use tokio::fs::{canonicalize, create_dir_all, write};
 use tokio_async_drop::tokio_async_drop;
 use trapeze::Client;
@@ -15,7 +15,7 @@ use crate::protos::containerd::task::v2::{
 };
 use crate::protos::containerd::types::Mount;
 use crate::traits::Task as _;
-use crate::utils::{make_task_id, RunOnce};
+use crate::utils::{RunOnce, make_task_id};
 
 pub struct Task {
     id: String,

@@ -5,14 +5,14 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use containerd_client::services::v1::container::Runtime;
 use containerd_client::services::v1::containers_client::ContainersClient;
 use containerd_client::services::v1::content_client::ContentClient;
 use containerd_client::services::v1::images_client::ImagesClient;
 use containerd_client::services::v1::leases_client::LeasesClient;
-use containerd_client::services::v1::snapshots::snapshots_client::SnapshotsClient;
 use containerd_client::services::v1::snapshots::PrepareSnapshotRequest;
+use containerd_client::services::v1::snapshots::snapshots_client::SnapshotsClient;
 use containerd_client::services::v1::tasks_client::TasksClient;
 use containerd_client::services::v1::{
     Container as SpecContainer, CreateContainerRequest, CreateRequest, CreateTaskRequest,
@@ -25,8 +25,8 @@ use oci_spec::image::{ImageConfiguration, ImageManifest};
 use oci_spec::runtime::Spec;
 use prost_types::Any;
 use tokio_async_drop::tokio_async_drop as async_drop;
-use tonic::transport::Channel;
 use tonic::Request;
+use tonic::transport::Channel;
 
 struct ClientInner {
     channel: Channel,
