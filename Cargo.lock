@@ -5227,6 +5227,7 @@ dependencies = [
  "prost-types 0.13.5",
  "serde",
  "serde_json",
+ "sha256",
  "tempfile",
  "tokio",
  "tokio-async-drop",

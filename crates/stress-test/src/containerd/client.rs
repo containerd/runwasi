@@ -158,12 +158,12 @@ impl ClientInner {
     pub(crate) async fn snapshot(
         &self,
         id: String,
-        diffs: Vec<String>,
+        parent: String,
     ) -> Result<Vec<containerd_client::types::Mount>> {
         let mut client = SnapshotsClient::new(self.channel.clone());
         let request = PrepareSnapshotRequest {
             key: id,
-            parent: diffs.join(" "),
+            parent,
             snapshotter: String::from("overlayfs"),
             ..Default::default()
         };
@@ -325,7 +325,8 @@ impl Client {
     ) -> Result<Vec<Mount>> {
         let config = self.0.image_config(image.into()).await?;
         let diffs = config.rootfs().diff_ids().clone();
-        let mounts = self.0.snapshot(id.into(), diffs).await?;
+        let chain_id = chain_id(diffs);
+        let mounts = self.0.snapshot(id.into(), chain_id).await?;
         Ok(mounts)
     }
 
@@ -383,5 +384,27 @@ impl Client {
 impl Clone for Client {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+fn chain_id(digests: Vec<String>) -> String {
+    let mut chain_id = digests.get(0).cloned().unwrap_or_default();
+    for digest in digests.iter().skip(1) {
+        chain_id = sha256::digest(format!("{chain_id} {digest}"));
+        chain_id = format!("sha256:{chain_id}");
+    }
+    chain_id
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn chain_id_smoke() {
+        let diffs = vec![
+            String::from("sha256:6f60b56fd4d6a01ebc6ee4133eb429a00c327acc869a0c6083f0e4bc784d8d07"),
+            String::from("sha256:4d851d7c3ef9a3cb8c6553806846038c3c81498e1f6d6dc60bb03291f223b99a"),
+        ];
+        let chain_id = super::chain_id(diffs);
+        assert_eq!(chain_id, "sha256:0f8505411d5fe958101c5e6b6e31c61262a05f7aff548bf7742ff1ad24d6bf88");
     }
 }
