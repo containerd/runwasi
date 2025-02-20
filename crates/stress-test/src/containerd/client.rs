@@ -211,6 +211,7 @@ impl ClientInner {
         container_id: impl Into<String>,
         mounts: impl Into<Vec<Mount>>,
         stdout: impl Into<String>,
+        stderr: impl Into<String>,
     ) -> Result<()> {
         let mut client = TasksClient::new(self.channel.clone());
 
@@ -218,6 +219,7 @@ impl ClientInner {
             container_id: container_id.into(),
             rootfs: mounts.into(),
             stdout: stdout.into(),
+            stderr: stderr.into(),
             ..Default::default()
         };
         let request = self.with_metadata(request);
@@ -241,7 +243,7 @@ impl ClientInner {
         Ok(())
     }
 
-    async fn wait_task(&self, container_id: impl Into<String>) -> Result<()> {
+    async fn wait_task(&self, container_id: impl Into<String>) -> Result<u32> {
         let mut client = TasksClient::new(self.channel.clone());
 
         let request = WaitRequest {
@@ -250,9 +252,9 @@ impl ClientInner {
         };
         let request = self.with_metadata(request);
 
-        client.wait(request).await?;
-
-        Ok(())
+        let response = client.wait(request).await?;
+        let status = response.into_inner().exit_status;
+        Ok(status)
     }
 
     async fn kill_task(&self, container_id: impl Into<String>) -> Result<()> {
@@ -356,15 +358,16 @@ impl Client {
         container_id: impl Into<String>,
         mounts: impl Into<Vec<Mount>>,
         stdout: impl Into<String>,
+        stderr: impl Into<String>,
     ) -> Result<()> {
-        self.0.create_task(container_id, mounts, stdout).await
+        self.0.create_task(container_id, mounts, stdout, stderr).await
     }
 
     pub async fn start_task(&self, container_id: impl Into<String>) -> Result<()> {
         self.0.start_task(container_id).await
     }
 
-    pub async fn wait_task(&self, container_id: impl Into<String>) -> Result<()> {
+    pub async fn wait_task(&self, container_id: impl Into<String>) -> Result<u32> {
         self.0.wait_task(container_id).await
     }
 

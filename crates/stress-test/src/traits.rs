@@ -20,7 +20,7 @@ pub trait Shim {
 
 #[trait_variant::make(Send)]
 pub trait Task {
-    async fn create(&self, verbose: bool) -> Result<()>;
+    async fn create(&self) -> Result<()>;
     async fn start(&self) -> Result<()>;
     async fn wait(&self) -> Result<()>;
     async fn delete(&self) -> Result<()>;

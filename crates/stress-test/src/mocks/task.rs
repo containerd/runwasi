@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use nix::NixPath;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder, UserBuilder};
-use tempfile::{TempDir, tempdir_in};
-use tokio::fs::{canonicalize, create_dir_all, write};
+use tempfile::{tempdir_in, TempDir};
+use tokio::fs::{create_dir_all, write};
 use tokio_async_drop::tokio_async_drop;
 
 use super::task_client::TaskClient;
@@ -81,22 +81,19 @@ impl Task {
 }
 
 impl crate::traits::Task for Task {
-    async fn create(&self, verbose: bool) -> Result<()> {
-        let stdout = if !verbose {
-            PathBuf::new()
-        } else if let Ok(stdout) = canonicalize("/proc/self/fd/1").await {
-            stdout
-        } else {
-            PathBuf::new()
-        };
+    async fn create(&self) -> Result<()> {
+        let stdout = self.dir.path().join("stdout");
+        let stderr = self.dir.path().join("stderr");
 
-        let stdout = stdout.to_string_lossy().into_owned();
+        let _ = std::fs::write(&stdout, "");
+        let _ = std::fs::write(&stderr, "");
 
         self.client
             .create(CreateTaskRequest {
                 id: self.id.clone(),
                 bundle: self.dir.path().to_string_lossy().into_owned(),
-                stdout,
+                stdout: stdout.to_string_lossy().into_owned(),
+                stderr: stderr.to_string_lossy().into_owned(),
                 rootfs: self.mounts.clone(),
                 ..Default::default()
             })
@@ -116,12 +113,24 @@ impl crate::traits::Task for Task {
     }
 
     async fn wait(&self) -> Result<()> {
+<<<<<<< HEAD
         self.client
+=======
+        let status = self
+            .client
+>>>>>>> babd163 ([stress-test] fail and print stdout/stderr if container exit status is not 0)
             .wait(WaitRequest {
                 id: self.id.clone(),
                 ..Default::default()
             })
-            .await?;
+            .await?
+            .exit_status;
+        let stdout = std::fs::read_to_string(self.dir.path().join("stdout")).unwrap_or_default();
+        let stderr = std::fs::read_to_string(self.dir.path().join("stderr")).unwrap_or_default();
+        ensure!(
+            status == 0,
+            "Exit status {status}, stdout: {stdout:?}, stderr: {stderr:?}"
+        );
         Ok(())
     }
 

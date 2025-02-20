@@ -30,7 +30,6 @@ macro_rules! multiplex {
                     .await
             }
         }
-        Ok(())
     }};
 }
 
