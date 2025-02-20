@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740011386888,
+  "lastUpdate": 1740011509027,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -5740,6 +5740,76 @@ window.BENCHMARK_DATA = {
             "value": 18892,
             "unit": "kB",
             "extra": "shim: 15616 kB\nzygote: 3276 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "472f431542f5a7e37168bc7dd974d011f56ad207",
+          "message": "Merge pull request #855 from containerd/add-stress-test-to-benchmark\n\nAdd stress-test to the benchmark CI",
+          "timestamp": "2025-02-17T23:05:06Z",
+          "url": "https://github.com/containerd/runwasi/commit/472f431542f5a7e37168bc7dd974d011f56ad207"
+        },
+        "date": 1740011507940,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 134682005,
+            "range": "± 1417450",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 79224121,
+            "range": "± 1112752",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 108858046,
+            "range": "± 1745265",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 120493560,
+            "range": "± 976068",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 129800297,
+            "range": "± 3872813",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 131560301,
+            "range": "± 1735167",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 81209741,
+            "range": "± 1600467",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 81746791,
+            "range": "± 1298162",
+            "unit": "ns/iter"
           }
         ]
       }
