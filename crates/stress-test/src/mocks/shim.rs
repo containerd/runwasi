@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use log::info;
 use oci_spec::runtime::SpecBuilder;
-use tempfile::{tempdir_in, TempDir};
+use tempfile::{TempDir, tempdir_in};
 use tokio::fs::{canonicalize, symlink};
 use tokio::process::Command;
 use tokio_async_drop::tokio_async_drop;

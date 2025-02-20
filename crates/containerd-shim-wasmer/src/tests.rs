@@ -1,8 +1,8 @@
 use std::time::Duration;
 
+use containerd_shim_wasm::testing::WasiTest;
 //use containerd_shim_wasm::sandbox::Instance;
 use containerd_shim_wasm::testing::modules::*;
-use containerd_shim_wasm::testing::WasiTest;
 use serial_test::serial;
 
 use crate::instance::WasmerInstance as WasiInstance;

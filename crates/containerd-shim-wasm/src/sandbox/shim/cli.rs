@@ -6,7 +6,7 @@ use chrono::Utc;
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::write_address;
-use containerd_shim::{self as shim, api, ExitSignal};
+use containerd_shim::{self as shim, ExitSignal, api};
 use oci_spec::runtime::Spec;
 use shim::Flags;
 

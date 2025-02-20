@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use anyhow::Result;
-use tempfile::{tempdir, TempDir};
-use trapeze::{service, Server, ServerHandle};
+use tempfile::{TempDir, tempdir};
+use trapeze::{Server, ServerHandle, service};
 
 use super::Shim;
 use crate::containerd;

@@ -25,15 +25,15 @@
 use std::collections::HashMap;
 use std::env;
 
+use opentelemetry::Context;
 use opentelemetry::global::{self, set_text_map_propagator};
 use opentelemetry::propagation::Extractor;
 use opentelemetry::trace::TraceError;
-use opentelemetry::Context;
-use opentelemetry_otlp::{
-    Protocol, SpanExporterBuilder, WithExportConfig, OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT,
-};
 pub use opentelemetry_otlp::{
     OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+};
+use opentelemetry_otlp::{
+    OTEL_EXPORTER_OTLP_PROTOCOL_DEFAULT, Protocol, SpanExporterBuilder, WithExportConfig,
 };
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::{runtime, trace as sdktrace};

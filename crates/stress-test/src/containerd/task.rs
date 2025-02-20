@@ -8,7 +8,7 @@ use tokio_async_drop::tokio_async_drop;
 
 use super::Client;
 use crate::traits::Task as _;
-use crate::utils::{make_task_id, RunOnce};
+use crate::utils::{RunOnce, make_task_id};
 
 pub struct Task {
     containerd: Client,

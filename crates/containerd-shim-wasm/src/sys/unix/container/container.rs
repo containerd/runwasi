@@ -2,11 +2,11 @@ use std::cell::RefCell;
 use std::io::Error as IoError;
 use std::mem::transmute;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use libcontainer::container::Container as YoukiContainer;
 use libcontainer::signal::Signal;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use zygote::{WireError, Zygote};
 
 thread_local! {

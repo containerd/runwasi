@@ -10,7 +10,7 @@ use oci_spec::image::{
     DescriptorBuilder, Digest, ImageConfiguration, ImageIndexBuilder, ImageManifestBuilder,
     MediaType, PlatformBuilder, SCHEMA_VERSION,
 };
-use oci_wasm::{WasmConfig, WASM_ARCHITECTURE};
+use oci_wasm::{WASM_ARCHITECTURE, WasmConfig};
 use serde::Serialize;
 use sha256::{digest, try_digest};
 #[derive(Debug)]
@@ -290,7 +290,7 @@ impl<C: OciConfig> Builder<C> {
         let mut th = tar::Header::new_gnu();
         th.set_path("manifest.json")?;
         th.set_mode(0o644);
-        th.set_size(mfst_data.as_bytes().len() as u64);
+        th.set_size(mfst_data.len() as u64);
         th.set_cksum();
         tb.append(&th, mfst_data.as_bytes())?;
 

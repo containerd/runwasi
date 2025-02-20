@@ -10,7 +10,7 @@ use std::pin::pin;
 use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{Parser, ValueEnum};
 use futures::future::FusedFuture as _;
 use futures::stream::FuturesUnordered;
@@ -243,7 +243,9 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     }
 
     if success != count {
-        println!("\x1b[31m{success} tasks succeeded, {failed} tasks failed, {incomplete} tasks didn't finish\x1b[0m");
+        println!(
+            "\x1b[31m{success} tasks succeeded, {failed} tasks failed, {incomplete} tasks didn't finish\x1b[0m"
+        );
         bail!("Some tasks did not succeed");
     }
 

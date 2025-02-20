@@ -81,10 +81,10 @@
 
 use std::path::PathBuf;
 
-use containerd_shim::{parse, run, Config};
+use containerd_shim::{Config, parse, run};
 
 #[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{otel_traces_enabled, OtlpConfig};
+use crate::sandbox::shim::{OtlpConfig, otel_traces_enabled};
 use crate::sandbox::{Instance, ShimCli};
 
 pub mod r#impl {
@@ -175,8 +175,8 @@ pub fn shim_main<'a, I>(
         use tokio::runtime::Runtime;
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let _guard = OtlpConfig::build_from_env()
-                .expect("Failed to build OtelConfig.")
+            let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
+            let _guard = otlp_config
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
             shim_main_inner::<I>(name, version, revision, shim_version, config);
@@ -212,7 +212,12 @@ fn shim_main_inner<'a, I>(
             OtlpConfig::set_trace_context(&ctx).unwrap();
         } else {
             let ctx = OtlpConfig::get_trace_context().unwrap();
-            std::env::set_var("TRACECONTEXT", ctx);
+            // SAFETY: although it's in a multithreaded context,
+            // it's safe to assume that all the other threads are not
+            // messing with env vars at this point.
+            unsafe {
+                std::env::set_var("TRACECONTEXT", ctx);
+            }
         }
     }
     let os_args: Vec<_> = std::env::args_os().collect();

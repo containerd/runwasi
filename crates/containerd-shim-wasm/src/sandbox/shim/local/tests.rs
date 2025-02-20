@@ -1,5 +1,5 @@
-use std::fs::{create_dir, File};
-use std::sync::mpsc::{channel, Sender};
+use std::fs::{File, create_dir};
+use std::sync::mpsc::{Sender, channel};
 use std::thread;
 use std::time::Duration;
 
