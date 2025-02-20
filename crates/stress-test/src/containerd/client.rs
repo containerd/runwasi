@@ -21,7 +21,7 @@ use containerd_client::services::v1::{
 };
 use containerd_client::types::Mount;
 use humantime::format_rfc3339;
-use oci_spec::image::{ImageConfiguration, ImageManifest};
+use oci_spec::image::{Arch, ImageConfiguration, ImageIndex, ImageManifest};
 use oci_spec::runtime::Spec;
 use prost_types::Any;
 use tokio_async_drop::tokio_async_drop as async_drop;
@@ -125,9 +125,29 @@ impl ClientInner {
         let request = self.with_metadata(request);
         let response = client.get(request).await?.into_inner();
         let image = response.image.context("Could not find image")?;
-
         let descriptor = image.target.context("Could not find image descriptor")?;
-        let manifest = self.read_content(&descriptor.digest).await?;
+        let mut manifest = self.read_content(&descriptor.digest).await?;
+
+        // If this is a multiplatform image, the manifest will be an index manifest
+        // rather than an image manifest.
+        if let Ok(index) = ImageIndex::from_reader(Cursor::new(&manifest)) {
+            let descriptor = index
+                .manifests()
+                .iter()
+                .find(|m| {
+                    let Some(platform) = m.platform() else {
+                        return false;
+                    };
+                    match platform.architecture() {
+                        Arch::Amd64 => cfg!(target_arch = "x86_64"),
+                        Arch::ARM64 => cfg!(target_arch = "aarch64"),
+                        _ => false,
+                    }
+                })
+                .context("host platform not supported")?;
+            manifest = self.read_content(descriptor.digest()).await?;
+        }
+
         let manifest = ImageManifest::from_reader(Cursor::new(manifest))?;
         let config = self.read_content(manifest.config().digest()).await?;
         let config = ImageConfiguration::from_reader(Cursor::new(config))?;
