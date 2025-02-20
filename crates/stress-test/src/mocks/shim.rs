@@ -1,21 +1,22 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Result, ensure};
 use log::info;
 use oci_spec::runtime::SpecBuilder;
+use serde::Deserialize;
 use tempfile::{TempDir, tempdir_in};
 use tokio::fs::{canonicalize, symlink};
 use tokio::process::Command;
 use tokio_async_drop::tokio_async_drop;
-use trapeze::Client;
 
 use super::Task;
 use crate::containerd;
-use crate::protos::containerd::task::v2::{ShutdownRequest, Task as _};
+use crate::mocks::task_client::TaskClient;
+use crate::protos::containerd::task::v2::ShutdownRequest;
 
 pub struct Shim {
     dir: TempDir,
-    client: Client,
+    client: TaskClient,
     containerd: containerd::Client,
 }
 
@@ -46,7 +47,11 @@ impl Shim {
         info!("Starting shim");
 
         let pid = std::process::id();
-        let output = Command::new(binary.as_ref())
+
+        // Start the shim twice. It seems that with task v3 the first run on the
+        // shim does not return immediately, but rather blocks. Running the shim
+        // twice we make sure that at least one of them will return immediately.
+        let output1 = Command::new(binary.as_ref())
             .args([
                 "-namespace",
                 &format!("shim-benchmark-{pid}"),
@@ -56,16 +61,44 @@ impl Shim {
                 "/run/containerd/containerd.sock",
                 "start",
             ])
-            .process_group(0)
-            .env("TTRPC_ADDRESS", socket)
+            .env("TTRPC_ADDRESS", &socket)
             .current_dir(dir.path())
-            .output()
-            .await?;
+            .output();
 
-        let address = String::from_utf8(output.stdout)?.trim().to_owned();
+        let output2 = Command::new(binary.as_ref())
+            .args([
+                "-namespace",
+                &format!("shim-benchmark-{pid}"),
+                "-id",
+                &format!("shim-benchmark-{pid}"),
+                "-address",
+                "/run/containerd/containerd.sock",
+                "start",
+            ])
+            .env("TTRPC_ADDRESS", &socket)
+            .current_dir(dir.path())
+            .output();
+
+        let output = tokio::select! {
+            o = output1 => o,
+            o = output2 => o
+        }?;
+
+        let mut address = String::from_utf8(output.stdout)?.trim().to_owned();
+        if address.starts_with("{") {
+            #[derive(Deserialize)]
+            struct Address {
+                address: String,
+                protocol: String,
+            }
+
+            let parsed: Address = serde_json::from_str(&address)?;
+            ensure!(parsed.protocol == "ttrpc");
+            address = parsed.address;
+        }
 
         info!("Connecting to {address}");
-        let client = Client::connect(address).await?;
+        let client = TaskClient::connect(address).await?;
 
         Ok(Shim {
             dir,

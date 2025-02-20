@@ -1,18 +1,15 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use log::info;
 use nix::NixPath;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder, UserBuilder};
 use tempfile::{TempDir, tempdir_in};
 use tokio::fs::{canonicalize, create_dir_all, write};
 use tokio_async_drop::tokio_async_drop;
-use trapeze::Client;
 
+use super::task_client::TaskClient;
 use crate::containerd;
-use crate::protos::containerd::task::v2::{
-    CreateTaskRequest, DeleteRequest, StartRequest, Task as _, WaitRequest,
-};
+use crate::protos::containerd::task::v2::*;
 use crate::protos::containerd::types::Mount;
 use crate::traits::Task as _;
 use crate::utils::{RunOnce, make_task_id};
@@ -20,7 +17,7 @@ use crate::utils::{RunOnce, make_task_id};
 pub struct Task {
     id: String,
     dir: TempDir,
-    client: Client,
+    client: TaskClient,
     mounts: Vec<Mount>,
     deleted: RunOnce,
     unmounted: RunOnce,
@@ -32,7 +29,7 @@ impl Task {
         scratch: impl AsRef<Path>,
         image: String,
         args: impl IntoIterator<Item = T>,
-        client: Client,
+        client: TaskClient,
     ) -> Result<Self> {
         let id = make_task_id();
         let mounts = containerd.get_mounts(&id, &image).await?;
@@ -95,8 +92,7 @@ impl crate::traits::Task for Task {
 
         let stdout = stdout.to_string_lossy().into_owned();
 
-        let res = self
-            .client
+        self.client
             .create(CreateTaskRequest {
                 id: self.id.clone(),
                 bundle: self.dir.path().to_string_lossy().into_owned(),
@@ -106,36 +102,26 @@ impl crate::traits::Task for Task {
             })
             .await?;
 
-        info!("create returned {res:?}");
-
         Ok(())
     }
 
     async fn start(&self) -> Result<()> {
-        let res = self
-            .client
+        self.client
             .start(StartRequest {
                 id: self.id.clone(),
                 ..Default::default()
             })
             .await?;
-
-        info!("start returned {res:?}");
-
         Ok(())
     }
 
     async fn wait(&self) -> Result<()> {
-        let res = self
-            .client
+        self.client
             .wait(WaitRequest {
                 id: self.id.clone(),
                 ..Default::default()
             })
             .await?;
-
-        info!("wait returned {res:?}");
-
         Ok(())
     }
 

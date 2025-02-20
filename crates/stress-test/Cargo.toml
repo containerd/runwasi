@@ -9,7 +9,7 @@ homepage.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-trapeze = "0.7"
+trapeze = "0.7.6"
 prost = "0.13"
 prost-types = "0.13"
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "process", "signal"] }

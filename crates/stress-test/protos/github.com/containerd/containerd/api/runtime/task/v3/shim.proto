@@ -1,0 +1,48 @@
+/*
+	Copyright The containerd Authors.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+		http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+syntax = "proto3";
+
+package containerd.task.v3;
+
+import "google/protobuf/empty.proto";
+import "github.com/containerd/containerd/api/runtime/task/v2/shim.proto";
+
+option go_package = "github.com/containerd/containerd/api/runtime/task/v3;task";
+
+// Shim service is launched for each container and is responsible for owning the IO
+// for the container and its additional processes.  The shim is also the parent of
+// each container and allows reattaching to the IO and receiving the exit status
+// for the container processes.
+service Task {
+	rpc State(containerd.task.v2.StateRequest) returns (containerd.task.v2.StateResponse);
+	rpc Create(containerd.task.v2.CreateTaskRequest) returns (containerd.task.v2.CreateTaskResponse);
+	rpc Start(containerd.task.v2.StartRequest) returns (containerd.task.v2.StartResponse);
+	rpc Delete(containerd.task.v2.DeleteRequest) returns (containerd.task.v2.DeleteResponse);
+	rpc Pids(containerd.task.v2.PidsRequest) returns (containerd.task.v2.PidsResponse);
+	rpc Pause(containerd.task.v2.PauseRequest) returns (google.protobuf.Empty);
+	rpc Resume(containerd.task.v2.ResumeRequest) returns (google.protobuf.Empty);
+	rpc Checkpoint(containerd.task.v2.CheckpointTaskRequest) returns (google.protobuf.Empty);
+	rpc Kill(containerd.task.v2.KillRequest) returns (google.protobuf.Empty);
+	rpc Exec(containerd.task.v2.ExecProcessRequest) returns (google.protobuf.Empty);
+	rpc ResizePty(containerd.task.v2.ResizePtyRequest) returns (google.protobuf.Empty);
+	rpc CloseIO(containerd.task.v2.CloseIORequest) returns (google.protobuf.Empty);
+	rpc Update(containerd.task.v2.UpdateTaskRequest) returns (google.protobuf.Empty);
+	rpc Wait(containerd.task.v2.WaitRequest) returns (containerd.task.v2.WaitResponse);
+	rpc Stats(containerd.task.v2.StatsRequest) returns (containerd.task.v2.StatsResponse);
+	rpc Connect(containerd.task.v2.ConnectRequest) returns (containerd.task.v2.ConnectResponse);
+	rpc Shutdown(containerd.task.v2.ShutdownRequest) returns (google.protobuf.Empty);
+}
