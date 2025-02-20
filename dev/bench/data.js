@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739924570861,
+  "lastUpdate": 1740011377849,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7313,6 +7313,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20641.7909,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "472f431542f5a7e37168bc7dd974d011f56ad207",
+          "message": "Merge pull request #855 from containerd/add-stress-test-to-benchmark\n\nAdd stress-test to the benchmark CI",
+          "timestamp": "2025-02-17T23:05:06Z",
+          "url": "https://github.com/containerd/runwasi/commit/472f431542f5a7e37168bc7dd974d011f56ad207"
+        },
+        "date": 1740011377369,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20743.2151,
             "unit": "req/s"
           }
         ]
