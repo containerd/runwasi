@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Context as AnyhowContext;
+use anyhow::{Context as AnyhowContext, ensure};
 use containerd_shim::api::{
     ConnectRequest, ConnectResponse, CreateTaskRequest, CreateTaskResponse, DeleteRequest, Empty,
     KillRequest, ShutdownRequest, StartRequest, StartResponse, StateRequest, StateResponse,
@@ -20,6 +20,9 @@ use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
 use log::debug;
 use oci_spec::runtime::Spec;
+use prost::Message;
+use protobuf::well_known_types::any::Any;
+use serde::Deserialize;
 #[cfg(feature = "opentelemetry")]
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
@@ -33,6 +36,43 @@ use crate::sys::metrics::get_metrics;
 
 #[cfg(test)]
 mod tests;
+
+#[derive(Message, Clone, PartialEq)]
+struct Options {
+    #[prost(string)]
+    type_url: String,
+    #[prost(string)]
+    config_path: String,
+    #[prost(string)]
+    config_body: String,
+}
+
+#[derive(Deserialize, Default, Clone, PartialEq)]
+struct Config {
+    #[serde(alias = "SystemdCgroup")]
+    systemd_cgroup: bool,
+}
+
+impl Config {
+    fn get_from_options(options: Option<&Any>) -> anyhow::Result<Self> {
+        let Some(opts) = options else {
+            return Ok(Default::default());
+        };
+
+        ensure!(
+            opts.type_url == "runtimeoptions.v1.Options",
+            "Invalid options type {}",
+            opts.type_url
+        );
+
+        let opts = Options::decode(opts.value.as_slice())?;
+
+        let config = toml::from_str(opts.config_body.as_str())
+            .map_err(|err| Error::InvalidArgument(format!("invalid shim options: {err}")))?;
+
+        Ok(config)
+    }
+}
 
 type LocalInstances<T> = RwLock<HashMap<String, Arc<InstanceData<T>>>>;
 
@@ -99,6 +139,10 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
     fn task_create(&self, req: CreateTaskRequest) -> Result<CreateTaskResponse> {
+        let config = Config::get_from_options(req.options.as_ref())
+            .map_err(|err| Error::InvalidArgument(format!("invalid shim options: {err}")))?;
+        let systemd_cgroup = config.systemd_cgroup;
+
         if !req.checkpoint().is_empty() || !req.parent_checkpoint().is_empty() {
             return Err(ShimError::Unimplemented("checkpoint is not supported".to_string()).into());
         }
@@ -147,7 +191,8 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         cfg.set_bundle(&req.bundle)
             .set_stdin(&req.stdin)
             .set_stdout(&req.stdout)
-            .set_stderr(&req.stderr);
+            .set_stderr(&req.stderr)
+            .set_systemd_cgroup(systemd_cgroup);
 
         // Check if this is a cri container
         let instance = InstanceData::new(req.id(), cfg)?;

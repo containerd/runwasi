@@ -24,6 +24,8 @@ pub struct InstanceConfig {
     namespace: String,
     /// GRPC address back to main containerd
     containerd_address: String,
+    /// Enables systemd cgroup.
+    systemd_cgroup: bool,
 }
 
 impl InstanceConfig {
@@ -33,6 +35,7 @@ impl InstanceConfig {
         Self {
             namespace,
             containerd_address,
+            systemd_cgroup: true,
             stdin: PathBuf::default(),
             stdout: PathBuf::default(),
             stderr: PathBuf::default(),
@@ -92,6 +95,17 @@ impl InstanceConfig {
     /// get the containerd address for the instance
     pub fn get_containerd_address(&self) -> String {
         self.containerd_address.clone()
+    }
+
+    /// set the systemd cgroup for the instance
+    pub fn set_systemd_cgroup(&mut self, systemd_cgroup: bool) -> &mut Self {
+        self.systemd_cgroup = systemd_cgroup;
+        self
+    }
+
+    /// get the systemd cgroup for the instance
+    pub fn get_systemd_cgroup(&self) -> bool {
+        self.systemd_cgroup
     }
 }
 
