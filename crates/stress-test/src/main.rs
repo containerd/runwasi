@@ -263,12 +263,17 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
 
     let shim = get_runtime(&shim_path).unwrap_or("unknown");
     let containerd_shim = if containerd { "containerd" } else { "mock" };
+    let image = match image.as_str() {
+        "ghcr.io/containerd/runwasi/wasi-demo-oci:latest" => "oci",
+        "ghcr.io/containerd/runwasi/wasi-demo-app:latest" => "app",
+        "ghcr.io/containerd/runwasi/wasi-demo-oci-artifact:latest" => "oci-artifact",
+        others => others,
+    };
 
     if let Some(json_output) = json_output {
         let results = vec![BenchmarkResult {
             name: format!(
-                "Stress Test Tasks Throughput with {} service - {}",
-                containerd_shim, shim
+                "Stress Test Throughput with {containerd_shim} service - {shim} ({image})",
             ),
             unit: "tasks/s".to_string(),
             value: throuput,

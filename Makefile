@@ -149,7 +149,7 @@ test-doc:
 test/stress-%: dist-%
 	# Do not use trace logging as that negatively impacts performance.
 	# Do not use cross (always use cargo) to avoid the qemu environment.
-	cargo run -p stress-test $(TARGET_FLAG) -- \
+	cargo run -p stress-test $(TARGET_FLAG) $(RELEASE_FLAG) -- \
 		$(PWD)/dist/bin/containerd-shim-$*-v1 \
 		--count=$(STRESS_TEST_COUNT) \
 		--parallel=$(STRESS_TEST_PARALLEL) \
@@ -160,7 +160,7 @@ test/stress-%: dist-%
 test/stress-c8d-%: dist-%
 	# Do not use trace logging as that negatively impacts performance.
 	# Do not use cross (always use cargo) to avoid the qemu environment.
-	cargo run -p stress-test $(TARGET_FLAG) -- \
+	cargo run -p stress-test $(TARGET_FLAG) $(RELEASE_FLAG) -- \
 		--containerd \
 		$(PWD)/dist/bin/containerd-shim-$*-v1 \
 		--count=$(STRESS_TEST_COUNT) \
