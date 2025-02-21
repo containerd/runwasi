@@ -5227,6 +5227,7 @@ dependencies = [
  "prost-types 0.13.5",
  "serde",
  "serde_json",
+ "sha256",
  "tempfile",
  "tokio",
  "tokio-async-drop",
@@ -5925,9 +5926,9 @@ dependencies = [
 
 [[package]]
 name = "trapeze"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a2da2a61bcb6db06b2b1e1665a7b7aec6f83e384b544ccf47a039c84b69946f"
+checksum = "35508cc3b25208044772edae64f1aa282e08da46c6a906a37df9cdb02d459daf"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -5949,18 +5950,18 @@ dependencies = [
 
 [[package]]
 name = "trapeze-codegen"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d6f3bfa2fda8c8f5d417fca8030109f5f1b67e91b020bdc34d61a55dcf158f4"
+checksum = "d14d87105c38be204d509e997c5ba53f05bf5f61957d2b4578220aa51eac79a8"
 dependencies = [
  "prost-build 0.13.3",
 ]
 
 [[package]]
 name = "trapeze-macros"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b629c7aad077270c530523c46be16dfba42224824b57b539f9e2674d7e937b2c"
+checksum = "e2a9fd22b2ca0a1103f1cab12fb29becc283be120b3a36581efbc3f9e31044fc"
 dependencies = [
  "anyhow",
  "proc-macro2",

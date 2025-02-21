@@ -21,7 +21,7 @@ use containerd_client::services::v1::{
 };
 use containerd_client::types::Mount;
 use humantime::format_rfc3339;
-use oci_spec::image::{ImageConfiguration, ImageManifest};
+use oci_spec::image::{Arch, ImageConfiguration, ImageIndex, ImageManifest};
 use oci_spec::runtime::Spec;
 use prost_types::Any;
 use tokio_async_drop::tokio_async_drop as async_drop;
@@ -125,9 +125,29 @@ impl ClientInner {
         let request = self.with_metadata(request);
         let response = client.get(request).await?.into_inner();
         let image = response.image.context("Could not find image")?;
-
         let descriptor = image.target.context("Could not find image descriptor")?;
-        let manifest = self.read_content(&descriptor.digest).await?;
+        let mut manifest = self.read_content(&descriptor.digest).await?;
+
+        // If this is a multiplatform image, the manifest will be an index manifest
+        // rather than an image manifest.
+        if let Ok(index) = ImageIndex::from_reader(Cursor::new(&manifest)) {
+            let descriptor = index
+                .manifests()
+                .iter()
+                .find(|m| {
+                    let Some(platform) = m.platform() else {
+                        return false;
+                    };
+                    match platform.architecture() {
+                        Arch::Amd64 => cfg!(target_arch = "x86_64"),
+                        Arch::ARM64 => cfg!(target_arch = "aarch64"),
+                        _ => false,
+                    }
+                })
+                .context("host platform not supported")?;
+            manifest = self.read_content(descriptor.digest()).await?;
+        }
+
         let manifest = ImageManifest::from_reader(Cursor::new(manifest))?;
         let config = self.read_content(manifest.config().digest()).await?;
         let config = ImageConfiguration::from_reader(Cursor::new(config))?;
@@ -138,12 +158,12 @@ impl ClientInner {
     pub(crate) async fn snapshot(
         &self,
         id: String,
-        diffs: Vec<String>,
+        parent: String,
     ) -> Result<Vec<containerd_client::types::Mount>> {
         let mut client = SnapshotsClient::new(self.channel.clone());
         let request = PrepareSnapshotRequest {
             key: id,
-            parent: diffs.join(" "),
+            parent,
             snapshotter: String::from("overlayfs"),
             ..Default::default()
         };
@@ -191,6 +211,7 @@ impl ClientInner {
         container_id: impl Into<String>,
         mounts: impl Into<Vec<Mount>>,
         stdout: impl Into<String>,
+        stderr: impl Into<String>,
     ) -> Result<()> {
         let mut client = TasksClient::new(self.channel.clone());
 
@@ -198,6 +219,7 @@ impl ClientInner {
             container_id: container_id.into(),
             rootfs: mounts.into(),
             stdout: stdout.into(),
+            stderr: stderr.into(),
             ..Default::default()
         };
         let request = self.with_metadata(request);
@@ -221,7 +243,7 @@ impl ClientInner {
         Ok(())
     }
 
-    async fn wait_task(&self, container_id: impl Into<String>) -> Result<()> {
+    async fn wait_task(&self, container_id: impl Into<String>) -> Result<u32> {
         let mut client = TasksClient::new(self.channel.clone());
 
         let request = WaitRequest {
@@ -230,9 +252,9 @@ impl ClientInner {
         };
         let request = self.with_metadata(request);
 
-        client.wait(request).await?;
-
-        Ok(())
+        let response = client.wait(request).await?;
+        let status = response.into_inner().exit_status;
+        Ok(status)
     }
 
     async fn kill_task(&self, container_id: impl Into<String>) -> Result<()> {
@@ -305,7 +327,8 @@ impl Client {
     ) -> Result<Vec<Mount>> {
         let config = self.0.image_config(image.into()).await?;
         let diffs = config.rootfs().diff_ids().clone();
-        let mounts = self.0.snapshot(id.into(), diffs).await?;
+        let chain_id = chain_id(diffs);
+        let mounts = self.0.snapshot(id.into(), chain_id).await?;
         Ok(mounts)
     }
 
@@ -335,15 +358,18 @@ impl Client {
         container_id: impl Into<String>,
         mounts: impl Into<Vec<Mount>>,
         stdout: impl Into<String>,
+        stderr: impl Into<String>,
     ) -> Result<()> {
-        self.0.create_task(container_id, mounts, stdout).await
+        self.0
+            .create_task(container_id, mounts, stdout, stderr)
+            .await
     }
 
     pub async fn start_task(&self, container_id: impl Into<String>) -> Result<()> {
         self.0.start_task(container_id).await
     }
 
-    pub async fn wait_task(&self, container_id: impl Into<String>) -> Result<()> {
+    pub async fn wait_task(&self, container_id: impl Into<String>) -> Result<u32> {
         self.0.wait_task(container_id).await
     }
 
@@ -363,5 +389,30 @@ impl Client {
 impl Clone for Client {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+fn chain_id(digests: Vec<String>) -> String {
+    let mut chain_id = digests.get(0).cloned().unwrap_or_default();
+    for digest in digests.iter().skip(1) {
+        chain_id = sha256::digest(format!("{chain_id} {digest}"));
+        chain_id = format!("sha256:{chain_id}");
+    }
+    chain_id
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn chain_id_smoke() {
+        let diffs = vec![
+            String::from("sha256:6f60b56fd4d6a01ebc6ee4133eb429a00c327acc869a0c6083f0e4bc784d8d07"),
+            String::from("sha256:4d851d7c3ef9a3cb8c6553806846038c3c81498e1f6d6dc60bb03291f223b99a"),
+        ];
+        let chain_id = super::chain_id(diffs);
+        assert_eq!(
+            chain_id,
+            "sha256:0f8505411d5fe958101c5e6b6e31c61262a05f7aff548bf7742ff1ad24d6bf88"
+        );
     }
 }

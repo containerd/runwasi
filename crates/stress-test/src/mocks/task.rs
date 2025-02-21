@@ -1,18 +1,15 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
-use log::info;
+use anyhow::{Result, ensure};
 use nix::NixPath;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder, UserBuilder};
 use tempfile::{TempDir, tempdir_in};
-use tokio::fs::{canonicalize, create_dir_all, write};
+use tokio::fs::{create_dir_all, write};
 use tokio_async_drop::tokio_async_drop;
-use trapeze::Client;
 
+use super::task_client::TaskClient;
 use crate::containerd;
-use crate::protos::containerd::task::v2::{
-    CreateTaskRequest, DeleteRequest, StartRequest, Task as _, WaitRequest,
-};
+use crate::protos::containerd::task::v2::*;
 use crate::protos::containerd::types::Mount;
 use crate::traits::Task as _;
 use crate::utils::{RunOnce, make_task_id};
@@ -20,7 +17,7 @@ use crate::utils::{RunOnce, make_task_id};
 pub struct Task {
     id: String,
     dir: TempDir,
-    client: Client,
+    client: TaskClient,
     mounts: Vec<Mount>,
     deleted: RunOnce,
     unmounted: RunOnce,
@@ -32,20 +29,13 @@ impl Task {
         scratch: impl AsRef<Path>,
         image: String,
         args: impl IntoIterator<Item = T>,
-        client: Client,
+        client: TaskClient,
     ) -> Result<Self> {
         let id = make_task_id();
         let mounts = containerd.get_mounts(&id, &image).await?;
         let mounts = map_mounts(mounts);
 
-        let entrypoint = containerd.entrypoint(&image).await?;
-
-        let mut args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
-        if args.is_empty() {
-            args = entrypoint;
-        } else if let Some(argv0) = entrypoint.into_iter().next() {
-            args.insert(0, argv0);
-        }
+        let args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
 
         let process = ProcessBuilder::default()
             .user(UserBuilder::default().build().unwrap())
@@ -58,7 +48,10 @@ impl Task {
             format!("sandbox-{}", std::process::id()),
         )];
 
-        let root = RootBuilder::default().path("rootfs").build()?;
+        let root = RootBuilder::default()
+            .path("rootfs")
+            .readonly(false)
+            .build()?;
 
         let spec = SpecBuilder::default()
             .version("1.1.0")
@@ -84,58 +77,52 @@ impl Task {
 }
 
 impl crate::traits::Task for Task {
-    async fn create(&self, verbose: bool) -> Result<()> {
-        let stdout = if !verbose {
-            PathBuf::new()
-        } else if let Ok(stdout) = canonicalize("/proc/self/fd/1").await {
-            stdout
-        } else {
-            PathBuf::new()
-        };
+    async fn create(&self) -> Result<()> {
+        let stdout = self.dir.path().join("stdout");
+        let stderr = self.dir.path().join("stderr");
 
-        let stdout = stdout.to_string_lossy().into_owned();
+        let _ = std::fs::write(&stdout, "");
+        let _ = std::fs::write(&stderr, "");
 
-        let res = self
-            .client
+        self.client
             .create(CreateTaskRequest {
                 id: self.id.clone(),
                 bundle: self.dir.path().to_string_lossy().into_owned(),
-                stdout,
+                stdout: stdout.to_string_lossy().into_owned(),
+                stderr: stderr.to_string_lossy().into_owned(),
                 rootfs: self.mounts.clone(),
                 ..Default::default()
             })
             .await?;
 
-        info!("create returned {res:?}");
-
         Ok(())
     }
 
     async fn start(&self) -> Result<()> {
-        let res = self
-            .client
+        self.client
             .start(StartRequest {
                 id: self.id.clone(),
                 ..Default::default()
             })
             .await?;
-
-        info!("start returned {res:?}");
-
         Ok(())
     }
 
     async fn wait(&self) -> Result<()> {
-        let res = self
+        let status = self
             .client
             .wait(WaitRequest {
                 id: self.id.clone(),
                 ..Default::default()
             })
-            .await?;
-
-        info!("wait returned {res:?}");
-
+            .await?
+            .exit_status;
+        let stdout = std::fs::read_to_string(self.dir.path().join("stdout")).unwrap_or_default();
+        let stderr = std::fs::read_to_string(self.dir.path().join("stderr")).unwrap_or_default();
+        ensure!(
+            status == 0,
+            "Exit status {status}, stdout: {stdout:?}, stderr: {stderr:?}"
+        );
         Ok(())
     }
 

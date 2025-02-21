@@ -52,10 +52,6 @@ struct Cli {
     /// Show the shim logs in stderr
     verbose: bool,
 
-    #[arg(short('O'), long)]
-    /// Show the container output in stdout
-    container_output: bool,
-
     #[arg(short, long, default_value("1"))]
     /// Number of tasks to create and start concurrently [0 = no limit]
     parallel: usize,
@@ -83,7 +79,6 @@ struct Cli {
     /// Path to the shim binary
     shim: PathBuf,
 
-    #[clap(default_values = ["echo", "hello"])]
     /// Arguments to pass to the image
     args: Vec<String>,
 }
@@ -99,13 +94,23 @@ async fn main() -> Result<()> {
 async fn main_impl() -> Result<()> {
     env_logger::try_init()?;
 
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+
+    let client = containerd::Client::default().await?;
+
+    if cli.args.is_empty() {
+        if cli.image == "ghcr.io/containerd/runwasi/wasi-demo-app:latest" {
+            cli.args = vec!["/wasi-demo-app.wasm".into(), "echo".into(), "hello".into()];
+        } else {
+            cli.args = client.entrypoint(&cli.image).await?;
+        }
+    }
 
     if cli.containerd {
-        let containerd = containerd::Containerd::new().await?;
+        let containerd = containerd::Containerd::new(client).await?;
         run_stress_test(cli, containerd).await
     } else {
-        let containerd = mocks::Containerd::new(cli.verbose).await?;
+        let containerd = mocks::Containerd::new(client, cli.verbose).await?;
         run_stress_test(cli, containerd).await
     }
 }
@@ -124,7 +129,6 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
     let Cli {
         containerd,
         shim: shim_path,
-        container_output,
         parallel,
         count,
         timeout,
@@ -141,7 +145,7 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
 
     // create a "pause" container to keep the shim running
     let pause = shim.task(&image, &args).await?;
-    pause.create(false).await?;
+    pause.create().await?;
 
     let permits = if parallel == 0 { count } else { parallel };
     let semaphore = Arc::new(Semaphore::new(permits));
@@ -169,7 +173,7 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
             let permit = semaphore.acquire_owned().await?;
             let _ = start.set(Instant::now());
 
-            task.create(container_output).await?;
+            task.create().await?;
             task.start().await?;
 
             // release the concurrency slot

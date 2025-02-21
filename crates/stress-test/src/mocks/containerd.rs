@@ -25,10 +25,9 @@ pub struct Containerd {
 }
 
 impl Containerd {
-    pub async fn new(verbose: bool) -> Result<Self> {
+    pub async fn new(client: containerd::Client, verbose: bool) -> Result<Self> {
         let dir = tempdir()?;
         let socket = dir.path().join("containerd.sock.ttrpc");
-        let containerd = containerd::Client::default().await?;
 
         let _server = Server::new()
             .register(service!(EventsService: Events))
@@ -39,7 +38,7 @@ impl Containerd {
             dir,
             _server,
             verbose,
-            containerd,
+            containerd: client,
         })
     }
 }

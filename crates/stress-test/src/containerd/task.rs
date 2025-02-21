@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
-use anyhow::Result;
+use anyhow::{Result, ensure};
 use containerd_client::types::Mount;
 use oci_spec::runtime::{ProcessBuilder, RootBuilder, Spec, SpecBuilder, UserBuilder};
-use tokio::fs::canonicalize;
+use tempfile::{TempDir, tempdir};
 use tokio_async_drop::tokio_async_drop;
 
 use super::Client;
@@ -19,6 +17,7 @@ pub struct Task {
     spec: Spec,
     task_deleted: RunOnce,
     container_deleted: RunOnce,
+    dir: TempDir,
 }
 
 impl Task {
@@ -32,15 +31,9 @@ impl Task {
         let runtime = runtime.into();
 
         let id = make_task_id();
-        let entrypoint = containerd.entrypoint(&image).await?;
         let mounts = containerd.get_mounts(&id, &image).await?;
 
-        let mut args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
-        if args.is_empty() {
-            args = entrypoint;
-        } else if let Some(argv0) = entrypoint.into_iter().next() {
-            args.insert(0, argv0);
-        }
+        let args: Vec<_> = args.into_iter().map(|arg| arg.into()).collect();
 
         let process = ProcessBuilder::default()
             .user(UserBuilder::default().build().unwrap())
@@ -71,28 +64,28 @@ impl Task {
             spec,
             task_deleted: RunOnce::new(),
             container_deleted: RunOnce::new(),
+            dir: tempdir()?,
         })
     }
 }
 
 impl crate::traits::Task for Task {
-    async fn create(&self, verbose: bool) -> Result<()> {
-        let stdout = if !verbose {
-            PathBuf::new()
-        } else if let Ok(stdout) = canonicalize("/proc/self/fd/1").await {
-            stdout
-        } else {
-            PathBuf::new()
-        };
+    async fn create(&self) -> Result<()> {
+        let stdout = self.dir.path().join("stdout");
+        let stderr = self.dir.path().join("stderr");
+
+        let _ = std::fs::write(&stdout, "");
+        let _ = std::fs::write(&stderr, "");
 
         let stdout = stdout.to_string_lossy().into_owned();
+        let stderr = stderr.to_string_lossy().into_owned();
 
         self.containerd
             .create_container(&self.id, &self.image, &self.runtime, self.spec.clone())
             .await?;
 
         self.containerd
-            .create_task(&self.id, &self.mounts[..], stdout)
+            .create_task(&self.id, &self.mounts[..], stdout, stderr)
             .await?;
 
         Ok(())
@@ -103,7 +96,14 @@ impl crate::traits::Task for Task {
     }
 
     async fn wait(&self) -> Result<()> {
-        self.containerd.wait_task(&self.id).await
+        let status = self.containerd.wait_task(&self.id).await?;
+        let stdout = std::fs::read_to_string(self.dir.path().join("stdout")).unwrap_or_default();
+        let stderr = std::fs::read_to_string(self.dir.path().join("stderr")).unwrap_or_default();
+        ensure!(
+            status == 0,
+            "Exit status {status}, stdout: {stdout:?}, stderr: {stderr:?}"
+        );
+        Ok(())
     }
 
     async fn delete(&self) -> Result<()> {
