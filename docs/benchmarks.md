@@ -22,7 +22,7 @@ The source code for the benchmarks can be found in [benchs/containerd-shim-bench
 
 ### 2. Stress Test
 
-[stress-test](https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/crates/stress-test) is a CLI that runs a stress test for the `runwasi` shims. It allows us to deploy a large number of Wasm-based tasks to evaluate task throughput (number of tasks finished per second) under high-density environments. The stress test supports running workloads with mocked containerd server and a real containerd server and supports running `N` tasks in parallel with `M` concurrency. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "Stress Test Benchmark" section.
+[stress-test](https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/crates/stress-test) is a CLI that runs a stress test for the `runwasi` shims. It allows us to deploy a large number of Wasm-based tasks to evaluate task throughput (number of tasks finished per second) under high-density environments. The stress test supports running workloads with mocked containerd server and a real containerd server and supports running `N` tasks in total with `M` concurrent tasks. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "Stress Test Benchmark" section.
 
 ### 3. Memory
 
