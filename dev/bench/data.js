@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740097893614,
+  "lastUpdate": 1740098175214,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9486,6 +9486,76 @@ window.BENCHMARK_DATA = {
             "value": 16.608642000249368,
             "unit": "tasks/s",
             "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 1m 209ms 618us 582ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "149a62cefde257d6bda614736a99a0aeb0b0ca72",
+          "message": "Merge pull request #862 from Mossaka/benchmark-document\n\ndocs: add benchmarks document",
+          "timestamp": "2025-02-21T00:06:06Z",
+          "url": "https://github.com/containerd/runwasi/commit/149a62cefde257d6bda614736a99a0aeb0b0ca72"
+        },
+        "date": 1740098174673,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "Stress Test Tasks Throughput with containerd service - wamr",
+            "value": 52.52310531661838,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 19s 39ms 239us 854ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with containerd service - wasmedge",
+            "value": 35.20159606875232,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 28s 407ms 802us 818ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with containerd service - wasmer",
+            "value": 14.790316640270257,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 1m 7s 611ms 804us 691ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with containerd service - wasmtime",
+            "value": 14.822412002999702,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 1m 7s 465ms 403us 53ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with mock service - wamr",
+            "value": 82.83057450379563,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 12s 72ms 836us 703ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with mock service - wasmedge",
+            "value": 74.8527970642297,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 13s 359ms 554us 208ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with mock service - wasmer",
+            "value": 16.451569640533123,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 1m 784ms 473us 570ns"
+          },
+          {
+            "name": "Stress Test Tasks Throughput with mock service - wasmtime",
+            "value": 16.15372038626025,
+            "unit": "tasks/s",
+            "extra": "Image: ghcr.io/containerd/runwasi/wasi-demo-app:latest\nTasks: 1000\nParallel: 4\nDuration: 1m 1s 905ms 243us 875ns"
           }
         ]
       }
