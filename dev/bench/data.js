@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740098175214,
+  "lastUpdate": 1740183390921,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -5926,6 +5926,52 @@ window.BENCHMARK_DATA = {
             "value": 83777338,
             "range": "± 1054083",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "70fa4b2eca6631232c0458c4cc66edc44a82641a",
+          "message": "Merge pull request #861 from Mossaka/stress-test-ci-release-flag\n\nci: Add oci and oci-artifact images to stress test",
+          "timestamp": "2025-02-21T09:42:05Z",
+          "url": "https://github.com/containerd/runwasi/commit/70fa4b2eca6631232c0458c4cc66edc44a82641a"
+        },
+        "date": 1740183390403,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14512,
+            "unit": "kB",
+            "extra": "shim: 11904 kB\nzygote: 2608 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65616,
+            "unit": "kB",
+            "extra": "shim: 53248 kB\nzygote: 12368 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18188,
+            "unit": "kB",
+            "extra": "shim: 14976 kB\nzygote: 3212 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19404,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3148 kB"
           }
         ]
       }
