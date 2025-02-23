@@ -9,7 +9,7 @@ members = [
     "crates/containerd-shim-wasmer",
     "crates/containerd-shim-wamr",
     "crates/stress-test",
-    "benches/containerd-shim-benchmarks", 
+    "benches/containerd-shim-benchmarks",
 ]
 resolver = "2"
 
@@ -48,6 +48,7 @@ tracing = "0.1"
 hyper = "1.6.0"
 tokio = { version = "1.43.0", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
+cfg-if = "1.0"
 
 # wasmtime
 wasmtime = { version = "27.0.0", features = ["async"] }
