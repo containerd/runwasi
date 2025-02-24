@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740356267384,
+  "lastUpdate": 1740356268581,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9640,6 +9640,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "70fa4b2eca6631232c0458c4cc66edc44a82641a",
+          "message": "Merge pull request #861 from Mossaka/stress-test-ci-release-flag\n\nci: Add oci and oci-artifact images to stress test",
+          "timestamp": "2025-02-21T09:42:05Z",
+          "url": "https://github.com/containerd/runwasi/commit/70fa4b2eca6631232c0458c4cc66edc44a82641a"
+        },
+        "date": 1740356268242,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.5,
             "unit": "ms"
           }
         ]
