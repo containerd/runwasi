@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Result, ensure};
+use anyhow::{Result, bail, ensure};
 use log::info;
 use oci_spec::runtime::SpecBuilder;
 use serde::Deserialize;
@@ -47,42 +47,38 @@ impl Shim {
         info!("Starting shim");
 
         let pid = std::process::id();
+        let binary = binary.as_ref();
+        let start_shim = || {
+            Command::new(binary)
+                .args([
+                    "-namespace",
+                    &format!("shim-benchmark-{pid}"),
+                    "-id",
+                    &format!("shim-benchmark-{pid}"),
+                    "-address",
+                    "/run/containerd/containerd.sock",
+                    "start",
+                ])
+                .env("TTRPC_ADDRESS", &socket)
+                .current_dir(dir.path())
+                .output()
+        };
 
         // Start the shim twice. It seems that with task v3 the first run on the
         // shim does not return immediately, but rather blocks. Running the shim
         // twice we make sure that at least one of them will return immediately.
-        let output1 = Command::new(binary.as_ref())
-            .args([
-                "-namespace",
-                &format!("shim-benchmark-{pid}"),
-                "-id",
-                &format!("shim-benchmark-{pid}"),
-                "-address",
-                "/run/containerd/containerd.sock",
-                "start",
-            ])
-            .env("TTRPC_ADDRESS", &socket)
-            .current_dir(dir.path())
-            .output();
-
-        let output2 = Command::new(binary.as_ref())
-            .args([
-                "-namespace",
-                &format!("shim-benchmark-{pid}"),
-                "-id",
-                &format!("shim-benchmark-{pid}"),
-                "-address",
-                "/run/containerd/containerd.sock",
-                "start",
-            ])
-            .env("TTRPC_ADDRESS", &socket)
-            .current_dir(dir.path())
-            .output();
-
-        let output = tokio::select! {
-            o = output1 => o,
-            o = output2 => o
+        // However, the shims may race and one of them would exit with an error
+        // status, but by that time we can run a third and get the output.
+        tokio::select! {
+            o = start_shim() => o,
+            o = start_shim() => o,
         }?;
+
+        let output = start_shim().await?;
+
+        if !output.status.success() {
+            bail!("failed to start shim: {output:?}");
+        }
 
         let mut address = String::from_utf8(output.stdout)?.trim().to_owned();
         if address.starts_with("{") {
