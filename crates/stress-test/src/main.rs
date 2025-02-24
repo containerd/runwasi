@@ -99,11 +99,7 @@ async fn main_impl() -> Result<()> {
     let client = containerd::Client::default().await?;
 
     if cli.args.is_empty() {
-        if cli.image == "ghcr.io/containerd/runwasi/wasi-demo-app:latest" {
-            cli.args = vec!["/wasi-demo-app.wasm".into(), "echo".into(), "hello".into()];
-        } else {
-            cli.args = client.entrypoint(&cli.image).await?;
-        }
+        cli.args = default_entrypoint(&client, &cli.image).await?;
     }
 
     if cli.containerd {
@@ -285,4 +281,22 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
         serde_json::to_writer_pretty(&mut File::create(json_output)?, &results)?;
     }
     Ok(())
+}
+
+async fn default_entrypoint(
+    client: &containerd::Client,
+    image: impl AsRef<str>,
+) -> Result<Vec<String>> {
+    let image = image.as_ref();
+    let name = image.split_once(':').map(|p| p.0).unwrap_or(image);
+    let args = match name {
+        "ghcr.io/containerd/runwasi/wasi-demo-app" => {
+            vec!["/wasi-demo-app.wasm".into(), "echo".into(), "hello".into()]
+        }
+        "ghcr.io/containerd/runwasi/wasi-demo-oci" => {
+            vec!["/wasi-demo-oci.wasm".into(), "echo".into(), "hello".into()]
+        }
+        _ => client.entrypoint(image).await?,
+    };
+    Ok(args)
 }
