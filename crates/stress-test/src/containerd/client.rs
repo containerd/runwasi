@@ -393,7 +393,7 @@ impl Clone for Client {
 }
 
 fn chain_id(digests: Vec<String>) -> String {
-    let mut chain_id = digests.get(0).cloned().unwrap_or_default();
+    let mut chain_id = digests.first().cloned().unwrap_or_default();
     for digest in digests.iter().skip(1) {
         chain_id = sha256::digest(format!("{chain_id} {digest}"));
         chain_id = format!("sha256:{chain_id}");
