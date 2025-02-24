@@ -98,6 +98,8 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
         let pid = self.container.pid()?;
 
         // Use a pidfd FD so that we can wait for the process to exit asynchronously.
+        // This should be created BEFORE calling container.start() to ensure we never
+        // miss the SIGCHLD event.
         let pidfd = PidFd::new(pid)?;
 
         self.container.start()?;
