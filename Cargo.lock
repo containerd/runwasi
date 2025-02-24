@@ -940,7 +940,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "ttrpc-codegen",
- "wasmparser 0.225.0",
+ "wasmparser 0.226.0",
  "wat",
  "windows-sys 0.59.0",
  "zygote",
@@ -6927,6 +6927,17 @@ name = "wasmparser"
 version = "0.225.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36e5456165f81e64cb9908a0fe9b9d852c2c74582aa3fe2be3c2da57f937d3ae"
+dependencies = [
+ "bitflags 2.6.0",
+ "indexmap 2.7.1",
+ "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.226.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc28600dcb2ba68d7e5f1c3ba4195c2bddc918c0243fd702d0b6dbd05689b681"
 dependencies = [
  "bitflags 2.6.0",
  "hashbrown 0.15.2",
