@@ -1,0 +1,490 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Introduction - Runwasi Developer Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Runwasi Developer Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p><img src="./art/logo/runwasi_icon1.svg#gh-light-mode-only" alt="runwasi logo light mode" />
+<img src="./art/logo/runwasi_icon3.svg#gh-dark-mode-only" alt="runwasi logo dark mode" /></p>
+<h1 id="runwasi"><a class="header" href="#runwasi">runwasi</a></h1>
+<p>This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
+It is intended to be a (rust) library that you can take and integrate with your wasm host.
+Included in the repository is a PoC for running a plain wasi host (ie. no extra host functions except to support wasi system calls).</p>
+<h2 id="community"><a class="header" href="#community">Community</a></h2>
+<ul>
+<li>If you haven't joined the CNCF slack yet, you can do so <a href="https://slack.cncf.io/">here</a>.</li>
+<li>Come join us on our <a href="https://cloud-native.slack.com/archives/C04LTPB6Z0V">slack channel #runwasi</a>
+on the CNCF slack.</li>
+<li>Public Community Call on Tuesdays every other week at 9:00 AM PT: <a href="https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09">Zoom</a>, <a href="https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing">Meeting Notes</a></li>
+</ul>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<p>runwasi is intended to be consumed as a library to be linked to from your own wasm host implementation. It creates one shim process per container or k8s pod.</p>
+<p>You need to implement a trait to teach runwasi how to use your wasm host.</p>
+<p>There are two ways to do this:</p>
+<ul>
+<li>implementing the <code>sandbox::Instance</code> trait</li>
+<li>or implementing the <code>container::Engine</code> trait</li>
+</ul>
+<p>The most flexible but complex is the <code>sandbox::Instance</code> trait:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait Instance {
+    /// The WASI engine type
+    type Engine: Send + Sync + Clone;
+
+    /// Create a new instance
+    fn new(id: String, cfg: &amp;InstanceConfig) -&gt; Self;
+    /// Start the instance
+    /// The returned value should be a unique ID (such as a PID) for the instance.
+    /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
+    fn start(&amp;self) -&gt; Result&lt;u32, Error&gt;;
+    /// Send a signal to the instance
+    fn kill(&amp;self, signal: u32) -&gt; Result&lt;(), Error&gt;;
+    /// Delete any reference to the instance
+    /// This is called after the instance has exited.
+    fn delete(&amp;self) -&gt; Result&lt;(), Error&gt;;
+    /// Wait for the instance to exit
+    /// The waiter is used to send the exit code and time back to the caller
+    /// Ideally this would just be a blocking call with a normal result, however
+    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
+    fn wait(&amp;self, waiter: &amp;Wait) -&gt; Result&lt;(), Error&gt;;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The <code>container::Engine</code> trait provides a simplified API:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait Engine: Clone + Send + Sync + 'static {
+    /// The name to use for this engine
+    fn name() -&gt; &amp;'static str;
+    /// Run a WebAssembly container
+    fn run_wasi(&amp;self, ctx: &amp;impl RuntimeContext, stdio: Stdio) -&gt; Result&lt;i32&gt;;
+    /// Check that the runtime can run the container.
+    /// This checks runs after the container creation and before the container starts.
+    /// By default it checks that the wasi_entrypoint is either:
+    /// * a OCI image with wasm layers
+    /// * a file with the `wasm` filetype header
+    /// * a parsable `wat` file.
+    fn can_handle(&amp;self, ctx: &amp;impl RuntimeContext) -&gt; Result&lt;()&gt; { /* default implementation*/ }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>After implementing <code>container::Engine</code> you can use <code>container::Instance&lt;impl container::Engine&gt;</code>, which implements the <code>sandbox::Instance</code> trait.</p>
+<p>To use your implementation in "normal" mode, you'll need to create a binary which has a main that looks something like this:</p>
+<pre><pre class="playground"><code class="language-rust">use containerd_shim as shim;
+use containerd_shim_wasm::sandbox::{ShimCli, Instance}
+
+struct MyInstance {
+    // ...
+}
+
+impl Instance for MyInstance {
+    // ...
+}
+
+fn main() {
+    shim::run::&lt;ShimCli&lt;MyInstance&gt;&gt;("io.containerd.myshim.v1", opts);
+}</code></pre></pre>
+<p>or when using the <code>container::Engine</code> trait, like this:</p>
+<pre><pre class="playground"><code class="language-rust">use containerd_shim as shim;
+use containerd_shim_wasm::{sandbox::ShimCli, container::{Instance, Engine}}
+
+struct MyEngine {
+    // ...
+}
+
+impl Engine for MyEngine {
+    // ...
+}
+
+fn main() {
+    shim::run::&lt;ShimCli&lt;Instance&lt;MyEngine&gt;&gt;&gt;("io.containerd.myshim.v1", opts);
+}</code></pre></pre>
+<p>Note you can implement your own ShimCli if you like and customize your wasm engine and other things.
+I encourage you to checkout how that is implemented.</p>
+<p>The shim binary just needs to be installed into <code>$PATH</code> (as seen by the containerd process) with a binary name like <code>containerd-shim-myshim-v1</code>.</p>
+<p>Check out these projects that build on top of runwasi:</p>
+<ul>
+<li><a href="https://github.com/spinkube/containerd-shim-spin">spinkube/containerd-shim-spin</a></li>
+<li><a href="https://github.com/deislabs/containerd-wasm-shims">deislabs/containerd-wasm-shims</a></li>
+</ul>
+<h3 id="components"><a class="header" href="#components">Components</a></h3>
+<ul>
+<li><strong>containerd-shim-[ wasmedge | wasmtime | wasmer | wamr ]-v1</strong></li>
+</ul>
+<p>This is a containerd shim which runs wasm workloads in <a href="https://github.com/WasmEdge/WasmEdge">WasmEdge</a> or <a href="https://github.com/bytecodealliance/wasmtime">Wasmtime</a> or <a href="https://github.com/wasmerio/wasmer">Wasmer</a>.
+You can use it with containerd's <code>ctr</code> by specifying <code>--runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1</code> when creating the container.
+And make sure the shim binary must be in $PATH (that is the $PATH that containerd sees). Usually you just run <code>make install</code> after <code>make build</code>.</p>
+<blockquote>
+<p>build shim with wasmedge we need install library first</p>
+</blockquote>
+<p>This shim runs one per pod.</p>
+<h2 id="demo"><a class="header" href="#demo">Demo</a></h2>
+<h3 id="installing-the-shims-for-use-with-containerd"><a class="header" href="#installing-the-shims-for-use-with-containerd">Installing the shims for use with Containerd</a></h3>
+<p>Make sure you have <a href="./CONTRIBUTING.html#setting-up-your-local-environment">installed dependencies</a> and install the shims:</p>
+<pre><code class="language-terminal">make build
+sudo make install
+</code></pre>
+<blockquote>
+<p>Note: <code>make build</code> will only build one binary. The <code>make install</code> command copies the binary to $PATH and uses symlinks to create all the component described above.</p>
+</blockquote>
+<p>Pull the test image:</p>
+<pre><code>make pull-app
+</code></pre>
+<h3 id="demo-1-using-container-image-that-contains-a-wasm-module"><a class="header" href="#demo-1-using-container-image-that-contains-a-wasm-module">Demo 1 using container image that contains a Wasm module.</a></h3>
+<p>Run it with <code>sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'</code>. You should see some output repeated like:</p>
+<pre><code class="language-terminal">sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
+
+This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+
+This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+
+(...)
+</code></pre>
+<p>To kill the process, you can run in other session: <code>sudo ctr task kill -s SIGKILL testwasm</code>.</p>
+<p>The test binary supports commands for different type of functionality, check <a href="crates/wasi-demo-app/src/main.rs">crates/wasi-demo-app/src/main.rs</a> to try it out.</p>
+<h3 id="demo-2-using-oci-images-with-custom-wasm-layers"><a class="header" href="#demo-2-using-oci-images-with-custom-wasm-layers">Demo 2 using OCI Images with custom WASM layers</a></h3>
+<p>The previous demos run with an OCI Container image containing the wasm module in the file system.  Another option is to provide a cross-platform OCI Image that that will not have the wasm module or components in the file system of the container that wraps the wasmtime/wasmedge process.  This OCI Image with custom WASM layers can be run across any platform and provides for de-duplication in the Containerd content store among other benefits. To build OCI images using your own images you can use the <a href="./crates/oci-tar-builder/README.html">oci-tar-builder</a></p>
+<p>To learn more about this approach checkout the <a href="https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit">design document</a>.</p>
+<blockquote>
+<p><strong>Note</strong>: This requires containerd 1.7.7+ and 1.6.25+.  If you do not have these patches for both <code>containerd</code> and <code>ctr</code> you will end up with an error message such as <code>mismatched image rootfs and manifest layers</code> at the import and run steps. Latest versions of k3s and kind have the necessary containerd versions.</p>
+</blockquote>
+<p>Pull the OCI image with WASM layers image:</p>
+<pre><code>make pull
+</code></pre>
+<p>Run the image with <code>sudo ctr run --rm --runtime=io.containerd.[ wasmedge | wasmtime | wasmer | wamr ].v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci</code></p>
+<pre><code>sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci wasi-demo-oci.wasm echo 'hello'
+hello
+exiting
+</code></pre>
+<h3 id="demo-3-using-wasm-oci-artifact"><a class="header" href="#demo-3-using-wasm-oci-artifact">Demo 3 using Wasm OCI Artifact</a></h3>
+<p>The <a href="https://tag-runtime.cncf.io/wgs/wasm/charter/">CNCF tag-runtime wasm working group</a> has a <a href="https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/">OCI Artifact format for Wasm</a>.  This is a new Artifact type that enable the usage across projects beyond just runwasi, see the https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/#implementations</p>
+<pre><code>make test/k8s-oci-wasmtime
+</code></pre>
+<blockquote>
+<p>note: We are using a kubernetes cluster to run here since containerd's ctr has a bug that results in ctr: <code>unknown image config media type application/vnd.wasm.config.v0+json</code></p>
+</blockquote>
+<h3 id="demo-4-running-on-kubernetes"><a class="header" href="#demo-4-running-on-kubernetes">Demo 4: Running on Kubernetes</a></h3>
+<p>You can run WebAssembly workloads on Kubernetes using either Kind or k3s.</p>
+<h4 id="using-kind"><a class="header" href="#using-kind">Using Kind</a></h4>
+<ol>
+<li>Install and configure dependencies:</li>
+</ol>
+<pre><code class="language-bash">curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/
+
+make build-wasmtime
+sudo make install-wasmtime
+</code></pre>
+<ol start="2">
+<li>Create a Kind configuration:</li>
+</ol>
+<pre><code class="language-yaml"># kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: runwasi-cluster
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /usr/local/bin/containerd-shim-wasmtime-v1
+    containerPath: /usr/local/bin/containerd-shim-wasmtime-v1
+</code></pre>
+<ol start="3">
+<li>Create and configure the cluster:</li>
+</ol>
+<pre><code class="language-bash">kind create cluster --name runwasi-cluster --config kind-config.yaml
+
+kubectl cluster-info --context kind-runwasi-cluster
+
+cat &lt;&lt; EOF | docker exec -i runwasi-cluster-control-plane tee /etc/containerd/config.toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+docker exec runwasi-cluster-control-plane systemctl restart containerd
+</code></pre>
+<ol start="4">
+<li>Deploy the demo application:</li>
+</ol>
+<pre><code class="language-bash">kubectl --context kind-runwasi-cluster apply -f test/k8s/deploy.yaml
+</code></pre>
+<ol start="5">
+<li>Check the logs:</li>
+</ol>
+<pre><code class="language-bash">kubectl --context kind-runwasi-cluster logs -l app=wasi-demo
+</code></pre>
+<p>where you should see the output of the demo application:</p>
+<pre><code class="language-console">This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+</code></pre>
+<h4 id="using-k3s"><a class="header" href="#using-k3s">Using k3s</a></h4>
+<ol>
+<li>Install k3s and build the shim:</li>
+</ol>
+<pre><code class="language-bash">curl -sfL https://get.k3s.io | sh -
+
+make build-wasmtime
+sudo make install-wasmtime
+</code></pre>
+<ol start="2">
+<li>Configure k3s to use the Wasm runtime:</li>
+</ol>
+<pre><code class="language-bash">sudo mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+
+cat &lt;&lt; EOF | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+sudo systemctl restart k3s
+</code></pre>
+<ol start="3">
+<li>Deploy the demo application:</li>
+</ol>
+<pre><code class="language-bash">sudo k3s kubectl apply -f test/k8s/deploy.yaml
+</code></pre>
+<ol start="4">
+<li>Check the deployment:</li>
+</ol>
+<pre><code class="language-bash">sudo k3s kubectl wait deployment wasi-demo --for condition=Available=True --timeout=90s
+
+sudo k3s kubectl get pods
+sudo k3s kubectl logs -l app=wasi-demo
+</code></pre>
+<p>You should see "This is a song that never ends." repeated in the logs.</p>
+<ol start="5">
+<li>Clean up when done:</li>
+</ol>
+<pre><code class="language-bash">sudo k3s kubectl delete -f test/k8s/deploy.yaml
+
+# Optionally uninstall k3s
+/usr/local/bin/k3s-uninstall.sh
+</code></pre>
+<h4 id="the-deployyaml-file"><a class="header" href="#the-deployyaml-file">The <code>deploy.yaml</code> file</a></h4>
+<p>The deployment includes:</p>
+<pre><code class="language-yaml">apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: wasm
+handler: wasm
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasi-demo
+spec:
+  # ...
+  template:
+    spec:
+      runtimeClassName: wasm # Use the wasm runtime class
+      containers:
+      - name: demo
+        image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
+</code></pre>
+<p>To see demos for other runtimes, replace <code>wasmtime</code> with <code>wasmedge</code>, <code>wasmer</code>, or <code>wamr</code> in the above commands.</p>
+<p>In addition, check out the <a href="https://wasmedge.org/docs/develop/deploy/kubernetes/kubernetes-containerd-runwasi">Kubernetes + Containerd + Runwasi</a> for more on how to run WasmEdge on Kubernetes.</p>
+<h3 id="wasihttp-demo-for-wasmtime-shim"><a class="header" href="#wasihttp-demo-for-wasmtime-shim">WASI/HTTP Demo for <code>wasmtime-shim</code></a></h3>
+<p>See <a href="./crates/containerd-shim-wasmtime/README.html#WASI/HTTP">wasmtime-shim documentation</a>.</p>
+<h2 id="contributing"><a class="header" href="#contributing">Contributing</a></h2>
+<p>To begin contributing, learn to build and test the project or to add a new shim please read our <a href="./CONTRIBUTING.html">CONTRIBUTING.md</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="../../CONTRIBUTING.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="../../CONTRIBUTING.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
