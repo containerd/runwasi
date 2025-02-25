@@ -48,7 +48,7 @@ You can access the Jeager UI at `http://localhost:16686`.
 ### Demo
 
 Assuming you installed the `containerd-shim-wasmtime-v1` shim binary and the demo wasm image following README.md instructions,
-you can run a the wasmtime shim with OpenTelemetry tracing by running the following command
+you can run the wasmtime shim with OpenTelemetry tracing by running the following command
 
 ```sh
 sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm sleep 3
