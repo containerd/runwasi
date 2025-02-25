@@ -21,3 +21,6 @@ runtime_type = "io.containerd.${RUNTIME}.v1"
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm.options]
   SystemdCgroup = true
 EOF
+RUN systemctl restart containerd && \
+    systemctl restart dbus && \
+    systemctl restart systemd-logind
