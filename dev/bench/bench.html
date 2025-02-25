@@ -1,0 +1,212 @@
+<style>
+    body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #title {
+        font-family: sans-serif;
+    }
+
+    #content {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    #plots {
+        width: 90%;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1em;
+        margin-bottom: 2em;
+    }
+
+    #plots>div {
+        border: 1px solid #CCC;
+        border-radius: 5px;
+        overflow: hidden;
+        background-color: white;
+        padding: 0.3em;
+        box-shadow: 0.5em 0.5em 0.75em #0001;
+    }
+</style>
+<h2 id="title"><code>runwasi</code> benchmarks</h2>
+<div id="content">
+<div id="plots"></div>
+</div>
+<script type="module">
+    import "./data.js"
+    import "https://cdn.plot.ly/plotly-3.0.1.min.js"
+
+    let plots = document.getElementById("plots");
+
+    BENCHMARK_DATA.entries["Memory Usage"] = BENCHMARK_DATA.entries["Criterion.rs Benchmark"].map(entry => ({
+        ...entry,
+        benches: entry.benches.filter(bench => bench.name.endsWith("/memory-usage"))
+            .map(bench => ({
+                ...bench,
+                name: bench.name.replace(/\/memory-usage$/, "")
+            }))
+    })).filter(entry => entry.benches.length > 0);
+
+    BENCHMARK_DATA.entries["End to End"] = BENCHMARK_DATA.entries["Criterion.rs Benchmark"].map(entry => ({
+        ...entry,
+        benches: entry.benches.filter(bench => bench.name.startsWith("end-to-end/"))
+            .map(bench => ({
+                ...bench,
+                name: bench.name.replace(/^end-to-end\/(\w*)\/wasi-demo-(\w*):latest$/, "$1 ($2)")
+            }))
+    })).filter(entry => entry.benches.length > 0);
+
+    BENCHMARK_DATA.entries["Stress Test (containerd)"] = BENCHMARK_DATA.entries["Stress Test Benchmark"].map(entry => ({
+        ...entry,
+        benches: entry.benches.filter(bench => bench.name.includes("with containerd service"))
+            .map(bench => ({
+                ...bench,
+                name: (bench.name + " (app)").replace(/Stress Test (Tasks )?Throughput with containerd service - (\w*) \((\w*)\).*/, "$2 ($3)")
+            }))
+    })).filter(entry => entry.benches.length > 0);
+
+    BENCHMARK_DATA.entries["Stress Test (mock)"] = BENCHMARK_DATA.entries["Stress Test Benchmark"].map(entry => ({
+        ...entry,
+        benches: entry.benches.filter(bench => bench.name.includes("with mock service"))
+            .map(bench => ({
+                ...bench,
+                name: (bench.name + " (app)").replace(/Stress Test (Tasks )?Throughput with mock service - (\w*) \((\w*)\).*/, "$2 ($3)")
+            }))
+    })).filter(entry => entry.benches.length > 0);
+
+    delete BENCHMARK_DATA.entries["Criterion.rs Benchmark"];
+    delete BENCHMARK_DATA.entries["Stress Test Benchmark"];
+
+    let data = new Map();
+    for (const key of ["End to End", "Stress Test (containerd)", "Stress Test (mock)", "Memory Usage", "HTTP Throughput", "HTTP Latency", ...Object.keys(BENCHMARK_DATA.entries)]) {
+        data.set(key, BENCHMARK_DATA.entries[key]);
+    }
+
+    for (const [name, entries] of data.entries()) {
+        let plot = document.createElement("div");
+        plots.appendChild(plot);
+
+        const data = {};
+
+        let ymax = 0;
+
+        for (const entry of entries) {
+            entry.date = new Date(entry.date);
+            for (const bench of entry.benches) {
+                data[bench.name] = data[bench.name] || {
+                    mode: "lines+markers",
+                    name: bench.name,
+                    showlegend: true,
+                    legendgroup: bench.name.split(" ")[0],
+                    text: [],
+                    x: [],
+                    y: [],
+                }
+                data[bench.name].y.push(bench.value);
+                data[bench.name].x.push(entry.date);
+                data[bench.name].text.push((bench.extra || "").replace(/\n/g, "<br>"));
+                ymax = Math.max(ymax, bench.value);
+            }
+        }
+
+        const xmin = new Date(Math.min(...entries.map(entry => entry.date)));
+        const xmax = new Date(Math.max(...entries.map(entry => entry.date)));
+
+        const tool = entries[0].tool;
+        const subtitles = {
+            "cargo": "&#9660; smaller is better",
+            "customBiggerIsBetter": "&#9650; bigger is better",
+            "customSmallerIsBetter": "&#9660; smaller is better",
+        };
+
+        var layout = {
+            title: {
+                text: name,
+                subtitle: { text: subtitles[tool] },
+            },
+            legend: {
+                visible: true
+            },
+            margin: {
+                l: 50,
+                r: 50,
+            },
+            xaxis: {
+                automargin: false,
+                range: [xmin, xmax],
+                tickangle: 0,
+                rangeslider: {
+                    range: [xmin, xmax],
+                    bgcolor: "#EEE",
+                    bordercolor: "#AAA",
+                    borderwidth: 1,
+                    yaxis: {
+                        rangemode: "auto"
+                    }
+                }
+            },
+            yaxis: {
+                automargin: false,
+                range: [0, ymax * 1.05],
+                fixedrange: true,
+                title: {
+                    text: entries[0].benches[0].unit
+                }
+            },
+            legend: {
+                itemclick: "toggleothers",
+            },
+            legend2: {
+                itemclick: "toggleothers",
+            },
+        };
+
+        console.log(data);
+
+        let chart = await Plotly.newPlot(plot, Object.values(data), layout);
+
+        chart.on('plotly_relayout', (e) => {
+            if (
+                !e || // e.autosize || e.width || e.height ||  // plot init or resizing
+                e['yaxis.range'] || e['yaxis.autorange'] || // yrange already adjusted
+                e['yaxis.range[0]'] || e['yaxis.range[1]']  // yrange manually set
+            ) {
+                // Nothing to do.
+                return;
+            }
+
+            if (e['xaxis.autorange']) {
+                Plotly.relayout(chart, { 'yaxis.autorange': true });
+                return;
+            }
+
+            const xrange = chart._fullLayout.xaxis.range.map(x => new Date(x));
+
+            const ymax_vec = chart._fullData.map(line => {
+                let i0 = line.x.findLastIndex(x => x < xrange[0]);
+                let i1 = line.x.findIndex(x => x > xrange[1]);
+
+                if (i0 === -1) i0 = 0;
+                if (i1 === -1) i1 = line.x.length - 1;
+
+                const data = [...line.y.slice(i0, i1)];
+                const ymax = Math.max(...data);
+                return ymax;
+            });
+
+            const ymax = Math.max(0, ...ymax_vec);
+
+            console.log(chart._fullLayout.yaxis.range, ymax)
+
+            Plotly.relayout(chart, { 'yaxis.range': [0, ymax * 1.05] });
+        });
+    }
+</script>
