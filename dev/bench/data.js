@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740443598931,
+  "lastUpdate": 1740443698036,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6274,6 +6274,52 @@ window.BENCHMARK_DATA = {
             "value": 83912325,
             "range": "± 1526396",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "35a6fae60af4ff889b8dc5e9708bf61c0aa73fca",
+          "message": "Merge pull request #864 from z63d/fix/cgroup-driver\n\nfix: handling of cgroup driver setting",
+          "timestamp": "2025-02-24T22:49:12Z",
+          "url": "https://github.com/containerd/runwasi/commit/35a6fae60af4ff889b8dc5e9708bf61c0aa73fca"
+        },
+        "date": 1740443697359,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14752,
+            "unit": "kB",
+            "extra": "shim: 12160 kB\nzygote: 2592 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66244,
+            "unit": "kB",
+            "extra": "shim: 53888 kB\nzygote: 12356 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18440,
+            "unit": "kB",
+            "extra": "shim: 15104 kB\nzygote: 3336 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19004,
+            "unit": "kB",
+            "extra": "shim: 15872 kB\nzygote: 3132 kB"
           }
         ]
       }
