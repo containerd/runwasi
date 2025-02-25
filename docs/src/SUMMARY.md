@@ -1,12 +1,12 @@
 # Summary
 
-[Introduction](../../README.md)
+[Introduction](./README.md)
 
---- 
+---
 
-- [Contributing](../../CONTRIBUTING.md)
+- [Contributing](./CONTRIBUTING.md)
 - [Documentation](developer/docs.md)
-- [Release](../../RELEASE.md)
+- [Release](./RELEASE.md)
 
 ---
 
