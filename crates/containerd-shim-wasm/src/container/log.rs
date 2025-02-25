@@ -3,27 +3,57 @@
 macro_rules! log_with_ctx {
     // Info level log
     (info, $ctx:expr, $($arg:tt)+) => {
-        log::info!(instance = $ctx.container_id(); $($arg)+)
+        {
+            let ctx = $ctx;
+            match ctx.pod_id() {
+                Some(pod_id) => log::info!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
+                None => log::info!(instance = ctx.container_id(); $($arg)+)
+            }
+        }
     };
 
     // Debug level log
     (debug, $ctx:expr, $($arg:tt)+) => {
-        log::debug!(instance = $ctx.container_id(); $($arg)+)
+        {
+            let ctx = $ctx;
+            match ctx.pod_id() {
+                Some(pod_id) => log::debug!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
+                None => log::debug!(instance = ctx.container_id(); $($arg)+)
+            }
+        }
     };
 
     // Warn level log
     (warn, $ctx:expr, $($arg:tt)+) => {
-        log::warn!(instance = $ctx.container_id(); $($arg)+)
+        {
+            let ctx = $ctx;
+            match ctx.pod_id() {
+                Some(pod_id) => log::warn!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
+                None => log::warn!(instance = ctx.container_id(); $($arg)+)
+            }
+        }
     };
 
     // Error level log
     (error, $ctx:expr, $($arg:tt)+) => {
-        log::error!(instance = $ctx.container_id(); $($arg)+)
+        {
+            let ctx = $ctx;
+            match ctx.pod_id() {
+                Some(pod_id) => log::error!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
+                None => log::error!(instance = ctx.container_id(); $($arg)+)
+            }
+        }
     };
 
     // Trace level log
     (trace, $ctx:expr, $($arg:tt)+) => {
-        log::trace!(instance = $ctx.container_id(); $($arg)+)
+        {
+            let ctx = $ctx;
+            match ctx.pod_id() {
+                Some(pod_id) => log::trace!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
+                None => log::trace!(instance = ctx.container_id(); $($arg)+)
+            }
+        }
     };
 }
 
