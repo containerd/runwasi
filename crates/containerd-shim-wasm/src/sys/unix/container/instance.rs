@@ -55,7 +55,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
                 let engine = E::default();
 
                 let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-                    .with_executor(Executor::new(engine, modules, platform))
+                    .with_executor(Executor::new(engine, modules, platform, id))
                     .with_root_path(rootdir.clone())?;
 
                 if let Ok(f) = open(cfg.get_stdin()) {

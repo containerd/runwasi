@@ -30,6 +30,7 @@ pub(crate) struct Executor<E: Engine> {
     inner: OnceCell<InnerExecutor>,
     wasm_layers: Vec<WasmLayer>,
     platform: Platform,
+    id: String,
 }
 
 impl<E: Engine> LibcontainerExecutor for Executor<E> {
@@ -53,8 +54,9 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
                 DefaultExecutor {}.exec(spec)
             }
             InnerExecutor::Wasm => {
+                let ctx = self.ctx(spec);
                 log::info!("calling start function");
-                match self.engine.run_wasi(&self.ctx(spec)) {
+                match self.engine.run_wasi(&ctx) {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
@@ -82,12 +84,13 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
 }
 
 impl<E: Engine> Executor<E> {
-    pub fn new(engine: E, wasm_layers: Vec<WasmLayer>, platform: Platform) -> Self {
+    pub fn new(engine: E, wasm_layers: Vec<WasmLayer>, platform: Platform, id: String) -> Self {
         Self {
             engine,
             inner: Default::default(),
             wasm_layers,
             platform,
+            id,
         }
     }
 
@@ -98,6 +101,7 @@ impl<E: Engine> Executor<E> {
             spec,
             wasm_layers,
             platform,
+            id: self.id.clone(),
         }
     }
 
