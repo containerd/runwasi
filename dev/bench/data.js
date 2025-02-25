@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740443597460,
+  "lastUpdate": 1740443598931,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9810,6 +9810,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.5,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "35a6fae60af4ff889b8dc5e9708bf61c0aa73fca",
+          "message": "Merge pull request #864 from z63d/fix/cgroup-driver\n\nfix: handling of cgroup driver setting",
+          "timestamp": "2025-02-24T22:49:12Z",
+          "url": "https://github.com/containerd/runwasi/commit/35a6fae60af4ff889b8dc5e9708bf61c0aa73fca"
+        },
+        "date": 1740443598527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.7,
             "unit": "ms"
           }
         ]
