@@ -47,7 +47,7 @@ impl Engine for WamrEngine {
             .as_bytes()
             .context("Failed to get bytes from source")?;
 
-        log::info!("Create a WAMR module");
+        containerd_shim_wasm::info!(ctx, "Create a WAMR module");
 
         // TODO: error handling isn't ideal
 
@@ -56,7 +56,7 @@ impl Engine for WamrEngine {
         let mut module = Module::from_buf(&self.runtime, &wasm_bytes, &mod_name)
             .context("Failed to create module from bytes")?;
 
-        log::info!("Create a WASI context");
+        containerd_shim_wasm::info!(ctx, "Create a WASI context");
 
         let wasi_ctx = WasiCtxBuilder::new()
             .set_pre_open_path(vec!["/"], vec![])
@@ -68,19 +68,19 @@ impl Engine for WamrEngine {
 
         // TODO: no way to register a named module with bytes?
 
-        log::info!("Create a WAMR instance");
+        containerd_shim_wasm::info!(ctx, "Create a WAMR instance");
 
         let instance = WamrInst::new(&self.runtime, &module, 1024 * 64)
             .context("Failed to create instance")?;
 
-        log::info!("Running {func:?}");
+        containerd_shim_wasm::info!(ctx, "Running {func:?}");
         let function =
             Function::find_export_func(&instance, &func).context("Failed to find function")?;
         let status = function
             .call(&instance, &vec![])
             .map(|_| 0)
             .map_err(|err| {
-                log::error!("Error: {:?}", err);
+                containerd_shim_wasm::error!(ctx, "Error: {:?}", err);
                 err
             })
             .context("Failed to call function")?;

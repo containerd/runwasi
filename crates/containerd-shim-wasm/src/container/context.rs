@@ -36,6 +36,9 @@ pub trait RuntimeContext {
     // the platform for the container using the struct defined on the OCI spec definition
     // https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
     fn platform(&self) -> &Platform;
+
+    // the container id for the running container
+    fn container_id(&self) -> &str;
 }
 
 /// The source for a WASI module / components.
@@ -84,6 +87,7 @@ pub(crate) struct WasiContext<'a> {
     pub spec: &'a Spec,
     pub wasm_layers: &'a [WasmLayer],
     pub platform: &'a Platform,
+    pub id: String,
 }
 
 impl RuntimeContext for WasiContext<'_> {
@@ -134,6 +138,10 @@ impl RuntimeContext for WasiContext<'_> {
     fn platform(&self) -> &Platform {
         self.platform
     }
+
+    fn container_id(&self) -> &str {
+        &self.id
+    }
 }
 
 #[cfg(test)]
@@ -160,6 +168,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -180,6 +189,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -208,6 +218,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -230,6 +241,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let path = ctx.entrypoint().source;
@@ -261,6 +273,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("hello.wat");
@@ -301,6 +314,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("/root/hello.wat");
@@ -341,6 +355,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("/root/hello.wat");
@@ -379,6 +394,7 @@ mod tests {
                 ),
             }],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         assert!(matches!(ctx.entrypoint().source, Source::Oci(_)));
@@ -402,6 +418,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let envs = ctx.envs();
@@ -423,6 +440,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let envs = ctx.envs();
@@ -442,6 +460,7 @@ mod tests {
             spec: &spec,
             wasm_layers: &[],
             platform: &Platform::default(),
+            id: "test".to_string(),
         };
 
         let envs = ctx.envs();

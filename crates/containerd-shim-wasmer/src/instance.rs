@@ -36,7 +36,7 @@ impl Engine for WasmerEngine {
 
         let mod_name = name.unwrap_or_else(|| "main".to_string());
 
-        log::info!("Create a Store");
+        containerd_shim_wasm::info!(ctx, "Create a Store");
         let mut store = Store::new(self.engine.clone());
 
         let wasm_bytes = source.as_bytes()?;
@@ -47,7 +47,7 @@ impl Engine for WasmerEngine {
             .build()?;
         let _guard = runtime.enter();
 
-        log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
+        containerd_shim_wasm::info!(ctx, "Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
         let fs = FileSystem::new(Handle::current(), "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
@@ -56,7 +56,7 @@ impl Engine for WasmerEngine {
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
 
-        log::info!("Running {func:?}");
+        containerd_shim_wasm::info!(ctx, "Running {func:?}");
         let start = instance.exports.get_function(&func)?;
         wasi_env.data(&store).thread.set_status_running();
         let status = start.call(&mut store, &[]).map(|_| 0).or_else(|err| {
