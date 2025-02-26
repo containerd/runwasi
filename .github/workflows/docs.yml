@@ -2,8 +2,10 @@ name: Deploy mdbook documentation
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   changes:
@@ -27,10 +29,9 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: "latest"
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: install mermaid preprocessor
+        run: cargo install mdbook mdbook-mermaid
       - name: Build mdbook
         working-directory: ./docs
         run: mdbook build
