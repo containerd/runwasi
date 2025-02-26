@@ -81,7 +81,7 @@ pub mod sync;
 
 pub use error::{Error, Result};
 pub use instance::{Instance, InstanceConfig};
-pub use shim::Cli as ShimCli;
+pub use shim::{Cli as ShimCli, Config};
 
 pub(crate) mod containerd;
 pub(crate) mod oci;

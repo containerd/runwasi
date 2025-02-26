@@ -6,6 +6,7 @@ mod cli;
 mod events;
 mod instance_data;
 mod local;
+pub use local::Config;
 #[cfg(feature = "opentelemetry")]
 mod otel;
 mod task_state;

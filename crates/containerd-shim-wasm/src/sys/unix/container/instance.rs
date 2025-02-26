@@ -67,12 +67,12 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
                 if let Ok(f) = open(cfg.get_stderr()) {
                     builder = builder.with_stderr(f);
                 }
-                let systemd_cgroup = cfg.get_systemd_cgroup();
+                let config = cfg.get_config();
 
                 let container = builder
                     .as_init(&bundle)
                     .as_sibling(true)
-                    .with_systemd(systemd_cgroup)
+                    .with_systemd(config.systemd_cgroup)
                     .build()?;
 
                 Ok(container)
