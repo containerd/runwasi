@@ -105,8 +105,8 @@ impl InstanceConfig {
     }
 
     /// get the options config for the instance
-    pub fn get_config(&self) -> Config {
-        self.config.clone()
+    pub fn get_config(&self) -> &Config {
+        &self.config
     }
 }
 
