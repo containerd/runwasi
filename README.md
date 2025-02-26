@@ -1,5 +1,7 @@
-![runwasi logo light mode](./art/logo/runwasi_icon1.svg#gh-light-mode-only)
-![runwasi logo dark mode](./art/logo/runwasi_icon3.svg#gh-dark-mode-only)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
+  <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
+</picture>
 
 # runwasi
 
@@ -256,7 +258,7 @@ kubectl --context kind-runwasi-cluster apply -f test/k8s/deploy.yaml
 ```bash
 kubectl --context kind-runwasi-cluster logs -l app=wasi-demo
 ```
-where you should see the output of the demo application: 
+where you should see the output of the demo application:
 
 ```console
 This is a song that never ends.
@@ -337,7 +339,7 @@ spec:
 
 To see demos for other runtimes, replace `wasmtime` with `wasmedge`, `wasmer`, or `wamr` in the above commands.
 
-In addition, check out the [Kubernetes + Containerd + Runwasi](https://wasmedge.org/docs/develop/deploy/kubernetes/kubernetes-containerd-runwasi) for more on how to run WasmEdge on Kubernetes. 
+In addition, check out the [Kubernetes + Containerd + Runwasi](https://wasmedge.org/docs/develop/deploy/kubernetes/kubernetes-containerd-runwasi) for more on how to run WasmEdge on Kubernetes.
 
 
 ### WASI/HTTP Demo for `wasmtime-shim`
