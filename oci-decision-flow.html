@@ -154,7 +154,7 @@
                     <main>
                         <h1 id="oci-pre-compilation"><a class="header" href="#oci-pre-compilation">OCI pre-compilation</a></h1>
 <p>The OCI images layers are loaded from containerd.  If the runtime supports pre-compilation the images will be precompiled and cached using the containerd content store.</p>
-<pre><code class="language-mermaid">graph TD
+<pre class="mermaid">graph TD
     start[Task new]
     imgconfig[Load image config from containerd]
     iswasm{Arch==wasm?}
@@ -179,7 +179,7 @@
 
     precompiledenabled2 -- yes --&gt; precompile --&gt; storecache --&gt; startcontainer
     precompiledenabled2 -- no --&gt; startcontainer
-</code></pre>
+</pre>
 <p>Once a wasm module or component is pre-compiled it will remain in the containerd content store until the original image is removed from containerd.  There is a small disk overhead associated with this but it reduces the complexity of managing stored versions during upgrades.</p>
 <p>To view the images in containerd that have associated pre-compilations:</p>
 <pre><code class="language-bash">sudo ctr i ls | grep "runwasi.io"
@@ -239,6 +239,8 @@ sha256:b36753ab5a46f26f6bedb81b8a7b489cede8fc7386f1398706782e225fd0a98e 626.4kB 
         <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
 
 
     </div>

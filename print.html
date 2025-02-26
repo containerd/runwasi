@@ -477,7 +477,7 @@ which apply to all containerd projects.</p>
 <li><code>wasi-demo-app</code> - wasm application that is used for demos and testing.</li>
 </ul>
 <h2 id="project-architecture"><a class="header" href="#project-architecture">Project architecture</a></h2>
-<p><img src="docs/src/assets/runwasi-architecture.png" alt="A diagram of runwasi architecture" /></p>
+<p><img src="assets/runwasi-architecture.png" alt="A diagram of runwasi architecture" /></p>
 <p>The Containerd "shim" is a daemon process that serves <a href="https://github.com/containerd/containerd/blob/v2.0.0/core/runtime/v2/README.md#tasks">Task Service API</a>. It listens on a socket to receive ttRPC commands from Containerd, allowing for lifecycle management for containers (create, start, stop, etc.). Runwasi's <code>containerd-shim-wasm</code> library is designed to easily author your own shim binaries that handle Wasm modules.</p>
 <p>Runwasi supports two types of engine:</p>
 <ol>
@@ -692,7 +692,7 @@ Alternatively, the cargo cli does support setting the token via an environment v
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="oci-pre-compilation"><a class="header" href="#oci-pre-compilation">OCI pre-compilation</a></h1>
 <p>The OCI images layers are loaded from containerd.  If the runtime supports pre-compilation the images will be precompiled and cached using the containerd content store.</p>
-<pre><code class="language-mermaid">graph TD
+<pre class="mermaid">graph TD
     start[Task new]
     imgconfig[Load image config from containerd]
     iswasm{Arch==wasm?}
@@ -717,7 +717,7 @@ Alternatively, the cargo cli does support setting the token via an environment v
 
     precompiledenabled2 -- yes --&gt; precompile --&gt; storecache --&gt; startcontainer
     precompiledenabled2 -- no --&gt; startcontainer
-</code></pre>
+</pre>
 <p>Once a wasm module or component is pre-compiled it will remain in the containerd content store until the original image is removed from containerd.  There is a small disk overhead associated with this but it reduces the complexity of managing stored versions during upgrades.</p>
 <p>To view the images in containerd that have associated pre-compilations:</p>
 <pre><code class="language-bash">sudo ctr i ls | grep "runwasi.io"
@@ -845,6 +845,8 @@ $env:WASMEDGE_INCLUDE_DIR="C:\Program Files\WasmEdge\include"
         <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
 
         <script>
         window.addEventListener('load', function() {
