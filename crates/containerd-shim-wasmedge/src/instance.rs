@@ -37,6 +37,8 @@ impl Engine for WasmEdgeEngine {
             name,
         } = ctx.entrypoint();
 
+        containerd_shim_wasm::debug!(ctx, "initializing WasmEdge runtime");
+
         let mut wasi_module = WasiModule::create(
             Some(args.iter().map(String::as_str).collect()),
             Some(envs.iter().map(String::as_str).collect()),
@@ -54,7 +56,7 @@ impl Engine for WasmEdgeEngine {
             .register_module(Some(&mod_name), module)
             .context("registering module")?;
 
-        log::debug!("running with method {func:?}");
+        containerd_shim_wasm::debug!(ctx, "running with method {func:?}");
         vm.run_func(Some(&mod_name), func, vec![])?;
 
         Ok(wasi_module.exit_code() as i32)
