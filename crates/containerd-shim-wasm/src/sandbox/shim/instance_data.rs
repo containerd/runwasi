@@ -8,19 +8,19 @@ use crate::sandbox::{Instance, InstanceConfig, Result};
 
 pub(super) struct InstanceData<T: Instance> {
     pub instance: T,
-    cfg: InstanceConfig,
+    pub config: InstanceConfig,
     pid: OnceLock<u32>,
     state: RwLock<TaskState>,
 }
 
 impl<T: Instance> InstanceData<T> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
-    pub fn new(id: impl AsRef<str> + std::fmt::Debug, cfg: InstanceConfig) -> Result<Self> {
+    pub fn new(id: impl AsRef<str> + std::fmt::Debug, config: InstanceConfig) -> Result<Self> {
         let id = id.as_ref().to_string();
-        let instance = T::new(id, &cfg)?;
+        let instance = T::new(id, &config)?;
         Ok(Self {
             instance,
-            cfg,
+            config,
             pid: OnceLock::default(),
             state: RwLock::new(TaskState::Created),
         })
@@ -29,11 +29,6 @@ impl<T: Instance> InstanceData<T> {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
     pub fn pid(&self) -> Option<u32> {
         self.pid.get().copied()
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
-    pub fn config(&self) -> &InstanceConfig {
-        &self.cfg
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]

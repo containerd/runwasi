@@ -36,7 +36,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address(), &cfg.get_namespace()).block_on()?
+        let (modules, platform) = containerd::Client::connect(&cfg.containerd_address, &cfg.namespace).block_on()?
             .load_modules(&id, &E::default())
             .block_on()
             .unwrap_or_else(|e| {
@@ -46,32 +46,28 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
         let container = Container::build(
             |(id, cfg, modules, platform)| {
-                let namespace = cfg.get_namespace();
-
-                let bundle = cfg.get_bundle().to_path_buf();
                 let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-                let rootdir = determine_rootdir(&bundle, &namespace, rootdir)?;
+                let rootdir = determine_rootdir(&cfg.bundle, &cfg.namespace, rootdir)?;
                 let engine = E::default();
 
                 let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
                     .with_executor(Executor::new(engine, modules, platform))
                     .with_root_path(rootdir.clone())?;
 
-                if let Ok(f) = open(cfg.get_stdin()) {
+                if let Ok(f) = open(&cfg.stdin) {
                     builder = builder.with_stdin(f);
                 }
-                if let Ok(f) = open(cfg.get_stdout()) {
+                if let Ok(f) = open(&cfg.stdout) {
                     builder = builder.with_stdout(f);
                 }
-                if let Ok(f) = open(cfg.get_stderr()) {
+                if let Ok(f) = open(&cfg.stderr) {
                     builder = builder.with_stderr(f);
                 }
-                let config = cfg.get_config();
 
                 let container = builder
-                    .as_init(&bundle)
+                    .as_init(&cfg.bundle)
                     .as_sibling(true)
-                    .with_systemd(config.systemd_cgroup)
+                    .with_systemd(cfg.config.systemd_cgroup)
                     .build()?;
 
                 Ok(container)
