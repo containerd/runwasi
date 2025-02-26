@@ -152,8 +152,10 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p><img src="./art/logo/runwasi_icon1.svg#gh-light-mode-only" alt="runwasi logo light mode" />
-<img src="./art/logo/runwasi_icon3.svg#gh-dark-mode-only" alt="runwasi logo dark mode" /></p>
+                        <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
+  <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
+</picture>
 <h1 id="runwasi"><a class="header" href="#runwasi">runwasi</a></h1>
 <p>This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
@@ -448,7 +450,7 @@ spec:
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
 
-                            <a rel="next prefetch" href="../../CONTRIBUTING.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="CONTRIBUTING.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -459,7 +461,7 @@ spec:
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
 
-                    <a rel="next prefetch" href="../../CONTRIBUTING.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="CONTRIBUTING.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

@@ -1,0 +1,305 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Release - Runwasi Developer Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Runwasi Developer Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="release-process"><a class="header" href="#release-process">Release Process</a></h1>
+<p>This document describes the steps to release a new version of the crate or wasi-demo-app images.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ol>
+<li><a href="#crate-release-process">Crate Release Process</a>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#input-values-for-releaseyml">Input Values for Release.yml</a></li>
+<li><a href="#crate-release-sequence">Crate Release Sequence</a></li>
+<li><a href="#release-steps">Release Steps</a></li>
+<li><a href="#local-development-vs-release">Local Development vs. Release</a></li>
+<li><a href="#verify-signing">Verify signing</a></li>
+<li><a href="#first-time-release-of-a-crate">First time release of a crate</a></li>
+<li><a href="#release-workflow-summary">Release workflow summary</a></li>
+</ul>
+</li>
+<li><a href="#wasi-demo-app-release-process">wasi-demo-app Release Process</a>
+<ul>
+<li><a href="#overview-1">Overview</a></li>
+<li><a href="#verify-signing-1">Verify signing</a></li>
+</ul>
+</li>
+</ol>
+<h2 id="crate-release-process"><a class="header" href="#crate-release-process">Crate Release Process</a></h2>
+<h3 id="overview"><a class="header" href="#overview">Overview</a></h3>
+<p>To create a new release, either run the release.yml workflow as a workload_dispatch trigger through the GitHub UI, or via the following command substituting the proper values for crate and version.</p>
+<pre><code class="language-bash">gh workflow run release.yml -f dry_run=true -f crate=containerd-shim-wasm -f version=0.4.0
+</code></pre>
+<h3 id="input-values-for-releaseyml"><a class="header" href="#input-values-for-releaseyml">Input Values for Release.yml</a></h3>
+<ul>
+<li><code>crate:</code> [string] the name of the crate within the runwasi project. It should be a directory under <code>./crates</code>.</li>
+<li><code>version:</code> [string] the version of the crate to stamp, tag, and release (e.g., 1.0.0, 0.6.0-rc1)</li>
+<li><code>dry_run:</code> [boolean] a flag that causes the workflow to run all step except ones that would tag or push artifacts.</li>
+</ul>
+<h3 id="crate-release-sequence"><a class="header" href="#crate-release-sequence">Crate Release Sequence</a></h3>
+<p>Must release the creates in this order due to dependencies:</p>
+<ol>
+<li><code>containerd-shim-wasm</code></li>
+<li>All runtime-related crates.</li>
+</ol>
+<h3 id="release-steps"><a class="header" href="#release-steps">Release Steps</a></h3>
+<ol>
+<li>Open a PR to bump crate versions and dependency versions in <code>Cargo.toml</code> for that crate, and change the "Unreleased" section in the <code>CHANGELOG.md</code> to the new version.</li>
+<li>PR can be merged after 2 LGTMs</li>
+<li>Run the release workflow for the dependent crate. (e.g. <code>containerd-shim-wasm/v0.2.0</code> where <code>crate=containerd-shim-wasm</code> and <code>version=0.2.0</code>)</li>
+<li>Wait for the release workflow to complete</li>
+<li>Manually verify the release on crates.io and on the GitHub releases page (See <a href="#Verify-signing">Verify signing</a> section for more details on verifying the release on GitHub releases page.)</li>
+<li>If this is the first time publishing this crate, see the <a href="#First-release-of-a-crate">First release of a crate</a> section.</li>
+</ol>
+<blockquote>
+<p>Note: If step 1 and/or 2 is skipped, the release workflow will fail because the version in the Cargo.toml will not match the tag.</p>
+<p>For step 5, some crates have binaries, such as the containerd-shim-wasmtime crate. These binaries are built as part of the release workflow and uploaded to the GitHub release page. You can download the binaries from the release page and verify that they work as expected.</p>
+</blockquote>
+<h3 id="local-development-vs-release"><a class="header" href="#local-development-vs-release">Local Development vs. Release</a></h3>
+<p>Locally, crates reference local paths. During release, they target published versions.
+Use both <code>path</code> and <code>version</code> fields in the workspace <code>Cargo.toml</code>:</p>
+<p>e.g.</p>
+<pre><code class="language-toml">containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
+</code></pre>
+<h3 id="verify-signing"><a class="header" href="#verify-signing">Verify signing</a></h3>
+<p>The release pipeline uses <code>cosign</code> to sign the release blobs, if any. It uses Github's OIDC token to authenticate with Sigstore to prove identity and outputs a <code>.bundle</code> file, which contains a signature and a key. This file can be verified using <code>cosign verify-blob</code> command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):</p>
+<pre><code class="language-sh">cosign verify-blob --bundle containerd-shim-wasmtime-v1.bundle \
+--certificate-identity https://github.com/containerd/runwasi/.github/workflows/release.yml@refs/tags/containerd-shim-wasmtime/&lt;tag&gt; \ 
+--certificate-oidc-issuer https://token.actions.githubusercontent.com \
+containerd-shim-wasmtime-v1
+</code></pre>
+<p>In the Github release page, please provide the above command in the instructions for the consumer to verify the release.</p>
+<h3 id="first-time-release-of-a-crate"><a class="header" href="#first-time-release-of-a-crate">First time release of a crate</a></h3>
+<p>If the crate has never been published to crates.io before then ownership of the crate will need to be configured.
+The containerd/runwasi-committers team will need to be added as an owner of the crate.
+The release workflow will automatically invite the person who triggered the workflow run to be an owner of the crate.
+That person will need to accept the invite to be an owner of the crate and then manually add the containerd/runwasi-committers team as an owner of the crate.</p>
+<pre><code>cargo owner --add github:containerd:runwasi-committers &lt;crate-name&gt;
+</code></pre>
+<p><em>This assumes you've already done <code>cargo login</code> with your personal account.
+Alternatively, the cargo cli does support setting the token via an environment variable, <code>CARGO_REGISTRY_TOKEN</code> or as a CLI flag.</em></p>
+<p>Now all members of the containerd/runwasi-committers team will have access to manage the crate (after they have accepted the invite to the crate).</p>
+<h3 id="release-workflow-summary"><a class="header" href="#release-workflow-summary">Release workflow summary</a></h3>
+<p>The workflow performs the following steps:</p>
+<ul>
+<li>Verifies inputs</li>
+<li>Verifies ability to push crates</li>
+<li>Updates the version of the crate to the version specified in the workflow input</li>
+<li>Build the crate to be released (determined by the tag), including any artifacts (e.g., associated binaries)</li>
+<li>Run the tests for that crate (and only that crate!)</li>
+<li>Publishes to the crates.io</li>
+<li>Tags the repository for the release</li>
+<li>Creates a GitHub release for that crate (attaching any artifacts)</li>
+</ul>
+<p>The workflow utilizes a bot account (@containerd-runwasi-release-bot) to publish the crate to crates.io. The bot account is only used to get a limited-scope API token to publish the crate on crates.io. The token is stored as a secret in the repository and is only used by the release workflow.</p>
+<h2 id="wasi-demo-app-release-process"><a class="header" href="#wasi-demo-app-release-process"><code>wasi-demo-app</code> Release Process</a></h2>
+<h3 id="overview-1"><a class="header" href="#overview-1">Overview</a></h3>
+<p>To release a new version of the wasi-demo-app images, run the release-wasi-demo-app.yml workflow using the following command, substituting the correct version:</p>
+<pre><code class="language-bash">gh workflow run release-wasi-demo-app.yml -f dry_run=false -f version=0.1.0
+</code></pre>
+<h3 id="verify-signing-1"><a class="header" href="#verify-signing-1">Verify signing</a></h3>
+<p>To verify the signature of the release, run the following command:</p>
+<pre><code class="language-bash">cosign verify ghcr.io/containerd/runwasi/wasi-demo-app:0.1.0 --certificate-identity https://github.com/containerd/runwasi/.github/workflows/sign.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="developer/docs.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="oci-decision-flow.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="developer/docs.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="oci-decision-flow.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
