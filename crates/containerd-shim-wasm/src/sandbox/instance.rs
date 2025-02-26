@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::error::Error;
+use crate::sandbox::shim::Config;
 
 /// Generic options builder for creating a wasm instance.
 /// This is passed to the `Instance::new` method.
@@ -24,8 +25,8 @@ pub struct InstanceConfig {
     namespace: String,
     /// GRPC address back to main containerd
     containerd_address: String,
-    /// Enables systemd cgroup.
-    systemd_cgroup: bool,
+    /// containerd runtime options config
+    config: Config,
 }
 
 impl InstanceConfig {
@@ -35,11 +36,11 @@ impl InstanceConfig {
         Self {
             namespace,
             containerd_address,
-            systemd_cgroup: true,
             stdin: PathBuf::default(),
             stdout: PathBuf::default(),
             stderr: PathBuf::default(),
             bundle: PathBuf::default(),
+            config: Config::default(),
         }
     }
 
@@ -97,15 +98,15 @@ impl InstanceConfig {
         self.containerd_address.clone()
     }
 
-    /// set the systemd cgroup for the instance
-    pub fn set_systemd_cgroup(&mut self, systemd_cgroup: bool) -> &mut Self {
-        self.systemd_cgroup = systemd_cgroup;
+    /// set the options config for the instance
+    pub fn set_config(&mut self, config: Config) -> &mut Self {
+        self.config = config;
         self
     }
 
-    /// get the systemd cgroup for the instance
-    pub fn get_systemd_cgroup(&self) -> bool {
-        self.systemd_cgroup
+    /// get the options config for the instance
+    pub fn get_config(&self) -> &Config {
+        &self.config
     }
 }
 
