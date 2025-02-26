@@ -35,10 +35,14 @@
         padding: 0.3em;
         box-shadow: 0.5em 0.5em 0.75em #0001;
     }
+
+    .rangeslider-mask-min-opp-axis {
+        fill-opacity: 0 !important;
+    }
 </style>
 <h2 id="title"><code>runwasi</code> benchmarks</h2>
 <div id="content">
-<div id="plots"></div>
+    <div id="plots"></div>
 </div>
 <script type="module">
     import "./data.js"
@@ -128,6 +132,7 @@
         };
 
         var layout = {
+            paper_bgcolor: "#fff0",
             title: {
                 text: name,
                 subtitle: { text: subtitles[tool] },
@@ -136,8 +141,13 @@
                 visible: true
             },
             margin: {
-                l: 50,
-                r: 50,
+                l: 80,
+                r: 80,
+                b: 50,
+                t: 80,
+            },
+            modebar: {
+                remove: ["autoscale", "lasso", "zoomin", "zoomout", "select", "pan"],
             },
             xaxis: {
                 automargin: false,
@@ -145,8 +155,7 @@
                 tickangle: 0,
                 rangeslider: {
                     range: [xmin, xmax],
-                    bgcolor: "#EEE",
-                    bordercolor: "#AAA",
+                    bordercolor: "#DDD",
                     borderwidth: 1,
                     yaxis: {
                         rangemode: "auto"
@@ -168,8 +177,6 @@
                 itemclick: "toggleothers",
             },
         };
-
-        console.log(data);
 
         let chart = await Plotly.newPlot(plot, Object.values(data), layout);
 
@@ -203,8 +210,6 @@
             });
 
             const ymax = Math.max(0, ...ymax_vec);
-
-            console.log(chart._fullLayout.yaxis.range, ymax)
 
             Plotly.relayout(chart, { 'yaxis.range': [0, ymax * 1.05] });
         });
