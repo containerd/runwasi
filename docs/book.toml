@@ -4,6 +4,7 @@ language = "en"
 multilingual = false
 src = "src"
 title = "Runwasi Developer Documentation"
+description = "Documentation for runwasi"
 
 [preprocessor]
 
@@ -14,3 +15,25 @@ command = "mdbook-mermaid"
 
 [output.html]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
+git-repository-url = "https://github.com/containerd/runwasi"
+edit-url-template = "https://github.com/containerd/runwasi/edit/main/docs/{path}"
+default-theme = "light"
+preferred-dark-theme = "navy"
+copy-fonts = true
+no-section-label = false
+curly-quotes = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
