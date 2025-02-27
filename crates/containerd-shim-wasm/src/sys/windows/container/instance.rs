@@ -35,8 +35,8 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
     /// Waits for the instance to finish and returns its exit code
     /// Returns None if the timeout is reached before the instance has finished.
-    /// This is a blocking call.
-    fn wait_timeout(&self, _t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
+    /// This is an async call.
+    async fn wait(&self) -> (u32, DateTime<Utc>) {
         todo!();
     }
 }

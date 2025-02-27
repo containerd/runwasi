@@ -1,5 +1,4 @@
 use std::sync::{OnceLock, RwLock};
-use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 
@@ -75,23 +74,10 @@ impl<T: Instance> InstanceData<T> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
-    pub fn wait(&self) -> (u32, DateTime<Utc>) {
-        let res = self.instance.wait();
+    pub async fn wait(&self) -> (u32, DateTime<Utc>) {
+        let res = self.instance.wait().await;
         let mut s = self.state.write().unwrap();
         *s = TaskState::Exited;
-        res
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
-    pub fn wait_timeout(
-        &self,
-        t: impl Into<Option<Duration>> + std::fmt::Debug,
-    ) -> Option<(u32, DateTime<Utc>)> {
-        let res = self.instance.wait_timeout(t);
-        if res.is_some() {
-            let mut s = self.state.write().unwrap();
-            *s = TaskState::Exited;
-        }
         res
     }
 }
