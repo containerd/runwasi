@@ -1,7 +1,5 @@
 use std::marker::PhantomData;
 use std::path::Path;
-use std::thread;
-use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use libcontainer::container::builder::ContainerBuilder;
@@ -102,11 +100,11 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
         self.container.start()?;
 
         let exit_code = self.exit_code.clone();
-        thread::spawn(move || {
-            // move the exit code guard into this thread
+        async move {
+            // move the exit code guard into this task
             let _guard = guard;
 
-            let status = match pidfd.wait().block_on() {
+            let status = match pidfd.wait().await {
                 Ok(WaitStatus::Exited(_, status)) => status,
                 Ok(WaitStatus::Signaled(_, sig, _)) => 128 + sig as i32,
                 Ok(res) => {
@@ -119,7 +117,8 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
                 }
             } as u32;
             let _ = exit_code.set((status, Utc::now()));
-        });
+        }
+        .spawn();
 
         Ok(pid as _)
     }
@@ -143,12 +142,9 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
     /// Waits for the instance to finish and returns its exit code
     /// Returns None if the timeout is reached before the instance has finished.
-    /// This is a blocking call.
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(skip(self, t), level = "Info")
-    )]
-    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
-        self.exit_code.wait_timeout(t).copied()
+    /// This is an async call.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
+    async fn wait(&self) -> (u32, DateTime<Utc>) {
+        *self.exit_code.wait().await
     }
 }

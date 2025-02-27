@@ -4,9 +4,10 @@ use std::ops::Not;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::thread;
+#[cfg(feature = "opentelemetry")]
 use std::time::Duration;
 
-use anyhow::{Context as AnyhowContext, ensure};
+use anyhow::ensure;
 use containerd_shim::api::{
     ConnectRequest, ConnectResponse, CreateTaskRequest, CreateTaskResponse, DeleteRequest, Empty,
     KillRequest, ShutdownRequest, StartRequest, StartResponse, StateRequest, StateResponse,
@@ -18,6 +19,7 @@ use containerd_shim::protos::shim::shim_ttrpc::Task;
 use containerd_shim::protos::types::task::Status;
 use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
+use futures::FutureExt as _;
 use log::debug;
 use oci_spec::runtime::Spec;
 use prost::Message;
@@ -28,6 +30,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 #[cfg(feature = "opentelemetry")]
 use super::otel::extract_context;
+use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::instance_data::InstanceData;
@@ -249,21 +252,18 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 
         let id = req.id().to_string();
 
-        thread::Builder::new()
-            .name(format!("{id}-wait"))
-            .spawn(move || {
-                let (exit_code, timestamp) = i.wait();
-                events.send(TaskExit {
-                    container_id: id.clone(),
-                    exit_status: exit_code,
-                    exited_at: Some(timestamp.to_timestamp()).into(),
-                    pid,
-                    id,
-                    ..Default::default()
-                });
-            })
-            .context("could not spawn thread to wait exit")
-            .map_err(Error::from)?;
+        async move {
+            let (exit_code, timestamp) = i.wait().await;
+            events.send(TaskExit {
+                container_id: id.clone(),
+                exit_status: exit_code,
+                exited_at: Some(timestamp.to_timestamp()).into(),
+                pid,
+                id,
+                ..Default::default()
+            });
+        }
+        .spawn();
 
         debug!("started: {:?}", req);
 
@@ -293,7 +293,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         i.delete()?;
 
         let pid = i.pid().unwrap_or_default();
-        let (exit_code, timestamp) = i.wait_timeout(Duration::ZERO).unzip();
+        let (exit_code, timestamp) = i.wait().now_or_never().unzip();
         let timestamp = timestamp.map(ToTimestamp::to_timestamp);
 
         self.instances.write().unwrap().remove(req.id());
@@ -321,7 +321,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         }
 
         let i = self.get_instance(req.id())?;
-        let (exit_code, timestamp) = i.wait();
+        let (exit_code, timestamp) = i.wait().block_on();
 
         debug!("wait finishes");
         Ok(WaitResponse {
@@ -339,7 +339,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 
         let i = self.get_instance(req.id())?;
         let pid = i.pid();
-        let (exit_code, timestamp) = i.wait_timeout(Duration::ZERO).unzip();
+        let (exit_code, timestamp) = i.wait().now_or_never().unzip();
         let timestamp = timestamp.map(ToTimestamp::to_timestamp);
 
         let status = if pid.is_none() {

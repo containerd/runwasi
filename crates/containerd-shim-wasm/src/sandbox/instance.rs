@@ -1,7 +1,6 @@
 //! Abstractions for running/managing a wasm/wasi instance.
 
 use std::path::PathBuf;
-use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -55,14 +54,6 @@ pub trait Instance: 'static {
     fn delete(&self) -> Result<(), Error>;
 
     /// Waits for the instance to finish and returns its exit code
-    /// This is a blocking call.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn wait(&self) -> (u32, DateTime<Utc>) {
-        self.wait_timeout(None).unwrap()
-    }
-
-    /// Waits for the instance to finish and returns its exit code
-    /// Returns None if the timeout is reached before the instance has finished.
-    /// This is a blocking call.
-    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)>;
+    /// This is an async call.
+    fn wait(&self) -> impl Future<Output = (u32, DateTime<Utc>)> + Send;
 }

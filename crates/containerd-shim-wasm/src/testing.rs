@@ -19,6 +19,7 @@ use oci_spec::runtime::{
     get_default_namespaces,
 };
 
+use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::{Instance, InstanceConfig};
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
@@ -273,9 +274,9 @@ where
         Ok(self)
     }
 
-    pub fn wait(&self, timeout: Duration) -> Result<(u32, String, String)> {
+    pub fn wait(&self, t: Duration) -> Result<(u32, String, String)> {
         log::info!("waiting wasi test");
-        let (status, _) = match self.instance.wait_timeout(timeout) {
+        let (status, _) = match self.instance.wait().with_timeout(t).block_on() {
             Some(res) => res,
             None => {
                 self.instance.kill(SIGKILL)?;
