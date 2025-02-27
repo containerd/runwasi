@@ -28,6 +28,7 @@ use std::time::Duration;
 
 use anyhow::{Result, bail};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
+use tokio_util::task::TaskTracker;
 
 use crate::container::{Engine, Instance, RuntimeContext};
 use crate::testing::WasiTest;
@@ -77,70 +78,68 @@ impl Drop for KillGuard {
     }
 }
 
-#[test]
-fn test_handling_signals() -> Result<()> {
+#[tokio::test]
+async fn test_handling_signals() -> Result<()> {
     zygote::Zygote::global();
 
-    // use a thread scope to ensure we join all threads at the end
-    std::thread::scope(|s| -> Result<()> {
-        let mut containers = vec![];
+    let mut containers = vec![];
 
-        for i in 0..20 {
-            let builder = WasiTest::<SomeInstance>::builder()?
-                .with_name(format!("test-{i}"))
-                .with_start_fn(format!("test-{i}"))
-                .with_wasm(HELLO_WORLD)?;
+    for i in 0..20 {
+        let builder = WasiTest::<SomeInstance>::builder()?
+            .with_name(format!("test-{i}"))
+            .with_start_fn(format!("test-{i}"))
+            .with_wasm(HELLO_WORLD)?;
 
-            // In CI /proc/self/fd/1 doesn't seem to be available
-            let builder = match canonicalize("/proc/self/fd/1") {
-                Ok(stdout) => builder.with_stdout(stdout)?,
-                _ => builder,
-            };
+        // In CI /proc/self/fd/1 doesn't seem to be available
+        let builder = match canonicalize("/proc/self/fd/1") {
+            Ok(stdout) => builder.with_stdout(stdout)?,
+            _ => builder,
+        };
 
-            let container = builder.build()?;
-            containers.push(Arc::new(container));
-        }
+        let container = builder.build().await?;
+        containers.push(Arc::new(container));
+    }
 
-        let _guard: Vec<_> = containers.iter().cloned().map(KillGuard).collect();
+    let _guard: Vec<_> = containers.iter().cloned().map(KillGuard).collect();
 
-        for container in containers.iter() {
-            container.start()?;
-        }
+    for container in containers.iter() {
+        container.start().await?;
+    }
 
-        let (tx, rx) = channel();
+    let (tx, rx) = channel();
 
-        for (i, container) in containers.iter().cloned().enumerate() {
-            let tx = tx.clone();
-            s.spawn(move || -> anyhow::Result<()> {
-                println!("shim> waiting for container {i}");
-                let (code, ..) = container.wait(Duration::from_secs(10000))?;
-                println!("shim> container test-{i} exited with code {code}");
-                tx.send(i)?;
-                Ok(())
-            });
-        }
+    let tasks = TaskTracker::new();
+    for (i, container) in containers.iter().cloned().enumerate() {
+        let tx = tx.clone();
+        tasks.spawn(async move {
+            println!("shim> waiting for container {i}");
+            let (code, ..) = container.wait(Duration::from_secs(10000)).await?;
+            println!("shim> container test-{i} exited with code {code}");
+            tx.send(i)?;
+            Ok::<_, anyhow::Error>(())
+        });
+    }
 
-        'outer: for (i, container) in containers.iter().enumerate() {
-            for _ in 0..100 {
-                let stderr = container.read_stderr()?.unwrap_or_default();
-                if stderr.contains("ready") {
-                    continue 'outer;
-                }
-                sleep(Duration::from_millis(1));
+    'outer: for (i, container) in containers.iter().enumerate() {
+        for _ in 0..100 {
+            let stderr = container.read_stderr()?.unwrap_or_default();
+            if stderr.contains("ready") {
+                continue 'outer;
             }
-            bail!("timeout waiting for container test-{i}");
+            sleep(Duration::from_millis(1));
         }
+        bail!("timeout waiting for container test-{i}");
+    }
 
-        println!("shim> all containers ready");
+    println!("shim> all containers ready");
 
-        for (i, container) in containers.iter().enumerate() {
-            println!("shim> sending ctrl-c to container test-{i}");
-            let _ = container.ctrl_c()?;
-            let id = rx.recv_timeout(Duration::from_secs(5))?;
-            println!("shim> received exit from container test-{id} (expected test-{i})");
-            assert_eq!(id, i);
-        }
+    for (i, container) in containers.iter().enumerate() {
+        println!("shim> sending ctrl-c to container test-{i}");
+        let _ = container.ctrl_c().await?;
+        let id = rx.recv_timeout(Duration::from_secs(5))?;
+        println!("shim> received exit from container test-{id} (expected test-{i})");
+        assert_eq!(id, i);
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

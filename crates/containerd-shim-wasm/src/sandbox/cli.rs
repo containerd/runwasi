@@ -205,32 +205,30 @@ pub fn shim_main<'a, I>(
     #[cfg(unix)]
     monitor_treads();
 
-    #[cfg(feature = "opentelemetry")]
-    if otel_traces_enabled() {
-        // opentelemetry uses tokio, so we need to initialize a runtime
-        async {
+    async {
+        #[cfg(feature = "opentelemetry")]
+        if otel_traces_enabled() {
+            // opentelemetry uses tokio, so we need to initialize a runtime
             let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
             let _guard = otlp_config
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
-            shim_main_inner::<I>(name, version, revision, shim_version, config);
-        }
-        .block_on();
-    } else {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
-    }
+            shim_main_inner::<I>(name, version, revision, shim_version, config).await;
+        } else {
+            shim_main_inner::<I>(name, version, revision, shim_version, config).await;
+        };
 
-    #[cfg(not(feature = "opentelemetry"))]
-    {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
+        #[cfg(not(feature = "opentelemetry"))]
+        shim_main_inner::<I>(name, version, revision, shim_version, config).await;
     }
+    .block_on();
 
     #[cfg(target_os = "linux")]
     log_stats();
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(
+async fn shim_main_inner<'a, I>(
     name: &str,
     version: &str,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
@@ -276,5 +274,5 @@ fn shim_main_inner<'a, I>(
     let lower_name = name.to_lowercase();
     let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 
-    run::<ShimCli<I>>(&shim_id, config);
+    run::<ShimCli<I>>(&shim_id, config).await;
 }

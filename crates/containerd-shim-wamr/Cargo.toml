@@ -15,6 +15,7 @@ wamr-rust-sdk = { git = "https://github.com/bytecodealliance/wamr-rust-sdk", tag
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = { workspace = true }
+tokio = { workspace = true }
 
 [[bin]]
 name = "containerd-shim-wamr-v1"
