@@ -62,12 +62,12 @@ sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/contai
 
 `Runwasi` uses the standard [OTLP environment variables](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/) to configure the OTLP exporter endpoint. The following environment variables are supported:
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` - A base endpoint to send trace data to.
-`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - The endpoint to send trace data to. Overrides `OTEL_EXPORTER_OTLP_ENDPOINT`.
-`OTEL_EXPORTER_OTLP_PROTOCOL` - A base protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
-`OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` - The protocol to use when sending trace data. Overrides `OTEL_EXPORTER_OTLP_PROTOCOL`.
-`OTEL_SDK_DISABLED` - Disables the SDK if set to `true`.
-`OTEL_SERVICE_NAME` - The name of the service.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` - A base endpoint to send trace data to.
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - The endpoint to send trace data to. Overrides `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- `OTEL_EXPORTER_OTLP_PROTOCOL` - A base protocol to use when sending trace data. Default is `http/protobuf`. Valid values are `http/protobuf`, `grpc`.
+- `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` - The protocol to use when sending trace data. Overrides `OTEL_EXPORTER_OTLP_PROTOCOL`.
+- `OTEL_SDK_DISABLED` - Disables the SDK if set to `true`.
+- `OTEL_SERVICE_NAME` - The name of the service.
 
 ## Context Propagation
 
