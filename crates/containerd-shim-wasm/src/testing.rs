@@ -214,11 +214,15 @@ where
 
         log::info!("building wasi test: {}", dir.display());
 
-        let mut cfg = InstanceConfig::new(TEST_NAMESPACE, "/run/containerd/containerd.sock");
-        cfg.set_bundle(dir)
-            .set_stdout(dir.join("stdout"))
-            .set_stderr(dir.join("stderr"))
-            .set_stdin(dir.join("stdin"));
+        let cfg = InstanceConfig {
+            namespace: TEST_NAMESPACE.to_string(),
+            containerd_address: "/run/containerd/containerd.sock".to_string(),
+            bundle: dir.to_path_buf(),
+            stdout: dir.join("stdout"),
+            stderr: dir.join("stderr"),
+            stdin: dir.join("stdin"),
+            ..Default::default()
+        };
 
         let instance = WasiInstance::new(self.container_name, &cfg)?;
         Ok(WasiTest { instance, tempdir })

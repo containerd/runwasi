@@ -133,11 +133,6 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     fn is_empty(&self) -> bool {
         self.instances.read().unwrap().is_empty()
     }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
-    fn instance_config(&self) -> InstanceConfig {
-        InstanceConfig::new(&self.namespace, &self.containerd_address)
-    }
 }
 
 // These are the same functions as in Task, but without the TtrcpContext, which is useful for testing
@@ -191,12 +186,15 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             }
         }
 
-        let mut cfg = self.instance_config();
-        cfg.set_bundle(&req.bundle)
-            .set_stdin(&req.stdin)
-            .set_stdout(&req.stdout)
-            .set_stderr(&req.stderr)
-            .set_config(config);
+        let cfg = InstanceConfig {
+            namespace: self.namespace.clone(),
+            containerd_address: self.containerd_address.clone(),
+            bundle: req.bundle.as_str().into(),
+            stdout: req.stdout.as_str().into(),
+            stderr: req.stderr.as_str().into(),
+            stdin: req.stdin.as_str().into(),
+            config,
+        };
 
         // Check if this is a cri container
         let instance = InstanceData::new(req.id(), cfg)?;
@@ -353,10 +351,10 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         };
 
         Ok(StateResponse {
-            bundle: i.config().get_bundle().to_string_lossy().to_string(),
-            stdin: i.config().get_stdin().to_string_lossy().to_string(),
-            stdout: i.config().get_stdout().to_string_lossy().to_string(),
-            stderr: i.config().get_stderr().to_string_lossy().to_string(),
+            bundle: i.config.bundle.to_string_lossy().to_string(),
+            stdin: i.config.stdin.to_string_lossy().to_string(),
+            stdout: i.config.stdout.to_string_lossy().to_string(),
+            stderr: i.config.stderr.to_string_lossy().to_string(),
             pid: pid.unwrap_or_default(),
             exit_status: exit_code.unwrap_or_default(),
             exited_at: timestamp.into(),

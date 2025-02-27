@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Engine` trait now creates a dedicated Zygote process for each container to avoid the issue of libcontainer trying to change the shim process's global state. ([#828](https://github.com/containerd/runwasi/pull/828))
 - `Engine` trait now uses `systemd_cgroup` from `InstanceConfig` to create the container's cgroup instead of hardcoding it to `false`. ([#864](https://github.com/containerd/runwasi/pull/864))
 - `containerd-shim-wasm` now uses Rust Edition 2024.
+- Breaking change: The `InstanceConfig` struct now has public members instead of accessor methods. ([#882](https://github.com/containerd/runwasi/pull/882))
 
 ### Removed
 - `containerd_shim_wasm::container::PathResolve` is now a private module ([#837](https://github.com/containerd/runwasi/pull/837))
