@@ -7,7 +7,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use containerd_shim::api::Status;
 use containerd_shim::event::Event;
-use protobuf::MessageDyn;
+use protobuf::{MessageDyn, SpecialFields};
 use serde_json as json;
 use tempfile::tempdir;
 
@@ -415,6 +415,41 @@ fn test_task_lifecycle() -> Result<()> {
         Error::NotFound(_) => {}
         e => return Err(e),
     }
+
+    Ok(())
+}
+
+#[test]
+fn test_default_runtime_options() -> Result<()> {
+    let options: Option<&Any> = None;
+
+    let config = Config::get_from_options(options).unwrap();
+
+    assert_eq!(config.systemd_cgroup, false);
+
+    Ok(())
+}
+
+#[test]
+fn test_custom_runtime_options() -> Result<()> {
+    let options = Options {
+        type_url: "runtimeoptions.v1.Options".to_string(),
+        config_path: "".to_string(),
+        config_body: "SystemdCgroup = true\n".to_string(),
+    };
+    let req = CreateTaskRequest {
+        options: Some(Any {
+            type_url: options.type_url.clone(),
+            value: options.encode_to_vec(),
+            special_fields: SpecialFields::default(),
+        })
+        .into(),
+        ..Default::default()
+    };
+
+    let config = Config::get_from_options(req.options.as_ref()).unwrap();
+
+    assert_eq!(config.systemd_cgroup, true);
 
     Ok(())
 }
