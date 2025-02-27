@@ -37,27 +37,15 @@ Install cross:
 scripts/setup-cross.sh
 ```
 
-## Project structure
+## Project structure and architecture
 
-There are several projects in the repository:
+For a detailed overview of the Runwasi structure and architecture, please refer to the [Architecture Documentation](./docs/src/user-guide/architecture.md).
 
-- `containerd-shim-wasm` - main library that is used by runtimes to create shims. Most of the shared code lives here.
-- `containerd-shim-wasm-test-modules` - library with wasm test modules used in testing framework
-- `containerd-shim-<runtime>` - shims per runtime (wasmtime, wasmedge, wasmer, wamr, etc). These produce binaries that are the shims which containerd talks too.
-- `oci-tar-builder` - library and executable that helps build OCI tar files.
-- `wasi-demo-app` - wasm application that is used for demos and testing.
-
-## Project architecture
-
-![A diagram of runwasi architecture](assets/runwasi-architecture.png)
-
-The Containerd "shim" is a daemon process that serves [Task Service API](https://github.com/containerd/containerd/blob/v2.0.0/core/runtime/v2/README.md#tasks). It listens on a socket to receive ttRPC commands from Containerd, allowing for lifecycle management for containers (create, start, stop, etc.). Runwasi's `containerd-shim-wasm` library is designed to easily author your own shim binaries that handle Wasm modules. 
-
-Runwasi supports two types of engine:
-1. **WebAssembly / WASI Engine**: The WebAssembly engine executes Wasm modules or components in an containerized process.
-1. **Youki Container Engine**: The Youki engine manages OCI-compliant container workloads. It offers functionality analogous to [runc](https://github.com/opencontainers/runc), including lifecycle operations for containers (create, start, stop, etc.).
-
-Runwasi is able to automatically detect the type of the workloads and decide either of the two modes to execute. This allows runwasi shims to be able to run WebAssembly workloads side-by-side with container workloads.
+The documentation covers:
+- High-level structure of Runwasi
+- Component descriptions and interactions
+- WebAssembly runtime integration approaches
+- Process model and container ecosystem integration
 
 ## Building the project
 
