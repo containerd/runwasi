@@ -1,6 +1,4 @@
 use std::fs::{File, create_dir};
-use std::sync::mpsc::{Sender, channel};
-use std::thread;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -10,6 +8,8 @@ use containerd_shim::event::Event;
 use protobuf::{MessageDyn, SpecialFields};
 use serde_json as json;
 use tempfile::tempdir;
+use tokio::sync::mpsc::{UnboundedSender as Sender, unbounded_channel as channel};
+use tokio_async_drop::tokio_async_drop;
 
 use super::*;
 use crate::sandbox::shim::events::EventSender;
@@ -24,19 +24,19 @@ pub struct InstanceStub {
 
 impl Instance for InstanceStub {
     type Engine = ();
-    fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
+    async fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
         Ok(InstanceStub {
             exit_code: WaitableCell::new(),
         })
     }
-    fn start(&self) -> Result<u32, Error> {
+    async fn start(&self) -> Result<u32, Error> {
         Ok(std::process::id())
     }
-    fn kill(&self, _signal: u32) -> Result<(), Error> {
+    async fn kill(&self, _signal: u32) -> Result<(), Error> {
         let _ = self.exit_code.set((1, Utc::now()));
         Ok(())
     }
-    fn delete(&self) -> Result<(), Error> {
+    async fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
     async fn wait(&self) -> (u32, DateTime<Utc>) {
@@ -55,22 +55,20 @@ impl<T: Instance + Send + Sync, E: EventSender> LocalWithDestructor<T, E> {
 }
 
 impl EventSender for Sender<(String, Box<dyn MessageDyn>)> {
-    fn send(&self, event: impl Event) {
+    async fn send(&self, event: impl Event) {
         let _ = self.send((event.topic(), Box::new(event)));
     }
 }
 
 impl<T: Instance + Send + Sync, E: EventSender> Drop for LocalWithDestructor<T, E> {
     fn drop(&mut self) {
-        self.local
-            .instances
-            .write()
-            .unwrap()
-            .iter()
-            .for_each(|(_, v)| {
-                let _ = v.kill(9);
-                v.delete().unwrap();
-            });
+        tokio_async_drop!({
+            let instances = self.local.instances.write().await;
+            for (_, instance) in instances.iter() {
+                let _ = instance.kill(9);
+                let _ = instance.delete().await;
+            }
+        })
     }
 }
 
@@ -98,8 +96,8 @@ fn create_bundle(dir: &std::path::Path, spec: Option<Spec>) -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_delete_after_create() {
+#[tokio::test]
+async fn test_delete_after_create() -> anyhow::Result<()> {
     let dir = tempdir().unwrap();
     let id = "test-delete-after-create";
     create_bundle(dir.path(), None).unwrap();
@@ -120,18 +118,20 @@ fn test_delete_after_create() {
             bundle: dir.path().to_str().unwrap().to_string(),
             ..Default::default()
         })
-        .unwrap();
+        .await?;
 
     local
         .task_delete(DeleteRequest {
             id: id.to_string(),
             ..Default::default()
         })
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
-#[test]
-fn test_cri_task() -> Result<()> {
+#[tokio::test]
+async fn test_cri_task() -> Result<()> {
     // Currently the relationship between the "base" container and the "instances" are pretty weak.
     // When a cri sandbox is specified we just assume it's the sandbox container and treat it as such by not actually running the code (which is going to be wasm).
     let (etx, _erx) = channel();
@@ -151,39 +151,49 @@ fn test_cri_task() -> Result<()> {
     let sandbox_id = "test-cri-task".to_string();
     create_bundle(dir, Some(with_cri_sandbox(None, sandbox_id.clone())))?;
 
-    local.task_create(CreateTaskRequest {
-        id: "testbase".to_string(),
-        bundle: dir.to_str().unwrap().to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_create(CreateTaskRequest {
+            id: "testbase".to_string(),
+            bundle: dir.to_str().unwrap().to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-    let state = local.task_state(StateRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::CREATED);
 
     // make sure that the instance exists
-    let _i = local.get_instance("testbase")?;
+    let _i = local.get_instance("testbase").await?;
 
-    local.task_start(StartRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_start(StartRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-    let state = local.task_state(StateRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::RUNNING);
 
     let ll = local.clone();
-    let (base_tx, base_rx) = channel();
-    thread::spawn(move || {
-        let resp = ll.task_wait(WaitRequest {
-            id: "testbase".to_string(),
-            ..Default::default()
-        });
+    let (base_tx, mut base_rx) = channel();
+    tokio::spawn(async move {
+        let resp = ll
+            .task_wait(WaitRequest {
+                id: "testbase".to_string(),
+                ..Default::default()
+            })
+            .await;
         base_tx.send(resp).unwrap();
     });
     base_rx.try_recv().unwrap_err();
@@ -192,72 +202,96 @@ fn test_cri_task() -> Result<()> {
     let dir2 = temp2.path();
     create_bundle(dir2, Some(with_cri_sandbox(None, sandbox_id)))?;
 
-    local.task_create(CreateTaskRequest {
-        id: "testinstance".to_string(),
-        bundle: dir2.to_str().unwrap().to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_create(CreateTaskRequest {
+            id: "testinstance".to_string(),
+            bundle: dir2.to_str().unwrap().to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-    let state = local.task_state(StateRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::CREATED);
 
     // make sure that the instance exists
-    let _i = local.get_instance("testinstance")?;
+    let _i = local.get_instance("testinstance").await?;
 
-    local.task_start(StartRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_start(StartRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-    let state = local.task_state(StateRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::RUNNING);
 
-    let stats = local.task_stats(StatsRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    let stats = local
+        .task_stats(StatsRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert!(stats.has_stats());
 
     let ll = local.clone();
-    let (instance_tx, instance_rx) = channel();
-    std::thread::spawn(move || {
-        let resp = ll.task_wait(WaitRequest {
-            id: "testinstance".to_string(),
-            ..Default::default()
-        });
+    let (instance_tx, mut instance_rx) = channel();
+    tokio::spawn(async move {
+        let resp = ll
+            .task_wait(WaitRequest {
+                id: "testinstance".to_string(),
+                ..Default::default()
+            })
+            .await;
         instance_tx.send(resp).unwrap();
     });
     instance_rx.try_recv().unwrap_err();
 
-    local.task_kill(KillRequest {
-        id: "testinstance".to_string(),
-        signal: 9,
-        ..Default::default()
-    })?;
+    local
+        .task_kill(KillRequest {
+            id: "testinstance".to_string(),
+            signal: 9,
+            ..Default::default()
+        })
+        .await?;
 
-    instance_rx.recv_timeout(Duration::from_secs(50)).unwrap()?;
+    instance_rx
+        .recv()
+        .with_timeout(Duration::from_secs(50))
+        .await
+        .flatten()
+        .unwrap()?;
 
-    let state = local.task_state(StateRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::STOPPED);
-    local.task_delete(DeleteRequest {
-        id: "testinstance".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_delete(DeleteRequest {
+            id: "testinstance".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
     match local
         .task_state(StateRequest {
             id: "testinstance".to_string(),
             ..Default::default()
         })
+        .await
         .unwrap_err()
     {
         Error::NotFound(_) => {}
@@ -265,34 +299,48 @@ fn test_cri_task() -> Result<()> {
     }
 
     base_rx.try_recv().unwrap_err();
-    let state = local.task_state(StateRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::RUNNING);
 
-    local.task_kill(KillRequest {
-        id: "testbase".to_string(),
-        signal: 9,
-        ..Default::default()
-    })?;
+    local
+        .task_kill(KillRequest {
+            id: "testbase".to_string(),
+            signal: 9,
+            ..Default::default()
+        })
+        .await?;
 
-    base_rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
-    let state = local.task_state(StateRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    base_rx
+        .recv()
+        .with_timeout(Duration::from_secs(5))
+        .await
+        .flatten()
+        .unwrap()?;
+    let state = local
+        .task_state(StateRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::STOPPED);
 
-    local.task_delete(DeleteRequest {
-        id: "testbase".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_delete(DeleteRequest {
+            id: "testbase".to_string(),
+            ..Default::default()
+        })
+        .await?;
     match local
         .task_state(StateRequest {
             id: "testbase".to_string(),
             ..Default::default()
         })
+        .await
         .unwrap_err()
     {
         Error::NotFound(_) => {}
@@ -302,8 +350,8 @@ fn test_cri_task() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_task_lifecycle() -> Result<()> {
+#[tokio::test]
+async fn test_task_lifecycle() -> Result<()> {
     let (etx, _erx) = channel(); // TODO: check events
     let exit_signal = Arc::new(ExitSignal::default());
     let local = Arc::new(Local::<InstanceStub, _>::new(
@@ -325,17 +373,20 @@ fn test_task_lifecycle() -> Result<()> {
             id: "test".to_string(),
             ..Default::default()
         })
+        .await
         .unwrap_err()
     {
         Error::NotFound(_) => {}
         e => return Err(e),
     }
 
-    local.task_create(CreateTaskRequest {
-        id: "test".to_string(),
-        bundle: dir.to_str().unwrap().to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_create(CreateTaskRequest {
+            id: "test".to_string(),
+            bundle: dir.to_str().unwrap().to_string(),
+            ..Default::default()
+        })
+        .await?;
 
     match local
         .task_create(CreateTaskRequest {
@@ -343,73 +394,95 @@ fn test_task_lifecycle() -> Result<()> {
             bundle: dir.to_str().unwrap().to_string(),
             ..Default::default()
         })
+        .await
         .unwrap_err()
     {
         Error::AlreadyExists(_) => {}
         e => return Err(e),
     }
 
-    let state = local.task_state(StateRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
     assert_eq!(state.status(), Status::CREATED);
 
-    local.task_start(StartRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_start(StartRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-    let state = local.task_state(StateRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
     assert_eq!(state.status(), Status::RUNNING);
 
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel();
     let ll = local.clone();
-    thread::spawn(move || {
-        let resp = ll.task_wait(WaitRequest {
-            id: "test".to_string(),
-            ..Default::default()
-        });
+    tokio::spawn(async move {
+        let resp = ll
+            .task_wait(WaitRequest {
+                id: "test".to_string(),
+                ..Default::default()
+            })
+            .await;
         tx.send(resp).unwrap();
     });
 
     rx.try_recv().unwrap_err();
 
-    let res = local.task_stats(StatsRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    let res = local
+        .task_stats(StatsRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert!(res.has_stats());
 
-    local.task_kill(KillRequest {
-        id: "test".to_string(),
-        signal: 9,
-        ..Default::default()
-    })?;
+    local
+        .task_kill(KillRequest {
+            id: "test".to_string(),
+            signal: 9,
+            ..Default::default()
+        })
+        .await?;
 
-    rx.recv_timeout(Duration::from_secs(5)).unwrap()?;
+    rx.recv()
+        .with_timeout(Duration::from_secs(5))
+        .await
+        .flatten()
+        .unwrap()?;
 
-    let state = local.task_state(StateRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    let state = local
+        .task_state(StateRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
     assert_eq!(state.status(), Status::STOPPED);
 
-    local.task_delete(DeleteRequest {
-        id: "test".to_string(),
-        ..Default::default()
-    })?;
+    local
+        .task_delete(DeleteRequest {
+            id: "test".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
     match local
         .task_state(StateRequest {
             id: "test".to_string(),
             ..Default::default()
         })
+        .await
         .unwrap_err()
     {
         Error::NotFound(_) => {}

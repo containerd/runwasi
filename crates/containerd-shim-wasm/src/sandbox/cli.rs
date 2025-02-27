@@ -80,6 +80,8 @@
 //!
 
 use std::path::PathBuf;
+use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, LazyLock};
 
 use containerd_shim::{Config, parse, run};
 
@@ -91,6 +93,7 @@ pub mod r#impl {
     pub use git_version::git_version;
 }
 
+use super::async_utils::AmbientRuntime as _;
 pub use crate::{revision, version};
 
 /// Get the crate version from Cargo.toml.
@@ -116,9 +119,10 @@ macro_rules! revision {
 }
 
 #[cfg(target_os = "linux")]
-fn get_mem(pid: u32) -> (usize, usize) {
+fn get_stats(pid: u32) -> (usize, usize, usize) {
     let mut rss = 0;
     let mut total = 0;
+    let mut threads = 0;
     for line in std::fs::read_to_string(format!("/proc/{pid}/status"))
         .unwrap()
         .lines()
@@ -135,19 +139,48 @@ fn get_mem(pid: u32) -> (usize, usize) {
             if let Some(rest) = rest.strip_suffix("kB") {
                 rss = rest.trim().parse().unwrap_or(0);
             }
+        } else if let Some(rest) = line.strip_prefix("Threads:") {
+            threads = rest.trim().parse().unwrap_or(0);
         }
     }
-    (rss, total)
+    (rss, total, threads)
 }
 
 #[cfg(target_os = "linux")]
-fn log_mem() {
+fn monitor_treads() -> usize {
+    use std::sync::atomic::Ordering::SeqCst;
+    use std::time::Duration;
+
+    use tokio::time::sleep;
+
+    static NUM_THREADS: LazyLock<Arc<AtomicUsize>> = LazyLock::new(|| {
+        let pid = std::process::id();
+        let num_threads = Arc::new(AtomicUsize::new(0));
+        let n = num_threads.clone();
+        async move {
+            loop {
+                let (_, _, threads) = get_stats(pid);
+                n.fetch_max(threads, SeqCst);
+                sleep(Duration::from_millis(10)).await;
+            }
+        }
+        .spawn();
+        num_threads
+    });
+    NUM_THREADS.load(SeqCst)
+}
+
+#[cfg(target_os = "linux")]
+fn log_stats() {
     let pid = std::process::id();
-    let (rss, tot) = get_mem(pid);
+    let (rss, tot, _) = get_stats(pid);
     log::info!("Shim peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
 
+    let threads = monitor_treads();
+    log::info!("Shim peak number of threads was {threads}");
+
     let pid = zygote::Zygote::global().run(|_| std::process::id(), ());
-    let (rss, tot) = get_mem(pid);
+    let (rss, tot, _) = get_stats(pid);
     log::info!("Zygote peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
 }
 
@@ -169,33 +202,33 @@ pub fn shim_main<'a, I>(
     #[cfg(unix)]
     zygote::Zygote::init();
 
-    #[cfg(feature = "opentelemetry")]
-    if otel_traces_enabled() {
-        // opentelemetry uses tokio, so we need to initialize a runtime
-        use tokio::runtime::Runtime;
-        let rt = Runtime::new().unwrap();
-        rt.block_on(async {
+    #[cfg(unix)]
+    monitor_treads();
+
+    async {
+        #[cfg(feature = "opentelemetry")]
+        if otel_traces_enabled() {
+            // opentelemetry uses tokio, so we need to initialize a runtime
             let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
             let _guard = otlp_config
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
-            shim_main_inner::<I>(name, version, revision, shim_version, config);
-        });
-    } else {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
-    }
+            shim_main_inner::<I>(name, version, revision, shim_version, config).await;
+        } else {
+            shim_main_inner::<I>(name, version, revision, shim_version, config).await;
+        };
 
-    #[cfg(not(feature = "opentelemetry"))]
-    {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
+        #[cfg(not(feature = "opentelemetry"))]
+        shim_main_inner::<I>(name, version, revision, shim_version, config).await;
     }
+    .block_on();
 
     #[cfg(target_os = "linux")]
-    log_mem();
+    log_stats();
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(
+async fn shim_main_inner<'a, I>(
     name: &str,
     version: &str,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
@@ -241,5 +274,5 @@ fn shim_main_inner<'a, I>(
     let lower_name = name.to_lowercase();
     let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 
-    run::<ShimCli<I>>(&shim_id, config);
+    run::<ShimCli<I>>(&shim_id, config).await;
 }
