@@ -4,6 +4,7 @@ use std::future::Future;
 use std::sync::LazyLock;
 use std::time::Duration;
 
+use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 // A thread local runtime that can be used to run futures to completion.
@@ -30,6 +31,14 @@ pub trait AmbientRuntime: Future {
         Self: Sized,
     {
         timeout(t, self).await.ok()
+    }
+
+    fn spawn(self) -> JoinHandle<Self::Output>
+    where
+        Self: Sized + Send + 'static,
+        Self::Output: Send + 'static,
+    {
+        RUNTIME.spawn(self)
     }
 }
 

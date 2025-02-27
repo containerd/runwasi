@@ -7,7 +7,7 @@ use std::thread;
 #[cfg(feature = "opentelemetry")]
 use std::time::Duration;
 
-use anyhow::{Context as AnyhowContext, ensure};
+use anyhow::ensure;
 use containerd_shim::api::{
     ConnectRequest, ConnectResponse, CreateTaskRequest, CreateTaskResponse, DeleteRequest, Empty,
     KillRequest, ShutdownRequest, StartRequest, StartResponse, StateRequest, StateResponse,
@@ -252,21 +252,18 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
 
         let id = req.id().to_string();
 
-        thread::Builder::new()
-            .name(format!("{id}-wait"))
-            .spawn(move || {
-                let (exit_code, timestamp) = i.wait().block_on();
-                events.send(TaskExit {
-                    container_id: id.clone(),
-                    exit_status: exit_code,
-                    exited_at: Some(timestamp.to_timestamp()).into(),
-                    pid,
-                    id,
-                    ..Default::default()
-                });
-            })
-            .context("could not spawn thread to wait exit")
-            .map_err(Error::from)?;
+        async move {
+            let (exit_code, timestamp) = i.wait().await;
+            events.send(TaskExit {
+                container_id: id.clone(),
+                exit_status: exit_code,
+                exited_at: Some(timestamp.to_timestamp()).into(),
+                pid,
+                id,
+                ..Default::default()
+            });
+        }
+        .spawn();
 
         debug!("started: {:?}", req);
 

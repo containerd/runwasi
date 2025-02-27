@@ -19,7 +19,7 @@ use oci_spec::runtime::{
     get_default_namespaces,
 };
 
-use crate::sandbox::async_utils::AmbientRuntime;
+use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::{Instance, InstanceConfig};
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
