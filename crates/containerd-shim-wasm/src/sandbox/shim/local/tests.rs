@@ -39,8 +39,8 @@ impl Instance for InstanceStub {
     fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
-    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
-        self.exit_code.wait_timeout(t).copied()
+    async fn wait(&self) -> (u32, DateTime<Utc>) {
+        *self.exit_code.wait().await
     }
 }
 

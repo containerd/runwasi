@@ -44,11 +44,9 @@ pub trait Instance {
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), Error>;
-    /// Wait for the instance to exit
-    /// The waiter is used to send the exit code and time back to the caller
-    /// Ideally this would just be a blocking call with a normal result, however
-    /// because of how this is called from a thread it causes issues with lifetimes of the trait implementer.
-    fn wait(&self, waiter: &Wait) -> Result<(), Error>;
+    /// Waits for the instance to finish and returns its exit code
+    /// This is an async call.
+    async fn wait(&self) -> (u32, DateTime<Utc>);
 }
 ```
 

@@ -101,8 +101,8 @@ impl Instance for MyInstance {
         Ok(())
     }
 
-    fn wait_timeout(&self, t: impl Into<Option<Duration>>) -> Option<(u32, DateTime<Utc>)> {
-        Some((0, Utc::now()))
+    async fn wait(&self) -> (u32, DateTime<Utc>) {
+        (0, Utc::now())
     }
 }
 ```
