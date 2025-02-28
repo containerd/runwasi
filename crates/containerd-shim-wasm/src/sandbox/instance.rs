@@ -33,9 +33,6 @@ pub struct InstanceConfig {
 /// This trait requires that any type implementing it is `'static`, similar to `std::any::Any`.
 /// This means that the type cannot contain a non-`'static` reference.
 pub trait Instance: 'static {
-    /// The WASI engine type
-    type Engine: Send + Sync + Clone;
-
     /// Create a new instance
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error>
     where
