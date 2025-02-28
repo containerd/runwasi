@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740701851817,
+  "lastUpdate": 1740701853828,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -10361,6 +10361,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/containerd/runwasi/commit/3240088e247f61952fa6b961ff61aa9799ae92be"
         },
         "date": 1740616191411,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "3a72785bf73ec69191929d5529d0ab6c2842a6f6",
+          "message": "Merge pull request #885 from jprendes/async-instance-wait\n\nUse async for the instance's wait method",
+          "timestamp": "2025-02-27T21:22:36Z",
+          "url": "https://github.com/containerd/runwasi/commit/3a72785bf73ec69191929d5529d0ab6c2842a6f6"
+        },
+        "date": 1740701853162,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
