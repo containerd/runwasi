@@ -16,21 +16,21 @@ This document outlines the various methods and ideas for benchmarking `runwasi` 
 
 ### 1. Baseline Performance
 
-To establish a baseline performance, we use the "ghcr.io/containerd/runwasi/wasi-demo-app:latest" and "ghcr.io/containerd/runwasi/wasi-demo-oci:latest" images. These images are simple demo apps that echoes `"hello"` to the console using WASI. We run end-to-end benchmarks for `wasmtime`, `wasmedge`, `wasmer` and `wamr` runtimes and measure the execution duration. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "Criterion.rs Benchmark" section.
+To establish a baseline performance, we use the "ghcr.io/containerd/runwasi/wasi-demo-app:latest" and "ghcr.io/containerd/runwasi/wasi-demo-oci:latest" images. These images are simple demo apps that echoes `"hello"` to the console using WASI. We run end-to-end benchmarks for `wasmtime`, `wasmedge`, `wasmer` and `wamr` runtimes and measure the execution duration. The result can be found in [dev/bench](https://runwasi.dev/dev/bench) website, under the "Criterion.rs Benchmark" section.
 
 The source code for the benchmarks can be found in [benchs/containerd-shim-benchmarks](https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/benches/containerd-shim-benchmarks) directory.
 
 ### 2. Stress Test
 
-[stress-test](https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/crates/stress-test) is a CLI that runs a stress test for the `runwasi` shims. It allows us to deploy a large number of Wasm-based tasks to evaluate task throughput (number of tasks finished per second) under high-density environments. The stress test supports running workloads with mocked containerd server and a real containerd server and supports running `N` tasks in total with `M` concurrent tasks. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "Stress Test Benchmark" section.
+[stress-test](https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/crates/stress-test) is a CLI that runs a stress test for the `runwasi` shims. It allows us to deploy a large number of Wasm-based tasks to evaluate task throughput (number of tasks finished per second) under high-density environments. The stress test supports running workloads with mocked containerd server and a real containerd server and supports running `N` tasks in total with `M` concurrent tasks. The result can be found in [dev/bench](https://runwasi.dev/dev/bench) website, under the "Stress Test Benchmark" section.
 
 ### 3. Memory
 
-We've added functions to collect memory usage data from the shim and zygote processes. We use `scripts/benchmark-mem.sh` script to collect the data. The result can be found in[dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "Criterion.rs Benchmark" section.
+We've added functions to collect memory usage data from the shim and zygote processes. We use `scripts/benchmark-mem.sh` script to collect the data. The result can be found in[dev/bench](https://runwasi.dev/dev/bench) website, under the "Criterion.rs Benchmark" section.
 
 ### 4. Networking
 
-This is for Wasmtime shim. We use `hey` to load test the Wasmtime shim running "ghcr.io/containerd/runwasi/wasi-demo-http:latest" workload. We measure the HTTP throughput and latency of the workload. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website, under the "HTTP Throughput" and "HTTP Latency" sections.
+This is for Wasmtime shim. We use `hey` to load test the Wasmtime shim running "ghcr.io/containerd/runwasi/wasi-demo-http:latest" workload. We measure the HTTP throughput and latency of the workload. The result can be found in [dev/bench](https://runwasi.dev/dev/bench) website, under the "HTTP Throughput" and "HTTP Latency" sections.
 
 ### 5. Runwasi vs. Native Execution
 
@@ -77,7 +77,7 @@ ENTRYPOINT ["/wasmtime", "/hello.wasm"]
 
 ### 6. Visualize the Performance Data
 
-We use [benchmark-action](https://github.com/benchmark-action/github-action-benchmark) to visualize the performance data and we have a benchmark CI job that runs every day at midnight UTC. It will aggregate the result from the daily benchmark and visualize it in a chart. Any regression detected will be notifying to the runwasi-committers group. The result can be found in [dev/bench](https://containerd.github.io/runwasi/dev/bench) website.
+We use [benchmark-action](https://github.com/benchmark-action/github-action-benchmark) to visualize the performance data and we have a benchmark CI job that runs every day at midnight UTC. It will aggregate the result from the daily benchmark and visualize it in a chart. Any regression detected will be notifying to the runwasi-committers group. The result can be found in [dev/bench](https://runwasi.dev/dev/bench) website.
 
 ![Benchmark Report](assets/benchmark-website.png)
 
