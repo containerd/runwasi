@@ -14,8 +14,8 @@ The Runwasi project is organized into several components:
 
 - **containerd-shim-wasm** - Main library that is used by runtimes to create shims. Most of the shared code lives here.
 - **containerd-shim-wasm-test-modules** - Library with WebAssembly test modules used in the testing framework.
-- **containerd-shim-\<runtime>** - Shims per runtime (wasmtime, wasmedge, wasmer, wamr, etc.). These produce binaries that are the shims which containerd communicates with.
-- **oci-tar-builder** - Library and executable that helps build OCI tar files.
+- **containerd-shim-\<runtime>** - Shim reference implementation for selected runtimes (wasmtime, wasmedge, wasmer, wamr, etc.). These produce binaries that are the shims which containerd can communicate with.
+- **oci-tar-builder** - Library and executable that helps build OCI tar files that follow the [`wasm-oci` spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 - **wasi-demo-app** - WebAssembly application that is used for demos and testing.
 
 ## Components
@@ -30,13 +30,14 @@ The core of Runwasi is a Rust library that provides:
 
 1. **Shim Implementation**: Implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime.
 2. **Host Integration Traits**: Provides traits that WebAssembly runtimes must implement to integrate with the Runwasi shim.
+3. **Wasm OCI Integration**: Transparent handling of the [wasm-oci spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 
 ### Engine Types
 
 Runwasi supports two types of engines:
 
 1. **WebAssembly / WASI Engine**: Executes WebAssembly modules or components in a containerized process.
-2. **Youki Container Engine**: Manages OCI-compliant container workloads. It offers functionality analogous to [runc](https://github.com/opencontainers/runc), including lifecycle operations for containers.
+2. **Youki Container Engine**: Manages OCI-compliant native Linux container workloads. It offers functionality analogous to [runc](https://github.com/opencontainers/runc), including lifecycle operations for containers.
 
 Runwasi automatically detects the type of workload and decides which of the two modes to execute. This allows Runwasi shims to run WebAssembly workloads side-by-side with container workloads.
 
