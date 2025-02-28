@@ -83,8 +83,6 @@ struct MyInstance {
 }
 
 impl Instance for MyInstance {
-    type Engine = MyEngine;
-
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
         Ok(MyInstance { engine: MyEngine })
     }
