@@ -15,11 +15,11 @@ Included in the repository is a PoC for running a plain wasi host (ie. no extra 
 - Come join us on our [slack channel #runwasi](https://cloud-native.slack.com/archives/C04LTPB6Z0V) on the CNCF slack.
 - Public Community Call on Tuesdays every other week at 9:00 AM PT: [Zoom](https://zoom.us/my/containerd?pwd=bENmREpnSGRNRXdBZWV5UG8wbU1oUT09), [Meeting Notes](https://docs.google.com/document/d/1aOJ-O7fgMyRowHD0kOoA2Z_4d19NyAvvdqOkZO3Su_M/edit?usp=sharing)
 
-See our [Community Page](https://containerd.github.io/runwasi/resources/community.html) for more ways to get involved.
+See our [Community Page](https://runwasi.dev/resources/community.html) for more ways to get involved.
 
 ## Documentation
 
-For comprehensive documentation, visit our [Documentation Site](https://containerd.github.io/runwasi/).
+For comprehensive documentation, visit our [Documentation Site](https://runwasi.dev/).
 
 For `containerd-shim-wasm` crate documentation, visit [containerd-shim-wasm](https://docs.rs/containerd-shim-wasm).
 
@@ -32,7 +32,7 @@ make build
 sudo make install
 ```
 
-For detailed installation instructions, see the [Installation Guide](https://containerd.github.io/runwasi/getting-started/installation.html).
+For detailed installation instructions, see the [Installation Guide](https://runwasi.dev/getting-started/installation.html).
 
 ### Running an Example
 
@@ -44,7 +44,7 @@ sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
 sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
 ```
 
-For more examples and detailed usage, see the [Demos](https://containerd.github.io/runwasi/getting-started/demos.html).
+For more examples and detailed usage, see the [Demos](https://runwasi.dev/getting-started/demos.html).
 
 ## Projects Using Runwasi
 
@@ -54,4 +54,4 @@ Check out these projects that build on top of runwasi:
 
 ## Contributing
 
-To begin contributing, please read our [Contributing Guide](https://containerd.github.io/runwasi/developer/contributing.html).
+To begin contributing, please read our [Contributing Guide](https://runwasi.dev/developer/contributing.html).
