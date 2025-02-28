@@ -23,9 +23,9 @@ curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/
 
-# Build and install the shims if you haven't already
-make build
-sudo make install
+# Build and install the Wasmtime shim if you haven't already
+make build-wasmtime
+sudo make install-wasmtime
 ```
 
 2. Create a Kind configuration file:
@@ -63,9 +63,9 @@ docker exec runwasi-cluster-control-plane systemctl restart containerd
 ```bash
 curl -sfL https://get.k3s.io | sh -
 
-# Build and install the shims if you haven't already
-make build
-sudo make install
+# Build and install the Wasmtime shim if you haven't already
+make build-wasmtime
+sudo make install-wasmtime
 ```
 
 2. Configure k3s to use the WebAssembly runtime:

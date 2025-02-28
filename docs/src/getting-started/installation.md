@@ -7,7 +7,7 @@ This guide will help you install and set up Runwasi on your system.
 Before installing Runwasi, ensure you have the following prerequisites installed:
 
 - [Rust](https://www.rust-lang.org/tools/install) (stable)
-- [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md) (if using the containerd integration)
+- [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)
 
 Additionally, check the [contributing guide](../CONTRIBUTING.md#setting-up-your-local-environment) for detailed instructions on setting up your environment with all required dependencies.
 
@@ -60,7 +60,7 @@ cd runwasi
 make build
 ```
 
-> Note: `make build` will only build one binary. You can specify which runtime to build with `make build-wasmtime`, `make build-wasmer`, or `make build-wasmedge`.
+> Note: `make build` will only build shims for all runtimes. You can specify which runtime to build with `make build-wasmtime`, `make build-wasmer`, `make build-wasmedge`, `make build-wamr` etc.
 
 3. Install the binary:
 
@@ -68,7 +68,7 @@ make build
 sudo make install
 ```
 
-The `make install` command copies the binary to $PATH and uses symlinks to create all the necessary components.
+The `make install` command copies the binary to $PATH
 
 ## Testing Your Installation
 

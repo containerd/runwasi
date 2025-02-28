@@ -58,7 +58,7 @@ The test binary supports various commands for different types of functionality. 
 
 This demo showcases a more advanced approach using OCI Images with custom WASM layers. This approach doesn't include the Wasm module in the container's filesystem but instead stores it as a separate layer in the OCI image. This provides better cross-platform support and de-duplication in the Containerd content store.
 
-> **Note**: This requires containerd 1.7.7+ and 1.6.25+. If you don't have these patches for both `containerd` and `ctr`, you'll encounter an error message like `mismatched image rootfs and manifest layers`. Latest versions of k3s and kind have the necessary containerd versions.
+> **Note**: This requires containerd 2.0+, 1.7.7+ or 1.6.25+. If you don't have these patches for both `containerd` and `ctr`, you'll encounter an error message like `mismatched image rootfs and manifest layers`. Latest versions of k3s and kind have the necessary containerd versions.
 
 ### Setup
 
