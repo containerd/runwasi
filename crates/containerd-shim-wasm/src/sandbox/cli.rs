@@ -164,7 +164,6 @@ pub fn shim_main<'a, I>(
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,
-    I::Engine: Default,
 {
     #[cfg(unix)]
     zygote::Zygote::init();
@@ -203,7 +202,6 @@ fn shim_main_inner<'a, I>(
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,
-    I::Engine: Default,
 {
     #[cfg(feature = "opentelemetry")]
     {

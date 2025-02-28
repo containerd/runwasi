@@ -87,7 +87,6 @@ type LocalInstances<T> = RwLock<HashMap<String, Arc<InstanceData<T>>>>;
 /// Local implements the Task service for a containerd shim.
 /// It defers all task operations to the `Instance` implementation.
 pub struct Local<T: Instance + Send + Sync, E: EventSender = RemoteEventSender> {
-    pub engine: T::Engine,
     pub(super) instances: LocalInstances<T>,
     events: E,
     exit: Arc<ExitSignal>,
@@ -99,10 +98,9 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     /// Creates a new local task service.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip(engine, events, exit), level = "Debug")
+        tracing::instrument(skip(events, exit), level = "Debug")
     )]
     pub fn new(
-        engine: T::Engine,
         events: E,
         exit: Arc<ExitSignal>,
         namespace: impl AsRef<str> + std::fmt::Debug,
@@ -112,7 +110,6 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         let namespace = namespace.as_ref().to_string();
         let containerd_address = containerd_address.as_ref().to_string();
         Self {
-            engine,
             instances,
             events,
             exit,

@@ -9,8 +9,6 @@ use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, Instanc
 pub struct Instance<E: Engine>(PhantomData<E>);
 
 impl<E: Engine> SandboxInstance for Instance<E> {
-    type Engine = E;
-
     fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         todo!();
     }
