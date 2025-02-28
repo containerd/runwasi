@@ -19,7 +19,7 @@ Runwasi enables WebAssembly workloads to run on Kubernetes by providing a contai
 
 1. Install and configure dependencies:
 ```bash
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-amd64
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/
 
