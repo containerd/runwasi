@@ -346,7 +346,12 @@ test/k8s/clean: bin/kind
 .PHONY: bin/k3s
 bin/k3s:
 	mkdir -p bin && \
-	curl -sfL https://get.k3s.io | INSTALL_K3S_BIN_DIR=$(PWD)/bin INSTALL_K3S_SYMLINK=skip INSTALL_K3S_NAME=runwasi sh -
+	curl -sfL https://get.k3s.io | env \
+		INSTALL_K3S_BIN_DIR=$(PWD)/bin \
+		INSTALL_K3S_SYMLINK=skip \
+		INSTALL_K3S_NAME=runwasi \
+		INSTALL_K3S_VERSION="v1.32.1+k3s1" \
+		sh -
 
 .PHONY: bin/k3s/clean
 bin/k3s/clean:
