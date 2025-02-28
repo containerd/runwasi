@@ -1,5 +1,6 @@
 use std::env::current_dir;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -16,17 +17,16 @@ use crate::sandbox::shim::local::Local;
 
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
 pub struct Cli<T: Instance + Sync + Send> {
-    engine: T::Engine,
     namespace: String,
     containerd_address: String,
     exit: Arc<ExitSignal>,
     _id: String,
+    _phantom: PhantomData<T>,
 }
 
 impl<I> Debug for Cli<I>
 where
     I: Instance + Sync + Send,
-    <I as Instance>::Engine: Default,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -40,18 +40,17 @@ where
 impl<I> shim::Shim for Cli<I>
 where
     I: Instance + Sync + Send,
-    <I as Instance>::Engine: Default,
 {
     type T = Local<I>;
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
-            engine: Default::default(),
             namespace: args.namespace.to_string(),
             containerd_address: args.address.clone(),
             exit: Arc::default(),
             _id: args.id.to_string(),
+            _phantom: PhantomData,
         }
     }
 
@@ -88,14 +87,7 @@ where
     fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let events = RemoteEventSender::new(&self.namespace, publisher);
         let exit = self.exit.clone();
-        let engine = self.engine.clone();
-        Local::<I>::new(
-            engine,
-            events,
-            exit,
-            &self.namespace,
-            &self.containerd_address,
-        )
+        Local::<I>::new(events, exit, &self.namespace, &self.containerd_address)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]

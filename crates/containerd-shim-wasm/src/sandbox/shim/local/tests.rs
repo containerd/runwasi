@@ -23,7 +23,6 @@ pub struct InstanceStub {
 }
 
 impl Instance for InstanceStub {
-    type Engine = ();
     fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, Error> {
         Ok(InstanceStub {
             exit_code: WaitableCell::new(),
@@ -106,7 +105,6 @@ fn test_delete_after_create() {
 
     let (tx, _rx) = channel();
     let local = Arc::new(Local::<InstanceStub, _>::new(
-        (),
         tx,
         Arc::new(ExitSignal::default()),
         "test_namespace",
@@ -137,7 +135,6 @@ fn test_cri_task() -> Result<()> {
     let (etx, _erx) = channel();
     let exit_signal = Arc::new(ExitSignal::default());
     let local = Arc::new(Local::<InstanceStub, _>::new(
-        (),
         etx,
         exit_signal,
         "test_namespace",
@@ -307,7 +304,6 @@ fn test_task_lifecycle() -> Result<()> {
     let (etx, _erx) = channel(); // TODO: check events
     let exit_signal = Arc::new(ExitSignal::default());
     let local = Arc::new(Local::<InstanceStub, _>::new(
-        (),
         etx,
         exit_signal,
         "test_namespace",

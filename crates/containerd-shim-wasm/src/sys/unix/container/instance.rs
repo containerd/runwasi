@@ -29,8 +29,6 @@ pub struct Instance<E: Engine> {
 }
 
 impl<E: Engine + Default> SandboxInstance for Instance<E> {
-    type Engine = E;
-
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         // check if container is OCI image with wasm layers and attempt to read the module
