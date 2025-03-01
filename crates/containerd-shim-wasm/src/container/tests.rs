@@ -21,16 +21,17 @@ impl Engine for EngineFailingValidation {
 
 type InstanceFailingValidation = Instance<EngineFailingValidation>;
 
-#[test]
+#[tokio::test]
 #[cfg(unix)] // not yet implemented on Windows
-fn test_validation_error() -> anyhow::Result<()> {
+async fn test_validation_error() -> anyhow::Result<()> {
     // A validation error should fail when creating the container
     // as opposed to failing when starting it.
 
     let result = WasiTest::<InstanceFailingValidation>::builder()?
         .with_start_fn("foo")
         .with_wasm("/invalid_entrypoint.wasm")?
-        .build();
+        .build()
+        .await;
 
     assert!(result.is_err());
 

@@ -2,10 +2,11 @@ use std::env::current_dir;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use chrono::Utc;
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::publisher::RemotePublisher;
-use containerd_shim::util::write_address;
+use containerd_shim::util::write_str_to_file;
 use containerd_shim::{self as shim, ExitSignal, api};
 use oci_spec::runtime::Spec;
 use shim::Flags;
@@ -37,6 +38,7 @@ where
     }
 }
 
+#[async_trait]
 impl<I> shim::Shim for Cli<I>
 where
     I: Instance + Sync + Send,
@@ -45,7 +47,7 @@ where
     type T = Local<I>;
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-    fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
+    async fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
         Cli {
             engine: Default::default(),
             namespace: args.namespace.to_string(),
@@ -56,7 +58,7 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-    fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
+    async fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
         let spec = Spec::load(dir.join("config.json")).map_err(|err| {
             shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
@@ -69,23 +71,23 @@ where
             .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
             .unwrap_or(&id);
 
-        let (_child, address) = shim::spawn(opts, grouping, vec![])?;
+        let address = shim::spawn(opts, grouping, vec![]).await?;
 
-        write_address(&address)?;
+        write_str_to_file("address", &address).await?;
 
         Ok(address)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-    fn wait(&mut self) {
-        self.exit.wait();
+    async fn wait(&mut self) {
+        self.exit.wait().await;
     }
 
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip(publisher), level = "Info")
     )]
-    fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
+    async fn create_task_service(&self, publisher: RemotePublisher) -> Self::T {
         let events = RemoteEventSender::new(&self.namespace, publisher);
         let exit = self.exit.clone();
         let engine = self.engine.clone();
@@ -99,7 +101,7 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-    fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
+    async fn delete_shim(&mut self) -> shim::Result<api::DeleteResponse> {
         Ok(api::DeleteResponse {
             exit_status: 137,
             exited_at: Some(Utc::now().to_timestamp()).into(),

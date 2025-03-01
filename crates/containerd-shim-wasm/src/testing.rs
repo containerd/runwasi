@@ -185,7 +185,7 @@ where
         ))
     }
 
-    pub fn build(self) -> Result<WasiTest<WasiInstance>> {
+    pub async fn build(self) -> Result<WasiTest<WasiInstance>> {
         let tempdir = self.tempdir;
         let dir = tempdir.path();
 
@@ -225,7 +225,7 @@ where
             ..Default::default()
         };
 
-        let instance = WasiInstance::new(self.container_name, &cfg)?;
+        let instance = WasiInstance::new(self.container_name, &cfg).await?;
         Ok(WasiTest { instance, tempdir })
     }
 }
@@ -242,44 +242,44 @@ where
         &self.instance
     }
 
-    pub fn start(&self) -> Result<&Self> {
+    pub async fn start(&self) -> Result<&Self> {
         log::info!("starting wasi test");
-        let pid = self.instance.start()?;
+        let pid = self.instance.start().await?;
         log::info!("wasi test pid {pid}");
 
         Ok(self)
     }
 
-    pub fn delete(&self) -> Result<&Self> {
+    pub async fn delete(&self) -> Result<&Self> {
         log::info!("deleting wasi test");
-        self.instance.delete()?;
+        self.instance.delete().await?;
         Ok(self)
     }
 
-    pub fn ctrl_c(&self) -> Result<&Self> {
+    pub async fn ctrl_c(&self) -> Result<&Self> {
         log::info!("sending SIGINT");
-        self.instance.kill(SIGINT as u32)?;
+        self.instance.kill(SIGINT as u32).await?;
         Ok(self)
     }
 
-    pub fn terminate(&self) -> Result<&Self> {
+    pub async fn terminate(&self) -> Result<&Self> {
         log::info!("sending SIGTERM");
-        self.instance.kill(SIGTERM as u32)?;
+        self.instance.kill(SIGTERM as u32).await?;
         Ok(self)
     }
 
-    pub fn kill(&self) -> Result<&Self> {
+    pub async fn kill(&self) -> Result<&Self> {
         log::info!("sending SIGKILL");
-        self.instance.kill(SIGKILL as u32)?;
+        self.instance.kill(SIGKILL as u32).await?;
         Ok(self)
     }
 
-    pub fn wait(&self, t: Duration) -> Result<(u32, String, String)> {
+    pub async fn wait(&self, t: Duration) -> Result<(u32, String, String)> {
         log::info!("waiting wasi test");
-        let (status, _) = match self.instance.wait().with_timeout(t).block_on() {
+        let (status, _) = match self.instance.wait().with_timeout(t).await {
             Some(res) => res,
             None => {
-                self.instance.kill(SIGKILL)?;
+                self.instance.kill(SIGKILL).await?;
                 bail!("timeout while waiting for module to finish");
             }
         };
@@ -287,7 +287,7 @@ where
         let stdout = self.read_stdout()?.unwrap_or_default();
         let stderr = self.read_stderr()?.unwrap_or_default();
 
-        self.instance.delete()?;
+        self.instance.delete().await?;
 
         log::info!("wasi test status is {status}");
 

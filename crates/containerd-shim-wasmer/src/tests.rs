@@ -7,21 +7,28 @@ use serial_test::serial;
 
 use crate::instance::WasmerInstance as WasiInstance;
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_delete_after_create() -> anyhow::Result<()> {
-    WasiTest::<WasiInstance>::builder()?.build()?.delete()?;
+async fn test_delete_after_create() -> anyhow::Result<()> {
+    WasiTest::<WasiInstance>::builder()?
+        .build()
+        .await?
+        .delete()
+        .await?;
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_hello_world() -> anyhow::Result<()> {
+async fn test_hello_world() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
@@ -29,14 +36,20 @@ fn test_hello_world() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_hello_world_oci() -> anyhow::Result<()> {
+async fn test_hello_world_oci() -> anyhow::Result<()> {
     let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(None, None)?;
 
-    let (exit_code, stdout, _) = builder.build()?.start()?.wait(Duration::from_secs(10))?;
+    let (exit_code, stdout, _) = builder
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
@@ -44,15 +57,18 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_custom_entrypoint() -> anyhow::Result<()> {
+async fn test_custom_entrypoint() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
         .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout, "hello world\n");
@@ -60,42 +76,51 @@ fn test_custom_entrypoint() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_unreachable() -> anyhow::Result<()> {
+async fn test_unreachable() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(UNREACHABLE)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_ne!(exit_code, 0);
 
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_exit_code() -> anyhow::Result<()> {
+async fn test_exit_code() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(EXIT_CODE)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 42);
 
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_seccomp() -> anyhow::Result<()> {
+async fn test_seccomp() -> anyhow::Result<()> {
     let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(SECCOMP)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 0);
     assert_eq!(stdout.trim(), "current working dir: /");
@@ -103,14 +128,17 @@ fn test_seccomp() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[serial]
-fn test_has_default_devices() -> anyhow::Result<()> {
+async fn test_has_default_devices() -> anyhow::Result<()> {
     let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
         .with_wasm(HAS_DEFAULT_DEVICES)?
-        .build()?
-        .start()?
-        .wait(Duration::from_secs(10))?;
+        .build()
+        .await?
+        .start()
+        .await?
+        .wait(Duration::from_secs(10))
+        .await?;
 
     assert_eq!(exit_code, 0);
 
