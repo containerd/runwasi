@@ -280,7 +280,7 @@ sudo make install-wasmtime
 sudo mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
 
 cat << EOF | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
-[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.wasm]
   runtime_type = "io.containerd.wasmtime.v1"
 EOF
 
