@@ -350,7 +350,6 @@ bin/k3s:
 		INSTALL_K3S_BIN_DIR=$(PWD)/bin \
 		INSTALL_K3S_SYMLINK=skip \
 		INSTALL_K3S_NAME=runwasi \
-		INSTALL_K3S_VERSION="v1.32.1+k3s1" \
 		sh -
 
 .PHONY: bin/k3s/clean

@@ -4,7 +4,7 @@ set -ex
 rm -f /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
 cp -f /var/lib/rancher/k3s/agent/etc/containerd/config.toml /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
 cat <<EOF >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
-[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.wasm]
   runtime_type = "$PWD/dist/bin/containerd-shim-$1-v1"
 EOF
 
