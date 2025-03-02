@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740874720561,
+  "lastUpdate": 1740874721740,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -10701,6 +10701,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/containerd/runwasi/commit/28b9e9a86350829a00ae7418ed2b3ac23bd9e7bd"
         },
         "date": 1740789175264,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c4724157e6ef2cc3344502fd5f7dedcc21f42a2c",
+          "message": "Merge pull request #891 from z63d/feat/k3s-containerd-2-0\n\nSupport for k3s using containerd 2.0",
+          "timestamp": "2025-03-01T11:55:47Z",
+          "url": "https://github.com/containerd/runwasi/commit/c4724157e6ef2cc3344502fd5f7dedcc21f42a2c"
+        },
+        "date": 1740874721442,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
