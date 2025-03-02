@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740789625091,
+  "lastUpdate": 1740874715038,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -6854,6 +6854,52 @@ window.BENCHMARK_DATA = {
             "value": 83968404,
             "range": "± 1216346",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c4724157e6ef2cc3344502fd5f7dedcc21f42a2c",
+          "message": "Merge pull request #891 from z63d/feat/k3s-containerd-2-0\n\nSupport for k3s using containerd 2.0",
+          "timestamp": "2025-03-01T11:55:47Z",
+          "url": "https://github.com/containerd/runwasi/commit/c4724157e6ef2cc3344502fd5f7dedcc21f42a2c"
+        },
+        "date": 1740874714410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15528,
+            "unit": "kB",
+            "extra": "shim: 12800 kB\nzygote: 2728 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65736,
+            "unit": "kB",
+            "extra": "shim: 53504 kB\nzygote: 12232 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18560,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3328 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19388,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3132 kB"
           }
         ]
       }
