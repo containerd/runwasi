@@ -421,7 +421,7 @@ async fn wait_for_signal() -> Result<i32> {
         let mut sigterm = signal(SignalKind::terminate())?;
 
         tokio::select! {
-            _ = sigquit.recv() => { Ok(libc::SIGINT) }
+            _ = sigquit.recv() => { Ok(libc::SIGQUIT) }
             _ = sigterm.recv() => { Ok(libc::SIGTERM) }
             _ = tokio::signal::ctrl_c() => { Ok(libc::SIGINT) }
         }
