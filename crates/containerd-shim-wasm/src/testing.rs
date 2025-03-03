@@ -25,10 +25,7 @@ use crate::sandbox::{Instance, InstanceConfig};
 pub const TEST_NAMESPACE: &str = "runwasi-test";
 pub const SIGKILL: u32 = 9;
 
-pub struct WasiTestBuilder<WasiInstance: Instance>
-where
-    WasiInstance::Engine: Default + Send + Sync + Clone,
-{
+pub struct WasiTestBuilder<WasiInstance: Instance> {
     container_name: String,
     start_fn: String,
     namespaces: Vec<LinuxNamespace>,
@@ -36,18 +33,12 @@ where
     _phantom: PhantomData<WasiInstance>,
 }
 
-pub struct WasiTest<WasiInstance: Instance>
-where
-    WasiInstance::Engine: Default + Send + Sync + Clone,
-{
+pub struct WasiTest<WasiInstance: Instance> {
     instance: WasiInstance,
     tempdir: tempfile::TempDir,
 }
 
-impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance>
-where
-    WasiInstance::Engine: Default + Send + Sync + Clone,
-{
+impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
     pub fn new() -> Result<Self> {
         zygote::Zygote::init();
 
@@ -230,10 +221,7 @@ where
     }
 }
 
-impl<WasiInstance: Instance> WasiTest<WasiInstance>
-where
-    WasiInstance::Engine: Default + Send + Sync + Clone,
-{
+impl<WasiInstance: Instance> WasiTest<WasiInstance> {
     pub fn builder() -> Result<WasiTestBuilder<WasiInstance>> {
         WasiTestBuilder::new()
     }

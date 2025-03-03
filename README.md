@@ -30,9 +30,6 @@ The most flexible but complex is the `sandbox::Instance` trait:
 
 ```rust
 pub trait Instance {
-    /// The WASI engine type
-    type Engine: Send + Sync + Clone;
-
     /// Create a new instance
     fn new(id: String, cfg: &InstanceConfig) -> Self;
     /// Start the instance
