@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>OpenTelemetry Integration - Runwasi Developer Documentation</title>
+        <title>Benchmarks - Runwasi Developer Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -129,7 +129,7 @@
                         <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/opentelemetry.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/benchmarks.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -158,62 +158,82 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="opentelemetry"><a class="header" href="#opentelemetry">OpenTelemetry</a></h1>
-<p><a href="https://opentelemetry.io/">OpenTelemetry</a> is a set of libraries, agents, and instrumentation to provide observability (metrics, logs and traces) in applications.</p>
-<p><code>containerd-shim-wasm</code> crate has a set of APIs to enable OpenTelemetry tracing in the shim. This document is a guide on how to use OpenTelemetry tracing in your shim.</p>
-<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
-<blockquote>
-<p>Wasmtime shim v0.5.0 has OpenTelemetry tracing enabled by default</p>
-</blockquote>
-<p>To use OpenTelemetry tracing in your shim, you need to use the <code>opentelemetry</code> feature in the <code>containerd-shim-wasm</code> crate.</p>
-<pre><code class="language-toml">containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
-</code></pre>
-<p>Then, you may use the <code>containerd_shim_wasm::sandbox::cli::shim_main</code> function to run the shim with OpenTelemetry tracing.</p>
-<pre><pre class="playground"><code class="language-rust">fn main() {
-    shim_main::&lt;WasmtimeInstance&gt;("wasmtime", version!(), revision!(), "v1", None);
-}</code></pre></pre>
-<p>You may also use the <code>containerd_shim_wasm::sandbox::shim::OtlpConfig</code> struct to configure the OpenTelemetry tracing manually.</p>
-<h3 id="running-containerd-with-opentelemetry"><a class="header" href="#running-containerd-with-opentelemetry">Running containerd with OpenTelemetry</a></h3>
-<p>You can configure / run containerd with OpenTelemetry tracing. Please refer to the <a href="https://github.com/containerd/containerd/blob/v2.0.0/docs/tracing.md#sending-traces-from-containerd-daemon">containerd documentation</a> for more information.</p>
-<pre><code class="language-sh">OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+                        <h1 id="runwasi-benchmarks"><a class="header" href="#runwasi-benchmarks">Runwasi Benchmarks</a></h1>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>This document outlines the various methods and ideas for benchmarking <code>runwasi</code> shims. The goal is to provide a structured approach to measuring the performance of the <code>runwasi</code> shims and comparing it against other container runtimes, such as <code>runc</code> or <code>crun</code>. These benchmarks will help track performance changes across different versions and explore how well <code>runwasi</code> scales in high-density environments.</p>
+<h2 id="benchmarking-goals"><a class="header" href="#benchmarking-goals">Benchmarking Goals</a></h2>
+<ol>
+<li>Establish a baseline performance for <code>runwasi</code> shims</li>
+<li>Measure the impact of changes to the source code and version upgrades on performance</li>
+<li>Test the density of <code>runwasi</code> shims in a single node.</li>
+<li>Visualize the performance data over time.</li>
+<li>Identify areas for further optimizations</li>
+</ol>
+<h2 id="approaches"><a class="header" href="#approaches">Approaches</a></h2>
+<h3 id="1-baseline-performance"><a class="header" href="#1-baseline-performance">1. Baseline Performance</a></h3>
+<p>To establish a baseline performance, we use the “ghcr.io/containerd/runwasi/wasi-demo-app:latest” and “ghcr.io/containerd/runwasi/wasi-demo-oci:latest” images. These images are simple demo apps that echoes <code>"hello"</code> to the console using WASI. We run end-to-end benchmarks for <code>wasmtime</code>, <code>wasmedge</code>, <code>wasmer</code> and <code>wamr</code> runtimes and measure the execution duration. The result can be found in <a href="https://runwasi.dev/dev/bench">dev/bench</a> website, under the “Criterion.rs Benchmark” section.</p>
+<p>The source code for the benchmarks can be found in <a href="https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/benches/containerd-shim-benchmarks">benchs/containerd-shim-benchmarks</a> directory.</p>
+<h3 id="2-stress-test"><a class="header" href="#2-stress-test">2. Stress Test</a></h3>
+<p><a href="https://github.com/containerd/runwasi/tree/containerd-shim-wasm/v0.9.0/crates/stress-test">stress-test</a> is a CLI that runs a stress test for the <code>runwasi</code> shims. It allows us to deploy a large number of Wasm-based tasks to evaluate task throughput (number of tasks finished per second) under high-density environments. The stress test supports running workloads with mocked containerd server and a real containerd server and supports running <code>N</code> tasks in total with <code>M</code> concurrent tasks. The result can be found in <a href="https://runwasi.dev/dev/bench">dev/bench</a> website, under the “Stress Test Benchmark” section.</p>
+<h3 id="3-memory"><a class="header" href="#3-memory">3. Memory</a></h3>
+<p>We’ve added functions to collect memory usage data from the shim and zygote processes. We use <code>scripts/benchmark-mem.sh</code> script to collect the data. The result can be found in<a href="https://runwasi.dev/dev/bench">dev/bench</a> website, under the “Criterion.rs Benchmark” section.</p>
+<h3 id="4-networking"><a class="header" href="#4-networking">4. Networking</a></h3>
+<p>This is for Wasmtime shim. We use <code>hey</code> to load test the Wasmtime shim running “ghcr.io/containerd/runwasi/wasi-demo-http:latest” workload. We measure the HTTP throughput and latency of the workload. The result can be found in <a href="https://runwasi.dev/dev/bench">dev/bench</a> website, under the “HTTP Throughput” and “HTTP Latency” sections.</p>
+<h3 id="5-runwasi-vs-native-execution"><a class="header" href="#5-runwasi-vs-native-execution">5. Runwasi vs. Native Execution</a></h3>
+<p>We built a distroless container image with <code>wasmtime</code> runtime installed. Then we run stress-test for <code>wasmtime</code> shim and the distroless container for the same workload. The result is shown below.</p>
+<div class="table-wrapper"><table><thead><tr><th>Runtime</th><th>Tasks</th><th>Time</th><th>Throughput</th></tr></thead><tbody>
+<tr><td>runwasi wasmtime</td><td>1000</td><td>3s 31ms 663us 672ns</td><td>329.85 tasks/s</td></tr>
+<tr><td>runc distroless wasmtime</td><td>1000</td><td>11s 795ms 27us 285ns</td><td>84.78 tasks/s</td></tr>
+</tbody></table>
+</div>
+<p>The Dockerfile for the distroless container is shown below.</p>
+<pre><code class="language-Dockerfile"># syntax=docker/dockerfile:1.13-labs
+FROM rust AS build-base
+RUN rustup target add x86_64-unknown-linux-musl
+RUN apt-get update -y &amp;&amp; apt-get install musl-tools -y
 
-# by default, Containerd uses the `http/protobuf` protocol
+FROM build-base AS wasmtime-build
+RUN cargo install \
+    --target='x86_64-unknown-linux-musl' \
+    --profile='fastest-runtime' \
+    --config='profile.fastest-runtime.strip="symbols"' \
+    --config='profile.fastest-runtime.panic="abort"' \
+    wasmtime-cli
+RUN cp $(which wasmtime) /wasmtime
+
+FROM scratch AS wasmtime
+COPY --from=wasmtime-build /wasmtime /
+
+FROM build-base AS wasm-tools
+RUN cargo install wasm-tools
+
+FROM wasm-tools AS build
+COPY hello.wat /
+RUN wasm-tools parse &lt;/hello.wat &gt;/hello.wasm
+
+FROM wasmtime AS final
+COPY --from=build /hello.wasm /
+ENTRYPOINT ["/wasmtime", "/hello.wasm"]
 </code></pre>
-<p><code>Runwasi</code> will automatically pick up the environment variables and start exporting traces to the specified endpoint.</p>
-<h3 id="jeager-exporter"><a class="header" href="#jeager-exporter">Jeager Exporter</a></h3>
-<p>You may use Jeager exporter to see the traces in the Jeager UI.</p>
-<pre><code class="language-sh">docker run -d -p16686:16686 -p4317:4317 -p4318:4318 -e COLLECTOR_OTLP_ENABLED=true jaegertracing/all-in-one:latest
-</code></pre>
-<p>You can access the Jeager UI at <code>http://localhost:16686</code>.</p>
-<h3 id="demo"><a class="header" href="#demo">Demo</a></h3>
-<p>Assuming you installed the <code>containerd-shim-wasmtime-v1</code> shim binary and the demo wasm image following README.md instructions,
-you can run the wasmtime shim with OpenTelemetry tracing by running the following command</p>
-<pre><code class="language-sh">sudo ctr run  --net-host --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm sleep 3
-</code></pre>
-<p><img src="assets/wasmtime-shim-jeager.png" alt="A screenshot of the jeager UI for the wasmtime shim" /></p>
-<p><img src="assets/wasmtime-shim-tracing-main.png" alt="A screenshot of the jeager UI for traces of the main function call of the wasmtime shim" /></p>
-<h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
-<p><code>Runwasi</code> uses the standard <a href="https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/">OTLP environment variables</a> to configure the OTLP exporter endpoint. The following environment variables are supported:</p>
+<h3 id="6-visualize-the-performance-data"><a class="header" href="#6-visualize-the-performance-data">6. Visualize the Performance Data</a></h3>
+<p>We use <a href="https://github.com/benchmark-action/github-action-benchmark">benchmark-action</a> to visualize the performance data and we have a benchmark CI job that runs every day at midnight UTC. It will aggregate the result from the daily benchmark and visualize it in a chart. Any regression detected will be notifying to the runwasi-committers group. The result can be found in <a href="https://runwasi.dev/dev/bench">dev/bench</a> website.</p>
+<p><img src="assets/benchmark-website.png" alt="Benchmark Report" /></p>
+<h3 id="contributing-to-the-benchmarks"><a class="header" href="#contributing-to-the-benchmarks">Contributing to the Benchmarks</a></h3>
+<p>If you want to contribute to the benchmarks, whether it’s adding a new benchmark or improving the existing ones, or just want to share your ideas, please refer to the following issue:</p>
 <ul>
-<li><code>OTEL_EXPORTER_OTLP_ENDPOINT</code> - A base endpoint to send trace data to.</li>
-<li><code>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</code> - The endpoint to send trace data to. Overrides <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>.</li>
-<li><code>OTEL_EXPORTER_OTLP_PROTOCOL</code> - A base protocol to use when sending trace data. Default is <code>http/protobuf</code>. Valid values are <code>http/protobuf</code>, <code>grpc</code>.</li>
-<li><code>OTEL_EXPORTER_OTLP_TRACES_PROTOCOL</code> - The protocol to use when sending trace data. Overrides <code>OTEL_EXPORTER_OTLP_PROTOCOL</code>.</li>
-<li><code>OTEL_SDK_DISABLED</code> - Disables the SDK if set to <code>true</code>.</li>
-<li><code>OTEL_SERVICE_NAME</code> - The name of the service.</li>
+<li><a href="https://github.com/containerd/runwasi/issues/97">Bencharking issue #97</a></li>
 </ul>
-<h2 id="context-propagation"><a class="header" href="#context-propagation">Context Propagation</a></h2>
-<p><code>Runwasi</code> uses the <code>TRACECONTEXT</code> environment variable to propagate the trace context between the parent shim process and the child. The trace context is a W3C Trace Context header.</p>
+<p>Any PRs are welcome!</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="benchmarks.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="developer/roadmap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="resources/troubleshooting.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="opentelemetry.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -223,11 +243,11 @@ you can run the wasmtime shim with OpenTelemetry tracing by running the followin
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="benchmarks.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="developer/roadmap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="resources/troubleshooting.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="opentelemetry.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

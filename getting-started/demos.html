@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Documentation Guidelines - Runwasi Developer Documentation</title>
+        <title>Demos - Runwasi Developer Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -129,7 +129,7 @@
                         <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/developer/docs.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/getting-started/demos.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -158,53 +158,95 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="documentation-website"><a class="header" href="#documentation-website">Documentation website</a></h1>
-<p>This project uses the <a href="https://rust-lang.github.io/mdBook/">mdBook</a> tool to generate a documentation website from
-markdown files. The website is hosted on GitHub Pages and is available at the
-following URL: <a href="https://runwasi.dev/">https://runwasi.dev/</a>.</p>
-<h2 id="building-the-documentation"><a class="header" href="#building-the-documentation">Building the documentation</a></h2>
-<p>To build the documentation, you need to have the <code>mdbook</code> tool installed. You
-can install it using the following command:</p>
-<pre><code class="language-bash">cargo install mdbook
+                        <h1 id="demos"><a class="header" href="#demos">Demos</a></h1>
+<p>This page provides various demonstrations of running WebAssembly workloads with Runwasi.</p>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>Before running these demos, make sure you have:</p>
+<ol>
+<li>Installed the Runwasi shims as described in the <a href="./installation.html">Installation Guide</a></li>
+<li>Installed containerd and its CLI tool <code>ctr</code></li>
+</ol>
+<h2 id="demo-1-using-container-image-with-wasm-module"><a class="header" href="#demo-1-using-container-image-with-wasm-module">Demo 1: Using Container Image with Wasm Module</a></h2>
+<p>This demo runs a WebAssembly module from a regular OCI container image that contains the Wasm module in its filesystem.</p>
+<h3 id="setup"><a class="header" href="#setup">Setup</a></h3>
+<p>Pull the test image:</p>
+<pre><code class="language-bash">make pull-app
+# or
+sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
 </code></pre>
-<p>Once you have <code>mdbook</code> installed, you can build the documentation by running the
-following command:</p>
-<pre><code class="language-bash">mdbook build
+<h3 id="running-the-demo"><a class="header" href="#running-the-demo">Running the Demo</a></h3>
+<p>Run the image with your preferred runtime:</p>
+<pre><code class="language-bash">sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
 </code></pre>
-<p>This will generate the documentation in the <code>book</code> directory. You can verify
-locally by running:</p>
-<pre><code class="language-bash">mdbook serve
+<p>You can also specify a particular command:</p>
+<pre><code class="language-bash">sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'
 </code></pre>
-<p>which will start a local web server at <code>http://localhost:3000</code> where you can
-view the documentation.</p>
-<h2 id="contributing"><a class="header" href="#contributing">Contributing</a></h2>
-<p>If you would like to contribute to the documentation, you can do so by editing
-the markdown files in the <code>src</code> directory. Once you have made your changes, you
-can build the documentation as described above and verify that your changes are
-correct.</p>
-<p>If you are happy with your changes, you can submit a pull request to the <code>main</code>
-branch of the repository. Once your pull request is merged, the changes will be
-automatically published to the documentation website.</p>
-<h2 id="deploying-the-documentation"><a class="header" href="#deploying-the-documentation">Deploying the documentation</a></h2>
-<p>The documentation is automatically deployed to GitHub Pages when changes are
-merged to the <code>main</code> branch.
-To deploy the documentation, the following github actions are used:</p>
+<p>The output should look like:</p>
+<pre><code>This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+</code></pre>
+<p>To kill the process, run in another terminal:</p>
+<pre><code class="language-bash">sudo ctr task kill -s SIGKILL testwasm
+</code></pre>
+<p>The test binary supports various commands for different types of functionality. Check <a href="https://github.com/containerd/runwasi/blob/main/crates/wasi-demo-app/src/main.rs">crates/wasi-demo-app/src/main.rs</a> to explore more options.</p>
+<h2 id="demo-2-using-oci-images-with-custom-wasm-layers"><a class="header" href="#demo-2-using-oci-images-with-custom-wasm-layers">Demo 2: Using OCI Images with Custom WASM Layers</a></h2>
+<p>This demo showcases a more advanced approach using OCI Images with custom WASM layers. This approach doesn’t include the Wasm module in the container’s filesystem but instead stores it as a separate layer in the OCI image. This provides better cross-platform support and de-duplication in the Containerd content store.</p>
+<blockquote>
+<p><strong>Note</strong>: This requires containerd 2.0+, 1.7.7+ or 1.6.25+. If you don’t have these patches for both <code>containerd</code> and <code>ctr</code>, you’ll encounter an error message like <code>mismatched image rootfs and manifest layers</code>. Latest versions of k3s and kind have the necessary containerd versions.</p>
+</blockquote>
+<h3 id="setup-1"><a class="header" href="#setup-1">Setup</a></h3>
+<p>Pull the OCI image with WASM layers:</p>
+<pre><code class="language-bash">make pull
+# or
+sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-oci:latest
+</code></pre>
+<h3 id="running-the-demo-1"><a class="header" href="#running-the-demo-1">Running the Demo</a></h3>
+<p>Run the image with your preferred runtime:</p>
+<pre><code class="language-bash">sudo ctr run --rm --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-demo-oci:latest testwasmoci wasi-demo-oci.wasm echo 'hello'
+</code></pre>
+<p>Expected output:</p>
+<pre><code>hello
+exiting
+</code></pre>
+<p>To learn more about this approach, check the <a href="https://docs.google.com/document/d/11shgC3l6gplBjWF1VJCWvN_9do51otscAm0hBDGSSAc/edit">design document</a>.</p>
+<h2 id="demo-3-using-wasm-oci-artifact"><a class="header" href="#demo-3-using-wasm-oci-artifact">Demo 3: Using Wasm OCI Artifact</a></h2>
+<p>The <a href="https://tag-runtime.cncf.io/wgs/wasm/charter/">CNCF tag-runtime wasm working group</a> has defined an <a href="https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/">OCI Artifact format for Wasm</a>. This new artifact type enables usage across projects beyond just Runwasi.</p>
+<pre><code class="language-bash">make test/k8s-oci-wasmtime
+</code></pre>
+<blockquote>
+<p>Note: We use a Kubernetes cluster to run this demo since containerd’s ctr has a bug that results in: <code>unknown image config media type application/vnd.wasm.config.v0+json</code></p>
+</blockquote>
+<h2 id="wasihttp-demo-for-wasmtime-shim"><a class="header" href="#wasihttp-demo-for-wasmtime-shim">WASI/HTTP Demo for Wasmtime Shim</a></h2>
+<p>The <code>wasmtime-shim</code> includes support for the WASI/HTTP specification. For details on running HTTP-based WebAssembly modules, see the <a href="https://github.com/containerd/runwasi/blob/main/crates/containerd-shim-wasmtime/README.md#WASI/HTTP">wasmtime-shim documentation</a>.</p>
+<h2 id="using-different-webassembly-runtimes"><a class="header" href="#using-different-webassembly-runtimes">Using Different WebAssembly Runtimes</a></h2>
+<p>All demos can be run using any of the available Runwasi shims by replacing <code>wasmtime</code> with the runtime of your choice:</p>
 <ul>
-<li><a href="https://github.com/peaceiris/actions-mdbook">actions-mdbook</a> for building the
-documentation.</li>
-<li><a href="https://github.com/peaceiris/actions-gh-pages">actions-gh-pages</a> for
-deploying the documentation to GitHub Pages.</li>
+<li><strong>Wasmtime</strong>: <code>io.containerd.wasmtime.v1</code></li>
+<li><strong>WasmEdge</strong>: <code>io.containerd.wasmedge.v1</code></li>
+<li><strong>Wasmer</strong>: <code>io.containerd.wasmer.v1</code></li>
+<li><strong>WAMR</strong>: <code>io.containerd.wamr.v1</code></li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-bash">sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm
+</code></pre>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
+<ul>
+<li>Explore running WebAssembly workloads on Kubernetes in the <a href="./quickstart.html">Quickstart with Kubernetes</a> guide</li>
+<li>Learn about the <a href="../user-guide/architecture.html">Architecture</a> of Runwasi</li>
+<li>Check out <a href="../CONTRIBUTING.html">Contributing</a> to get involved with the project</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../CONTRIBUTING.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../getting-started/installation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../RELEASE.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../getting-started/quickstart.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -214,11 +256,11 @@ deploying the documentation to GitHub Pages.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../CONTRIBUTING.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../getting-started/installation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../RELEASE.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../getting-started/quickstart.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

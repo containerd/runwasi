@@ -3,12 +3,12 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Windows Getting Started - Runwasi Developer Documentation</title>
+        <title>Windows Setup - Runwasi Developer Documentation</title>
 
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="">
+        <meta name="description" content="Documentation for runwasi">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -126,6 +126,12 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/windows-getting-started.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
 
                     </div>
                 </div>
@@ -157,7 +163,7 @@
 <p>To get started with WSL, see <a href="https://docs.microsoft.com/en-us/windows/wsl/install">this</a>.</p>
 <p>Once you have your WSL environment set and you have cloned the <strong>runwasi</strong> repository, you will need to install Docker and the Docker Buildx plugin.</p>
 <p>To install Docker and the Docker Buildx Plugin, see <a href="https://docs.docker.com/engine/install/">this</a> to find specific installation instructions for your WSL distro.</p>
-<p>Before proceeding, it's also recommended to install Docker Desktop on Windows and run it once.</p>
+<p>Before proceeding, it’s also recommended to install Docker Desktop on Windows and run it once.</p>
 <p>To finish off installing pre-requisites, install Rust following <a href="https://www.rust-lang.org/tools/install">this</a>.</p>
 <p>After following these steps and navigating to the runwasi directory in your terminal:</p>
 <ul>
@@ -170,7 +176,7 @@
 <p>To kill the process from the example, you can run: <code>ctr task kill -s SIGKILL testwasm</code>.</p>
 </blockquote>
 <h2 id="building-and-developing-on-windows"><a class="header" href="#building-and-developing-on-windows">Building and developing on Windows</a></h2>
-<p>You need to install <code>wasmedge</code>, <code>llvm</code> and <code>make</code>. This can be done using <code>winget</code>, <code>choco</code> or manually. (note as of writing this <code>winget</code> doesn't have the latest package and will builds will fail).  See <code>.github/scripts/build-windows.sh</code> for an example.</p>
+<p>You need to install <code>wasmedge</code>, <code>llvm</code> and <code>make</code>. This can be done using <code>winget</code>, <code>choco</code> or manually. (note as of writing this <code>winget</code> doesn’t have the latest package and will builds will fail).  See <code>.github/scripts/build-windows.sh</code> for an example.</p>
 <p>Once you have those dependencies you will need to set env:</p>
 <pre><code>$env:WASMEDGE_LIB_DIR="C:\Program Files\WasmEdge\lib"
 $env:WASMEDGE_INCLUDE_DIR="C:\Program Files\WasmEdge\include"    
@@ -193,10 +199,13 @@ $env:WASMEDGE_INCLUDE_DIR="C:\Program Files\WasmEdge\include"
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="opentelemetry.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="getting-started/quickstart.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
+                            <a rel="next prefetch" href="developer/architecture.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -204,10 +213,13 @@ $env:WASMEDGE_INCLUDE_DIR="C:\Program Files\WasmEdge\include"
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="opentelemetry.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="getting-started/quickstart.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
+                    <a rel="next prefetch" href="developer/architecture.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
             </nav>
 
         </div>

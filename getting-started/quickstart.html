@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Documentation Guidelines - Runwasi Developer Documentation</title>
+        <title>Quickstart with Kubernetes - Runwasi Developer Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -129,7 +129,7 @@
                         <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/developer/docs.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/getting-started/quickstart.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -158,53 +158,179 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="documentation-website"><a class="header" href="#documentation-website">Documentation website</a></h1>
-<p>This project uses the <a href="https://rust-lang.github.io/mdBook/">mdBook</a> tool to generate a documentation website from
-markdown files. The website is hosted on GitHub Pages and is available at the
-following URL: <a href="https://runwasi.dev/">https://runwasi.dev/</a>.</p>
-<h2 id="building-the-documentation"><a class="header" href="#building-the-documentation">Building the documentation</a></h2>
-<p>To build the documentation, you need to have the <code>mdbook</code> tool installed. You
-can install it using the following command:</p>
-<pre><code class="language-bash">cargo install mdbook
-</code></pre>
-<p>Once you have <code>mdbook</code> installed, you can build the documentation by running the
-following command:</p>
-<pre><code class="language-bash">mdbook build
-</code></pre>
-<p>This will generate the documentation in the <code>book</code> directory. You can verify
-locally by running:</p>
-<pre><code class="language-bash">mdbook serve
-</code></pre>
-<p>which will start a local web server at <code>http://localhost:3000</code> where you can
-view the documentation.</p>
-<h2 id="contributing"><a class="header" href="#contributing">Contributing</a></h2>
-<p>If you would like to contribute to the documentation, you can do so by editing
-the markdown files in the <code>src</code> directory. Once you have made your changes, you
-can build the documentation as described above and verify that your changes are
-correct.</p>
-<p>If you are happy with your changes, you can submit a pull request to the <code>main</code>
-branch of the repository. Once your pull request is merged, the changes will be
-automatically published to the documentation website.</p>
-<h2 id="deploying-the-documentation"><a class="header" href="#deploying-the-documentation">Deploying the documentation</a></h2>
-<p>The documentation is automatically deployed to GitHub Pages when changes are
-merged to the <code>main</code> branch.
-To deploy the documentation, the following github actions are used:</p>
+                        <h1 id="quickstart-with-kubernetes"><a class="header" href="#quickstart-with-kubernetes">Quickstart with Kubernetes</a></h1>
+<p>This guide will walk you through running WebAssembly workloads on Kubernetes using Runwasi.</p>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>Before getting started, ensure you have:</p>
 <ul>
-<li><a href="https://github.com/peaceiris/actions-mdbook">actions-mdbook</a> for building the
-documentation.</li>
-<li><a href="https://github.com/peaceiris/actions-gh-pages">actions-gh-pages</a> for
-deploying the documentation to GitHub Pages.</li>
+<li>Installed Runwasi shims as described in the <a href="./installation.html">Installation Guide</a></li>
+<li>Basic familiarity with Kubernetes concepts</li>
+<li>Access to a Kubernetes cluster or the ability to create one using Kind or k3s</li>
+</ul>
+<h2 id="setting-up-kubernetes-for-webassembly"><a class="header" href="#setting-up-kubernetes-for-webassembly">Setting Up Kubernetes for WebAssembly</a></h2>
+<p>Runwasi enables WebAssembly workloads to run on Kubernetes by providing a containerd shim that interfaces with the Kubernetes container runtime interface (CRI). You can use either Kind or k3s for a local development environment.</p>
+<h3 id="option-1-using-kind"><a class="header" href="#option-1-using-kind">Option 1: Using Kind</a></h3>
+<p><a href="https://kind.sigs.k8s.io/">Kind</a> (Kubernetes IN Docker) is a tool for running local Kubernetes clusters using Docker containers as nodes.</p>
+<ol>
+<li>Install and configure dependencies:</li>
+</ol>
+<pre><code class="language-bash">curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/
+
+# Build and install the Wasmtime shim if you haven't already
+make build-wasmtime
+sudo make install-wasmtime
+</code></pre>
+<ol start="2">
+<li>Create a Kind configuration file:</li>
+</ol>
+<pre><code class="language-yaml"># kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: runwasi-cluster
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /usr/local/bin/containerd-shim-wasmtime-v1
+    containerPath: /usr/local/bin/containerd-shim-wasmtime-v1
+</code></pre>
+<ol start="3">
+<li>Create and configure the cluster:</li>
+</ol>
+<pre><code class="language-bash">kind create cluster --name runwasi-cluster --config kind-config.yaml
+
+kubectl cluster-info --context kind-runwasi-cluster
+
+cat &lt;&lt; EOF | docker exec -i runwasi-cluster-control-plane tee /etc/containerd/config.toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+docker exec runwasi-cluster-control-plane systemctl restart containerd
+</code></pre>
+<h3 id="option-2-using-k3s"><a class="header" href="#option-2-using-k3s">Option 2: Using k3s</a></h3>
+<p><a href="https://k3s.io/">k3s</a> is a lightweight, certified Kubernetes distribution designed for edge, IoT, CI, and development use cases.</p>
+<ol>
+<li>Install k3s and build the shim:</li>
+</ol>
+<pre><code class="language-bash">curl -sfL https://get.k3s.io | sh -
+
+# Build and install the Wasmtime shim if you haven't already
+make build-wasmtime
+sudo make install-wasmtime
+</code></pre>
+<ol start="2">
+<li>Configure k3s to use the WebAssembly runtime:</li>
+</ol>
+<pre><code class="language-bash">sudo mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+
+cat &lt;&lt; EOF | sudo tee -a /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
+  runtime_type = "io.containerd.wasmtime.v1"
+EOF
+
+sudo systemctl restart k3s
+</code></pre>
+<h2 id="deploying-webassembly-workloads"><a class="header" href="#deploying-webassembly-workloads">Deploying WebAssembly Workloads</a></h2>
+<p>After setting up your Kubernetes cluster with Runwasi, you can deploy WebAssembly workloads.</p>
+<ol>
+<li>Create a deployment YAML file:</li>
+</ol>
+<pre><code class="language-yaml"># deploy.yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: wasm
+handler: wasm
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasi-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wasi-demo
+  template:
+    metadata:
+      labels:
+        app: wasi-demo
+    spec:
+      runtimeClassName: wasm
+      containers:
+      - name: demo
+        image: ghcr.io/containerd/runwasi/wasi-demo-app:latest
+</code></pre>
+<ol start="2">
+<li>Apply the deployment with Kind:</li>
+</ol>
+<pre><code class="language-bash">kubectl --context kind-runwasi-cluster apply -f deploy.yaml
+</code></pre>
+<p>Or with k3s:</p>
+<pre><code class="language-bash">sudo k3s kubectl apply -f deploy.yaml
+</code></pre>
+<ol start="3">
+<li>
+<p>Check the status of your deployment:</p>
+<p>With Kind:</p>
+</li>
+</ol>
+<pre><code class="language-bash">kubectl --context kind-runwasi-cluster get pods
+kubectl --context kind-runwasi-cluster logs -l app=wasi-demo
+</code></pre>
+<p>With k3s:</p>
+<pre><code class="language-bash">sudo k3s kubectl get pods
+sudo k3s kubectl logs -l app=wasi-demo
+</code></pre>
+<p>You should see output like:</p>
+<pre><code>This is a song that never ends.
+Yes, it goes on and on my friends.
+Some people started singing it not knowing what it was,
+So they'll continue singing it forever just because...
+</code></pre>
+<h2 id="using-other-webassembly-runtimes"><a class="header" href="#using-other-webassembly-runtimes">Using Other WebAssembly Runtimes</a></h2>
+<p>You can use different WebAssembly runtimes by changing the runtime type in your containerd configuration:</p>
+<ul>
+<li>For WasmEdge:</li>
+</ul>
+<pre><code>runtime_type = "io.containerd.wasmedge.v1"
+</code></pre>
+<ul>
+<li>For Wasmer:</li>
+</ul>
+<pre><code>runtime_type = "io.containerd.wasmer.v1"
+</code></pre>
+<p>Make sure you’ve installed the corresponding shim binary.</p>
+<h2 id="cleaning-up"><a class="header" href="#cleaning-up">Cleaning Up</a></h2>
+<p>To remove your test deployment:</p>
+<p>With Kind:</p>
+<pre><code class="language-bash">kubectl --context kind-runwasi-cluster delete -f deploy.yaml
+kind delete cluster --name runwasi-cluster
+</code></pre>
+<p>With k3s:</p>
+<pre><code class="language-bash">sudo k3s kubectl delete -f deploy.yaml
+# Optionally uninstall k3s
+/usr/local/bin/k3s-uninstall.sh
+</code></pre>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
+<p>Now that you’ve set up Kubernetes to run WebAssembly workloads:</p>
+<ul>
+<li>Learn about <a href="../oci-decision-flow.html">OCI Integration</a> for container images</li>
+<li>Explore <a href="../user-guide/architecture.html">Architecture Overview</a> to understand how Runwasi works</li>
+<li>Check out <a href="../opentelemetry.html">OpenTelemetry Integration</a> for monitoring your WebAssembly workloads</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../CONTRIBUTING.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../getting-started/demos.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../RELEASE.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../windows-getting-started.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -214,11 +340,11 @@ deploying the documentation to GitHub Pages.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../CONTRIBUTING.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../getting-started/demos.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../RELEASE.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../windows-getting-started.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

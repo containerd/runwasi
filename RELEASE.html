@@ -3,12 +3,12 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Release - Runwasi Developer Documentation</title>
+        <title>Release Process - Runwasi Developer Documentation</title>
 
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="">
+        <meta name="description" content="Documentation for runwasi">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -126,6 +126,12 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/RELEASE.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
 
                     </div>
                 </div>
@@ -194,7 +200,7 @@
 </ol>
 <h3 id="release-steps"><a class="header" href="#release-steps">Release Steps</a></h3>
 <ol>
-<li>Open a PR to bump crate versions and dependency versions in <code>Cargo.toml</code> for that crate, and change the "Unreleased" section in the <code>CHANGELOG.md</code> to the new version.</li>
+<li>Open a PR to bump crate versions and dependency versions in <code>Cargo.toml</code> for that crate, and change the “Unreleased” section in the <code>CHANGELOG.md</code> to the new version.</li>
 <li>PR can be merged after 2 LGTMs</li>
 <li>Run the release workflow for the dependent crate. (e.g. <code>containerd-shim-wasm/v0.2.0</code> where <code>crate=containerd-shim-wasm</code> and <code>version=0.2.0</code>)</li>
 <li>Wait for the release workflow to complete</li>
@@ -212,7 +218,7 @@ Use both <code>path</code> and <code>version</code> fields in the workspace <cod
 <pre><code class="language-toml">containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0" }
 </code></pre>
 <h3 id="verify-signing"><a class="header" href="#verify-signing">Verify signing</a></h3>
-<p>The release pipeline uses <code>cosign</code> to sign the release blobs, if any. It uses Github's OIDC token to authenticate with Sigstore to prove identity and outputs a <code>.bundle</code> file, which contains a signature and a key. This file can be verified using <code>cosign verify-blob</code> command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):</p>
+<p>The release pipeline uses <code>cosign</code> to sign the release blobs, if any. It uses Github’s OIDC token to authenticate with Sigstore to prove identity and outputs a <code>.bundle</code> file, which contains a signature and a key. This file can be verified using <code>cosign verify-blob</code> command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):</p>
 <pre><code class="language-sh">cosign verify-blob --bundle containerd-shim-wasmtime-v1.bundle \
 --certificate-identity https://github.com/containerd/runwasi/.github/workflows/release.yml@refs/tags/containerd-shim-wasmtime/&lt;tag&gt; \ 
 --certificate-oidc-issuer https://token.actions.githubusercontent.com \
@@ -226,7 +232,7 @@ The release workflow will automatically invite the person who triggered the work
 That person will need to accept the invite to be an owner of the crate and then manually add the containerd/runwasi-committers team as an owner of the crate.</p>
 <pre><code>cargo owner --add github:containerd:runwasi-committers &lt;crate-name&gt;
 </code></pre>
-<p><em>This assumes you've already done <code>cargo login</code> with your personal account.
+<p><em>This assumes you’ve already done <code>cargo login</code> with your personal account.
 Alternatively, the cargo cli does support setting the token via an environment variable, <code>CARGO_REGISTRY_TOKEN</code> or as a CLI flag.</em></p>
 <p>Now all members of the containerd/runwasi-committers team will have access to manage the crate (after they have accepted the invite to the crate).</p>
 <h3 id="release-workflow-summary"><a class="header" href="#release-workflow-summary">Release workflow summary</a></h3>
@@ -260,7 +266,7 @@ Alternatively, the cargo cli does support setting the token via an environment v
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="oci-decision-flow.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="developer/roadmap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -274,7 +280,7 @@ Alternatively, the cargo cli does support setting the token via an environment v
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="oci-decision-flow.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="developer/roadmap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
