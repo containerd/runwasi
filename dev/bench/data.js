@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741047454950,
+  "lastUpdate": 1741047560131,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7132,6 +7132,76 @@ window.BENCHMARK_DATA = {
             "value": 19392,
             "unit": "kB",
             "extra": "shim: 16256 kB\nzygote: 3136 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "97e855d550b06748b797361d1f45621f0a45ad11",
+          "message": "Merge pull request #898 from ya0guang/patch-1\n\nchange `SIGINT` to `SIGQUIT`",
+          "timestamp": "2025-03-03T20:13:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/97e855d550b06748b797361d1f45621f0a45ad11"
+        },
+        "date": 1741047559311,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 136037179,
+            "range": "± 4221513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 79699959,
+            "range": "± 1073206",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 111846947,
+            "range": "± 1175974",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 119879923,
+            "range": "± 1285519",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 132917728,
+            "range": "± 4595030",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 135194016,
+            "range": "± 2494543",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 81289008,
+            "range": "± 2742076",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 83150189,
+            "range": "± 2639085",
+            "unit": "ns/iter"
           }
         ]
       }
