@@ -24,7 +24,7 @@ homepage = "https://github.com/containerd/runwasi"
 [workspace.dependencies]
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-containerd-shim = "0.8"
+containerd-shim = { git = "https://github.com/containerd/rust-extensions", rev = "8fba47295b593ffa756c4b23a2d06a9e344e7860" } # make logger module public
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.9.0" }
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
