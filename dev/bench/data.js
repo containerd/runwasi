@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740961609977,
+  "lastUpdate": 1741047441919,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7086,6 +7086,52 @@ window.BENCHMARK_DATA = {
             "value": 84824036,
             "range": "± 2227906",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "97e855d550b06748b797361d1f45621f0a45ad11",
+          "message": "Merge pull request #898 from ya0guang/patch-1\n\nchange `SIGINT` to `SIGQUIT`",
+          "timestamp": "2025-03-03T20:13:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/97e855d550b06748b797361d1f45621f0a45ad11"
+        },
+        "date": 1741047441101,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15272,
+            "unit": "kB",
+            "extra": "shim: 12672 kB\nzygote: 2600 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66376,
+            "unit": "kB",
+            "extra": "shim: 54144 kB\nzygote: 12232 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18560,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3328 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19392,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3136 kB"
           }
         ]
       }
