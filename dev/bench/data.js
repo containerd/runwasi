@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741047453308,
+  "lastUpdate": 1741047454950,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11041,6 +11041,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/containerd/runwasi/commit/c4724157e6ef2cc3344502fd5f7dedcc21f42a2c"
         },
         "date": 1740961135222,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "97e855d550b06748b797361d1f45621f0a45ad11",
+          "message": "Merge pull request #898 from ya0guang/patch-1\n\nchange `SIGINT` to `SIGQUIT`",
+          "timestamp": "2025-03-03T20:13:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/97e855d550b06748b797361d1f45621f0a45ad11"
+        },
+        "date": 1741047454382,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
