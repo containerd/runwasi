@@ -9,7 +9,7 @@ members = [
     "crates/containerd-shim-wasmer",
     "crates/containerd-shim-wamr",
     "crates/stress-test",
-    "benches/containerd-shim-benchmarks", 
+    "benches/containerd-shim-benchmarks",
 ]
 resolver = "2"
 
@@ -26,7 +26,7 @@ anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.8"
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.9.0" }
-containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
+containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0" }
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 env_logger = "0.11"
 libc = "0.2.170"
@@ -48,6 +48,7 @@ tracing = "0.1"
 hyper = "1.6.0"
 tokio = { version = "1.43.0", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
+cfg-if = "1.0"
 
 # wasmtime
 wasmtime = { version = "27.0.0", features = ["async"] }
