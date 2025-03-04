@@ -7,6 +7,7 @@ use containerd_client::services::v1::DeleteRequest;
 use containerd_client::services::v1::leases_client::LeasesClient;
 use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
+use tokio_async_drop::tokio_async_drop;
 use tonic::Request;
 
 // Adds lease info to grpc header
@@ -74,7 +75,7 @@ impl LeaseGuardInner {
 impl Drop for LeaseGuard {
     fn drop(&mut self) {
         let inner = self.inner.take().unwrap();
-        tokio::spawn(async move {
+        tokio_async_drop!({
             match inner.release().await {
                 Ok(()) => log::info!("removed lease"),
                 Err(err) => log::warn!("error removing lease: {err}"),

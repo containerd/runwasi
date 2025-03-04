@@ -433,6 +433,12 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
             let parent_span = Span::current();
             parent_span.set_parent(extract_context(&_ctx.metadata));
 
+            // This future never completes as it runs an infinite loop.
+            // It will stop executing when dropped.
+            // We need to keep this future's lifetime tied to this
+            // method's lifetime.
+            // This means we shouldn't tokio::spawn it, but ruther
+            // tokio::select! it inside of this async method.
             async move {
                 loop {
                     let current_span =
