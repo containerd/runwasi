@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741047441919,
+  "lastUpdate": 1741047453308,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9075,6 +9075,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20650.0231,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "97e855d550b06748b797361d1f45621f0a45ad11",
+          "message": "Merge pull request #898 from ya0guang/patch-1\n\nchange `SIGINT` to `SIGQUIT`",
+          "timestamp": "2025-03-03T20:13:17Z",
+          "url": "https://github.com/containerd/runwasi/commit/97e855d550b06748b797361d1f45621f0a45ad11"
+        },
+        "date": 1741047452591,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20523.2006,
             "unit": "req/s"
           }
         ]
