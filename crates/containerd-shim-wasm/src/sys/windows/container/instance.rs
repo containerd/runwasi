@@ -9,25 +9,25 @@ use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, Instanc
 pub struct Instance<E: Engine>(PhantomData<E>);
 
 impl<E: Engine> SandboxInstance for Instance<E> {
-    fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, SandboxError> {
+    async fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         todo!();
     }
 
     /// Start the instance
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
-    fn start(&self) -> Result<u32, SandboxError> {
+    async fn start(&self) -> Result<u32, SandboxError> {
         todo!();
     }
 
     /// Send a signal to the instance
-    fn kill(&self, _signal: u32) -> Result<(), SandboxError> {
+    async fn kill(&self, _signal: u32) -> Result<(), SandboxError> {
         todo!();
     }
 
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
-    fn delete(&self) -> Result<(), SandboxError> {
+    async fn delete(&self) -> Result<(), SandboxError> {
         todo!();
     }
 

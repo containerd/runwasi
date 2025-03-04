@@ -91,6 +91,7 @@ pub mod r#impl {
     pub use git_version::git_version;
 }
 
+use super::async_utils::AmbientRuntime as _;
 pub use crate::{revision, version};
 
 /// Get the crate version from Cargo.toml.
@@ -171,15 +172,16 @@ pub fn shim_main<'a, I>(
     #[cfg(feature = "opentelemetry")]
     if otel_traces_enabled() {
         // opentelemetry uses tokio, so we need to initialize a runtime
-        use tokio::runtime::Runtime;
-        let rt = Runtime::new().unwrap();
-        rt.block_on(async {
+        async {
             let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
             let _guard = otlp_config
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
-            shim_main_inner::<I>(name, version, revision, shim_version, config);
-        });
+            tokio::task::block_in_place(move || {
+                shim_main_inner::<I>(name, version, revision, shim_version, config);
+            });
+        }
+        .block_on();
     } else {
         shim_main_inner::<I>(name, version, revision, shim_version, config);
     }

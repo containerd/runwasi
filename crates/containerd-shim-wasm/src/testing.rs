@@ -84,6 +84,7 @@ impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
         // Removing the `network` namespace results in the binding to the host's socket.
         // This allows for direct communication with the host's networking interface.
         self.namespaces
+            // typos:disable-next-line - false positive "typ"
             .retain(|ns| ns.typ() != LinuxNamespaceType::Network);
         self
     }
@@ -216,7 +217,7 @@ impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
             ..Default::default()
         };
 
-        let instance = WasiInstance::new(self.container_name, &cfg)?;
+        let instance = WasiInstance::new(self.container_name, &cfg).block_on()?;
         Ok(WasiTest { instance, tempdir })
     }
 }
@@ -232,7 +233,7 @@ impl<WasiInstance: Instance> WasiTest<WasiInstance> {
 
     pub fn start(&self) -> Result<&Self> {
         log::info!("starting wasi test");
-        let pid = self.instance.start()?;
+        let pid = self.instance.start().block_on()?;
         log::info!("wasi test pid {pid}");
 
         Ok(self)
@@ -240,25 +241,25 @@ impl<WasiInstance: Instance> WasiTest<WasiInstance> {
 
     pub fn delete(&self) -> Result<&Self> {
         log::info!("deleting wasi test");
-        self.instance.delete()?;
+        self.instance.delete().block_on()?;
         Ok(self)
     }
 
     pub fn ctrl_c(&self) -> Result<&Self> {
         log::info!("sending SIGINT");
-        self.instance.kill(SIGINT as u32)?;
+        self.instance.kill(SIGINT as u32).block_on()?;
         Ok(self)
     }
 
     pub fn terminate(&self) -> Result<&Self> {
         log::info!("sending SIGTERM");
-        self.instance.kill(SIGTERM as u32)?;
+        self.instance.kill(SIGTERM as u32).block_on()?;
         Ok(self)
     }
 
     pub fn kill(&self) -> Result<&Self> {
         log::info!("sending SIGKILL");
-        self.instance.kill(SIGKILL as u32)?;
+        self.instance.kill(SIGKILL as u32).block_on()?;
         Ok(self)
     }
 
@@ -267,7 +268,7 @@ impl<WasiInstance: Instance> WasiTest<WasiInstance> {
         let (status, _) = match self.instance.wait().with_timeout(t).block_on() {
             Some(res) => res,
             None => {
-                self.instance.kill(SIGKILL)?;
+                self.instance.kill(SIGKILL).block_on()?;
                 bail!("timeout while waiting for module to finish");
             }
         };
@@ -275,7 +276,7 @@ impl<WasiInstance: Instance> WasiTest<WasiInstance> {
         let stdout = self.read_stdout()?.unwrap_or_default();
         let stderr = self.read_stderr()?.unwrap_or_default();
 
-        self.instance.delete()?;
+        self.instance.delete().block_on()?;
 
         log::info!("wasi test status is {status}");
 

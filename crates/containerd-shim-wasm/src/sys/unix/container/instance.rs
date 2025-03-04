@@ -30,11 +30,11 @@ pub struct Instance<E: Engine> {
 
 impl<E: Engine + Default> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
+    async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(&cfg.containerd_address, &cfg.namespace).block_on()?
+        let (modules, platform) = containerd::Client::connect(&cfg.containerd_address, &cfg.namespace).await?
             .load_modules(&id, &E::default())
-            .block_on()
+            .await
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
                 (vec![], Platform::default())
@@ -83,7 +83,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn start(&self) -> Result<u32, SandboxError> {
+    async fn start(&self) -> Result<u32, SandboxError> {
         log::info!("starting instance: {}", self.id);
         // make sure we have an exit code by the time we finish (even if there's a panic)
         let guard = self.exit_code.clone().set_guard_with(|| (137, Utc::now()));
@@ -123,7 +123,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
     /// Send a signal to the instance
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn kill(&self, signal: u32) -> Result<(), SandboxError> {
+    async fn kill(&self, signal: u32) -> Result<(), SandboxError> {
         log::info!("sending signal {signal} to instance: {}", self.id);
         self.container.kill(signal)?;
         Ok(())
@@ -132,7 +132,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn delete(&self) -> Result<(), SandboxError> {
+    async fn delete(&self) -> Result<(), SandboxError> {
         log::info!("deleting instance: {}", self.id);
         self.container.delete()?;
         Ok(())
