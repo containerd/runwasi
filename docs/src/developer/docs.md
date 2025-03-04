@@ -1,8 +1,8 @@
 # Documentation website
 
-This project uses the [mdBook]() tool to generate a documentation website from
+This project uses the [mdBook](https://rust-lang.github.io/mdBook/) tool to generate a documentation website from
 markdown files. The website is hosted on GitHub Pages and is available at the
-following URL: [https://containerd.github.io/runwasi/](https://containerd.github.io/runwasi/).
+following URL: [https://runwasi.dev/](https://runwasi.dev/).
 
 ## Building the documentation
 
