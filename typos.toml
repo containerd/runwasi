@@ -1,2 +1,11 @@
+[default]
+# allow disabling the next line, e.g:
+#         self.namespaces
+#             // typos:disable-next-line - false positive "typ"
+#             .retain(|ns| ns.typ() != LinuxNamespaceType::Network);
+extend-ignore-re = [
+   "(?Rm)^\\s*//\\s*typos:disable-next-line(\\s.*|\\s*)(\\r|\\n)+[^\\r\\n]*$",
+]
+
 [files]
 extend-exclude = ["docs/mermaid.min.js"]

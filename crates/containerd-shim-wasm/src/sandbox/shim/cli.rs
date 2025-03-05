@@ -1,25 +1,26 @@
 use std::env::current_dir;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 use chrono::Utc;
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::write_address;
-use containerd_shim::{self as shim, ExitSignal, api};
+use containerd_shim::{self as shim, api};
 use oci_spec::runtime::Spec;
 use shim::Flags;
 
+use crate::sandbox::async_utils::AmbientRuntime as _;
 use crate::sandbox::instance::Instance;
 use crate::sandbox::shim::events::{RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::local::Local;
+use crate::sandbox::sync::WaitableCell;
 
 /// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
 pub struct Cli<T: Instance + Sync + Send> {
     namespace: String,
     containerd_address: String,
-    exit: Arc<ExitSignal>,
+    exit: WaitableCell<()>,
     _id: String,
     _phantom: PhantomData<T>,
 }
@@ -48,7 +49,7 @@ where
         Cli {
             namespace: args.namespace.to_string(),
             containerd_address: args.address.clone(),
-            exit: Arc::default(),
+            exit: WaitableCell::new(),
             _id: args.id.to_string(),
             _phantom: PhantomData,
         }
@@ -77,7 +78,7 @@ where
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     fn wait(&mut self) {
-        self.exit.wait();
+        self.exit.wait().block_on();
     }
 
     #[cfg_attr(

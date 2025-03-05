@@ -83,19 +83,19 @@ struct MyInstance {
 }
 
 impl Instance for MyInstance {
-    fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
+    async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
         Ok(MyInstance { engine: MyEngine })
     }
 
-    fn start(&self) -> Result<u32, Error> {
+    async fn start(&self) -> Result<u32, Error> {
         Ok(1)
     }
 
-    fn kill(&self, signal: u32) -> Result<(), Error> {
+    async fn kill(&self, signal: u32) -> Result<(), Error> {
         Ok(())
     }
 
-    fn delete(&self) -> Result<(), Error> {
+    async fn delete(&self) -> Result<(), Error> {
         Ok(())
     }
 
