@@ -25,7 +25,7 @@ homepage = "https://github.com/containerd/runwasi"
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.8"
-containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.9.0" }
+containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.10.0" }
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 env_logger = "0.11"

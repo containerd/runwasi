@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v0.10.0] - 2025-03-05
+
 ### Added
 - Support for parsing SystemdCgroup from the containerd config file ([#864](https://github.com/containerd/runwasi/pull/864))\
 - Added more parameters info to the traces (must enable `tracing` feature) ([#853](https://github.com/containerd/runwasi/pull/853))
@@ -93,7 +95,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Removed dependency on `prost-types` ([#656](https://github.com/containerd/runwasi/pull/656))
 - Removed dependency on `native-tls` ([#683](https://github.com/containerd/runwasi/pull/683)), note that the `opentelemetry` feature still depends on `native-tls`.
 
-[Unreleased]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.9.0..HEAD>
+[Unreleased]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.10.0..HEAD>
+[v0.10.0]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.9.0...containerd-shim-wasm/v0.10.0>
 [v0.9.0]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.8.0...containerd-shim-wasm/v0.9.0>
 [v0.8.0]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.7.0...containerd-shim-wasm/v0.8.0>
 [v0.7.0]: <https://github.com/containerd/runwasi/compare/containerd-shim-wasm/v0.6.0...containerd-shim-wasm/v0.7.0>
