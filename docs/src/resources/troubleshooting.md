@@ -18,8 +18,18 @@ Events:
 
 1. **Check runtime class configuration**: Ensure your `RuntimeClass` is correctly configured.
    ```bash
-   kubectl get runtimeclass -o yaml
+   kubectl get runtimeclass
+
+   # Example output:
+    NAME                  HANDLER               AGE
+    wasm                  wasm                  8d
+    wasmedge              wasmedge              8d
+    wasmer                wasmer                8d
+    wasmtime              wasmtime              8d
    ```
+   
+   > RuntimeClass in Kubernetes defines a handler name (e.g., `wasmtime`) that maps directly to a CRI section in containerd's config.toml (`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasmtime]`), which then points to the shim binary (`containerd-shim-wasmtime-v1`) that executes your Wasm workload. See more details in [Runtime classes from containerd](https://github.com/containerd/containerd/blob/main/docs/cri/config.md#runtime-classes)
+
 
 2. **Check containerd configuration**: Verify that the containerd configuration has a runtime configured for your Wasm shim (e.g., wasmtime).
    ```bash
@@ -30,7 +40,7 @@ Events:
       runtime_type = "io.containerd.wasmtime.v1"
    ```
 
-3. Make sure the containerd shim binary is installed properly.
+3. Make sure the containerd shim binary is in the PATH.
 
 ## Log-Based Troubleshooting
 
