@@ -12,6 +12,7 @@
 
 mod context;
 mod engine;
+pub mod log;
 mod path;
 mod wasm;
 
