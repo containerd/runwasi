@@ -161,7 +161,7 @@ fn init_zygote_and_logger(debug: bool, config: &Config) {
     zygote::Zygote::global().run(
         |(debug, default_log_level)| {
             // last two arguments are unused in unix
-            containerd_shim::logger::init(debug, &default_log_level, "", "")
+            crate::vendor::containerd_shim::logger::init(debug, &default_log_level, "", "")
                 .expect("Failed to initialize logger");
         },
         (debug, config.default_log_level.clone()),
