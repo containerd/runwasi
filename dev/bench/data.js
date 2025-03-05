@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741133845738,
+  "lastUpdate": 1741133852916,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9218,6 +9218,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20523.2006,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e24f67994d566c5fb8ed0f981fd72fd5cd1c6a74",
+          "message": "Merge pull request #883 from Mossaka/docs-improve\n\ndocs: improve readability",
+          "timestamp": "2025-03-04T00:22:29Z",
+          "url": "https://github.com/containerd/runwasi/commit/e24f67994d566c5fb8ed0f981fd72fd5cd1c6a74"
+        },
+        "date": 1741133852319,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20537.9756,
             "unit": "req/s"
           }
         ]
