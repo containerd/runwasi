@@ -437,7 +437,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
             // It will stop executing when dropped.
             // We need to keep this future's lifetime tied to this
             // method's lifetime.
-            // This means we shouldn't tokio::spawn it, but ruther
+            // This means we shouldn't tokio::spawn it, but rather
             // tokio::select! it inside of this async method.
             async move {
                 loop {
