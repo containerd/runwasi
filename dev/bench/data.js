@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741047956508,
+  "lastUpdate": 1741133845738,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7202,6 +7202,52 @@ window.BENCHMARK_DATA = {
             "value": 83150189,
             "range": "± 2639085",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e24f67994d566c5fb8ed0f981fd72fd5cd1c6a74",
+          "message": "Merge pull request #883 from Mossaka/docs-improve\n\ndocs: improve readability",
+          "timestamp": "2025-03-04T00:22:29Z",
+          "url": "https://github.com/containerd/runwasi/commit/e24f67994d566c5fb8ed0f981fd72fd5cd1c6a74"
+        },
+        "date": 1741133845151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15016,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 2728 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65096,
+            "unit": "kB",
+            "extra": "shim: 52864 kB\nzygote: 12232 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18436,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3204 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19388,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3132 kB"
           }
         ]
       }
