@@ -22,4 +22,4 @@ name = "containerd-shim-wasmer-v1"
 path = "src/main.rs"
 
 [package.metadata.cargo-machete]
-ignored = ["mio"] # wasmer depends on mio but the latest version of mio moved features behind a feature flag
+ignored = ["mio", "log"] # wasmer depends on mio but the latest version of mio moved features behind a feature flag

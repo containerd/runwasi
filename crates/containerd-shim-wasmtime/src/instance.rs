@@ -215,16 +215,16 @@ impl WasmtimeEngineImpl {
         })?;
 
         wasmtime_wasi::runtime::in_tokio(async move {
-            log::info!("instantiating instance");
+            containerd_shim_wasm::info!(ctx, "instantiating instance");
             let instance: wasmtime::Instance =
                 module_linker.instantiate_async(&mut store, &module).await?;
 
-            log::debug!("getting start function");
+            containerd_shim_wasm::debug!(ctx, "getting start function");
             let start_func = instance
                 .get_func(&mut store, func)
                 .context("module does not have a WASI start function")?;
 
-            log::info!("running start function {func:?}");
+            containerd_shim_wasm::info!(ctx, "running start function {func:?}");
 
             start_func
                 .call_async(&mut store, &[], &mut [])

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Support for parsing SystemdCgroup from the containerd config file ([#864](https://github.com/containerd/runwasi/pull/864))\
 - Added more parameters info to the traces (must enable `tracing` feature) ([#853](https://github.com/containerd/runwasi/pull/853))
+- Added structured logging macros to the crate ([#879](https://github.com/containerd/runwasi/pull/879))
 
 ### Changed
 - `Engine` trait now creates a dedicated Zygote process for each container to avoid the issue of libcontainer trying to change the shim process's global state. ([#828](https://github.com/containerd/runwasi/pull/828))
