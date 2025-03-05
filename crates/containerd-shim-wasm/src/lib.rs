@@ -5,6 +5,7 @@
 
 pub mod container;
 pub mod sandbox;
+mod vendor;
 
 #[cfg_attr(unix, path = "sys/unix/mod.rs")]
 #[cfg_attr(windows, path = "sys/windows/mod.rs")]

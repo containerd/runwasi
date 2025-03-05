@@ -152,6 +152,22 @@ fn log_mem() {
     log::info!("Zygote peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
 }
 
+#[cfg(unix)]
+fn init_zygote_and_logger(debug: bool, config: &Config) {
+    zygote::Zygote::init();
+    if config.no_setup_logger {
+        return;
+    }
+    zygote::Zygote::global().run(
+        |(debug, default_log_level)| {
+            // last two arguments are unused in unix
+            crate::vendor::containerd_shim::logger::init(debug, &default_log_level, "", "")
+                .expect("Failed to initialize logger");
+        },
+        (debug, config.default_log_level.clone()),
+    );
+}
+
 /// Main entry point for the shim.
 ///
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
@@ -166,8 +182,30 @@ pub fn shim_main<'a, I>(
 ) where
     I: 'static + Instance + Sync + Send,
 {
+    // parse the version flag
+    let os_args: Vec<_> = std::env::args_os().collect();
+
+    let flags = parse(&os_args[1..]).unwrap();
+    let argv0 = PathBuf::from(&os_args[0]);
+    let argv0 = argv0.file_stem().unwrap_or_default().to_string_lossy();
+
+    if flags.version {
+        println!("{argv0}:");
+        println!("  Runtime: {name}");
+        println!("  Version: {version}");
+        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
+        println!();
+
+        std::process::exit(0);
+    }
+
+    // Initialize the zygote and logger for the container process
     #[cfg(unix)]
-    zygote::Zygote::init();
+    {
+        let default_config = Config::default();
+        let config = config.as_ref().unwrap_or(&default_config);
+        init_zygote_and_logger(flags.debug, config);
+    }
 
     #[cfg(feature = "opentelemetry")]
     if otel_traces_enabled() {
@@ -220,24 +258,8 @@ fn shim_main_inner<'a, I>(
             }
         }
     }
-    let os_args: Vec<_> = std::env::args_os().collect();
-
-    let flags = parse(&os_args[1..]).unwrap();
-    let argv0 = PathBuf::from(&os_args[0]);
-    let argv0 = argv0.file_stem().unwrap_or_default().to_string_lossy();
-
-    if flags.version {
-        println!("{argv0}:");
-        println!("  Runtime: {name}");
-        println!("  Version: {version}");
-        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
-        println!();
-
-        std::process::exit(0);
-    }
 
     let shim_version = shim_version.into().unwrap_or("v1");
-
     let lower_name = name.to_lowercase();
     let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 

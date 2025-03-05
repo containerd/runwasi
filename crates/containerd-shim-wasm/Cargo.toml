@@ -66,6 +66,8 @@ opentelemetry_sdk = { version = "0.23", default-features = false, features = [
 ], optional = true }
 tracing-opentelemetry = { version = "0.24", optional = true }
 
+# vendored code
+time = { version = "0.3.29", features = ["serde", "std", "formatting"] }
 
 [target.'cfg(unix)'.dependencies]
 zygote = { version = "0.1.2" }
@@ -86,6 +88,8 @@ windows-sys = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
 ] }
+# vendored code
+mio = { version = "1.0", features = ["os-ext", "os-poll"] }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2" }
