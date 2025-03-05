@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Engine` trait now uses `systemd_cgroup` from `InstanceConfig` to create the container's cgroup instead of hardcoding it to `false`. ([#864](https://github.com/containerd/runwasi/pull/864))
 - `containerd-shim-wasm` now uses Rust Edition 2024.
 - Breaking change: The `InstanceConfig` struct now has public members instead of accessor methods. ([#882](https://github.com/containerd/runwasi/pull/882))
+- Breaking change: Removed the `Engine` associated type from the `Instance` trait ([#887](https://github.com/containerd/runwasi/pull/887))
+- Breaking change: The methods of the `Instance` trait are now async. ([#890](https://github.com/containerd/runwasi/pull/890))
+- Internal refactor: The codebase of containerd-shim-wasm is now mostly asynchronous. ([#890](https://github.com/containerd/runwasi/pull/890))
 
 ### Removed
 - `containerd_shim_wasm::container::PathResolve` is now a private module ([#837](https://github.com/containerd/runwasi/pull/837))
