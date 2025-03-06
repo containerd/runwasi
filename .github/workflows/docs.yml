@@ -7,6 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   changes:
     runs-on: ubuntu-22.04
