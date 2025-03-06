@@ -35,8 +35,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
-permissions: read-all
-
 jobs:
   pre-release:
     name: pre-release checks

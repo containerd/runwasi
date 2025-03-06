@@ -30,8 +30,6 @@ on:
         type: string
         required: false
 
-permissions: read-all
-
 jobs:
   build-sign-upload:
     permissions:

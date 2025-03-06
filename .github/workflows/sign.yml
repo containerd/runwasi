@@ -10,14 +10,13 @@ on:
         type: string
         required: true
 
-permissions: read-all
-
 jobs:
   sign:
     name: Sign image
     permissions:
-      packages: write # needed to authenticate and interact with the GitHub Container Registry
-      id-token: write # needed for the cosign signing process
+      packages: write
+      id-token: write
+
     runs-on: ubuntu-latest
     steps:
       - name: Sanitize image name

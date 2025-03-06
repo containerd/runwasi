@@ -19,8 +19,6 @@ env:
   CARGO_TERM_COLOR: always
   IMAGES: "wasi-demo-app wasi-demo-oci wasi-demo-oci-artifact wasi-demo-http"
 
-permissions: read-all
-
 jobs:
   release-wasi-demo:
     permissions:
