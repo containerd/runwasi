@@ -1,0 +1,27 @@
+name: Links
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Every day at midnight
+  pull_request:
+    paths:
+      - ".github/workflows/links.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  linkChecker:
+    runs-on: ubuntu-latest
+    if: github.repository == 'containerd/runwasi'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@f613c4a64e50d792e0b31ec34bbcbba12263c6a6 # v2.3.0
+        with:
+          # Fail action on broken links
+          fail: true
+          format: markdown
+          # Write GitHub job summary
+          jobSummary: true
