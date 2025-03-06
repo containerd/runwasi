@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-containerd-shim = { workspace = true }
+containerd-shim = { workspace = true, features = ["async"] }
 containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 oci-tar-builder = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
@@ -38,6 +38,7 @@ prost = "0.13"
 toml = "0.8"
 trait-variant = "0.1"
 tokio-async-drop = "0.1"
+async-trait = "0.1.87"
 
 # tracing
 # note: it's important to keep the version of tracing in sync with tracing-subscriber

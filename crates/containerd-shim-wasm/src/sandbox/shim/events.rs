@@ -1,10 +1,11 @@
-use std::sync::Arc;
-
 use chrono::{DateTime, TimeZone};
 use containerd_shim::event::Event;
 use containerd_shim::publisher::RemotePublisher;
 use log::warn;
+use protobuf::MessageDyn;
 use protobuf::well_known_types::timestamp::Timestamp;
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 pub trait EventSender: Clone + Send + Sync + 'static {
     fn send(&self, event: impl Event);
@@ -12,23 +13,24 @@ pub trait EventSender: Clone + Send + Sync + 'static {
 
 #[derive(Clone)]
 pub struct RemoteEventSender {
-    inner: Arc<Inner>,
-}
-
-struct Inner {
-    namespace: String,
-    publisher: RemotePublisher,
+    tx: UnboundedSender<(String, Box<dyn MessageDyn>)>,
 }
 
 impl RemoteEventSender {
     pub fn new(namespace: impl AsRef<str>, publisher: RemotePublisher) -> RemoteEventSender {
         let namespace = namespace.as_ref().to_string();
-        RemoteEventSender {
-            inner: Arc::new(Inner {
-                namespace,
-                publisher,
-            }),
-        }
+        let (tx, mut rx) = unbounded_channel::<(String, Box<dyn MessageDyn>)>();
+        tokio::spawn(async move {
+            while let Some((topic, event)) = rx.recv().await {
+                if let Err(err) = publisher
+                    .publish(Default::default(), &topic, &namespace, event)
+                    .await
+                {
+                    warn!("failed to publish event, topic: {topic}: {err}")
+                }
+            }
+        });
+        RemoteEventSender { tx }
     }
 }
 
@@ -36,11 +38,8 @@ impl EventSender for RemoteEventSender {
     fn send(&self, event: impl Event) {
         let topic = event.topic();
         let event = Box::new(event);
-        let publisher = &self.inner.publisher;
-        if let Err(err) =
-            publisher.publish(Default::default(), &topic, &self.inner.namespace, event)
-        {
-            warn!("failed to publish event, topic: {}: {}", &topic, err)
+        if let Err(SendError((topic, _))) = self.tx.send((topic, event)) {
+            warn!("failed to publish event, topic: {topic}: channel closed")
         }
     }
 }

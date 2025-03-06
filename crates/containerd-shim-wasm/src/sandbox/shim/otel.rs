@@ -87,7 +87,7 @@ impl Config {
     /// Initializes the tracer, sets up the telemetry and subscriber layers, and sets the global subscriber.
     ///
     /// Note: this function should be called only once and be called by the binary entry point.
-    pub fn init(&self) -> anyhow::Result<impl Drop> {
+    pub fn init(&self) -> anyhow::Result<impl Drop + 'static> {
         let tracer = self.init_tracer()?;
         let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
         set_text_map_propagator(TraceContextPropagator::new());

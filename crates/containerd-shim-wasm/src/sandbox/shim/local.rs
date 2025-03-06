@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::ensure;
+use async_trait::async_trait;
 use containerd_shim::api::{
     ConnectRequest, ConnectResponse, CreateTaskRequest, CreateTaskResponse, DeleteRequest, Empty,
     KillRequest, ShutdownRequest, StartRequest, StartResponse, StateRequest, StateResponse,
@@ -12,10 +13,9 @@ use containerd_shim::api::{
 };
 use containerd_shim::error::Error as ShimError;
 use containerd_shim::protos::events::task::{TaskCreate, TaskDelete, TaskExit, TaskIO, TaskStart};
-use containerd_shim::protos::shim::shim_ttrpc::Task;
 use containerd_shim::protos::types::task::Status;
 use containerd_shim::util::IntoOption;
-use containerd_shim::{DeleteResponse, TtrpcContext, TtrpcResult};
+use containerd_shim::{DeleteResponse, Task, TtrpcContext, TtrpcResult};
 use futures::FutureExt as _;
 use log::debug;
 use oci_spec::runtime::Spec;
@@ -378,9 +378,10 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
     }
 }
 
+#[async_trait]
 impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn create(
+    async fn create(
         &self,
         _ctx: &TtrpcContext,
         req: CreateTaskRequest,
@@ -394,7 +395,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn start(&self, _ctx: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
+    async fn start(&self, _ctx: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
         debug!("start: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -404,7 +405,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn kill(&self, _ctx: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
+    async fn kill(&self, _ctx: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
         debug!("kill: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -414,7 +415,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn delete(&self, _ctx: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
+    async fn delete(&self, _ctx: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
         debug!("delete: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -424,7 +425,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn wait(&self, _ctx: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
+    async fn wait(&self, _ctx: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
         debug!("wait: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -464,7 +465,11 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn connect(&self, _ctx: &TtrpcContext, req: ConnectRequest) -> TtrpcResult<ConnectResponse> {
+    async fn connect(
+        &self,
+        _ctx: &TtrpcContext,
+        req: ConnectRequest,
+    ) -> TtrpcResult<ConnectResponse> {
         debug!("connect: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -481,7 +486,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn state(&self, _ctx: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
+    async fn state(&self, _ctx: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
         debug!("state: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
@@ -491,7 +496,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn shutdown(&self, _ctx: &TtrpcContext, _: ShutdownRequest) -> TtrpcResult<Empty> {
+    async fn shutdown(&self, _ctx: &TtrpcContext, _: ShutdownRequest) -> TtrpcResult<Empty> {
         debug!("shutdown");
 
         #[cfg(feature = "opentelemetry")]
@@ -504,7 +509,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
-    fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
+    async fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
         debug!("stats: {:?}", req);
 
         #[cfg(feature = "opentelemetry")]
