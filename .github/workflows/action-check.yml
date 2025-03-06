@@ -12,8 +12,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   check:
     name: lint on ${{ inputs.os }}

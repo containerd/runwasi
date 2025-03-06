@@ -12,8 +12,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   smoke-test:
     name: smoke test on ${{ inputs.os }}

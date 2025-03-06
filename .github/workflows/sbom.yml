@@ -10,8 +10,6 @@ on:
         type: string
         required: true
 
-permissions: read-all
-
 jobs:
   sbom:
     name: Generate SBOM, sign and attach them to OCI image

@@ -18,8 +18,6 @@ on:
         type: string
         required: true
 
-permissions: read-all
-
 jobs:
   e2e-kind:
     name: e2e kind test on ${{ inputs.os }} with ${{ inputs.image }}
