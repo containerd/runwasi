@@ -1,9 +1,18 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
-  <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
-</picture>
-
-# runwasi
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
+    <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
+  </picture>
+  
+  <h1>runwasi</h1>
+  <p>
+    <a href="https://github.com/containerd/runwasi/actions/workflows/ci.yml"><img src="https://github.com/containerd/runwasi/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+    <a href="https://crates.io/crates/containerd-shim-wasm"><img src="https://img.shields.io/crates/v/containerd-shim-wasm" alt="crates.io"></a>
+    <a href="https://docs.rs/containerd-shim-wasm"><img src="https://img.shields.io/docsrs/containerd-shim-wasm" alt="docs.rs"></a>
+    <a href="https://img.shields.io/crates/d/containerd-shim-wasm.svg"><img src="https://img.shields.io/crates/d/containerd-shim-wasm.svg" alt="Downloads"></a>
+    <a href="https://runwasi.dev/"><img src="https://img.shields.io/website?up_message=runwasi.dev&url=https%3A%2F%2Frunwasi.dev" alt="website"></a>
+  </p>
+</div>
 
 This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
