@@ -12,6 +12,8 @@ on:
         required: true
         type: string
 
+permissions: read-all
+
 jobs:
   e2e-k3s:
     name: e2e k3s test on ${{ inputs.os }}
