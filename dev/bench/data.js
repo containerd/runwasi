@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741221022557,
+  "lastUpdate": 1741221029200,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9361,6 +9361,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20537.9756,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "85912ef06cb17771498dacb85abf62adad776cb4",
+          "message": "Merge pull request #901 from Mossaka/benchmark-ignore\n\nci(benchmarks): ignore non-code files in benchmarks workflow",
+          "timestamp": "2025-03-05T23:51:27Z",
+          "url": "https://github.com/containerd/runwasi/commit/85912ef06cb17771498dacb85abf62adad776cb4"
+        },
+        "date": 1741221028474,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20556.694,
             "unit": "req/s"
           }
         ]
