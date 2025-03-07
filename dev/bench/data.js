@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741307200536,
+  "lastUpdate": 1741307201657,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7434,6 +7434,52 @@ window.BENCHMARK_DATA = {
             "value": 87946431,
             "range": "± 1198705",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c446b99667daaed0e57f60684425cb48a5041014",
+          "message": "Merge pull request #913 from containerd/revert-911-issue910\n\nRevert \"ci(all): add read-all permission to all workflows\"",
+          "timestamp": "2025-03-06T09:40:01Z",
+          "url": "https://github.com/containerd/runwasi/commit/c446b99667daaed0e57f60684425cb48a5041014"
+        },
+        "date": 1741307201075,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15272,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 2984 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66512,
+            "unit": "kB",
+            "extra": "shim: 53760 kB\nzygote: 12752 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18948,
+            "unit": "kB",
+            "extra": "shim: 15360 kB\nzygote: 3588 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19648,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 3520 kB"
           }
         ]
       }
