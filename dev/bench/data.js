@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741307199361,
+  "lastUpdate": 1741307200536,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11510,6 +11510,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.3,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c446b99667daaed0e57f60684425cb48a5041014",
+          "message": "Merge pull request #913 from containerd/revert-911-issue910\n\nRevert \"ci(all): add read-all permission to all workflows\"",
+          "timestamp": "2025-03-06T09:40:01Z",
+          "url": "https://github.com/containerd/runwasi/commit/c446b99667daaed0e57f60684425cb48a5041014"
+        },
+        "date": 1741307200278,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.6,
             "unit": "ms"
           }
         ]
