@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741307201657,
+  "lastUpdate": 1741307358868,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7480,6 +7480,76 @@ window.BENCHMARK_DATA = {
             "value": 19648,
             "unit": "kB",
             "extra": "shim: 16128 kB\nzygote: 3520 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c446b99667daaed0e57f60684425cb48a5041014",
+          "message": "Merge pull request #913 from containerd/revert-911-issue910\n\nRevert \"ci(all): add read-all permission to all workflows\"",
+          "timestamp": "2025-03-06T09:40:01Z",
+          "url": "https://github.com/containerd/runwasi/commit/c446b99667daaed0e57f60684425cb48a5041014"
+        },
+        "date": 1741307357537,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 137314730,
+            "range": "± 4287651",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 82724313,
+            "range": "± 1232118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 114466098,
+            "range": "± 903722",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 120605964,
+            "range": "± 1550137",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 129449849,
+            "range": "± 2326824",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 134710098,
+            "range": "± 1681040",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 82968114,
+            "range": "± 2589410",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 83381793,
+            "range": "± 1236124",
+            "unit": "ns/iter"
           }
         ]
       }
