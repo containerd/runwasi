@@ -9,7 +9,7 @@ which apply to all containerd projects.
 
 ## Setting up your local environment
 
-At a minimum, the Rust toolchain.  When using `rustup` the correct toolchain version is picked up from the [rust-toolchain.toml](./rust-toolchain.toml) so you don't need to worry about the version.
+At a minimum, the Rust toolchain.  When using `rustup` the correct toolchain version is picked up from the "rust-toolchain.toml" file so you don't need to worry about the version.
 
 > ```
 > curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -39,7 +39,7 @@ scripts/setup-cross.sh
 
 ## Project structure and architecture
 
-For a detailed overview of the Runwasi structure and architecture, please refer to the [Architecture Documentation](./docs/src/user-guide/architecture.md).
+For a detailed overview of the Runwasi structure and architecture, please refer to the [Architecture Documentation](https://runwasi.dev/developer/architecture.html).
 
 The documentation covers:
 - High-level structure of Runwasi
@@ -61,7 +61,7 @@ To build a shim for specific runtime (wasmtime, wasmer, wasmedge, wamr, etc):
 make build-<runtime>
 ```
 
-By default the runtimes will build for your current OS and architecture.  If you want to build for a specific OS and architecture you can specify `TARGET`, where it matches a target in [Cross.toml](./Cross.toml). If your target doesn't match your host OS and architecture [Cross](https://github.com/cross-rs/cross) will be used. As an example will build a static binary:
+By default the runtimes will build for your current OS and architecture.  If you want to build for a specific OS and architecture you can specify `TARGET`, where it matches a target in "Cross.toml". If your target doesn't match your host OS and architecture [Cross](https://github.com/cross-rs/cross) will be used. As an example will build a static binary:
 
 ```
 TARGET=x86_64-unknown-linux-musl make build
@@ -71,7 +71,7 @@ TARGET=x86_64-unknown-linux-musl make build
 
 ### Unit tests
 
-Unit tests are run via `make test`  or for a specific runtime `make test-<runtime>`. On linux the tests will run using `sudo`. This is configured in the `runner` field in [.cargo/config.toml](./.cargo/config.toml)
+Unit tests are run via `make test`  or for a specific runtime `make test-<runtime>`. On linux the tests will run using `sudo`. This is configured in the `runner` field in ".cargo/config.toml"
 
 You should see some output like:
 ```terminal
@@ -90,9 +90,9 @@ RUST_LOG=DEBUG cargo test --package containerd-shim-wasmtime --lib -- wasmtime_t
 
 ### End to End tests
 
-The e2e test run on [k3s](https://k3s.io/) and [kind](https://kind.sigs.k8s.io/).  A test image is built using [oci-tar-builder](./crates/oci-tar-builder/) and is loaded onto the clusters.  This test image is not pushed to an external registry so be sure to use the Makefile targets to build the image and load it on the cluster.
+The e2e test run on [k3s](https://k3s.io/) and [kind](https://kind.sigs.k8s.io/).  A test image is built using [oci-tar-builder](https://github.com/containerd/runwasi/tree/main/crates/oci-tar-builder) and is loaded onto the clusters.  This test image is not pushed to an external registry so be sure to use the Makefile targets to build the image and load it on the cluster.
 
-The deployment file in [test/k8s/Dockerfile](./test/k8s/Dockerfile) is run and verified that it deploys and runs successfully.  To execute the e2e tests in either kind or k3s:
+The deployment file in [test/k8s/Dockerfile](https://github.com/containerd/runwasi/blob/main/test/k8s/Dockerfile) is run and verified that it deploys and runs successfully.  To execute the e2e tests in either kind or k3s:
 
 ```
 make test/k8s-<runtime> # runs using kind
@@ -107,7 +107,7 @@ make test/k8s-oci-<runtime>
 
 ### Building the test image
 
-This builds a [wasm application](crates/wasi-demo-app/) and packages it in an OCI format:
+This builds a [wasm application](https://github.com/containerd/runwasi/tree/main/crates/wasi-demo-app/) and packages it in an OCI format:
 
 ```
 make test-image
@@ -133,7 +133,7 @@ Most features will likely have most of the code in the `containerd-shim-wasm` pr
 
 A tip for developing a new feature is to implement it and test it with one runtime you are familiar with then add it to all the runtimes.  This makes it easier to test and iterate before making changes across all the runtimes.
 
-Any changes made to the `containerd-shim-wasm` crate needs to be documented in the [CHANGELOG.md](./crates/containerd-shim-wasm/CHANGELOG.md) file following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+Any changes made to the `containerd-shim-wasm` crate needs to be documented in the [CHANGELOG.md](https://github.com/containerd/runwasi/blob/main/crates/containerd-shim-wasm/CHANGELOG.md) file following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 ## Adding new shims
 

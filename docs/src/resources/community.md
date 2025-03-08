@@ -32,7 +32,7 @@ If you need help with Runwasi, there are several ways to get assistance:
 
 We welcome contributions of all kinds! Whether you're fixing a typo, improving documentation, adding a feature, or reporting a bug, your help is appreciated.
 
-See our [Contributing Guide](../developer/contributing.md) for detailed information.
+See our [Contributing Guide](https://runwasi.dev/CONTRIBUTING.html) for detailed information.
 
 ## Projects Using Runwasi
 
