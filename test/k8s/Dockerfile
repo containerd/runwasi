@@ -10,12 +10,14 @@ ADD --chmod=755 https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-${TARGETA
 
 FROM kindest/node:${KIND_NODE_VERSION}
 RUN apt-get update -y && \
-    apt-get install --no-install-recommends -y libdbus-1-3
+    apt-get install --no-install-recommends -y dbus
 
 ADD dist/bin/* /usr/local/bin/
 
 ARG RUNTIME
 RUN cat <<EOF >> /etc/containerd/config.toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm]
-runtime_type = "io.containerd.${RUNTIME}.v1"
+  runtime_type = "io.containerd.${RUNTIME}.v1"
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasm.options]
+  SystemdCgroup = true
 EOF
