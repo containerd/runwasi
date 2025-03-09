@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 use std::env;
-#[cfg(feature = "wasi_nn")]
+#[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use cfg_if::cfg_if;
 use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
-#[cfg(feature = "wasi_nn")]
+#[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::AsInstance;
 use wasmedge_sdk::config::{CommonConfigOptions, Config, ConfigBuilder};
-#[cfg(feature = "wasi_nn")]
+#[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::plugin::NNPreload;
+#[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::wasi::WasiModule;
 use wasmedge_sdk::{Module, Store, Vm};
@@ -57,17 +58,17 @@ impl Engine for WasmEdgeEngine {
             }
         }
 
-        PluginManager::load(None)?;
-
         let mut instances = HashMap::new();
-
         cfg_if! {
-            if #[cfg(feature = "wasi_nn")] {
+            if #[cfg(all(feature = "plugin", not(target_env = "musl")))] {
+                PluginManager::load(None)?;
                 match env::var("WASMEDGE_WASINN_PRELOAD") {
                     Ok(value) => PluginManager::nn_preload(vec![NNPreload::from_str(value.as_str())?]),
                     Err(_) => log::debug!("No specific nn_preload parameter for wasi_nn plugin"),
                 }
 
+                // Load the wasi_nn plugin manually as a workaround.
+                // It should call auto_detect_plugins after the issue is fixed.
                 let mut wasi_nn = PluginManager::names()
                     .contains(&"wasi_nn".to_string())
                     .then(PluginManager::load_plugin_wasi_nn)

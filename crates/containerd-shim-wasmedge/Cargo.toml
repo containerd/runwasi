@@ -18,10 +18,10 @@ libc = { workspace = true }
 serial_test = { workspace = true }
 
 [features]
-default = ["standalone", "static", "wasi_nn"]
+default = ["standalone", "static", "plugin"]
 standalone = ["wasmedge-sdk/standalone"]
 static = ["wasmedge-sdk/static"]
-wasi_nn = ["wasmedge-sdk/wasi_nn"]
+plugin = ["wasmedge-sdk/wasi_nn"]
 
 [[bin]]
 name = "containerd-shim-wasmedge-v1"
