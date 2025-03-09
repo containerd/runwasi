@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741479407748,
+  "lastUpdate": 1741479499746,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7712,6 +7712,76 @@ window.BENCHMARK_DATA = {
             "value": 19520,
             "unit": "kB",
             "extra": "shim: 15872 kB\nzygote: 3648 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "949fd29a545496a479bb84eee9cb38199dbd02de",
+          "message": "Merge pull request #917 from z63d/feat/systemd-cgroup-support\n\nAdd systemd cgroup support for k3s and k8s",
+          "timestamp": "2025-03-08T00:14:11Z",
+          "url": "https://github.com/containerd/runwasi/commit/949fd29a545496a479bb84eee9cb38199dbd02de"
+        },
+        "date": 1741479499125,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 137032345,
+            "range": "± 2417266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 82002698,
+            "range": "± 827935",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 113020232,
+            "range": "± 1250575",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 121232029,
+            "range": "± 2604640",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 132631186,
+            "range": "± 2704022",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 133648249,
+            "range": "± 1220788",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 81918180,
+            "range": "± 2963937",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 84638531,
+            "range": "± 923677",
+            "unit": "ns/iter"
           }
         ]
       }
