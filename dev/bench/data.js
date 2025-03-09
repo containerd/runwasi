@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741393614639,
+  "lastUpdate": 1741479395084,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -7666,6 +7666,52 @@ window.BENCHMARK_DATA = {
             "value": 80810318,
             "range": "± 1094925",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "949fd29a545496a479bb84eee9cb38199dbd02de",
+          "message": "Merge pull request #917 from z63d/feat/systemd-cgroup-support\n\nAdd systemd cgroup support for k3s and k8s",
+          "timestamp": "2025-03-08T00:14:11Z",
+          "url": "https://github.com/containerd/runwasi/commit/949fd29a545496a479bb84eee9cb38199dbd02de"
+        },
+        "date": 1741479393771,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15404,
+            "unit": "kB",
+            "extra": "shim: 12416 kB\nzygote: 2988 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66128,
+            "unit": "kB",
+            "extra": "shim: 53632 kB\nzygote: 12496 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18820,
+            "unit": "kB",
+            "extra": "shim: 15360 kB\nzygote: 3460 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19520,
+            "unit": "kB",
+            "extra": "shim: 15872 kB\nzygote: 3648 kB"
           }
         ]
       }
