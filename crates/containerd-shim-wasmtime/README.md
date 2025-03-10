@@ -12,7 +12,7 @@ entrypoint is specified, the shim will look for a `_start` function in the modul
 execution when the module is loaded in the runtime. The `_start` function is a WASI convention for the Command modules
 (see the [distinction between the Command and Reactors](https://github.com/WebAssembly/WASI/issues/13)).
 
-The shim adds experimental support for running [WASI Preview 2](https://github.com/WebAssembly/WASI/blob/main/preview2/README.md) components.
+The shim adds experimental support for running [WASI 0.2](https://wasi.dev/interfaces#wasi-02) Wasm components.
 If no entrypoint is specified, the shim will assume that the WASI component is a component that uses the [wasi:cli/command](https://github.com/WebAssembly/wasi-cli) world.
 
 

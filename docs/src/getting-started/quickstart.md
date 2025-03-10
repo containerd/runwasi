@@ -184,5 +184,5 @@ sudo k3s kubectl delete -f deploy.yaml
 Now that you've set up Kubernetes to run WebAssembly workloads:
 
 - Learn about [OCI Integration](../oci-decision-flow.md) for container images
-- Explore [Architecture Overview](../user-guide/architecture.md) to understand how Runwasi works
+- Explore [Architecture Overview](../developer/architecture.md) to understand how Runwasi works
 - Check out [OpenTelemetry Integration](../opentelemetry.md) for monitoring your WebAssembly workloads
