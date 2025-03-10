@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741566462742,
+  "lastUpdate": 1741566476712,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9933,6 +9933,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 19554.9027,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "949fd29a545496a479bb84eee9cb38199dbd02de",
+          "message": "Merge pull request #917 from z63d/feat/systemd-cgroup-support\n\nAdd systemd cgroup support for k3s and k8s",
+          "timestamp": "2025-03-08T00:14:11Z",
+          "url": "https://github.com/containerd/runwasi/commit/949fd29a545496a479bb84eee9cb38199dbd02de"
+        },
+        "date": 1741566476125,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20925.2127,
             "unit": "req/s"
           }
         ]
