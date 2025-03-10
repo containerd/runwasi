@@ -168,6 +168,34 @@ fn init_zygote_and_logger(debug: bool, config: &Config) {
     );
 }
 
+fn otel_traces_guard() -> Box<dyn Send + 'static> {
+    #[cfg(feature = "opentelemetry")]
+    if otel_traces_enabled() {
+        let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
+        let guard = otlp_config
+            .init()
+            .expect("Failed to initialize OpenTelemetry.");
+        return Box::new(guard);
+    }
+    Box::new(())
+}
+
+fn init_traces_context() {
+    #[cfg(feature = "opentelemetry")]
+    // read TRACECONTEXT env var that's set by the parent process
+    if let Ok(ctx) = std::env::var("TRACECONTEXT") {
+        OtlpConfig::set_trace_context(&ctx).unwrap();
+    } else {
+        let ctx = OtlpConfig::get_trace_context().unwrap();
+        // SAFETY: although it's in a multithreaded context,
+        // it's safe to assume that all the other threads are not
+        // messing with env vars at this point.
+        unsafe {
+            std::env::set_var("TRACECONTEXT", ctx);
+        }
+    }
+}
+
 /// Main entry point for the shim.
 ///
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
@@ -199,69 +227,24 @@ pub fn shim_main<'a, I>(
         std::process::exit(0);
     }
 
+    let config = config.unwrap_or_default();
+
     // Initialize the zygote and logger for the container process
     #[cfg(unix)]
-    {
-        let default_config = Config::default();
-        let config = config.as_ref().unwrap_or(&default_config);
-        init_zygote_and_logger(flags.debug, config);
-    }
+    init_zygote_and_logger(flags.debug, &config);
 
-    #[cfg(feature = "opentelemetry")]
-    if otel_traces_enabled() {
-        // opentelemetry uses tokio, so we need to initialize a runtime
-        async {
-            let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
-            let _guard = otlp_config
-                .init()
-                .expect("Failed to initialize OpenTelemetry.");
-            tokio::task::block_in_place(move || {
-                shim_main_inner::<I>(name, version, revision, shim_version, config);
-            });
-        }
-        .block_on();
-    } else {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
-    }
+    async {
+        let _guard = otel_traces_guard();
+        init_traces_context();
 
-    #[cfg(not(feature = "opentelemetry"))]
-    {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
+        let shim_version = shim_version.into().unwrap_or("v1");
+        let lower_name = name.to_lowercase();
+        let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
+
+        run::<ShimCli<I>>(&shim_id, Some(config)).await;
     }
+    .block_on();
 
     #[cfg(target_os = "linux")]
     log_mem();
-}
-
-#[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(
-    name: &str,
-    version: &str,
-    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: Option<Config>,
-) where
-    I: 'static + Instance + Sync + Send,
-{
-    #[cfg(feature = "opentelemetry")]
-    {
-        // read TRACECONTEXT env var that's set by the parent process
-        if let Ok(ctx) = std::env::var("TRACECONTEXT") {
-            OtlpConfig::set_trace_context(&ctx).unwrap();
-        } else {
-            let ctx = OtlpConfig::get_trace_context().unwrap();
-            // SAFETY: although it's in a multithreaded context,
-            // it's safe to assume that all the other threads are not
-            // messing with env vars at this point.
-            unsafe {
-                std::env::set_var("TRACECONTEXT", ctx);
-            }
-        }
-    }
-
-    let shim_version = shim_version.into().unwrap_or("v1");
-    let lower_name = name.to_lowercase();
-    let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
-
-    run::<ShimCli<I>>(&shim_id, config);
 }
