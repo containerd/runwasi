@@ -8,6 +8,8 @@ use nix::sys::wait::{Id, WaitPidFlag, WaitStatus, waitid};
 use nix::unistd::Pid;
 use tokio::io::unix::AsyncFd;
 
+use crate::sandbox::async_utils::AmbientRuntime;
+
 pub(super) struct PidFd {
     fd: OwnedFd,
     pid: pid_t,
@@ -15,10 +17,10 @@ pub(super) struct PidFd {
 }
 
 impl PidFd {
-    pub(super) fn new(pid: impl Into<pid_t>) -> anyhow::Result<Self> {
+    pub(super) async fn new(pid: impl Into<pid_t>) -> anyhow::Result<Self> {
         use libc::{PIDFD_NONBLOCK, SYS_pidfd_open, syscall};
         let pid = pid.into();
-        let subs = monitor_subscribe(Topic::Pid)?;
+        let subs = monitor_subscribe(Topic::Pid).await?;
         let pidfd = unsafe { syscall(SYS_pidfd_open, pid, PIDFD_NONBLOCK) };
         if pidfd == -1 {
             return Err(std::io::Error::last_os_error().into());
@@ -58,18 +60,19 @@ impl PidFd {
     }
 }
 
-pub async fn try_wait_pid(pid: i32, s: Subscription) -> Result<i32, Errno> {
-    tokio::task::spawn_blocking(move || {
-        while let Ok(ExitEvent { subject, exit_code }) = s.rx.recv_timeout(Duration::from_secs(2)) {
-            let Subject::Pid(p) = subject else {
-                continue;
-            };
-            if pid == p {
-                return Ok(exit_code);
-            }
+pub async fn try_wait_pid(pid: i32, mut s: Subscription) -> Result<i32, Errno> {
+    while let Some(ExitEvent { subject, exit_code }) =
+        s.rx.recv()
+            .with_timeout(Duration::from_secs(2))
+            .await
+            .flatten()
+    {
+        let Subject::Pid(p) = subject else {
+            continue;
+        };
+        if pid == p {
+            return Ok(exit_code);
         }
-        Err(Errno::ECHILD)
-    })
-    .await
-    .map_err(|_| Errno::ECHILD)?
+    }
+    Err(Errno::ECHILD)
 }
