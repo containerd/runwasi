@@ -2,22 +2,23 @@ use std::path::{Path, PathBuf};
 
 /// PathResolve allows to resolve a file path in a set of directories.
 pub trait PathResolve {
-    // Resolve the path of a file give a set of directories as the `which` unix
-    // command would do with components of the `PATH` environment variable, and
-    // return an iterator over all candidates.
-    // Resulting candidates are files that exist, but no other constraint is
-    // imposed, in particular this function does not check for the executable bits.
-    // Further constraints can be added by calling filtering the returned iterator.
+    /// Resolve the path of a file give a set of directories as the `which` unix
+    /// command would do with components of the `PATH` environment variable, and
+    /// return an iterator over all candidates.
+    /// Resulting candidates are files that exist, but no other constraint is
+    /// imposed, in particular this function does not check for the executable bits.
+    /// Further constraints can be added by calling filtering the returned iterator.
     fn resolve_in_dirs(
         &self,
         dirs: impl IntoIterator<Item = impl AsRef<Path>>,
     ) -> impl Iterator<Item = PathBuf>;
+    /// Like `resolve_in_dirs`, but searches on the entries of `PATH`.
     fn resolve_in_path(&self) -> impl Iterator<Item = PathBuf>;
+    /// Like `resolve_in_dirs`, but searches on the entries of `PATH`, and on `cwd`, in that order.
     fn resolve_in_path_or_cwd(&self) -> impl Iterator<Item = PathBuf>;
 }
 
-// Gets the content of the `PATH` environment variable as an
-// iterator over its components
+/// Gets the content of the `PATH` environment variable as an iterator over its components
 pub fn paths() -> impl Iterator<Item = PathBuf> {
     std::env::var_os("PATH")
         .as_ref()
