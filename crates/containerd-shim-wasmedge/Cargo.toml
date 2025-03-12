@@ -7,6 +7,7 @@ edition.workspace = true
 anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 log = { workspace = true }
+cfg-if = { workspace = true }
 
 # may need to bump wasmedge version in scripts/setup-windows.sh
 wasmedge-sdk = { version = "0.14.0", default-features = false }
@@ -17,10 +18,10 @@ libc = { workspace = true }
 serial_test = { workspace = true }
 
 [features]
-default = ["standalone", "static"]
+default = ["standalone", "static", "plugin"]
 standalone = ["wasmedge-sdk/standalone"]
 static = ["wasmedge-sdk/static"]
-wasi_nn = ["wasmedge-sdk/wasi_nn"]
+plugin = ["wasmedge-sdk/wasi_nn"]
 
 [[bin]]
 name = "containerd-shim-wasmedge-v1"
