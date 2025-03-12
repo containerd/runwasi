@@ -85,7 +85,7 @@ use containerd_shim::{Config, parse, run};
 
 #[cfg(feature = "opentelemetry")]
 use crate::sandbox::shim::{OtlpConfig, otel_traces_enabled};
-use crate::sandbox::{Instance, ShimCli};
+use crate::sandbox::{Instance, Shim};
 
 pub mod r#impl {
     pub use git_version::git_version;
@@ -263,5 +263,5 @@ fn shim_main_inner<'a, I>(
     let lower_name = name.to_lowercase();
     let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
 
-    run::<ShimCli<I>>(&shim_id, config);
+    run::<Shim<I>>(&shim_id, config);
 }

@@ -11,7 +11,6 @@ REQUIRED_OPS=(
     "${PREFIX}::shim::local::start"
     "${PREFIX}::shim::local::delete"
     "${PREFIX}::shim::local::state"
-    "${PREFIX}::shim::cli::wait"
     "${PREFIX}::shim::local::shutdown"
     "${PREFIX}::cli::shim_main_inner"
 )

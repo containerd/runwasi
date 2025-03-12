@@ -1,16 +1,16 @@
-//! The shim is the entrypoint for the containerd shim API. It is responsible
-//! for commmuincating with the containerd daemon and managing the lifecycle of
-//! the container/sandbox.
+//! The shim exposes the [Config] struct to configure the shim and [OtlpConfig] module to enable tracing if the `opentelemetry` feature is enabled.
 
-mod cli;
+pub use local::Config;
+
 mod events;
 mod instance_data;
 mod local;
-pub use local::Config;
+#[allow(clippy::module_inception)]
+mod shim;
+mod task_state;
+pub(crate) use shim::Shim;
+
 #[cfg(feature = "opentelemetry")]
 mod otel;
-mod task_state;
-
-pub use cli::Cli;
 #[cfg(feature = "opentelemetry")]
 pub use otel::{Config as OtlpConfig, traces_enabled as otel_traces_enabled};

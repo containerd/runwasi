@@ -16,38 +16,22 @@
 //! ## Key Components
 //!
 //! - [`Instance`]: Core trait for implementing container lifecycle management
-//! - [`ShimCli`]: Command-line interface implementation for containerd shims
-//! - [`WasmLayer`]: Represents WebAssembly layers in OCI containers
+//! - [`cli`]: Command line interface for the containerd shim
 //!
 //! ## Example Usage
 //!
 //! ```rust,no_run
 //! use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Error};
-//! use containerd_shim_wasm::container::{Engine, RuntimeContext};
 //! use chrono::{DateTime, Utc};
 //! use std::time::Duration;
 //! use anyhow::Result;
 //!
 //! #[derive(Clone, Default)]
-//! struct MyEngine;
-//!
-//! impl Engine for MyEngine {
-//!     fn name() -> &'static str {
-//!         "my-engine"
-//!     }
-//!
-//!     fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
-//!         Ok(0)
-//!     }
-//! }
-//!
-//! struct MyInstance {
-//!     engine: MyEngine,
-//! }
+//! struct MyInstance;
 //!
 //! impl Instance for MyInstance {
 //!     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
-//!         Ok(MyInstance { engine: MyEngine })
+//!         Ok(MyInstance)
 //!     }
 //!
 //!     async fn start(&self) -> Result<u32, Error> {
@@ -79,7 +63,8 @@ pub mod sync;
 
 pub use error::{Error, Result};
 pub use instance::{Instance, InstanceConfig};
-pub use shim::{Cli as ShimCli, Config};
+pub use shim::Config;
+pub(crate) use shim::Shim;
 
 pub(crate) mod containerd;
 pub(crate) mod oci;
