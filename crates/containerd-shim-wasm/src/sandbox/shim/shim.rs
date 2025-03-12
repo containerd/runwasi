@@ -16,29 +16,31 @@ use crate::sandbox::shim::events::{RemoteEventSender, ToTimestamp};
 use crate::sandbox::shim::local::Local;
 use crate::sandbox::sync::WaitableCell;
 
-/// Cli implements the containerd-shim cli interface using `Local<T>` as the task service.
-pub struct Cli<T: Instance + Sync + Send> {
+/// Shim implements the [containerd_shim::Shim] trait using `Local<T>` as the task service.
+///
+/// It can be used as [containerd_shim::synchronous::run<Shim<I>>()] to start the shim.
+pub struct Shim<I: Instance + Sync + Send> {
     namespace: String,
     containerd_address: String,
     exit: WaitableCell<()>,
     _id: String,
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<I>,
 }
 
-impl<I> Debug for Cli<I>
+impl<I> Debug for Shim<I>
 where
     I: Instance + Sync + Send,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Cli {{ namespace: {:?}, containerd_address: {:?}, _id: {:?} }}",
+            "Shim {{ namespace: {:?}, containerd_address: {:?}, _id: {:?} }}",
             self.namespace, self.containerd_address, self._id
         )
     }
 }
 
-impl<I> shim::Shim for Cli<I>
+impl<I> shim::Shim for Shim<I>
 where
     I: Instance + Sync + Send,
 {
@@ -46,7 +48,7 @@ where
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     fn new(_runtime_id: &str, args: &Flags, _config: &mut shim::Config) -> Self {
-        Cli {
+        Shim {
             namespace: args.namespace.to_string(),
             containerd_address: args.address.clone(),
             exit: WaitableCell::new(),

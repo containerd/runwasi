@@ -9,6 +9,36 @@
 //! * Runtime overhead in in setting up a container
 //! * Less customizable
 //! * Currently only works on Linux
+//!
+//! ## Key Components
+//!
+//! - [`Engine`]: The core trait for implementing Wasm runtimes
+//! - [`RuntimeContext`]: The context for running WASI modules
+//!
+//! ## Example Usage
+//!
+//! ```rust
+//! use containerd_shim_wasm::container::{Engine, RuntimeContext};
+//! use anyhow::Result;
+//!
+//! #[derive(Clone, Default)]
+//! struct MyEngine;
+//!
+//! impl Engine for MyEngine {
+//!     fn name() -> &'static str {
+//!         "my-engine"
+//!     }
+//!
+//!     fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+//!         let args = ctx.args();
+//!         let envs = ctx.envs();
+//!         let entrypoint = ctx.entrypoint();
+//!         let platform = ctx.platform();
+//!
+//!         Ok(0)
+//!     }
+//! }
+//! ```
 
 mod context;
 mod engine;
