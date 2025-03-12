@@ -11,38 +11,37 @@ use crate::sandbox::oci::WasmLayer;
 /// The `RuntimeContext` trait provides access to the runtime context that includes
 /// the arguments, environment variables, and entrypoint for the container.
 pub trait RuntimeContext {
-    // ctx.args() returns arguments from the runtime spec process field, including the
-    // path to the entrypoint executable.
+    /// Returns arguments from the runtime spec process field, including the
+    /// path to the entrypoint executable.
     fn args(&self) -> &[String];
 
-    // ctx.envs() returns environment variables in the format `ENV_VAR_NAME=VALUE` from the runtime spec process field.
+    /// Returns environment variables in the format `ENV_VAR_NAME=VALUE` from the runtime spec process field.
     fn envs(&self) -> &[String];
 
-    // ctx.entrypoint() returns a `Entrypoint` with the following fields obtained from the first argument in the OCI spec for entrypoint:
-    //   - `arg0` - raw entrypoint from the OCI spec
-    //   - `name` - provided as the file name of the module in the entrypoint without the extension
-    //   - `func` - name of the exported function to call, obtained from the
-    // arguments on process OCI spec.
-    //  - `Source` - either a `File(PathBuf)` or `Oci(WasmLayer)`. When a `File` source the `PathBuf`` is provided by entrypoint in OCI spec.
-    //     If the image contains custom OCI Wasm layers, the source is provided as an array of `WasmLayer` structs.
-    //
-    // The first argument in the OCI spec for entrypoint is specified as `path#func` where `func` is optional
-    // and defaults to _start, e.g.:
-    //   "/app/app.wasm#entry" -> { source: File("/app/app.wasm"), func: "entry", name: "Some(app)", arg0: "/app/app.wasm#entry" }
-    //   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
-    //   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
+    /// Returns a `Entrypoint` with the following fields obtained from the first argument in the OCI spec for entrypoint:
+    ///   - `arg0` - raw entrypoint from the OCI spec
+    ///   - `name` - provided as the file name of the module in the entrypoint without the extension
+    ///   - `func` - name of the exported function to call, obtained from the arguments on process OCI spec.
+    ///   - `Source` - either a `File(PathBuf)` or `Oci(WasmLayer)`. When a `File` source the `PathBuf`` is provided by entrypoint in OCI spec.
+    ///     If the image contains custom OCI Wasm layers, the source is provided as an array of `WasmLayer` structs.
+    ///
+    /// The first argument in the OCI spec for entrypoint is specified as `path#func` where `func` is optional
+    /// and defaults to _start, e.g.:
+    ///   "/app/app.wasm#entry" -> { source: File("/app/app.wasm"), func: "entry", name: "Some(app)", arg0: "/app/app.wasm#entry" }
+    ///   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
+    ///   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
     fn entrypoint(&self) -> Entrypoint;
 
-    // the platform for the container using the struct defined on the OCI spec definition
-    // https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
+    /// Returns the platform for the container using the struct defined on the OCI spec definition
+    /// https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
     fn platform(&self) -> &Platform;
 
-    // the container id for the running container
+    /// Returns the container id for the running container
     fn container_id(&self) -> &str;
 
-    // the pod id for the running container (if available)
-    // In Kubernetes environments, containers run within pods, and the pod ID is usually
-    // stored in the OCI spec annotations under "io.kubernetes.cri.sandbox-id"
+    /// Returns the pod id for the running container (if available)
+    /// In Kubernetes environments, containers run within pods, and the pod ID is usually
+    /// stored in the OCI spec annotations under "io.kubernetes.cri.sandbox-id"
     fn pod_id(&self) -> Option<&str> {
         None
     }
@@ -51,19 +50,20 @@ pub trait RuntimeContext {
 /// The source for a WASI module / components.
 #[derive(Debug)]
 pub enum Source<'a> {
-    // The WASI module is a file in the file system.
+    /// The WASI module is a file in the file system.
     File(PathBuf),
-    // The WASI module / component is provided as a layer in the OCI spec.
-    // For a WASI preview 1 module this is usually a single element array.
-    // For a WASI preview 2 component this is an array of one or more
-    // elements, where each element is a component.
-    // Runtimes can additionally provide a list of layer types they support,
-    // and they will be included in this array, e.g., a `toml` file with the
-    // runtime configuration.
+    /// The WASI module / component is provided as a layer in the OCI spec.
+    /// For a WASI preview 1 module this is usually a single element array.
+    /// For a WASI preview 2 component this is an array of one or more
+    /// elements, where each element is a component.
+    /// Runtimes can additionally provide a list of layer types they support,
+    /// and they will be included in this array, e.g., a `toml` file with the
+    /// runtime configuration.
     Oci(&'a [WasmLayer]),
 }
 
 impl<'a> Source<'a> {
+    /// Returns the bytes of the WASI module / component.
     pub fn as_bytes(&self) -> anyhow::Result<Cow<'a, [u8]>> {
         match self {
             Source::File(path) => {
@@ -82,11 +82,14 @@ impl<'a> Source<'a> {
 }
 
 /// The entrypoint for a WASI module / component.
-///
 pub struct Entrypoint<'a> {
+    /// The name of the exported function to call. Defaults to "_start".
     pub func: String,
+    /// The name of the WASI module / component without the extension.
     pub name: Option<String>,
+    /// The first argument in the OCI spec for entrypoint.
     pub arg0: Option<&'a Path>,
+    /// The source of the WASI module / component, either a file or an OCI layer.
     pub source: Source<'a>,
 }
 
