@@ -1,6 +1,7 @@
 #[cfg(unix)]
 pub mod instance;
 
+#[cfg(unix)]
 pub use instance::WamrEngine;
 
 #[cfg(unix)]

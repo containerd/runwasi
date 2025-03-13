@@ -19,56 +19,26 @@
 //! as structured fields, making it easier to filter and analyze logs.
 //!
 
-/// Macros for logging with context information (container ID) automatically included.
-#[macro_export]
-macro_rules! log_with_ctx {
-    ($level:ident, $ctx:expr, $($arg:tt)+) => {
-        {
-            let ctx = $ctx;
-            match ctx.pod_id() {
-                Some(pod_id) => log::$level!(instance = ctx.container_id(), pod = pod_id; $($arg)+),
-                None => log::$level!(instance = ctx.container_id(); $($arg)+)
-            }
+macro_rules! make_log {
+    ($d:tt, $level:ident) => {
+        /// Convenience macro for $level level logs
+        #[macro_export]
+        macro_rules! $level {
+            ($d ctx:expr, $d($d arg:tt)+) => {
+                {
+                    let ctx = $d ctx;
+                    match ctx.pod_id() {
+                        Some(pod_id) => log::$level!(instance = ctx.container_id(), pod = pod_id; $d($d arg)+),
+                        None => log::$level!(instance = ctx.container_id(); $d($d arg)+)
+                    }
+                }
+            };
         }
     };
-}
-
-/// Convenience macro for info level logs
-#[macro_export]
-macro_rules! info {
-    ($ctx:expr, $($arg:tt)+) => {
-        $crate::log_with_ctx!(info, $ctx, $($arg)+)
+    ($d:tt, $level:ident, $($rest:ident),+) => {
+        make_log! { $d, $level }
+        make_log! { $d, $($rest),+ }
     };
 }
 
-/// Convenience macro for debug level logs
-#[macro_export]
-macro_rules! debug {
-    ($ctx:expr, $($arg:tt)+) => {
-        $crate::log_with_ctx!(debug, $ctx, $($arg)+)
-    };
-}
-
-/// Convenience macro for warn level logs
-#[macro_export]
-macro_rules! warn {
-    ($ctx:expr, $($arg:tt)+) => {
-        $crate::log_with_ctx!(warn, $ctx, $($arg)+)
-    };
-}
-
-/// Convenience macro for error level logs
-#[macro_export]
-macro_rules! error {
-    ($ctx:expr, $($arg:tt)+) => {
-        $crate::log_with_ctx!(error, $ctx, $($arg)+)
-    };
-}
-
-/// Convenience macro for trace level logs
-#[macro_export]
-macro_rules! trace {
-    ($ctx:expr, $($arg:tt)+) => {
-        $crate::log_with_ctx!(trace, $ctx, $($arg)+)
-    };
-}
+make_log! {$, info, debug, warn, error, trace }
