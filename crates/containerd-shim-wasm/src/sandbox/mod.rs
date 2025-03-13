@@ -57,7 +57,6 @@
 pub mod cli;
 pub mod error;
 pub mod instance;
-pub mod instance_utils;
 pub mod shim;
 pub mod sync;
 
@@ -67,6 +66,7 @@ pub use shim::Config;
 pub(crate) use shim::Shim;
 
 pub(crate) mod containerd;
+pub(crate) mod instance_utils;
 pub(crate) mod oci;
 pub use oci::WasmLayer;
 

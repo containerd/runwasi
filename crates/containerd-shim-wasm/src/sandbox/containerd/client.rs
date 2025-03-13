@@ -27,7 +27,19 @@ use super::lease::LeaseGuard;
 use crate::container::Engine;
 use crate::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
-use crate::with_lease;
+
+// Adds lease info to grpc header
+// https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
+macro_rules! with_lease {
+    ($req : ident, $ns: expr, $lease_id: expr) => {{
+        let mut req = Request::new($req);
+        let md = req.metadata_mut();
+        // https://github.com/containerd/containerd/blob/main/namespaces/grpc.go#L27
+        md.insert("containerd-namespace", $ns.parse().unwrap());
+        md.insert("containerd-lease", $lease_id.parse().unwrap());
+        req
+    }};
+}
 
 static PRECOMPILE_PREFIX: &str = "runwasi.io/precompiled";
 // 16MB is the default maximum gRPC message size for gRPC in containerd:

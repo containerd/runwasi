@@ -13,4 +13,4 @@ pub(crate) use shim::Shim;
 #[cfg(feature = "opentelemetry")]
 mod otel;
 #[cfg(feature = "opentelemetry")]
-pub use otel::{Config as OtlpConfig, traces_enabled as otel_traces_enabled};
+pub(crate) use otel::{Config as OtlpConfig, traces_enabled as otel_traces_enabled};
