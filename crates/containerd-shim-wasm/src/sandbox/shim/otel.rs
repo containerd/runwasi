@@ -6,9 +6,10 @@
 //!
 //! # Usage
 //!
-//! ```rust
-//! use containerd_shim_wasm::sandbox::shim::OtlpConfig;
-//! use containerd_shim_wasm::sandbox::shim::otel_traces_enabled;
+//! ```rust,ignore
+//! # // OtlpConfig and otel_traces_enabled are private to the crate
+//! use crate::sandbox::shim::OtlpConfig;
+//! use crate::sandbox::shim::otel_traces_enabled;
 //!
 //! fn main() -> anyhow::Result<()> {
 //!     if otel_traces_enabled() {
