@@ -13,13 +13,13 @@ use std::time::Duration;
 
 use anyhow::{Result, bail};
 pub use containerd_shim_wasm_test_modules as modules;
+use containerd_shimkit::AmbientRuntime as _;
+use containerd_shimkit::sandbox::{Instance as _, InstanceConfig};
 use libc::{SIGINT, SIGTERM};
 use oci_spec::runtime::{
     LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder, RootBuilder, SpecBuilder,
     get_default_namespaces,
 };
-use containerd_shimkit::AmbientRuntime as _;
-use containerd_shimkit::sandbox::{Instance as _, InstanceConfig};
 
 use crate::container::{Engine, Instance};
 

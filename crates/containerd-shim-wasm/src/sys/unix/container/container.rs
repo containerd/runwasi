@@ -3,11 +3,11 @@ use std::io::Error as IoError;
 use std::mem::transmute;
 
 use anyhow::{Context, anyhow};
+use containerd_shimkit::zygote::{WireError, Zygote};
 use libcontainer::container::Container as YoukiContainer;
 use libcontainer::signal::Signal;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use containerd_shimkit::zygote::{WireError, Zygote};
 
 thread_local! {
     // The youki's Container will live in a static inside the zygote process.
