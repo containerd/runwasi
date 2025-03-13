@@ -1,6 +1,6 @@
 #[cfg(not(target_os = "windows"))]
-use containerd_shim_wamr::WamrInstance;
-use containerd_shim_wasm::sandbox::cli::{revision, shim_main, version};
+use containerd_shim_wamr::WamrEngine;
+use containerd_shim_wasm::{revision, shim_main, version};
 
 #[cfg(target_os = "windows")]
 fn main() {
@@ -9,5 +9,5 @@ fn main() {
 
 #[cfg(not(target_os = "windows"))]
 fn main() {
-    shim_main::<WamrInstance>("wamr", version!(), revision!(), "v1", None);
+    shim_main::<WamrEngine>("wamr", version!(), revision!(), "v1", None);
 }

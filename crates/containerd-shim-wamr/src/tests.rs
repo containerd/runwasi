@@ -1,23 +1,22 @@
 use std::time::Duration;
 
 use containerd_shim_wasm::testing::WasiTest;
-//use containerd_shim_wasm::sandbox::Instance;
 use containerd_shim_wasm::testing::modules::*;
 use serial_test::serial;
 
-use crate::instance::WamrInstance as WasiInstance;
+use crate::WamrEngine as WasiEngine;
 
 #[test]
 #[serial]
 fn test_delete_after_create() -> anyhow::Result<()> {
-    WasiTest::<WasiInstance>::builder()?.build()?.delete()?;
+    WasiTest::<WasiEngine>::builder()?.build()?.delete()?;
     Ok(())
 }
 
 #[test]
 #[serial]
 fn test_hello_world() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .build()?
         .start()?
@@ -32,7 +31,7 @@ fn test_hello_world() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_hello_world_oci() -> anyhow::Result<()> {
-    let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(None, None)?;
 
@@ -46,7 +45,7 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_unreachable() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(UNREACHABLE)?
         .build()?
         .start()?
@@ -60,7 +59,7 @@ fn test_unreachable() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_seccomp() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(SECCOMP)?
         .build()?
         .start()?
@@ -75,7 +74,7 @@ fn test_seccomp() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_has_default_devices() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HAS_DEFAULT_DEVICES)?
         .build()?
         .start()?
@@ -90,7 +89,7 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 #[ignore = "disabled because the WAMR SDK doesn't expose exit code yet"]
 // See https://github.com/containerd/runwasi/pull/716#discussion_r1827086060
 fn test_exit_code() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(EXIT_CODE)?
         .build()?
         .start()?
@@ -105,7 +104,7 @@ fn test_exit_code() -> anyhow::Result<()> {
 #[ignore]
 // See https://github.com/containerd/runwasi/pull/716#issuecomment-2458200081
 fn test_custom_entrypoint() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
         .build()?

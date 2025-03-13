@@ -1,11 +1,9 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
+use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
-
-pub type WasmerInstance = Instance<WasmerEngine>;
 
 #[derive(Clone, Default)]
 pub struct WasmerEngine {

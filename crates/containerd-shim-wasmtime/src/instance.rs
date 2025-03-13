@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
 use containerd_shim_wasm::container::{
-    Engine, Entrypoint, Instance, RuntimeContext, WasmBinaryType,
+    Engine, Entrypoint, RuntimeContext, WasmBinaryType,
 };
 use containerd_shim_wasm::sandbox::WasmLayer;
 use tokio_util::sync::CancellationToken;
@@ -19,8 +19,6 @@ use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
-
-pub type WasmtimeInstance = Instance<WasmtimeEngine>;
 
 /// Represents the WASI API that the component is targeting.
 enum ComponentTarget<'a> {

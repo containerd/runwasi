@@ -1,28 +1,22 @@
 use std::time::Duration;
 
-use WasmtimeTestInstance as WasiInstance;
-use containerd_shim_wasm::container::Instance;
 use containerd_shim_wasm::testing::modules::*;
 use containerd_shim_wasm::testing::{WasiTest, oci_helpers};
 use serial_test::serial;
 
-use crate::instance::WasmtimeEngine;
-
-// use test configuration to avoid dead locks when running tests
-// https://github.com/containerd/runwasi/issues/357
-type WasmtimeTestInstance = Instance<WasmtimeEngine>;
+use crate::WasmtimeEngine as WasiEngine;
 
 #[test]
 #[serial]
 fn test_delete_after_create() -> anyhow::Result<()> {
-    WasiTest::<WasiInstance>::builder()?.build()?.delete()?;
+    WasiTest::<WasiEngine>::builder()?.build()?.delete()?;
     Ok(())
 }
 
 #[test]
 #[serial]
 fn test_hello_world() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .build()?
         .start()?
@@ -37,7 +31,7 @@ fn test_hello_world() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_hello_world_oci() -> anyhow::Result<()> {
-    let (builder, _oci_cleanup) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(None, None)?;
 
@@ -52,7 +46,7 @@ fn test_hello_world_oci() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
-    let (builder, _oci_cleanup1) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup1) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(
             Some("localhost/hello:latest".to_string()),
@@ -72,7 +66,7 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     );
 
     // run second time, it should succeed without recompiling
-    let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup2) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(
             Some("localhost/hello:latest".to_string()),
@@ -90,7 +84,7 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Result<()> {
-    let (builder, _oci_cleanup1) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup1) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(
             Some("localhost/hello:latest".to_string()),
@@ -112,7 +106,7 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
     oci_helpers::remove_content(id)?;
 
     // run second time, it should succeed
-    let (builder, _oci_cleanup2) = WasiTest::<WasiInstance>::builder()?
+    let (builder, _oci_cleanup2) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WORLD)?
         .as_oci_image(
             Some("localhost/hello:latest".to_string()),
@@ -130,7 +124,7 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
 #[test]
 #[serial]
 fn test_custom_entrypoint() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_start_fn("foo")
         .with_wasm(CUSTOM_ENTRYPOINT)?
         .build()?
@@ -146,7 +140,7 @@ fn test_custom_entrypoint() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_unreachable() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(UNREACHABLE)?
         .build()?
         .start()?
@@ -160,7 +154,7 @@ fn test_unreachable() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_exit_code() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(EXIT_CODE)?
         .build()?
         .start()?
@@ -174,7 +168,7 @@ fn test_exit_code() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_seccomp() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(SECCOMP)?
         .build()?
         .start()?
@@ -189,7 +183,7 @@ fn test_seccomp() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_has_default_devices() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HAS_DEFAULT_DEVICES)?
         .build()?
         .start()?
@@ -208,7 +202,7 @@ fn test_has_default_devices() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_simple_component() -> anyhow::Result<()> {
-    let (exit_code, _, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, _, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(SIMPLE_COMPONENT)?
         .with_start_fn("thunk")
         .build()?
@@ -231,7 +225,7 @@ fn test_simple_component() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_wasip2_component() -> anyhow::Result<()> {
-    let (exit_code, stdout, _) = WasiTest::<WasiInstance>::builder()?
+    let (exit_code, stdout, _) = WasiTest::<WasiEngine>::builder()?
         .with_wasm(COMPONENT_HELLO_WORLD)?
         .build()?
         .start()?
@@ -253,7 +247,7 @@ fn test_wasip2_component() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
-    let srv = WasiTest::<WasiInstance>::builder()?
+    let srv = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WASI_HTTP)?
         .with_host_network()
         .build()?;
@@ -279,7 +273,7 @@ fn test_wasip2_component_http_proxy() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy_csharp() -> anyhow::Result<()> {
-    let srv = WasiTest::<WasiInstance>::builder()?
+    let srv = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WASI_HTTP_CSHARP)?
         .with_host_network()
         .build()?;
@@ -306,7 +300,7 @@ fn test_wasip2_component_http_proxy_csharp() -> anyhow::Result<()> {
 #[test]
 #[serial]
 fn test_wasip2_component_http_proxy_force_shutdown() -> anyhow::Result<()> {
-    let srv = WasiTest::<WasiInstance>::builder()?
+    let srv = WasiTest::<WasiEngine>::builder()?
         .with_wasm(HELLO_WASI_HTTP)?
         .with_host_network()
         .build()?;
