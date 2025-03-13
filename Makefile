@@ -91,7 +91,9 @@ build-oci-tar-builder:
 
 .PHONY: publish-check
 publish-check:
-	cargo publish -p containerd-shim-wasm --dry-run --verbose --locked
+	cargo +nightly version || rustup toolchain install nightly
+	rustup +nightly target list --installed | grep $(HOST_TARGET) || rustup +nightly target add $(HOST_TARGET)
+	cargo +nightly publish -Z package-workspace -p containerd-shimkit -p containerd-shim-wasm --dry-run --verbose --locked
 
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
@@ -99,8 +101,8 @@ check: check-wasm $(RUNTIMES:%=check-%);
 check-common: check-wasm;
 check-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
-	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 check-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -113,8 +115,8 @@ fix: fix-wasm $(RUNTIMES:%=fix-%);
 fix-common: fix-wasm;
 fix-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
-	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
-	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
 
 fix-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -127,6 +129,7 @@ test: test-wasm $(RUNTIMES:%=test-%);
 test-common: test-wasm;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shimkit $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-wasmedge:
