@@ -13,7 +13,7 @@
 //! The shim can be configured using the [`Config`] struct:
 //!
 //! ```rust, no_run
-//! use shimkit::Config;
+//! use containerd_shimkit::Config;
 //!
 //! let config = Config {
 //!     // Disable automatic logger setup
@@ -37,7 +37,7 @@
 //! ## Example usage:
 //!
 //! ```rust, no_run
-//! use shimkit::{
+//! use containerd_shimkit::{
 //!     sandbox::{Instance, InstanceConfig, Result},
 //!     sandbox::cli::{revision, shim_main, version},
 //!     sandbox::sync::WaitableCell,

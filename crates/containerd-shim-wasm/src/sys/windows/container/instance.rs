@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use shimkit::sandbox::sync::WaitableCell;
-use shimkit::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
+use containerd_shimkit::sandbox::sync::WaitableCell;
+use containerd_shimkit::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
 
 use crate::container::Engine;
 

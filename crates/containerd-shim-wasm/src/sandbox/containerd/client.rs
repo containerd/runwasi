@@ -19,7 +19,7 @@ use containerd_client::{tonic, with_namespace};
 use futures::TryStreamExt;
 use oci_spec::image::{Arch, Digest, ImageManifest, MediaType, Platform};
 use sha256::digest;
-use shimkit::sandbox::error::{Error as ShimError, Result};
+use containerd_shimkit::sandbox::error::{Error as ShimError, Result};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};

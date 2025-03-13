@@ -20,4 +20,4 @@ pub mod testing;
 mod test;
 
 pub use sandbox::cli::shim_main;
-pub use shimkit::{Config, revision, version};
+pub use containerd_shimkit::{Config, revision, version};

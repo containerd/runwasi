@@ -77,7 +77,7 @@ impl Drop for KillGuard {
 
 #[test]
 fn test_handling_signals() -> Result<()> {
-    shimkit::zygote::Zygote::global();
+    containerd_shimkit::zygote::Zygote::global();
 
     // use a thread scope to ensure we join all threads at the end
     std::thread::scope(|s| -> Result<()> {

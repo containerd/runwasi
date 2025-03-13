@@ -4,7 +4,7 @@ set -euo pipefail
 TRACE_DATA=$(curl -s "http://localhost:16686/api/traces?service=containerd&limit=0" \
     | jq '[ .data[].spans[].operationName ]')
 
-PREFIX="shimkit::sandbox"
+PREFIX="containerd_shimkit::sandbox"
 REQUIRED_OPS=(
     "${PREFIX}::shim::local::create"
     "${PREFIX}::shim::local::wait"

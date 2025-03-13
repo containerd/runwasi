@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-shimkit = { workspace = true }
+containerd-shimkit = { workspace = true }
 containerd-shim = { workspace = true }
 containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 oci-tar-builder = { workspace = true, optional = true }
@@ -36,7 +36,7 @@ serde_bytes = "0.11"
 tokio-async-drop = "0.1"
 
 # tracing
-# note: it's important to keep the version of tracing in sync with shimkit's tracing-subscriber
+# note: it's important to keep the version of tracing in sync with containerd-shimkit's tracing-subscriber
 tracing = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
@@ -79,8 +79,8 @@ testing = [
     "dep:tempfile",
     "dep:oci-tar-builder",
 ]
-opentelemetry = ["shimkit/opentelemetry"]
-tracing = ["dep:tracing", "shimkit/tracing"]
+opentelemetry = ["containerd-shimkit/opentelemetry"]
+tracing = ["dep:tracing", "containerd-shimkit/tracing"]
 
 [package.metadata.cargo-machete]
 # used as part of a derive macro

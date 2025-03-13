@@ -18,8 +18,8 @@ use oci_spec::runtime::{
     LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder, RootBuilder, SpecBuilder,
     get_default_namespaces,
 };
-use shimkit::AmbientRuntime as _;
-use shimkit::sandbox::{Instance as _, InstanceConfig};
+use containerd_shimkit::AmbientRuntime as _;
+use containerd_shimkit::sandbox::{Instance as _, InstanceConfig};
 
 use crate::container::{Engine, Instance};
 
@@ -41,7 +41,7 @@ pub struct WasiTest<WasiEngine: Engine + Default> {
 
 impl<WasiEngine: Engine + Default> WasiTestBuilder<WasiEngine> {
     pub fn new() -> Result<Self> {
-        shimkit::zygote::Zygote::init();
+        containerd_shimkit::zygote::Zygote::init();
 
         // start logging
         // to enable logging run `export RUST_LOG=trace` and append cargo command with

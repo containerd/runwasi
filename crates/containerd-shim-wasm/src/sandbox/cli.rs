@@ -94,5 +94,5 @@ pub fn shim_main<'a, E: Engine + Default>(
     shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: Option<Config>,
 ) {
-    shimkit::sandbox::cli::shim_main::<Instance<E>>(name, version, revision, shim_version, config)
+    containerd_shimkit::sandbox::cli::shim_main::<Instance<E>>(name, version, revision, shim_version, config)
 }

@@ -912,6 +912,7 @@ dependencies = [
  "containerd-client",
  "containerd-shim",
  "containerd-shim-wasm-test-modules",
+ "containerd-shimkit",
  "dbus",
  "env_logger",
  "futures",
@@ -928,7 +929,6 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "sha256",
- "shimkit",
  "temp-env",
  "tempfile",
  "tokio",
@@ -993,6 +993,50 @@ dependencies = [
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
+]
+
+[[package]]
+name = "containerd-shimkit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "caps",
+ "chrono",
+ "containerd-client",
+ "containerd-shim",
+ "containerd-shim-wasm-test-modules",
+ "dbus",
+ "futures",
+ "git-version",
+ "libcontainer",
+ "log",
+ "mio",
+ "nix 0.29.0",
+ "oci-spec",
+ "oci-tar-builder",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "prost 0.13.5",
+ "protobuf 3.2.0",
+ "rand 0.9.0",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "temp-env",
+ "tempfile",
+ "thiserror 2.0.12",
+ "time",
+ "tokio",
+ "tokio-async-drop",
+ "toml",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "trait-variant",
+ "ttrpc-codegen",
+ "windows-sys 0.59.0",
+ "zygote",
 ]
 
 [[package]]
@@ -5227,50 +5271,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ccc8076840c4da029af4f87e4e8daeb0fca6b87bbb02e10cb60b791450e11e4"
 dependencies = [
  "dirs",
-]
-
-[[package]]
-name = "shimkit"
-version = "0.3.1"
-dependencies = [
- "anyhow",
- "caps",
- "chrono",
- "containerd-client",
- "containerd-shim",
- "containerd-shim-wasm-test-modules",
- "dbus",
- "futures",
- "git-version",
- "libcontainer",
- "log",
- "mio",
- "nix 0.29.0",
- "oci-spec",
- "oci-tar-builder",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "prost 0.13.5",
- "protobuf 3.2.0",
- "rand 0.9.0",
- "serde",
- "serde_bytes",
- "serde_json",
- "temp-env",
- "tempfile",
- "thiserror 2.0.12",
- "time",
- "tokio",
- "tokio-async-drop",
- "toml",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "trait-variant",
- "ttrpc-codegen",
- "windows-sys 0.59.0",
- "zygote",
 ]
 
 [[package]]
