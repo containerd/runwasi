@@ -10,20 +10,6 @@ use containerd_client::{tonic, with_namespace};
 use tokio_async_drop::tokio_async_drop;
 use tonic::Request;
 
-// Adds lease info to grpc header
-// https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
-#[macro_export]
-macro_rules! with_lease {
-    ($req : ident, $ns: expr, $lease_id: expr) => {{
-        let mut req = Request::new($req);
-        let md = req.metadata_mut();
-        // https://github.com/containerd/containerd/blob/main/namespaces/grpc.go#L27
-        md.insert("containerd-namespace", $ns.parse().unwrap());
-        md.insert("containerd-lease", $lease_id.parse().unwrap());
-        req
-    }};
-}
-
 #[derive(Debug)]
 pub(crate) struct LeaseGuard {
     inner: Option<LeaseGuardInner>,
