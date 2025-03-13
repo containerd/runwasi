@@ -13,7 +13,7 @@
 //! The shim can be configured using the [`Config`] struct:
 //!
 //! ```rust, no_run
-//! use containerd_shim_wasm::Config;
+//! use shimkit::Config;
 //!
 //! let config = Config {
 //!     // Disable automatic logger setup
@@ -37,23 +37,42 @@
 //! ## Example usage:
 //!
 //! ```rust, no_run
-//! use containerd_shim_wasm::{
-//!     container::{Instance, Engine, RuntimeContext},
+//! use shimkit::{
+//!     sandbox::{Instance, InstanceConfig, Result},
 //!     sandbox::cli::{revision, shim_main, version},
+//!     sandbox::sync::WaitableCell,
 //!     Config,
 //! };
-//! use anyhow::Result;
+//! use tokio::time::sleep;
+//! use chrono::{DateTime, Utc};
+//! use std::time::Duration;
 //!
 //! #[derive(Clone, Default)]
-//! struct MyEngine;
+//! struct MyInstance {
+//!     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
+//! };
 //!
-//! impl Engine for MyEngine {
-//!     fn name() -> &'static str {
-//!         "my-engine"
+//! impl Instance for MyInstance {
+//!     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self> {
+//!         let exit_code = WaitableCell::new();
+//!         Ok(Self { exit_code })
 //!     }
-//!
-//!     fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
-//!         Ok(0)
+//!     async fn start(&self) -> Result<u32> {
+//!         let exit_code = self.exit_code.clone();
+//!         tokio::spawn(async move {
+//!             sleep(Duration::from_millis(100)).await;
+//!             let _ = exit_code.set((0, Utc::now()));
+//!         });
+//!         Ok(42) // some id for our task, usually a PID
+//!     }
+//!     async fn kill(&self, signal: u32) -> Result<()> {
+//!         Ok(()) // no-op
+//!     }
+//!     async fn delete(&self) -> Result<()> {
+//!         Ok(()) // no-op
+//!     }
+//!     async fn wait(&self) -> (u32, DateTime<Utc>) {
+//!         *self.exit_code.wait().await
 //!     }
 //! }
 //!
@@ -62,7 +81,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! shim_main::<Instance<MyEngine>>(
+//! shim_main::<MyInstance>(
 //!     "my-engine",
 //!     version!(),
 //!     revision!(),

@@ -38,8 +38,8 @@
 //!
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
-//!     container::{Instance, Engine, RuntimeContext},
-//!     sandbox::cli::{revision, shim_main, version},
+//!     revision, shim_main, version,
+//!     container::{Engine, RuntimeContext},
 //!     Config,
 //! };
 //! use anyhow::Result;
@@ -62,7 +62,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! shim_main::<Instance<MyEngine>>(
+//! shim_main::<MyEngine>(
 //!     "my-engine",
 //!     version!(),
 //!     revision!(),

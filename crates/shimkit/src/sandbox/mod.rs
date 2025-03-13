@@ -21,7 +21,7 @@
 //! ## Example Usage
 //!
 //! ```rust,no_run
-//! use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Error};
+//! use shimkit::sandbox::{Instance, InstanceConfig, Error};
 //! use chrono::{DateTime, Utc};
 //! use std::time::Duration;
 //! use anyhow::Result;
