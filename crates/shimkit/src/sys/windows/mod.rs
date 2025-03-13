@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use std::sync::LazyLock;
+
 pub mod metrics;
 pub mod stdio;
 

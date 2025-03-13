@@ -6,7 +6,7 @@ use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
 use shimkit::sandbox::sync::WaitableCell;
-use shimkit::sandbox::{Error as SandboxError, InstanceConfig};
+use shimkit::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
 
 use super::container::Container;
 use crate::container::Engine;
@@ -21,7 +21,7 @@ pub struct Instance<E: Engine> {
     _phantom: PhantomData<E>,
 }
 
-impl<E: Engine + Default> shimkit::sandbox::Instance for Instance<E> {
+impl<E: Engine + Default> SandboxInstance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         // check if container is OCI image with wasm layers and attempt to read the module

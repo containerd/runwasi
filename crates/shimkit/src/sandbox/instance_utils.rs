@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::{Error as IoError, ErrorKind, Result as IoResult};
 use std::path::PathBuf;
 
-use nix::NixPath;
 use serde::{Deserialize, Serialize};
 
 use super::{Error, InstanceConfig};
@@ -43,21 +42,21 @@ impl InstanceConfig {
     }
 
     pub fn open_stdin(&self) -> IoResult<File> {
-        if self.stdin.is_empty() {
+        if self.stdin.as_os_str().is_empty() {
             return Err(IoError::new(ErrorKind::NotFound, "File not found"));
         }
         open(&self.stdin)
     }
 
     pub fn open_stdout(&self) -> IoResult<File> {
-        if self.stdout.is_empty() {
+        if self.stdout.as_os_str().is_empty() {
             return Err(IoError::new(ErrorKind::NotFound, "File not found"));
         }
         open(&self.stdout)
     }
 
     pub fn open_stderr(&self) -> IoResult<File> {
-        if self.stderr.is_empty() {
+        if self.stderr.as_os_str().is_empty() {
             return Err(IoError::new(ErrorKind::NotFound, "File not found"));
         }
         open(&self.stderr)

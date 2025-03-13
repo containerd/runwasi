@@ -2,9 +2,10 @@ use std::marker::PhantomData;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use shimkit::sandbox::sync::WaitableCell;
+use shimkit::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
 
 use crate::container::Engine;
-use crate::sandbox::{Error as SandboxError, Instance as SandboxInstance, InstanceConfig};
 
 pub struct Instance<E: Engine>(PhantomData<E>);
 
