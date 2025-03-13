@@ -18,7 +18,6 @@ use oci_spec::runtime::{
     LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder, RootBuilder, SpecBuilder,
     get_default_namespaces,
 };
-
 use shimkit::AmbientRuntime as _;
 use shimkit::sandbox::{Instance as _, InstanceConfig};
 

@@ -5,12 +5,12 @@ use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
+use shimkit::sandbox::sync::WaitableCell;
 use shimkit::sandbox::{Error as SandboxError, InstanceConfig};
 
 use super::container::Container;
 use crate::container::Engine;
 use crate::sandbox::containerd;
-use shimkit::sandbox::sync::WaitableCell;
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
 

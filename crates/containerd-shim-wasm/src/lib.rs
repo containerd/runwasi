@@ -19,5 +19,5 @@ pub mod testing;
 /// Tests for runwasi's containerd-shim-wasm.
 mod test;
 
-pub use shimkit::{Config, revision, version};
 pub use sandbox::cli::shim_main;
+pub use shimkit::{Config, revision, version};

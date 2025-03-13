@@ -8,7 +8,6 @@ mod vendor;
 pub(crate) mod sys;
 
 pub use containerd_shim::Config;
+pub use sandbox::async_utils::AmbientRuntime;
 #[cfg(unix)]
 pub use zygote;
-
-pub use sandbox::async_utils::AmbientRuntime;
