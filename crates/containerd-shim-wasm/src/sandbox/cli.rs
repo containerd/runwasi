@@ -79,189 +79,20 @@
 //! - `OTEL_SDK_DISABLED`: Disable OpenTelemetry SDK
 //!
 
-use std::path::PathBuf;
-
-use containerd_shim::{Config, parse, run};
-
-#[cfg(feature = "opentelemetry")]
-use crate::sandbox::shim::{OtlpConfig, otel_traces_enabled};
-use crate::sandbox::{Instance, Shim};
-
-pub mod r#impl {
-    pub use git_version::git_version;
-}
-
-use super::async_utils::AmbientRuntime as _;
-pub use crate::{revision, version};
-
-/// Get the crate version from Cargo.toml.
-#[macro_export]
-macro_rules! version {
-    () => {
-        env!("CARGO_PKG_VERSION")
-    };
-}
-
-/// Get the Git revision hash, if available.
-#[macro_export]
-macro_rules! revision {
-    () => {
-        match $crate::sandbox::cli::r#impl::git_version!(
-            args = ["--match=:", "--always", "--abbrev=15", "--dirty=.m"],
-            fallback = "",
-        ) {
-            "" => None,
-            version => Some(version),
-        }
-    };
-}
-
-#[cfg(target_os = "linux")]
-fn get_mem(pid: u32) -> (usize, usize) {
-    let mut rss = 0;
-    let mut total = 0;
-    for line in std::fs::read_to_string(format!("/proc/{pid}/status"))
-        .unwrap()
-        .lines()
-    {
-        let line = line.trim();
-        // VmPeak is the maximum total virtual memory used so far.
-        // VmHWM (high water mark) is the maximum resident set memory used so far.
-        // See: https://man7.org/linux/man-pages/man5/proc_pid_status.5.html
-        if let Some(rest) = line.strip_prefix("VmPeak:") {
-            if let Some(rest) = rest.strip_suffix("kB") {
-                total = rest.trim().parse().unwrap_or(0);
-            }
-        } else if let Some(rest) = line.strip_prefix("VmHWM:") {
-            if let Some(rest) = rest.strip_suffix("kB") {
-                rss = rest.trim().parse().unwrap_or(0);
-            }
-        }
-    }
-    (rss, total)
-}
-
-#[cfg(target_os = "linux")]
-fn log_mem() {
-    let pid = std::process::id();
-    let (rss, tot) = get_mem(pid);
-    log::info!("Shim peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
-
-    let pid = zygote::Zygote::global().run(|_| std::process::id(), ());
-    let (rss, tot) = get_mem(pid);
-    log::info!("Zygote peak memory usage was: peak resident set {rss} kB, peak total {tot} kB");
-}
-
-#[cfg(unix)]
-fn init_zygote_and_logger(debug: bool, config: &Config) {
-    zygote::Zygote::init();
-    if config.no_setup_logger {
-        return;
-    }
-    zygote::Zygote::global().run(
-        |(debug, default_log_level)| {
-            // last two arguments are unused in unix
-            crate::vendor::containerd_shim::logger::init(debug, &default_log_level, "", "")
-                .expect("Failed to initialize logger");
-        },
-        (debug, config.default_log_level.clone()),
-    );
-}
+use crate::Config;
+use crate::container::{Engine, Instance};
 
 /// Main entry point for the shim.
 ///
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
 ///
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
-pub fn shim_main<'a, I>(
+pub fn shim_main<'a, E: Engine + Default>(
     name: &str,
     version: &str,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
     shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: Option<Config>,
-) where
-    I: 'static + Instance + Sync + Send,
-{
-    // parse the version flag
-    let os_args: Vec<_> = std::env::args_os().collect();
-
-    let flags = parse(&os_args[1..]).unwrap();
-    let argv0 = PathBuf::from(&os_args[0]);
-    let argv0 = argv0.file_stem().unwrap_or_default().to_string_lossy();
-
-    if flags.version {
-        println!("{argv0}:");
-        println!("  Runtime: {name}");
-        println!("  Version: {version}");
-        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
-        println!();
-
-        std::process::exit(0);
-    }
-
-    // Initialize the zygote and logger for the container process
-    #[cfg(unix)]
-    {
-        let default_config = Config::default();
-        let config = config.as_ref().unwrap_or(&default_config);
-        init_zygote_and_logger(flags.debug, config);
-    }
-
-    #[cfg(feature = "opentelemetry")]
-    if otel_traces_enabled() {
-        // opentelemetry uses tokio, so we need to initialize a runtime
-        async {
-            let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
-            let _guard = otlp_config
-                .init()
-                .expect("Failed to initialize OpenTelemetry.");
-            tokio::task::block_in_place(move || {
-                shim_main_inner::<I>(name, version, revision, shim_version, config);
-            });
-        }
-        .block_on();
-    } else {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
-    }
-
-    #[cfg(not(feature = "opentelemetry"))]
-    {
-        shim_main_inner::<I>(name, version, revision, shim_version, config);
-    }
-
-    #[cfg(target_os = "linux")]
-    log_mem();
-}
-
-#[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(
-    name: &str,
-    version: &str,
-    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: Option<Config>,
-) where
-    I: 'static + Instance + Sync + Send,
-{
-    #[cfg(feature = "opentelemetry")]
-    {
-        // read TRACECONTEXT env var that's set by the parent process
-        if let Ok(ctx) = std::env::var("TRACECONTEXT") {
-            OtlpConfig::set_trace_context(&ctx).unwrap();
-        } else {
-            let ctx = OtlpConfig::get_trace_context().unwrap();
-            // SAFETY: although it's in a multithreaded context,
-            // it's safe to assume that all the other threads are not
-            // messing with env vars at this point.
-            unsafe {
-                std::env::set_var("TRACECONTEXT", ctx);
-            }
-        }
-    }
-
-    let shim_version = shim_version.into().unwrap_or("v1");
-    let lower_name = name.to_lowercase();
-    let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
-
-    run::<Shim<I>>(&shim_id, config);
+) {
+    shimkit::sandbox::cli::shim_main::<Instance<E>>(name, version, revision, shim_version, config)
 }

@@ -5,7 +5,6 @@
 
 pub mod container;
 pub mod sandbox;
-mod vendor;
 
 #[cfg_attr(unix, path = "sys/unix/mod.rs")]
 #[cfg_attr(windows, path = "sys/windows/mod.rs")]
@@ -20,4 +19,5 @@ pub mod testing;
 /// Tests for runwasi's containerd-shim-wasm.
 mod test;
 
-pub use containerd_shim::Config;
+pub use shimkit::{Config, revision, version};
+pub use sandbox::cli::shim_main;

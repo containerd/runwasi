@@ -1,25 +1,18 @@
 use std::marker::PhantomData;
-use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
+use shimkit::sandbox::{Error as SandboxError, InstanceConfig};
 
 use super::container::Container;
 use crate::container::Engine;
-use crate::sandbox::async_utils::AmbientRuntime as _;
-use crate::sandbox::instance_utils::determine_rootdir;
-use crate::sandbox::sync::WaitableCell;
-use crate::sandbox::{
-    Error as SandboxError, Instance as SandboxInstance, InstanceConfig, containerd,
-};
+use crate::sandbox::containerd;
+use shimkit::sandbox::sync::WaitableCell;
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
-use crate::sys::stdio::open;
-
-const DEFAULT_CONTAINER_ROOT_DIR: &str = "/run/containerd";
 
 pub struct Instance<E: Engine> {
     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
@@ -28,7 +21,7 @@ pub struct Instance<E: Engine> {
     _phantom: PhantomData<E>,
 }
 
-impl<E: Engine + Default> SandboxInstance for Instance<E> {
+impl<E: Engine + Default> shimkit::sandbox::Instance for Instance<E> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         // check if container is OCI image with wasm layers and attempt to read the module
@@ -42,21 +35,20 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
         let container = Container::build(
             |(id, cfg, modules, platform)| {
-                let rootdir = Path::new(DEFAULT_CONTAINER_ROOT_DIR).join(E::name());
-                let rootdir = determine_rootdir(&cfg.bundle, &cfg.namespace, rootdir)?;
+                let rootdir = cfg.determine_rootdir(E::name())?;
                 let engine = E::default();
 
                 let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
                     .with_executor(Executor::new(engine, modules, platform, id))
                     .with_root_path(rootdir.clone())?;
 
-                if let Ok(f) = open(&cfg.stdin) {
+                if let Ok(f) = cfg.open_stdin() {
                     builder = builder.with_stdin(f);
                 }
-                if let Ok(f) = open(&cfg.stdout) {
+                if let Ok(f) = cfg.open_stdout() {
                     builder = builder.with_stdout(f);
                 }
-                if let Ok(f) = open(&cfg.stderr) {
+                if let Ok(f) = cfg.open_stderr() {
                     builder = builder.with_stderr(f);
                 }
 
@@ -98,7 +90,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
         self.container.start()?;
 
         let exit_code = self.exit_code.clone();
-        async move {
+        tokio::spawn(async move {
             // move the exit code guard into this task
             let _guard = guard;
 
@@ -115,8 +107,7 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
                 }
             } as u32;
             let _ = exit_code.set((status, Utc::now()));
-        }
-        .spawn();
+        });
 
         Ok(pid as _)
     }

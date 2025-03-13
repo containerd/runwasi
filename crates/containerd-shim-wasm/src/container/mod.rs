@@ -49,7 +49,7 @@ mod wasm;
 pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
 pub use engine::Engine;
-pub use instance::Instance;
+pub(crate) use instance::Instance;
 pub(crate) use path::PathResolve;
 pub use wasm::WasmBinaryType;
 

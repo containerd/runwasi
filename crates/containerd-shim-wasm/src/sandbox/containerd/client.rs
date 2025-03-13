@@ -25,7 +25,7 @@ use tonic::{Code, Request};
 
 use super::lease::LeaseGuard;
 use crate::container::Engine;
-use crate::sandbox::error::{Error as ShimError, Result};
+use shimkit::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
 
 // Adds lease info to grpc header
