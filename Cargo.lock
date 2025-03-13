@@ -5241,6 +5241,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "shimkit"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "caps",
+ "chrono",
+ "containerd-client",
+ "containerd-shim",
+ "containerd-shim-wasm-test-modules",
+ "dbus",
+ "futures",
+ "git-version",
+ "libcontainer",
+ "log",
+ "mio",
+ "nix 0.29.0",
+ "oci-spec",
+ "oci-tar-builder",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "prost 0.13.5",
+ "protobuf 3.2.0",
+ "rand 0.9.0",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "temp-env",
+ "tempfile",
+ "thiserror 2.0.12",
+ "time",
+ "tokio",
+ "tokio-async-drop",
+ "toml",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "trait-variant",
+ "ttrpc-codegen",
+ "windows-sys 0.59.0",
+ "zygote",
+]
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
