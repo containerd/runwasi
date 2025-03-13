@@ -17,6 +17,7 @@ on:
         options:
           - containerd-shim-wasm-test-modules
           - oci-tar-builder
+          - containerd-shimkit
           - containerd-shim-wasm
           # shims
           - containerd-shim-wasmer
