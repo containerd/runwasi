@@ -931,7 +931,6 @@ dependencies = [
  "shimkit",
  "temp-env",
  "tempfile",
- "time",
  "tokio",
  "tokio-async-drop",
  "tokio-stream",
@@ -940,7 +939,6 @@ dependencies = [
  "wasmparser 0.227.1",
  "wat",
  "windows-sys 0.59.0",
- "zygote",
 ]
 
 [[package]]

@@ -39,11 +39,7 @@ tokio-async-drop = "0.1"
 # note: it's important to keep the version of tracing in sync with shimkit's tracing-subscriber
 tracing = { workspace = true, optional = true }
 
-# vendored code
-time = { version = "0.3.39", features = ["serde", "std", "formatting"] }
-
 [target.'cfg(unix)'.dependencies]
-zygote = { version = "0.1.2" }
 caps = "0.5"
 # this must match the version pulled by libcontainer
 dbus = { version = "0", features = ["vendored"] }

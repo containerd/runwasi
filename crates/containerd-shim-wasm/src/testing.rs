@@ -41,7 +41,7 @@ pub struct WasiTest<WasiEngine: Engine + Default> {
 
 impl<WasiEngine: Engine + Default> WasiTestBuilder<WasiEngine> {
     pub fn new() -> Result<Self> {
-        zygote::Zygote::init();
+        shimkit::zygote::Zygote::init();
 
         // start logging
         // to enable logging run `export RUST_LOG=trace` and append cargo command with
