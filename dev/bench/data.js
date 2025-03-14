@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741911449190,
+  "lastUpdate": 1741911458927,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -10505,6 +10505,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 19629.1038,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b4a61e08b5fba5c4b8e23247f775de8d527858a7",
+          "message": "Merge pull request #929 from Mossaka/api-tidy\n\nbreaking: make with_lease macro, otel module and instance_utils module private",
+          "timestamp": "2025-03-13T10:06:29Z",
+          "url": "https://github.com/containerd/runwasi/commit/b4a61e08b5fba5c4b8e23247f775de8d527858a7"
+        },
+        "date": 1741911457273,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20626.768,
             "unit": "req/s"
           }
         ]
