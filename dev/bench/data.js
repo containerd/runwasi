@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741911460872,
+  "lastUpdate": 1741911561804,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -8292,6 +8292,76 @@ window.BENCHMARK_DATA = {
             "value": 19900,
             "unit": "kB",
             "extra": "shim: 16256 kB\nzygote: 3644 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b4a61e08b5fba5c4b8e23247f775de8d527858a7",
+          "message": "Merge pull request #929 from Mossaka/api-tidy\n\nbreaking: make with_lease macro, otel module and instance_utils module private",
+          "timestamp": "2025-03-13T10:06:29Z",
+          "url": "https://github.com/containerd/runwasi/commit/b4a61e08b5fba5c4b8e23247f775de8d527858a7"
+        },
+        "date": 1741911560521,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 138861592,
+            "range": "± 4336138",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 84579012,
+            "range": "± 1011960",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 112347272,
+            "range": "± 2098564",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 124068954,
+            "range": "± 3191605",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 133099562,
+            "range": "± 3018708",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 133771191,
+            "range": "± 2364523",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 82257220,
+            "range": "± 1838305",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 85197140,
+            "range": "± 940906",
+            "unit": "ns/iter"
           }
         ]
       }
