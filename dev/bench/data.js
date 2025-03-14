@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741825921156,
+  "lastUpdate": 1741911449190,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -8246,6 +8246,52 @@ window.BENCHMARK_DATA = {
             "value": 80859349,
             "range": "± 1726407",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b4a61e08b5fba5c4b8e23247f775de8d527858a7",
+          "message": "Merge pull request #929 from Mossaka/api-tidy\n\nbreaking: make with_lease macro, otel module and instance_utils module private",
+          "timestamp": "2025-03-13T10:06:29Z",
+          "url": "https://github.com/containerd/runwasi/commit/b4a61e08b5fba5c4b8e23247f775de8d527858a7"
+        },
+        "date": 1741911447875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15528,
+            "unit": "kB",
+            "extra": "shim: 12544 kB\nzygote: 2984 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66000,
+            "unit": "kB",
+            "extra": "shim: 53376 kB\nzygote: 12624 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18820,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3588 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19900,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3644 kB"
           }
         ]
       }
