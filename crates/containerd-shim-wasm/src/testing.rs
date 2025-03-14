@@ -13,34 +13,35 @@ use std::time::Duration;
 
 use anyhow::{Result, bail};
 pub use containerd_shim_wasm_test_modules as modules;
+use containerd_shimkit::AmbientRuntime as _;
+use containerd_shimkit::sandbox::{Instance as _, InstanceConfig};
 use libc::{SIGINT, SIGTERM};
 use oci_spec::runtime::{
     LinuxBuilder, LinuxNamespace, LinuxNamespaceType, ProcessBuilder, RootBuilder, SpecBuilder,
     get_default_namespaces,
 };
 
-use crate::sandbox::async_utils::AmbientRuntime as _;
-use crate::sandbox::{Instance, InstanceConfig};
+use crate::container::{Engine, Instance};
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
 pub const SIGKILL: u32 = 9;
 
-pub struct WasiTestBuilder<WasiInstance: Instance> {
+pub struct WasiTestBuilder<WasiEngine: Engine + Default> {
     container_name: String,
     start_fn: String,
     namespaces: Vec<LinuxNamespace>,
     tempdir: tempfile::TempDir,
-    _phantom: PhantomData<WasiInstance>,
+    _phantom: PhantomData<WasiEngine>,
 }
 
-pub struct WasiTest<WasiInstance: Instance> {
-    instance: WasiInstance,
+pub struct WasiTest<WasiEngine: Engine + Default> {
+    instance: Instance<WasiEngine>,
     tempdir: tempfile::TempDir,
 }
 
-impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
+impl<WasiEngine: Engine + Default> WasiTestBuilder<WasiEngine> {
     pub fn new() -> Result<Self> {
-        zygote::Zygote::init();
+        containerd_shimkit::zygote::Zygote::init();
 
         // start logging
         // to enable logging run `export RUST_LOG=trace` and append cargo command with
@@ -177,7 +178,7 @@ impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
         ))
     }
 
-    pub fn build(self) -> Result<WasiTest<WasiInstance>> {
+    pub fn build(self) -> Result<WasiTest<WasiEngine>> {
         let tempdir = self.tempdir;
         let dir = tempdir.path();
 
@@ -217,17 +218,17 @@ impl<WasiInstance: Instance> WasiTestBuilder<WasiInstance> {
             ..Default::default()
         };
 
-        let instance = WasiInstance::new(self.container_name, &cfg).block_on()?;
+        let instance = Instance::<WasiEngine>::new(self.container_name, &cfg).block_on()?;
         Ok(WasiTest { instance, tempdir })
     }
 }
 
-impl<WasiInstance: Instance> WasiTest<WasiInstance> {
-    pub fn builder() -> Result<WasiTestBuilder<WasiInstance>> {
+impl<WasiEngine: Engine + Default> WasiTest<WasiEngine> {
+    pub fn builder() -> Result<WasiTestBuilder<WasiEngine>> {
         WasiTestBuilder::new()
     }
 
-    pub fn instance(&self) -> &WasiInstance {
+    pub fn instance(&self) -> &Instance<WasiEngine> {
         &self.instance
     }
 

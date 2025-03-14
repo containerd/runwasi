@@ -4,6 +4,7 @@ use std::future::Future;
 use std::sync::LazyLock;
 use std::time::Duration;
 
+use private::Sealded;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
@@ -17,7 +18,12 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
-pub trait AmbientRuntime: Future {
+mod private {
+    pub trait Sealded {}
+    impl<F: Future> Sealded for F {}
+}
+
+pub trait AmbientRuntime: Future + Sealded {
     fn block_on(self) -> Self::Output
     where
         Self: Sized,
@@ -25,7 +31,7 @@ pub trait AmbientRuntime: Future {
         RUNTIME.block_on(self)
     }
 
-    #[allow(dead_code)] // used in tests and with the testing feature
+    #[allow(dead_code, async_fn_in_trait)] // used in tests and with the testing feature
     async fn with_timeout(self, t: Duration) -> Option<Self::Output>
     where
         Self: Sized,

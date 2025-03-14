@@ -1,7 +1,6 @@
 use anyhow::bail;
 
 use crate::container::{Engine, RuntimeContext};
-use crate::sys::container::instance::Instance;
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
@@ -19,15 +18,13 @@ impl Engine for EngineFailingValidation {
     }
 }
 
-type InstanceFailingValidation = Instance<EngineFailingValidation>;
-
 #[test]
 #[cfg(unix)] // not yet implemented on Windows
 fn test_validation_error() -> anyhow::Result<()> {
     // A validation error should fail when creating the container
     // as opposed to failing when starting it.
 
-    let result = WasiTest::<InstanceFailingValidation>::builder()?
+    let result = WasiTest::<EngineFailingValidation>::builder()?
         .with_start_fn("foo")
         .with_wasm("/invalid_entrypoint.wasm")?
         .build();

@@ -1,12 +1,10 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
+use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
 use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInst;
 use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
 use wamr_rust_sdk::wasi_context::WasiCtxBuilder;
-
-pub type WamrInstance = Instance<WamrEngine>;
 
 pub struct WamrEngine {
     runtime: Runtime,

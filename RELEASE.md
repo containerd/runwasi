@@ -36,8 +36,9 @@ gh workflow run release.yml -f dry_run=true -f crate=containerd-shim-wasm -f ver
 ### Crate Release Sequence
 
 Must release the creates in this order due to dependencies:
-1. `containerd-shim-wasm`
-2. All runtime-related crates.
+1. `containerd-shimkit`
+2. `containerd-shim-wasm`
+3. All runtime-related crates.
 
 ### Release Steps
 

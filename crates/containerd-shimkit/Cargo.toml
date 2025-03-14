@@ -1,0 +1,109 @@
+[package]
+name = "containerd-shimkit"
+description = "Opinionated library for building containerd shims"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+readme = "README.md"
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+containerd-shim = { workspace = true }
+git-version = { version = "0.3.9" }
+log = { workspace = true }
+oci-spec = { workspace = true }
+protobuf = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true, optional = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+futures = { version = "0.3.30" }
+serde_bytes = "0.11"
+prost = "0.13"
+toml = "0.8"
+trait-variant = "0.1"
+tokio-async-drop = "0.1"
+
+# tracing
+# note: it's important to keep the version of tracing in sync with tracing-subscriber
+tracing = { workspace = true, optional = true }
+# does not include `tracing-log` feature due to https://github.com/spinkube/containerd-shim-spin/issues/61
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "smallvec", # Enables performance optimizations
+    "fmt",
+    "ansi",
+    "std",
+    "env-filter",
+    "json",
+    "registry",
+], optional = true }
+
+# opentelemetry
+opentelemetry = { version = "0.23", features = ["trace"], optional = true, default-features = false}
+opentelemetry-otlp = { version = "0.16.0", default-features = false, features = [
+    "grpc-tonic",
+    "http-proto",
+    "reqwest-client",
+    "trace",
+], optional = true }
+opentelemetry_sdk = { version = "0.23", default-features = false, features = [
+    "rt-tokio",
+], optional = true }
+tracing-opentelemetry = { version = "0.24", optional = true }
+
+# vendored code
+time = { version = "0.3.39", features = ["serde", "std", "formatting"] }
+
+[target.'cfg(unix)'.dependencies]
+zygote = { version = "0.1.2" }
+caps = "0.5"
+# this must match the version pulled by libcontainer
+dbus = { version = "0", features = ["vendored"] }
+libcontainer = { workspace = true, features = [
+    "libseccomp",
+    "systemd",
+    "v1",
+    "v2",
+] }
+nix = { workspace = true, features = ["sched", "mount"] }
+containerd-client = "0.6.0"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+] }
+# vendored code
+mio = { version = "1.0", features = ["os-ext", "os-poll"] }
+
+[build-dependencies]
+ttrpc-codegen = { version = "0.4.2" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["signal"] }
+containerd-shim-wasm-test-modules = { workspace = true }
+tempfile = { workspace = true }
+oci-tar-builder = { workspace = true }
+rand = "0.9"
+temp-env = "0.3"
+
+[features]
+opentelemetry = [
+    "tracing",
+    "dep:opentelemetry",
+    "dep:opentelemetry-otlp",
+    "dep:opentelemetry_sdk",
+    "dep:tracing-opentelemetry",
+]
+tracing = ["dep:tracing", "dep:tracing-subscriber"]
+
+[package.metadata.cargo-machete]
+# used as part of a derive macro
+ignored = ["serde_bytes"]

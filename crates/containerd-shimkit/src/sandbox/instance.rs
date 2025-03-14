@@ -32,7 +32,7 @@ pub struct InstanceConfig {
 /// Instance is a trait that gets implemented by consumers of this library.
 /// This trait requires that any type implementing it is `'static`, similar to `std::any::Any`.
 /// This means that the type cannot contain a non-`'static` reference.
-#[trait_variant::make(Send)]
+#[cfg_attr(not(doc), trait_variant::make(Send))]
 pub trait Instance: 'static {
     /// Create a new instance
     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error>

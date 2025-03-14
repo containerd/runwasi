@@ -1,6 +1,6 @@
 pub mod instance;
 
-pub use instance::WasmEdgeInstance;
+pub use instance::WasmEdgeEngine;
 
 #[cfg(unix)]
 #[cfg(test)]

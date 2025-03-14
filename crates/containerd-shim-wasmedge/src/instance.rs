@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use cfg_if::cfg_if;
-use containerd_shim_wasm::container::{Engine, Entrypoint, Instance, RuntimeContext};
+use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
 #[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::AsInstance;
 use wasmedge_sdk::config::{CommonConfigOptions, Config, ConfigBuilder};
@@ -15,8 +15,6 @@ use wasmedge_sdk::plugin::NNPreload;
 use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::wasi::WasiModule;
 use wasmedge_sdk::{Module, Store, Vm};
-
-pub type WasmEdgeInstance = Instance<WasmEdgeEngine>;
 
 #[derive(Clone)]
 pub struct WasmEdgeEngine {

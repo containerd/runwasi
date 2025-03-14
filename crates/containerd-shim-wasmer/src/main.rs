@@ -1,6 +1,6 @@
-use containerd_shim_wasm::sandbox::cli::{revision, shim_main, version};
-use containerd_shim_wasmer::WasmerInstance;
+use containerd_shim_wasm::{revision, shim_main, version};
+use containerd_shim_wasmer::WasmerEngine;
 
 fn main() {
-    shim_main::<WasmerInstance>("wasmer", version!(), revision!(), "v1", None);
+    shim_main::<WasmerEngine>("wasmer", version!(), revision!(), "v1", None);
 }

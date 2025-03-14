@@ -29,7 +29,7 @@ use std::time::Duration;
 use anyhow::{Result, bail};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
 
-use crate::container::{Engine, Instance, RuntimeContext};
+use crate::container::{Engine, RuntimeContext};
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
@@ -68,9 +68,7 @@ impl Engine for SomeEngine {
     }
 }
 
-type SomeInstance = Instance<SomeEngine>;
-
-struct KillGuard(Arc<WasiTest<SomeInstance>>);
+struct KillGuard(Arc<WasiTest<SomeEngine>>);
 impl Drop for KillGuard {
     fn drop(&mut self) {
         let _ = self.0.kill();
@@ -79,14 +77,14 @@ impl Drop for KillGuard {
 
 #[test]
 fn test_handling_signals() -> Result<()> {
-    zygote::Zygote::global();
+    containerd_shimkit::zygote::Zygote::global();
 
     // use a thread scope to ensure we join all threads at the end
     std::thread::scope(|s| -> Result<()> {
         let mut containers = vec![];
 
         for i in 0..20 {
-            let builder = WasiTest::<SomeInstance>::builder()?
+            let builder = WasiTest::<SomeEngine>::builder()?
                 .with_name(format!("test-{i}"))
                 .with_start_fn(format!("test-{i}"))
                 .with_wasm(HELLO_WORLD)?;

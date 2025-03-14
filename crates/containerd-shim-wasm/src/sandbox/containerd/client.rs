@@ -16,6 +16,7 @@ use containerd_client::services::v1::{
 use containerd_client::tonic::Streaming;
 use containerd_client::tonic::transport::Channel;
 use containerd_client::{tonic, with_namespace};
+use containerd_shimkit::sandbox::error::{Error as ShimError, Result};
 use futures::TryStreamExt;
 use oci_spec::image::{Arch, Digest, ImageManifest, MediaType, Platform};
 use sha256::digest;
@@ -25,7 +26,6 @@ use tonic::{Code, Request};
 
 use super::lease::LeaseGuard;
 use crate::container::Engine;
-use crate::sandbox::error::{Error as ShimError, Result};
 use crate::sandbox::oci::{self, WasmLayer};
 
 // Adds lease info to grpc header

@@ -8,6 +8,7 @@ members = [
     "crates/containerd-shim-wasmtime",
     "crates/containerd-shim-wasmer",
     "crates/containerd-shim-wamr",
+    "crates/containerd-shimkit",
     "crates/stress-test",
     "benches/containerd-shim-benchmarks",
 ]
@@ -25,6 +26,7 @@ homepage = "https://github.com/containerd/runwasi"
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.8"
+containerd-shimkit = { path = "crates/containerd-shimkit", version = "0.1.0" }
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.10.0" }
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }

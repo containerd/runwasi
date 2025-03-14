@@ -6,20 +6,12 @@ A library to help build containerd shims for Wasm workloads.
 
 ## Usage
 
-There are two ways to implement a shim:
-1. Using the `Instance` trait
-2. Using the `Engine` trait
-
-What trait to use depends on how much control you need over the container lifecycle and the level of sandboxing you want to provide. The main difference is that the `Engine` trait uses [Youki](https://github.com/youki-dev/youki)'s `libcontainer` crate to manage the container lifecycle, such as creating the container, starting it, and deleting it, and youki handles container sandbox for you. The `Instance` trait gives you more control over the container lifecycle.
-
-### Using the Engine trait
-
-Implement the `Engine` trait for a simpler integration:
+To implement a shim, simply implement the `Engine` trait:
 
 ```rust,no_run
 use containerd_shim_wasm::{
-    container::{Instance, Engine, RuntimeContext},
-    sandbox::cli::{revision, shim_main, version},
+    revision, shim_main, version,
+    container::{Engine, RuntimeContext},
     Config,
 };
 use anyhow::Result;
@@ -38,7 +30,7 @@ impl Engine for MyEngine {
     }
 }
 
-shim_main::<Instance<MyEngine>>(
+shim_main::<MyEngine>(
     "my-engine",
     version!(),
     revision!(),
@@ -54,56 +46,7 @@ The `Engine` trait provides optional methods you can override:
 - `precompile()` - Allows precompilation of Wasm modules
 - `can_precompile()` - Indicates if the runtime supports precompilation
 
-### Using the Instance trait directly
-
-For more control, implement the `Instance` trait:
-
-```rust,no_run
-use containerd_shim_wasm::sandbox::{Instance, InstanceConfig, Error};
-use containerd_shim_wasm::container::{Engine, RuntimeContext};
-use chrono::{DateTime, Utc};
-use std::time::Duration;
-use anyhow::Result;
-
-#[derive(Clone, Default)]
-struct MyEngine;
-
-impl Engine for MyEngine {
-    fn name() -> &'static str {
-        "my-engine"
-    }
-
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
-        Ok(0)
-    }
-}
-
-struct MyInstance {
-    engine: MyEngine,
-}
-
-impl Instance for MyInstance {
-    async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, Error> {
-        Ok(MyInstance { engine: MyEngine })
-    }
-
-    async fn start(&self) -> Result<u32, Error> {
-        Ok(1)
-    }
-
-    async fn kill(&self, signal: u32) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn delete(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn wait(&self) -> (u32, DateTime<Utc>) {
-        (0, Utc::now())
-    }
-}
-```
+The resulting shim uses [Youki](https://github.com/youki-dev/youki)'s `libcontainer` crate to manage the container lifecycle, such as creating the container, starting it, and deleting it, and youki handles container sandbox for you.
 
 ### Running the shim
 

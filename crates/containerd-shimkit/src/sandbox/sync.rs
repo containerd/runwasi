@@ -54,7 +54,7 @@ impl<T> WaitableCell<T> {
 
     /// If the `WaitableCell` is empty when this guard is dropped, the cell will be set to result of `f`.
     /// ```
-    /// # use containerd_shim_wasm::sandbox::sync::WaitableCell;
+    /// # use containerd_shimkit::sandbox::sync::WaitableCell;
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// let cell = WaitableCell::<i32>::new();
     /// {
@@ -66,7 +66,7 @@ impl<T> WaitableCell<T> {
     ///
     /// The operation is a no-op if the cell conbtains a value before the guard is dropped.
     /// ```
-    /// # use containerd_shim_wasm::sandbox::sync::WaitableCell;
+    /// # use containerd_shimkit::sandbox::sync::WaitableCell;
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// let cell = WaitableCell::<i32>::new();
     /// {
