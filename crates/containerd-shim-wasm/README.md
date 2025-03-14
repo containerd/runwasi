@@ -6,7 +6,7 @@ A library to help build containerd shims for Wasm workloads.
 
 ## Usage
 
-To implement a shim simple implement the `Engine` trait:
+To implement a shim, simply implement the `Engine` trait:
 
 ```rust,no_run
 use containerd_shim_wasm::{
