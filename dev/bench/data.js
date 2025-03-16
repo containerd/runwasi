@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741999184595,
+  "lastUpdate": 1742084344887,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -8478,6 +8478,52 @@ window.BENCHMARK_DATA = {
             "value": 83601844,
             "range": "± 1083604",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8ec387de1380e24290ffe2df7621a77caf85bd83",
+          "message": "Move `Instance` API to a new crate `shimkit` (#930)\n\n* Add the shimkit crate\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use shimkit in containerd-shim-wasm\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update each shim to not use Instance API\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use re-exported zygote\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* avoid exporting an intermediate macro for logs\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* bump shimkit version\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix doc tests\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix smoke test\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* rename shimkit -> containerd-shimkit\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit CHANGELOG.md\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit in makefile\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update release instructions\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt again\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows build\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* Update crates/containerd-shim-wasm/README.md\n\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n---------\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>",
+          "timestamp": "2025-03-14T21:37:46Z",
+          "url": "https://github.com/containerd/runwasi/commit/8ec387de1380e24290ffe2df7621a77caf85bd83"
+        },
+        "date": 1742084344049,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15656,
+            "unit": "kB",
+            "extra": "shim: 12672 kB\nzygote: 2984 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65872,
+            "unit": "kB",
+            "extra": "shim: 53376 kB\nzygote: 12496 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18692,
+            "unit": "kB",
+            "extra": "shim: 15104 kB\nzygote: 3588 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19772,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 3644 kB"
           }
         ]
       }
