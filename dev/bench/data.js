@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742170856426,
+  "lastUpdate": 1742171349491,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -15516,6 +15516,100 @@ window.BENCHMARK_DATA = {
             "value": 16.215722151035788,
             "unit": "tasks/s",
             "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 1m 1s 668ms 545us 544ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8ec387de1380e24290ffe2df7621a77caf85bd83",
+          "message": "Move `Instance` API to a new crate `shimkit` (#930)\n\n* Add the shimkit crate\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use shimkit in containerd-shim-wasm\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update each shim to not use Instance API\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use re-exported zygote\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* avoid exporting an intermediate macro for logs\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* bump shimkit version\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix doc tests\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix smoke test\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* rename shimkit -> containerd-shimkit\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit CHANGELOG.md\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit in makefile\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update release instructions\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt again\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows build\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* Update crates/containerd-shim-wasm/README.md\n\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n---------\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>",
+          "timestamp": "2025-03-14T21:37:46Z",
+          "url": "https://github.com/containerd/runwasi/commit/8ec387de1380e24290ffe2df7621a77caf85bd83"
+        },
+        "date": 1742171348763,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "Stress Test Throughput with containerd service - wamr (app)",
+            "value": 51.501548751458216,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 19s 416ms 891us 807ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmedge (app)",
+            "value": 36.08725896634214,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 27s 710ms 611us 131ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmer (app)",
+            "value": 14.859919435161215,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 1m 7s 295ms 115us 856ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmtime (app)",
+            "value": 15.066811199042785,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 1m 6s 371ms 44us 728ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wamr (oci)",
+            "value": 37.61731021906134,
+            "unit": "tasks/s",
+            "extra": "Image: oci\nTasks: 1000\nParallel: 4\nDuration: 26s 583ms 506us 215ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmedge (oci)",
+            "value": 30.350735825048247,
+            "unit": "tasks/s",
+            "extra": "Image: oci\nTasks: 1000\nParallel: 4\nDuration: 32s 948ms 130us 344ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmer (oci)",
+            "value": 13.62299020503502,
+            "unit": "tasks/s",
+            "extra": "Image: oci\nTasks: 1000\nParallel: 4\nDuration: 1m 13s 405ms 323us 277ns"
+          },
+          {
+            "name": "Stress Test Throughput with containerd service - wasmtime (oci)",
+            "value": 58.012593197837205,
+            "unit": "tasks/s",
+            "extra": "Image: oci\nTasks: 1000\nParallel: 4\nDuration: 17s 237ms 636us 604ns"
+          },
+          {
+            "name": "Stress Test Throughput with mock service - wamr (app)",
+            "value": 78.78533164330466,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 12s 692ms 718us 37ns"
+          },
+          {
+            "name": "Stress Test Throughput with mock service - wasmedge (app)",
+            "value": 74.01180230892989,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 13s 511ms 358us 578ns"
+          },
+          {
+            "name": "Stress Test Throughput with mock service - wasmer (app)",
+            "value": 16.445478542632994,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 1m 806ms 987us 3ns"
+          },
+          {
+            "name": "Stress Test Throughput with mock service - wasmtime (app)",
+            "value": 16.217345267618423,
+            "unit": "tasks/s",
+            "extra": "Image: app\nTasks: 1000\nParallel: 4\nDuration: 1m 1s 662ms 373us 434ns"
           }
         ]
       }
