@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742430608726,
+  "lastUpdate": 1742430769608,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -8941,6 +8941,76 @@ window.BENCHMARK_DATA = {
             "name": "end-to-end/wamr/wasi-demo-oci:latest",
             "value": 84026499,
             "range": "± 1537760",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8ec387de1380e24290ffe2df7621a77caf85bd83",
+          "message": "Move `Instance` API to a new crate `shimkit` (#930)\n\n* Add the shimkit crate\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use shimkit in containerd-shim-wasm\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update each shim to not use Instance API\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* use re-exported zygote\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* avoid exporting an intermediate macro for logs\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* bump shimkit version\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix doc tests\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix smoke test\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* rename shimkit -> containerd-shimkit\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit CHANGELOG.md\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* add containerd-shimkit in makefile\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* update release instructions\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix fmt again\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* fix windows build\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n* Update crates/containerd-shim-wasm/README.md\n\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n---------\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\nCo-authored-by: Tomasz Andrzejak <andreiltd@users.noreply.github.com>",
+          "timestamp": "2025-03-14T21:37:46Z",
+          "url": "https://github.com/containerd/runwasi/commit/8ec387de1380e24290ffe2df7621a77caf85bd83"
+        },
+        "date": 1742430768955,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 137298114,
+            "range": "± 4956025",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 81600901,
+            "range": "± 742494",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 111794558,
+            "range": "± 1781459",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 119376582,
+            "range": "± 1233433",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 130612075,
+            "range": "± 3372514",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 133467879,
+            "range": "± 1378885",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 81885907,
+            "range": "± 1495121",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 83103288,
+            "range": "± 1970823",
             "unit": "ns/iter"
           }
         ]
