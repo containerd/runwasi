@@ -42,3 +42,47 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
           keep_files: true
+
+  post_deploy_link_check:
+    name: Verify links after deployment
+    needs: [deploy]
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      issues: write
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for GitHub Pages to update
+        run: sleep 120
+      - name: Check all links on runwasi.dev
+        uses: lycheeverse/lychee-action@f613c4a64e50d792e0b31ec34bbcbba12263c6a6 # v2.3.0
+        with:
+          fail: true # Fail CI if broken links found on the live site
+          format: markdown
+          jobSummary: true
+      
+      - name: Setup GitHub CLI
+        if: ${{ failure() }}
+        uses: cli/setup-gh@v1
+      
+      - name: Create or update issue on link check failure
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TODAY=$(date +"%Y-%m-%d")
+          EXISTING_ISSUE=$(gh issue list --repo ${{ github.repository }} --label broken-links --state open --json number --jq ".[0].number")
+          ISSUE_BODY="# Broken Links Report ($TODAY)
+
+          The post-deployment link check has detected broken links on the runwasi.dev website. 
+          Please see the [link checker workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+          > This issue was automatically generated from the link checker workflow."
+          
+          if [ -n "$EXISTING_ISSUE" ]; then
+            gh issue comment $EXISTING_ISSUE --repo ${{ github.repository }} --body "New broken links were detected in the workflow run on $TODAY. Please check the latest workflow run for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            gh issue create --repo ${{ github.repository }} --title "Broken links detected on runwasi.dev" --body "$ISSUE_BODY" --label documentation --label broken-links
+          fi
