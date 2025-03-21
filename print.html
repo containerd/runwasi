@@ -25,9 +25,9 @@
         <link rel="stylesheet" href="fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
@@ -156,11 +156,20 @@
 
                 <div id="content" class="content">
                     <main>
-                        <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
-  <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
-</picture>
-<h1 id="runwasi"><a class="header" href="#runwasi">runwasi</a></h1>
+                        <div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./art/logo/runwasi_icon3.svg">
+    <img alt="runwasi logo" src="./art/logo/runwasi_icon1.svg">
+  </picture>
+  <h1 id="runwasi"><a class="header" href="#runwasi">runwasi</a></h1>
+  <p>
+    <a href="https://github.com/containerd/runwasi/actions/workflows/ci.yml"><img src="https://github.com/containerd/runwasi/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+    <a href="https://crates.io/crates/containerd-shim-wasm"><img src="https://img.shields.io/crates/v/containerd-shim-wasm" alt="crates.io"></a>
+    <a href="https://docs.rs/containerd-shim-wasm"><img src="https://img.shields.io/docsrs/containerd-shim-wasm" alt="docs.rs"></a>
+    <a href="https://img.shields.io/crates/d/containerd-shim-wasm.svg"><img src="https://img.shields.io/crates/d/containerd-shim-wasm.svg" alt="Downloads"></a>
+    <a href="https://runwasi.dev/"><img src="https://img.shields.io/website?up_message=runwasi.dev&url=https%3A%2F%2Frunwasi.dev" alt="website"></a>
+  </p>
+</div>
 <p>This is a project to facilitate running wasm workloads managed by containerd either directly (ie. through ctr) or as directed by Kubelet via the CRI plugin.
 It is intended to be a (rust) library that you can take and integrate with your wasm host.
 Included in the repository is a PoC for running a plain wasi host (ie. no extra host functions except to support wasi system calls).</p>
@@ -829,6 +838,7 @@ deploying the documentation to GitHub Pages.</li>
 <h3 id="crate-release-sequence"><a class="header" href="#crate-release-sequence">Crate Release Sequence</a></h3>
 <p>Must release the creates in this order due to dependencies:</p>
 <ol>
+<li><code>containerd-shimkit</code></li>
 <li><code>containerd-shim-wasm</code></li>
 <li>All runtime-related crates.</li>
 </ol>
@@ -1017,8 +1027,90 @@ you can run the wasmtime shim with OpenTelemetry tracing by running the followin
 <h2 id="context-propagation"><a class="header" href="#context-propagation">Context Propagation</a></h2>
 <p><code>Runwasi</code> uses the <code>TRACECONTEXT</code> environment variable to propagate the trace context between the parent shim process and the child. The trace context is a W3C Trace Context header.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h1>
-<p>This guide helps you troubleshoot common issues with Runwasi.</p>
-<p>[TODO]</p>
+<p>This guide helps you troubleshoot common issues with runwasi shims.</p>
+<h2 id="container-fails-to-start"><a class="header" href="#container-fails-to-start">Container Fails to Start</a></h2>
+<p>If your wasm container fails to start, you might see events like these:</p>
+<pre><code>Events:
+  Type     Reason                  Age               From               Message
+  ----     ------                  ----              ----               -------
+  Normal   Scheduled               18s               default-scheduler  Successfully assigned default/wasi-demo-75d6bb666c-479km to minikube
+  Warning  FailedCreatePodSandBox  4s (x2 over 18s)  kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to get sandbox runtime: no runtime for "wasmtime" is configured
+</code></pre>
+<h4 id="investigation-steps"><a class="header" href="#investigation-steps">Investigation Steps:</a></h4>
+<ol>
+<li>
+<p><strong>Check runtime class configuration</strong>: Ensure your <code>RuntimeClass</code> is correctly configured.</p>
+<pre><code class="language-bash">kubectl get runtimeclass
+
+# Example output:
+ NAME                  HANDLER               AGE
+ wasm                  wasm                  8d
+ wasmedge              wasmedge              8d
+ wasmer                wasmer                8d
+ wasmtime              wasmtime              8d
+</code></pre>
+<blockquote>
+<p>RuntimeClass in Kubernetes defines a handler name (e.g., <code>wasmtime</code>) that maps directly to a CRI section in containerd’s config.toml (<code>[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasmtime]</code>), which then points to the shim binary (<code>containerd-shim-wasmtime-v1</code>) that executes your Wasm workload. See more details in <a href="https://github.com/containerd/containerd/blob/main/docs/cri/config.md#runtime-classes">Runtime classes from containerd</a></p>
+</blockquote>
+</li>
+<li>
+<p><strong>Check containerd configuration</strong>: Verify that the containerd configuration has a runtime configured for your Wasm shim (e.g., wasmtime).</p>
+<pre><code class="language-bash">cat /etc/containerd/config.toml
+
+# Look for a section like:
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.wasmtime]
+   runtime_type = "io.containerd.wasmtime.v1"
+</code></pre>
+</li>
+<li>
+<p>Make sure the containerd shim binary is in the PATH.</p>
+</li>
+</ol>
+<h2 id="log-based-troubleshooting"><a class="header" href="#log-based-troubleshooting">Log-Based Troubleshooting</a></h2>
+<p>Examining logs is one of the most effective ways to troubleshoot issues in runwasi shims.</p>
+<h3 id="finding-containerd-logs"><a class="header" href="#finding-containerd-logs">Finding containerd Logs</a></h3>
+<p>Logs can be in different locations depending on your system:</p>
+<h4 id="kubernetes-distributions"><a class="header" href="#kubernetes-distributions">Kubernetes Distributions</a></h4>
+<ul>
+<li>k3s: <code>/var/lib/rancher/k3s/agent/containerd/containerd.log</code></li>
+<li>k8s (kubeadm): <code>/var/log/containerd/containerd.log</code></li>
+</ul>
+<h4 id="using-journalctl-systemd-based-systems"><a class="header" href="#using-journalctl-systemd-based-systems">Using journalctl (systemd-based systems)</a></h4>
+<pre><code class="language-bash"># View all containerd logs
+journalctl -u containerd
+
+# Follow containerd logs
+journalctl -u containerd -f
+</code></pre>
+<h3 id="kubernetes-pod-logs"><a class="header" href="#kubernetes-pod-logs">Kubernetes Pod Logs</a></h3>
+<p>In addition to containerd logs, Kubernetes pod logs show the logs from your containers.</p>
+<pre><code class="language-bash">kubectl logs &lt;pod-name&gt;
+
+# Or stream logs in real-time
+kubectl logs -f &lt;pod-name&gt;
+</code></pre>
+<h3 id="using-structured-logging-with-container-and-pod-ids"><a class="header" href="#using-structured-logging-with-container-and-pod-ids">Using Structured Logging with Container and Pod IDs</a></h3>
+<p>runwasi shims include structured logging that automatically adds container ID and pod ID to log messages, making it easier to filter logs.</p>
+<h4 id="finding-container-id-and-pod-id"><a class="header" href="#finding-container-id-and-pod-id">Finding Container ID and Pod ID:</a></h4>
+<pre><code class="language-bash"># Get container IDs for a pod
+kubectl get pod &lt;pod-name&gt; -o jsonpath='{.status.containerStatuses[*].containerID}'
+# Output: containerd://&lt;container-id&gt;
+
+# Get pod ID for a specific pod
+crictl pods --name &lt;pod-name&gt; -q
+</code></pre>
+<p>Note: If you are using k3s, you can use the following command to get the pod ID:</p>
+<pre><code class="language-bash">k3s crictl pods --name &lt;pod-name&gt; -q
+</code></pre>
+<h4 id="filtering-logs-by-container-id-k3s"><a class="header" href="#filtering-logs-by-container-id-k3s">Filtering Logs by Container ID (k3s)</a></h4>
+<pre><code class="language-bash">grep 'instance="&lt;container-id&gt;"' /var/lib/rancher/k3s/agent/containerd/containerd.log
+
+# Example output:
+time="2025-03-05T21:49:01.527630395Z" level=info instance="820f78385e9c29cbd6a0b6767619286ffd7a3384959ce909063a22041d17c718" pod="22a0daacfeabe74d165552794ec9615c67545566bec282d3fe0b5cc910e9cdb5" msg="setting up wasi"
+</code></pre>
+<h4 id="filtering-logs-by-pod-id-k3s"><a class="header" href="#filtering-logs-by-pod-id-k3s">Filtering Logs by Pod ID (k3s)</a></h4>
+<pre><code class="language-bash">grep 'pod="22a0daacfeabe74d"' /var/lib/rancher/k3s/agent/containerd/containerd.log
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="frequently-asked-questions"><a class="header" href="#frequently-asked-questions">Frequently Asked Questions</a></h1>
 <p>This page answers common questions about Runwasi.</p>
 <p>[TODO]</p>
