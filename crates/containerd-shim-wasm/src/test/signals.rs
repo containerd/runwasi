@@ -40,31 +40,27 @@ impl Engine for SomeEngine {
         "some-engine"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let name = ctx.entrypoint().func;
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?
-            .block_on(async move {
-                use tokio::time::sleep;
-                let signal = async {
-                    println!("{name}> waiting for signal!");
-                    let _ = tokio::signal::ctrl_c().await;
-                    println!("{name}> received signal, bye!");
-                };
-                let task = async {
-                    sleep(Duration::from_millis(10)).await;
-                    // use writeln to avoid output capturing from the
-                    // testing framework
-                    let _ = writeln!(stderr(), "{name}> ready");
-                    pending().await
-                };
-                tokio::select! {
-                    _ = signal => {}
-                    _ = task => {}
-                };
-                Ok(0)
-            })
+
+        use tokio::time::sleep;
+        let signal = async {
+            println!("{name}> waiting for signal!");
+            let _ = tokio::signal::ctrl_c().await;
+            println!("{name}> received signal, bye!");
+        };
+        let task = async {
+            sleep(Duration::from_millis(10)).await;
+            // use writeln to avoid output capturing from the
+            // testing framework
+            let _ = writeln!(stderr(), "{name}> ready");
+            pending().await
+        };
+        tokio::select! {
+            _ = signal => {}
+            _ = task => {}
+        };
+        Ok(0)
     }
 }
 

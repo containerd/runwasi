@@ -24,7 +24,7 @@ impl Engine for MyEngine {
         "my-engine"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         // Implement your Wasm runtime logic here
         Ok(0)
     }

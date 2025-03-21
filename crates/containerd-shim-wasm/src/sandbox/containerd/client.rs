@@ -412,7 +412,7 @@ impl Client {
         log::info!("found manifest with WASM OCI image format");
         // This label is unique across runtimes and version of the shim running
         // a precompiled component/module will not work across different runtimes or versions
-        let (can_precompile, precompile_id) = match engine.can_precompile() {
+        let (can_precompile, precompile_id) = match engine.can_precompile().await {
             Some(precompile_id) => (true, precompile_label(T::name(), &precompile_id)),
             None => (false, "".to_string()),
         };
@@ -445,7 +445,7 @@ impl Client {
 
         if needs_precompile {
             log::info!("precompiling layers for image: {}", container.image);
-            let compiled_layers = match engine.precompile(&layers) {
+            let compiled_layers = match engine.precompile(&layers).await {
                 Ok(compiled_layers) => {
                     if compiled_layers.len() != layers.len() {
                         return Err(ShimError::FailedPrecondition(
@@ -749,7 +749,7 @@ mod tests {
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
         let expected_id = precompile_label(
             FakePrecomiplerEngine::name(),
-            engine.can_precompile().unwrap().as_str(),
+            engine.can_precompile().await.unwrap().as_str(),
         );
 
         let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
@@ -899,7 +899,7 @@ mod tests {
 
         let expected_id = precompile_label(
             FakePrecomiplerEngine::name(),
-            engine.can_precompile().unwrap().as_str(),
+            engine.can_precompile().await.unwrap().as_str(),
         );
 
         let (layers, _) = client.load_modules(container_name, &engine).await.unwrap();
@@ -1009,11 +1009,14 @@ mod tests {
             "fake"
         }
 
-        fn run_wasi(&self, _ctx: &impl RuntimeContext) -> std::result::Result<i32, anyhow::Error> {
+        async fn run_wasi(
+            &self,
+            _ctx: &impl RuntimeContext,
+        ) -> std::result::Result<i32, anyhow::Error> {
             panic!("not implemented")
         }
 
-        fn can_precompile(&self) -> Option<String> {
+        async fn can_precompile(&self) -> Option<String> {
             self.precompile_id.clone()
         }
 
@@ -1021,7 +1024,10 @@ mod tests {
             &[WASM_LAYER_MEDIA_TYPE, "textfile"]
         }
 
-        fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>, anyhow::Error> {
+        async fn precompile(
+            &self,
+            layers: &[WasmLayer],
+        ) -> Result<Vec<Option<Vec<u8>>>, anyhow::Error> {
             self.layers_compiled_per_call.store(0, Ordering::SeqCst);
             self.precompile_called.fetch_add(1, Ordering::SeqCst);
             let mut compiled_layers = vec![];

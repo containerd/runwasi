@@ -34,6 +34,7 @@ tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
 serde_bytes = "0.11"
 tokio-async-drop = "0.1"
+trait-variant = "0.1"
 
 # tracing
 # note: it's important to keep the version of tracing in sync with containerd-shimkit's tracing-subscriber

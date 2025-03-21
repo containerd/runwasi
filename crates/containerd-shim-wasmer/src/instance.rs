@@ -15,7 +15,7 @@ impl Engine for WasmerEngine {
         "wasmer"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx
             .envs()
@@ -40,11 +40,6 @@ impl Engine for WasmerEngine {
         let wasm_bytes = source.as_bytes()?;
         let module = Module::from_binary(&store, &wasm_bytes)?;
 
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
-        let _guard = runtime.enter();
-
         containerd_shim_wasm::info!(ctx, "Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
         let fs = FileSystem::new(Handle::current(), "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
@@ -57,11 +52,13 @@ impl Engine for WasmerEngine {
         containerd_shim_wasm::info!(ctx, "Running {func:?}");
         let start = instance.exports.get_function(&func)?;
         wasi_env.data(&store).thread.set_status_running();
-        let status = start.call(&mut store, &[]).map(|_| 0).or_else(|err| {
-            match err.downcast_ref::<WasiError>() {
-                Some(WasiError::Exit(code)) => Ok(code.raw()),
-                _ => Err(err),
-            }
+        let status = tokio::task::block_in_place(|| {
+            start.call(&mut store, &[]).map(|_| 0).or_else(|err| {
+                match err.downcast_ref::<WasiError>() {
+                    Some(WasiError::Exit(code)) => Ok(code.raw()),
+                    _ => Err(err),
+                }
+            })
         })?;
 
         Ok(status)
