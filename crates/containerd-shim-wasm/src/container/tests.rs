@@ -10,10 +10,10 @@ impl Engine for EngineFailingValidation {
     fn name() -> &'static str {
         "wasi_instance"
     }
-    fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
+    async fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
         bail!("can't handle");
     }
-    fn run_wasi(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<i32> {
+    async fn run_wasi(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<i32> {
         Ok(0)
     }
 }

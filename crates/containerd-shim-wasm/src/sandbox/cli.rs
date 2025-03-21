@@ -52,7 +52,7 @@
 //!         "my-engine"
 //!     }
 //!
-//!     fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+//!     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
 //!         Ok(0)
 //!     }
 //! }

@@ -10,7 +10,7 @@ use crate::sandbox::oci::WasmLayer;
 
 /// The `RuntimeContext` trait provides access to the runtime context that includes
 /// the arguments, environment variables, and entrypoint for the container.
-pub trait RuntimeContext {
+pub trait RuntimeContext: Send + Sync {
     /// Returns arguments from the runtime spec process field, including the
     /// path to the entrypoint executable.
     fn args(&self) -> &[String];
