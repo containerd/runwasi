@@ -935,6 +935,7 @@ dependencies = [
  "tokio-async-drop",
  "tokio-stream",
  "tracing",
+ "trait-variant",
  "ttrpc-codegen",
  "wasmparser 0.227.1",
  "wat",

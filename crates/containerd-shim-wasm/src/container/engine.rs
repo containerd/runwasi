@@ -10,12 +10,13 @@ use crate::sandbox::oci::WasmLayer;
 /// The `Engine` trait provides a simplified API for running WebAssembly containers.
 ///
 /// It handles the lifecycle of the container and OCI spec details for you.
+#[trait_variant::make(Send)]
 pub trait Engine: Clone + Send + Sync + 'static {
     /// The name to use for this engine
     fn name() -> &'static str;
 
     /// Run a WebAssembly container
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32>;
+    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32>;
 
     /// Check that the runtime can run the container.
     /// This checks runs after the container creation and before the container starts.
@@ -23,27 +24,30 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// * a OCI image with wasm layers
     /// * a file with the `wasm` filetype header
     /// * a parsable `wat` file.
-    fn can_handle(&self, ctx: &impl RuntimeContext) -> Result<()> {
-        let source = ctx.entrypoint().source;
+    async fn can_handle(&self, ctx: &impl RuntimeContext) -> Result<()> {
+        // this async block is required to make the rewrite of trait_variant happy
+        async move {
+            let source = ctx.entrypoint().source;
 
-        let path = match source {
-            Source::File(path) => path,
-            Source::Oci(_) => return Ok(()),
-        };
+            let path = match source {
+                Source::File(path) => path,
+                Source::Oci(_) => return Ok(()),
+            };
 
-        path.resolve_in_path_or_cwd()
-            .next()
-            .context("module not found")?;
+            path.resolve_in_path_or_cwd()
+                .next()
+                .context("module not found")?;
 
-        let mut buffer = [0; 4];
-        File::open(&path)?.read_exact(&mut buffer)?;
+            let mut buffer = [0; 4];
+            File::open(&path)?.read_exact(&mut buffer)?;
 
-        if buffer.as_slice() != b"\0asm" {
-            // Check if this is a `.wat` file
-            wat::parse_file(&path)?;
+            if buffer.as_slice() != b"\0asm" {
+                // Check if this is a `.wat` file
+                wat::parse_file(&path)?;
+            }
+
+            Ok(())
         }
-
-        Ok(())
     }
 
     /// Return the supported OCI layer types
@@ -65,8 +69,11 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// The cached, precompiled layers will be reloaded on subsequent runs.
     /// The runtime is expected to return the same number of layers passed in, if the layer cannot be precompiled it should return `None` for that layer.
     /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
-    fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
-        bail!("precompile not supported");
+    async fn precompile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+        // this async block is required to make the rewrite of trait_variant happy
+        async move {
+            bail!("precompile not supported");
+        }
     }
 
     /// Can_precompile lets the shim know if the runtime supports precompilation.
@@ -80,7 +87,8 @@ pub trait Engine: Clone + Send + Sync + 'static {
     /// "runwasi.io/precompiled/<Engine.name()>/<unique_string>"
     ///
     /// When it returns None the runtime will not be asked to precompile the module.  This is the default value.
-    fn can_precompile(&self) -> Option<String> {
-        None
+    async fn can_precompile(&self) -> Option<String> {
+        // this async block is required to make the rewrite of trait_variant happy
+        async move { None }
     }
 }

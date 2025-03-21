@@ -137,7 +137,7 @@ impl Engine for WasmtimeEngine {
         "wasmtime"
     }
 
-    fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
+    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         containerd_shim_wasm::info!(ctx, "setting up wasi");
         let Entrypoint {
             source,
@@ -149,10 +149,11 @@ impl Engine for WasmtimeEngine {
         let wasm_bytes = &source.as_bytes()?;
         WasmtimeEngineImpl::default()
             .execute(ctx, wasm_bytes, func)
+            .await
             .into_error_code()
     }
 
-    fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+    async fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
@@ -179,7 +180,7 @@ impl Engine for WasmtimeEngine {
         Ok(compiled_layers)
     }
 
-    fn can_precompile(&self) -> Option<String> {
+    async fn can_precompile(&self) -> Option<String> {
         let mut hasher = DefaultHasher::new();
         PRECOMPILER
             .precompile_compatibility_hash()
@@ -193,7 +194,7 @@ impl WasmtimeEngineImpl {
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized
     /// to execute a wasm module that uses wasi_preview1.
-    fn execute_module(
+    async fn execute_module(
         &self,
         ctx: &impl RuntimeContext,
         module: Module,
@@ -210,23 +211,21 @@ impl WasmtimeEngineImpl {
             wasi_ctx
         })?;
 
-        wasmtime_wasi::runtime::in_tokio(async move {
-            containerd_shim_wasm::info!(ctx, "instantiating instance");
-            let instance: wasmtime::Instance =
-                module_linker.instantiate_async(&mut store, &module).await?;
+        containerd_shim_wasm::info!(ctx, "instantiating instance");
+        let instance: wasmtime::Instance =
+            module_linker.instantiate_async(&mut store, &module).await?;
 
-            containerd_shim_wasm::debug!(ctx, "getting start function");
-            let start_func = instance
-                .get_func(&mut store, func)
-                .context("module does not have a WASI start function")?;
+        containerd_shim_wasm::debug!(ctx, "getting start function");
+        let start_func = instance
+            .get_func(&mut store, func)
+            .context("module does not have a WASI start function")?;
 
-            containerd_shim_wasm::info!(ctx, "running start function {func:?}");
+        containerd_shim_wasm::info!(ctx, "running start function {func:?}");
 
-            start_func
-                .call_async(&mut store, &[], &mut [])
-                .await
-                .into_error_code()
-        })
+        start_func
+            .call_async(&mut store, &[], &mut [])
+            .await
+            .into_error_code()
     }
 
     async fn execute_component_async(
@@ -303,24 +302,21 @@ impl WasmtimeEngineImpl {
     ///
     /// This function adds wasi_preview2 to the linker and can be utilized
     /// to execute a wasm component that uses wasi_preview2.
-    fn execute_component(
+    async fn execute_component(
         &self,
         ctx: &impl RuntimeContext,
         component: Component,
         func: String,
     ) -> Result<i32> {
         containerd_shim_wasm::debug!(ctx, "loading wasm component");
-
-        wasmtime_wasi::runtime::in_tokio(async move {
-            tokio::select! {
-                status = self.execute_component_async(ctx, component, func) => {
-                    status
-                }
-                status = self.handle_signals() => {
-                    status
-                }
+        tokio::select! {
+            status = self.execute_component_async(ctx, component, func) => {
+                status
             }
-        })
+            status = self.handle_signals() => {
+                status
+            }
+        }
     }
 
     async fn handle_signals(&self) -> Result<i32> {
@@ -339,27 +335,32 @@ impl WasmtimeEngineImpl {
         wait_for_signal().await
     }
 
-    fn execute(&self, ctx: &impl RuntimeContext, wasm_binary: &[u8], func: String) -> Result<i32> {
+    async fn execute(
+        &self,
+        ctx: &impl RuntimeContext,
+        wasm_binary: &[u8],
+        func: String,
+    ) -> Result<i32> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
                 containerd_shim_wasm::debug!(ctx, "loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
-                self.execute_module(ctx, module, &func)
+                self.execute_module(ctx, module, &func).await
             }
             Some(WasmBinaryType::Component) => {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
-                self.execute_component(ctx, component, func)
+                self.execute_component(ctx, component, func).await
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     containerd_shim_wasm::info!(ctx, "using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_module(ctx, module, &func)
+                    self.execute_module(ctx, module, &func).await
                 }
                 Some(Precompiled::Component) => {
                     containerd_shim_wasm::info!(ctx, "using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
-                    self.execute_component(ctx, component, func)
+                    self.execute_component(ctx, component, func).await
                 }
                 None => {
                     bail!("invalid precompiled module")

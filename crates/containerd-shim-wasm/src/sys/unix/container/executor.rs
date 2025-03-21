@@ -6,6 +6,7 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
+use containerd_shimkit::AmbientRuntime;
 use libcontainer::workload::default::DefaultExecutor;
 use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,
@@ -56,7 +57,7 @@ impl<E: Engine> LibcontainerExecutor for Executor<E> {
             InnerExecutor::Wasm => {
                 let ctx = self.ctx(spec);
                 log::info!("calling start function");
-                match self.engine.run_wasi(&ctx) {
+                match self.engine.run_wasi(&ctx).block_on() {
                     Ok(code) => std::process::exit(code),
                     Err(err) => {
                         log::info!("error running start function: {err}");
@@ -112,7 +113,7 @@ impl<E: Engine> Executor<E> {
                 Ok(_) => InnerExecutor::Linux,
                 Err(err) => {
                     log::debug!("error checking if linux container: {err}. Fallback to wasm container");
-                    match self.engine.can_handle(ctx) {
+                    match self.engine.can_handle(ctx).block_on() {
                         Ok(_) => InnerExecutor::Wasm,
                         Err(err) => {
                             // log an error and return
