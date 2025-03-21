@@ -119,5 +119,5 @@ sudo ctr run --rm --runtime=io.containerd.wasmedge.v1 ghcr.io/containerd/runwasi
 ## Next Steps
 
 - Explore running WebAssembly workloads on Kubernetes in the [Quickstart with Kubernetes](./quickstart.md) guide
-- Learn about the [Architecture](../user-guide/architecture.md) of Runwasi
+- Learn about the [Architecture](../developer/architecture.md) of Runwasi
 - Check out [Contributing](../CONTRIBUTING.md) to get involved with the project 

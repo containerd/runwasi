@@ -186,3 +186,18 @@ jobs:
     - uses: actions/checkout@v4
     - name: Spell Check Repo
       uses: crate-ci/typos@master
+
+  linkChecker:
+    name: link checker
+    permissions:
+      contents: read
+    if: github.repository == 'containerd/runwasi'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: lycheeverse/lychee-action@f613c4a64e50d792e0b31ec34bbcbba12263c6a6 # v2.3.0
+      with:
+        fail: false # don't fail the build on broken links
+        format: markdown
+        jobSummary: true
