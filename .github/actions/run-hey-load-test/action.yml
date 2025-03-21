@@ -55,6 +55,12 @@ runs:
     # 
     # The workaround is to use the `external-data-json-path` option to tell the action to not 
     # attempt to update the local `gh-pages` branch.
+    - name: Download previous benchmark data
+      if : ${{ github.event_name != 'schedule' }}
+      uses: actions/cache@v4
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark
     - name: Report Latency results
       if : ${{ github.event_name != 'schedule' }}
       uses: benchmark-action/github-action-benchmark@v1.20.4
