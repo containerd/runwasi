@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742603403613,
+  "lastUpdate": 1742603469048,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11649,6 +11649,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20451.0385,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8b5f744a8fd3b06fd2301310e0246dcef67fb922",
+          "message": "Merge pull request #900 from Mossaka/docs-troubleshooting\n\ndocs: Add troubleshooting guide for runwasi shims",
+          "timestamp": "2025-03-21T00:18:55Z",
+          "url": "https://github.com/containerd/runwasi/commit/8b5f744a8fd3b06fd2301310e0246dcef67fb922"
+        },
+        "date": 1742603467731,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19243.8195,
             "unit": "req/s"
           }
         ]
