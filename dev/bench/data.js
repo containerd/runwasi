@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742516883666,
+  "lastUpdate": 1742603403613,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9174,6 +9174,52 @@ window.BENCHMARK_DATA = {
             "value": 84579139,
             "range": "± 3911801",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8b5f744a8fd3b06fd2301310e0246dcef67fb922",
+          "message": "Merge pull request #900 from Mossaka/docs-troubleshooting\n\ndocs: Add troubleshooting guide for runwasi shims",
+          "timestamp": "2025-03-21T00:18:55Z",
+          "url": "https://github.com/containerd/runwasi/commit/8b5f744a8fd3b06fd2301310e0246dcef67fb922"
+        },
+        "date": 1742603401968,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15400,
+            "unit": "kB",
+            "extra": "shim: 12416 kB\nzygote: 2984 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66640,
+            "unit": "kB",
+            "extra": "shim: 54016 kB\nzygote: 12624 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 19332,
+            "unit": "kB",
+            "extra": "shim: 15872 kB\nzygote: 3460 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19772,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3516 kB"
           }
         ]
       }
