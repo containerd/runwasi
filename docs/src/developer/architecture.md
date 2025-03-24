@@ -4,7 +4,7 @@ This document provides an overview of the Runwasi architecture and how it integr
 
 ## High-Level Architecture
 
-Runwasi s designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:
+Runwasi is designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:
 
 ![A diagram of runwasi architecture](../assets/runwasi-architecture.png)
 
@@ -12,10 +12,10 @@ Runwasi s designed as a library that can be integrated with WebAssembly runtimes
 
 The Runwasi project is organized into several components:
 
-- **containerd-shimkit** - A lower level, opinionated library providing a API for building containerd shims. This serves as the lower layer for all shim implementations.
-- **containerd-shim-wasm** - A higher level library that is used by WebAssembly runtimes to create shims, built on top of `containerd-shimkit`. Most of the WebAssembly-specific shared code lives here.
+- **containerd-shim-wasm** - A higher level library that is used by WebAssembly runtimes to create shims. Most of the WebAssembly-specific shared code lives here.
 - **containerd-shim-wasm-test-modules** - Library with WebAssembly test modules used in the testing framework.
 - **containerd-shim-\<runtime>** - Shim reference implementation for selected runtimes (wasmtime, wasmedge, wasmer, wamr, etc.). These produce binaries that are the shims which containerd can communicate with.
+- **containerd-shimkit** - A lower level, opinionated library providing a API for building containerd shims. It serves as the building block of `containerd-shim-wasm`.
 - **oci-tar-builder** - Library and executable that helps build OCI tar files that follow the [`wasm-oci` spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 - **wasi-demo-app** - WebAssembly application that is used for demos and testing.
 
@@ -27,23 +27,20 @@ The Containerd "shim" is a daemon process that serves the [Task Service API](htt
 
 ### Runwasi Libraries
 
-The core of Runwasi consists of two main Rust libraries:
+The core of Runwasi is the `containerd-wasm-shim` library crate.
 
-#### Low-level: `containerd-shimkit`
+The `containerd-shim-wasm` crate provides a high-level API for building WebAssembly shims, mainly the `Engine` trait. The `Engine` trait has the following features:
 
-The `containerd-shimkit` crate provides a low-level API such as the `Instance` trait for implementing a shim. It supports both MacOS and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:
-
-- No precompilation out-of-the-box
-- Does not support for native Linux containers out-of-the-box
-- Requires manual handling of cgroup setup
-
-#### High-level: `containerd-shim-wasm`
-
-Built on top of containerd-shimkit, the `containerd-shim-wasm` crate provides a high-level API for building WebAssembly shims, mainly the `Engine` trait. The `Engine` trait has the following features:
-
-1. **Shim Implementation**: Because it is built on top of `containerd-shimkit`, it implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime.
+1. **Shim Implementation**: It implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime. This is done through the `containerd-shimkit`'s `Instance` trait (more on this trait below).
 2. **Wasm OCI Integration**: Transparent handling of the [wasm-oci spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 3. **Wasm-specific Features**: Support for Wasm module or component validation and precompilation.
+
+The `Engine` trait is build on top of the `containerd-shimkit`'s `Instance` trait. The `Instance` trait provides a low-level API for implementing containerd shims. It supports Linux, MacOS, and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:
+
+- It is *not* stable, and considered an implementation detail for `containerd-shim-wasm`
+- No precompilation out-of-the-box
+- Does not support for native containers out-of-the-box
+- Requires manual handling of cgroup setup
 
 ### Engine Types
 
