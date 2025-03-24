@@ -1,6 +1,6 @@
 pub mod instance;
 
-pub use instance::WasmerEngine;
+pub use instance::WasmerShim;
 
 #[cfg(unix)]
 #[cfg(test)]

@@ -21,12 +21,12 @@ use oci_spec::runtime::{
     get_default_namespaces,
 };
 
-use crate::container::{Engine, Instance};
+use crate::container::{Instance, Shim};
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
 pub const SIGKILL: u32 = 9;
 
-pub struct WasiTestBuilder<WasiEngine: Engine + Default> {
+pub struct WasiTestBuilder<WasiEngine: Shim + Default> {
     container_name: String,
     start_fn: String,
     namespaces: Vec<LinuxNamespace>,
@@ -34,12 +34,12 @@ pub struct WasiTestBuilder<WasiEngine: Engine + Default> {
     _phantom: PhantomData<WasiEngine>,
 }
 
-pub struct WasiTest<WasiEngine: Engine + Default> {
+pub struct WasiTest<WasiEngine: Shim + Default> {
     instance: Instance<WasiEngine>,
     tempdir: tempfile::TempDir,
 }
 
-impl<WasiEngine: Engine + Default> WasiTestBuilder<WasiEngine> {
+impl<WasiEngine: Shim + Default> WasiTestBuilder<WasiEngine> {
     pub fn new() -> Result<Self> {
         containerd_shimkit::zygote::Zygote::init();
 
@@ -223,7 +223,7 @@ impl<WasiEngine: Engine + Default> WasiTestBuilder<WasiEngine> {
     }
 }
 
-impl<WasiEngine: Engine + Default> WasiTest<WasiEngine> {
+impl<WasiEngine: Shim + Default> WasiTest<WasiEngine> {
     pub fn builder() -> Result<WasiTestBuilder<WasiEngine>> {
         WasiTestBuilder::new()
     }

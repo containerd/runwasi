@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use chrono::{DateTime, Utc};
+use containerd_client::tonic::async_trait;
 use containerd_shimkit::sandbox::sync::WaitableCell;
 use containerd_shimkit::sandbox::{
     Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
@@ -9,26 +10,71 @@ use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
+use tokio::sync::OnceCell;
 
 use super::container::Container;
-use crate::container::Engine;
-use crate::sandbox::containerd;
+use crate::container::{Compiler, Shim};
+use crate::sandbox::{WasmLayer, containerd};
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
 
-pub struct Instance<E: Engine> {
+pub struct Instance<S: Shim> {
     exit_code: WaitableCell<(u32, DateTime<Utc>)>,
     container: Container,
     id: String,
-    _phantom: PhantomData<E>,
+    _phantom: PhantomData<S>,
 }
 
-impl<E: Engine + Default> SandboxInstance for Instance<E> {
+#[async_trait]
+trait OciClient {
+    async fn load_modules(&self, id: &str) -> Result<(Vec<WasmLayer>, Platform), SandboxError>;
+}
+
+struct EngineOciClient<P: Compiler> {
+    client: containerd::Client,
+    precompiler: Option<P>,
+    supported_layer_types: &'static [&'static str],
+    name: &'static str,
+}
+
+#[async_trait]
+impl<P: Compiler> OciClient for EngineOciClient<P> {
+    async fn load_modules(&self, id: &str) -> Result<(Vec<WasmLayer>, Platform), SandboxError> {
+        self.client
+            .load_modules(
+                id,
+                self.name,
+                self.supported_layer_types,
+                self.precompiler.as_ref(),
+            )
+            .await
+    }
+}
+
+static OCI_CLIENT: OnceCell<Box<dyn OciClient + Send + Sync + 'static>> = OnceCell::const_new();
+
+impl<S: Shim + Default> SandboxInstance for Instance<S> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
+        let oci_client = OCI_CLIENT
+            .get_or_try_init(|| async {
+                let client =
+                    containerd::Client::connect(&cfg.containerd_address, &cfg.namespace).await?;
+                let precompiler = S::compiler().await;
+                let supported_layer_types = S::supported_layers_types();
+                let name = S::name();
+                Result::<_, SandboxError>::Ok(Box::new(EngineOciClient {
+                    client,
+                    precompiler,
+                    supported_layer_types,
+                    name,
+                }) as _)
+            })
+            .await?;
+
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = containerd::Client::connect(&cfg.containerd_address, &cfg.namespace).await?
-            .load_modules(&id, &E::default())
+        let (modules, platform) = oci_client
+            .load_modules(&id)
             .await
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
@@ -37,11 +83,10 @@ impl<E: Engine + Default> SandboxInstance for Instance<E> {
 
         let container = Container::build(
             |(id, cfg, modules, platform)| {
-                let rootdir = cfg.determine_rootdir(E::name())?;
-                let engine = E::default();
+                let rootdir = cfg.determine_rootdir(S::name())?;
 
                 let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-                    .with_executor(Executor::new(engine, modules, platform, id))
+                    .with_executor(Executor::<S::Sandbox>::new(modules, platform, id))
                     .with_root_path(rootdir.clone())?;
 
                 if let Ok(f) = cfg.open_stdin() {

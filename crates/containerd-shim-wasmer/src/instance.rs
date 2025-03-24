@@ -1,20 +1,27 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
+use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
 
 #[derive(Clone, Default)]
-pub struct WasmerEngine {
+pub struct WasmerShim;
+
+#[derive(Default)]
+pub struct WasmerSandbox {
     engine: wasmer::Cranelift,
 }
 
-impl Engine for WasmerEngine {
+impl Shim for WasmerShim {
     fn name() -> &'static str {
         "wasmer"
     }
 
+    type Sandbox = WasmerSandbox;
+}
+
+impl Sandbox for WasmerSandbox {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx

@@ -1,21 +1,30 @@
 use anyhow::bail;
 
-use crate::container::{Engine, RuntimeContext};
+use super::engine::Sandbox;
+use crate::container::{RuntimeContext, Shim};
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
 struct EngineFailingValidation;
 
-impl Engine for EngineFailingValidation {
-    fn name() -> &'static str {
-        "wasi_instance"
-    }
+#[derive(Default)]
+struct ContainerFailingValidation;
+
+impl Sandbox for ContainerFailingValidation {
     async fn can_handle(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<()> {
         bail!("can't handle");
     }
     async fn run_wasi(&self, _ctx: &impl RuntimeContext) -> anyhow::Result<i32> {
         Ok(0)
     }
+}
+
+impl Shim for EngineFailingValidation {
+    fn name() -> &'static str {
+        "wasi_instance"
+    }
+
+    type Sandbox = ContainerFailingValidation;
 }
 
 #[test]

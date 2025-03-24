@@ -1,39 +1,37 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
+use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
 use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInst;
 use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
 use wamr_rust_sdk::wasi_context::WasiCtxBuilder;
 
-pub struct WamrEngine {
+#[derive(Default, Clone)]
+pub struct WamrShim;
+
+pub struct WamrSandbox {
     runtime: Runtime,
 }
 
-unsafe impl Send for WamrEngine {}
-unsafe impl Sync for WamrEngine {}
+unsafe impl Send for WamrSandbox {}
+unsafe impl Sync for WamrSandbox {}
 
-// TODO: wasmr_rust_sdk::runtime::Runtime should implement Clone
-
-impl Default for WamrEngine {
+impl Default for WamrSandbox {
     fn default() -> Self {
         let runtime = Runtime::new().unwrap();
         Self { runtime }
     }
 }
 
-impl Clone for WamrEngine {
-    fn clone(&self) -> Self {
-        let runtime = Runtime::new().unwrap();
-        Self { runtime }
-    }
-}
+impl Shim for WamrShim {
+    type Sandbox = WamrSandbox;
 
-impl Engine for WamrEngine {
     fn name() -> &'static str {
         "wamr"
     }
+}
 
+impl Sandbox for WamrSandbox {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx.envs();

@@ -30,17 +30,24 @@ use anyhow::{Result, bail};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
 use tokio::time::sleep as async_sleep;
 
-use crate::container::{Engine, RuntimeContext};
+use crate::container::{RuntimeContext, Sandbox, Shim};
 use crate::testing::WasiTest;
 
 #[derive(Clone, Default)]
 pub struct SomeEngine;
 
-impl Engine for SomeEngine {
+#[derive(Default)]
+pub struct SomeContainer;
+
+impl Shim for SomeEngine {
     fn name() -> &'static str {
         "some-engine"
     }
 
+    type Sandbox = SomeContainer;
+}
+
+impl Sandbox for SomeContainer {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let name = ctx.entrypoint().func;
         let signal = async {

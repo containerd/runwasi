@@ -1,9 +1,10 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
-use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext, WasmBinaryType};
+use containerd_shim_wasm::container::{
+    Compiler, Entrypoint, RuntimeContext, Sandbox, Shim, WasmBinaryType,
+};
 use containerd_shim_wasm::sandbox::WasmLayer;
 use tokio_util::sync::CancellationToken;
 use wasi_preview1::WasiP1Ctx;
@@ -49,28 +50,17 @@ impl<'a> ComponentTarget<'a> {
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct WasmtimeEngine;
+#[derive(Clone, Default)]
+pub struct WasmtimeShim;
 
-static PRECOMPILER: LazyLock<wasmtime::Engine> = LazyLock::new(|| {
-    let mut config = wasmtime::Config::new();
+pub struct WasmtimeCompiler(wasmtime::Engine);
 
-    // Disable Wasmtime parallel compilation for the tests
-    // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-    config.parallel_compilation(!cfg!(test));
-    config.wasm_component_model(true); // enable component linking
-    config.async_support(true); // must be on
-
-    wasmtime::Engine::new(&config).expect("failed to create wasmtime precompilation engine")
-});
-
-#[derive(Clone)]
-pub struct WasmtimeEngineImpl {
+pub struct WasmtimeSandbox {
     engine: wasmtime::Engine,
     cancel: CancellationToken,
 }
 
-impl Default for WasmtimeEngineImpl {
+impl Default for WasmtimeSandbox {
     fn default() -> Self {
         let mut config = wasmtime::Config::new();
 
@@ -132,13 +122,34 @@ impl WasiHttpView for WasiPreview2Ctx {
     }
 }
 
-impl Engine for WasmtimeEngine {
+impl Shim for WasmtimeShim {
     fn name() -> &'static str {
         "wasmtime"
     }
 
+    type Sandbox = WasmtimeSandbox;
+
+    #[allow(refining_impl_trait)]
+    async fn compiler() -> Option<WasmtimeCompiler> {
+        let mut config = wasmtime::Config::new();
+
+        // Disable Wasmtime parallel compilation for the tests
+        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
+        config.parallel_compilation(!cfg!(test));
+        config.wasm_component_model(true); // enable component linking
+        config.async_support(true); // must be on
+
+        let engine = wasmtime::Engine::new(&config)
+            .expect("failed to create wasmtime precompilation engine");
+
+        Some(WasmtimeCompiler(engine))
+    }
+}
+
+impl Sandbox for WasmtimeSandbox {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         containerd_shim_wasm::info!(ctx, "setting up wasi");
+
         let Entrypoint {
             source,
             func,
@@ -147,17 +158,21 @@ impl Engine for WasmtimeEngine {
         } = ctx.entrypoint();
 
         let wasm_bytes = &source.as_bytes()?;
-        WasmtimeEngineImpl::default()
-            .execute(ctx, wasm_bytes, func)
-            .await
-            .into_error_code()
+
+        self.execute(ctx, wasm_bytes, func).await.into_error_code()
+    }
+}
+
+impl Compiler for WasmtimeCompiler {
+    fn cache_key(&self) -> impl Hash {
+        self.0.precompile_compatibility_hash()
     }
 
-    async fn precompile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+    async fn compile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
-            if PRECOMPILER.detect_precompiled(&layer.layer).is_some() {
+            if self.0.detect_precompiled(&layer.layer).is_some() {
                 log::info!("Already precompiled");
                 compiled_layers.push(None);
                 continue;
@@ -166,8 +181,8 @@ impl Engine for WasmtimeEngine {
             use WasmBinaryType::*;
 
             let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(Module) => PRECOMPILER.precompile_module(&layer.layer)?,
-                Some(Component) => PRECOMPILER.precompile_component(&layer.layer)?,
+                Some(Module) => self.0.precompile_module(&layer.layer)?,
+                Some(Component) => self.0.precompile_component(&layer.layer)?,
                 None => {
                     log::warn!("Unknown WASM binary type");
                     continue;
@@ -179,17 +194,9 @@ impl Engine for WasmtimeEngine {
 
         Ok(compiled_layers)
     }
-
-    async fn can_precompile(&self) -> Option<String> {
-        let mut hasher = DefaultHasher::new();
-        PRECOMPILER
-            .precompile_compatibility_hash()
-            .hash(&mut hasher);
-        Some(hasher.finish().to_string())
-    }
 }
 
-impl WasmtimeEngineImpl {
+impl WasmtimeSandbox {
     /// Execute a wasm module.
     ///
     /// This function adds wasi_preview1 to the linker and can be utilized

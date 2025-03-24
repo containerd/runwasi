@@ -7,11 +7,11 @@ use containerd_shimkit::sandbox::{
     Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
 };
 
-use crate::container::Engine;
+use crate::container::Shim;
 
-pub struct Instance<E: Engine>(PhantomData<E>);
+pub struct Instance<S: Shim>(PhantomData<S>);
 
-impl<E: Engine> SandboxInstance for Instance<E> {
+impl<S: Shim> SandboxInstance for Instance<S> {
     async fn new(_id: String, _cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         todo!();
     }

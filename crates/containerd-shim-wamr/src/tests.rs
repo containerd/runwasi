@@ -4,7 +4,7 @@ use containerd_shim_wasm::testing::WasiTest;
 use containerd_shim_wasm::testing::modules::*;
 use serial_test::serial;
 
-use crate::WamrEngine as WasiEngine;
+use crate::WamrShim as WasiEngine;
 
 #[test]
 #[serial]

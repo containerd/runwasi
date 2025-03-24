@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use cfg_if::cfg_if;
-use containerd_shim_wasm::container::{Engine, Entrypoint, RuntimeContext};
+use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
 #[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::AsInstance;
 use wasmedge_sdk::config::{CommonConfigOptions, Config, ConfigBuilder};
@@ -16,12 +16,14 @@ use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::wasi::WasiModule;
 use wasmedge_sdk::{Module, Store, Vm};
 
-#[derive(Clone)]
-pub struct WasmEdgeEngine {
+#[derive(Default, Clone)]
+pub struct WasmEdgeShim;
+
+pub struct WasmEdgeSandbox {
     config: Config,
 }
 
-impl Default for WasmEdgeEngine {
+impl Default for WasmEdgeSandbox {
     fn default() -> Self {
         let config = ConfigBuilder::new(CommonConfigOptions::default())
             .build()
@@ -30,11 +32,15 @@ impl Default for WasmEdgeEngine {
     }
 }
 
-impl Engine for WasmEdgeEngine {
+impl Shim for WasmEdgeShim {
     fn name() -> &'static str {
         "wasmedge"
     }
 
+    type Sandbox = WasmEdgeSandbox;
+}
+
+impl Sandbox for WasmEdgeSandbox {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
         let args = ctx.args();
         let envs = ctx.envs();
