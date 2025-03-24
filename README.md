@@ -63,4 +63,4 @@ Check out these projects that build on top of runwasi:
 
 ## Contributing
 
-To begin contributing, please read our [Contributing Guide](https://runwasi.dev/developer/contributing.html).
+To begin contributing, please read our [Contributing Guide](https://runwasi.dev/CONTRIBUTING.html).
