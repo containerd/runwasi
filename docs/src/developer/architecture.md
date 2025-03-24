@@ -4,7 +4,7 @@ This document provides an overview of the Runwasi architecture and how it integr
 
 ## High-Level Architecture
 
-Runwasi's `containerd-shim-wasm` crate is designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:
+Runwasi is designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:
 
 ![A diagram of runwasi architecture](../assets/runwasi-architecture.png)
 
@@ -12,9 +12,10 @@ Runwasi's `containerd-shim-wasm` crate is designed as a library that can be inte
 
 The Runwasi project is organized into several components:
 
-- **containerd-shim-wasm** - Main library that is used by runtimes to create shims. Most of the shared code lives here.
+- **containerd-shim-wasm** - A higher level library that is used by WebAssembly runtimes to create shims. Most of the WebAssembly-specific shared code lives here.
 - **containerd-shim-wasm-test-modules** - Library with WebAssembly test modules used in the testing framework.
 - **containerd-shim-\<runtime>** - Shim reference implementation for selected runtimes (wasmtime, wasmedge, wasmer, wamr, etc.). These produce binaries that are the shims which containerd can communicate with.
+- **containerd-shimkit** - A lower level, opinionated library providing a API for building containerd shims. It serves as the building block of `containerd-shim-wasm`.
 - **oci-tar-builder** - Library and executable that helps build OCI tar files that follow the [`wasm-oci` spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 - **wasi-demo-app** - WebAssembly application that is used for demos and testing.
 
@@ -24,13 +25,22 @@ The Runwasi project is organized into several components:
 
 The Containerd "shim" is a daemon process that serves the [Task Service API](https://github.com/containerd/containerd/blob/v2.0.0/core/runtime/v2/README.md#tasks). It listens on a socket to receive ttrpc requests from Containerd, allowing for lifecycle management for containers (create, start, stop, etc.). 
 
-### Runwasi Library
+### Runwasi Libraries
 
-The core of Runwasi is a Rust library that provides:
+The core of Runwasi is the `containerd-wasm-shim` library crate.
 
-1. **Shim Implementation**: Implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime.
-2. **Host Integration Traits**: Provides traits that WebAssembly runtimes must implement to integrate with the Runwasi shim.
-3. **Wasm OCI Integration**: Transparent handling of the [wasm-oci spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
+The `containerd-shim-wasm` crate provides a high-level API for building WebAssembly shims, mainly the `Engine` trait. The `Engine` trait has the following features:
+
+1. **Shim Implementation**: It implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime. This is done through the `containerd-shimkit`'s `Instance` trait (more on this trait below).
+2. **Wasm OCI Integration**: Transparent handling of the [wasm-oci spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
+3. **Wasm-specific Features**: Support for Wasm module or component validation and precompilation.
+
+The `Engine` trait is built on top of the `containerd-shimkit`'s `Instance` trait. The `Instance` trait provides a low-level API for implementing containerd shims. It supports Linux, MacOS, and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:
+
+- It is *not* stable, and considered an implementation detail for `containerd-shim-wasm`
+- No precompilation out-of-the-box
+- Does not support for native containers out-of-the-box
+- Requires manual handling of cgroup setup
 
 ### Engine Types
 
@@ -45,7 +55,7 @@ Runwasi automatically detects the type of workload and decides which of the two 
 
 Runwasi provides two approaches for integrating WebAssembly runtimes, depending on how much control you need over the container lifecycle and the level of sandboxing you want to provide:
 
-1. **`container::Engine` Trait**: A simpler interface for implementing a WebAssembly runtime that runs single containers. This approach uses [Youki](https://github.com/youki-dev/youki)'s `libcontainer` crate to manage the container lifecycle (creating, starting, and deleting containers), and Youki handles container sandboxing for you. The `Engine` trait provides several methods you can implement:
+1. **`containerd_shim_wasm::Engine` Trait**: A simpler interface for implementing a WebAssembly runtime that runs single containers. This approach uses [Youki](https://github.com/youki-dev/youki)'s `libcontainer` crate to manage the container lifecycle (creating, starting, and deleting containers), and Youki handles container sandboxing for you. The `Engine` trait provides several methods you can implement:
 
    - `name()` - Returns the name of the engine (required)
    - `run_wasi()` - Executes the WebAssembly module (required)
@@ -54,7 +64,7 @@ Runwasi provides two approaches for integrating WebAssembly runtimes, depending 
    - `precompile()` - Allows precompilation of WebAssembly modules (optional)
    - `can_precompile()` - Indicates if the runtime supports precompilation (optional)
 
-2. **`sandbox::Instance` Trait**: A more flexible but complex interface for implementing a WebAssembly runtime that needs direct control over the container lifecycle. This approach gives you full control over how containers are created, started, and managed. The `Instance` trait requires implementing methods like:
+2. **`containerd_shimkit::sandbox::Instance` Trait**: A more flexible but complex interface for implementing a WebAssembly runtime that needs direct control over the container lifecycle. This approach gives you full control over how containers are created, started, and managed. The `Instance` trait requires implementing methods like:
 
    - `new()` - Creates a new instance
    - `start()` - Starts the instance
