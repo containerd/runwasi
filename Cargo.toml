@@ -31,7 +31,7 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.10.0
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 env_logger = "0.11"
-libc = "0.2.170"
+libc = "0.2.171"
 libcontainer = { version = "0.5", default-features = false }
 log = "0.4"
 nix = "0.29"
@@ -48,7 +48,7 @@ windows-sys = "0.59"
 serial_test = "3"
 tracing = "0.1"
 hyper = "1.6.0"
-tokio = { version = "1.44.0", default-features = false }
+tokio = { version = "1.44.1", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 cfg-if = "1.0"
 
