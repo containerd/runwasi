@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742775532319,
+  "lastUpdate": 1742775539174,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11935,6 +11935,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20844.0413,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "2c55c1a36b2e6d94d9e679507e05bf232d369b16",
+          "message": "Merge pull request #931 from jprendes/async-engine",
+          "timestamp": "2025-03-23T05:39:47Z",
+          "url": "https://github.com/containerd/runwasi/commit/2c55c1a36b2e6d94d9e679507e05bf232d369b16"
+        },
+        "date": 1742775538496,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19578.0489,
             "unit": "req/s"
           }
         ]
