@@ -35,7 +35,7 @@ The `containerd-shim-wasm` crate provides a high-level API for building WebAssem
 2. **Wasm OCI Integration**: Transparent handling of the [wasm-oci spec](https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/).
 3. **Wasm-specific Features**: Support for Wasm module or component validation and precompilation.
 
-The `Engine` trait is build on top of the `containerd-shimkit`'s `Instance` trait. The `Instance` trait provides a low-level API for implementing containerd shims. It supports Linux, MacOS, and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:
+The `Engine` trait is built on top of the `containerd-shimkit`'s `Instance` trait. The `Instance` trait provides a low-level API for implementing containerd shims. It supports Linux, MacOS, and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:
 
 - It is *not* stable, and considered an implementation detail for `containerd-shim-wasm`
 - No precompilation out-of-the-box
