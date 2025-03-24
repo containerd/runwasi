@@ -164,7 +164,7 @@
 <p>First read the containerd project’s <a href="https://github.com/containerd/project/blob/main/CONTRIBUTING.md">general guidelines around contribution</a>
 which apply to all containerd projects.</p>
 <h2 id="setting-up-your-local-environment"><a class="header" href="#setting-up-your-local-environment">Setting up your local environment</a></h2>
-<p>At a minimum, the Rust toolchain.  When using <code>rustup</code> the correct toolchain version is picked up from the <a href="./rust-toolchain.toml">rust-toolchain.toml</a> so you don’t need to worry about the version.</p>
+<p>At a minimum, the Rust toolchain.  When using <code>rustup</code> the correct toolchain version is picked up from the <a href="https://github.com/containerd/runwasi/blob/main/rust-toolchain.toml">rust-toolchain.toml</a> file so you don’t need to worry about the version.</p>
 <blockquote>
 <pre><code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 </code></pre>
@@ -176,12 +176,12 @@ which apply to all containerd projects.</p>
 <p>If on Windows use (use <a href="https://gitforwindows.org/">git BASH</a> terminal which has shell emulator)</p>
 <pre><code>./scripts/setup-windows.sh
 </code></pre>
-<p>If you choose to always build with <code>cross</code>, you don’t need any of these requirements above as they will be provided via the cross container.  This does require <code>docker</code> or <code>podman</code>. Refer to the <a href="https://github.com/cross-rs/cross/wiki/Getting-Started">cross getting started page</a> for more details.</p>
+<p>If you choose to always build with <a href="https://github.com/cross-rs/cross">cross</a>, you don’t need any of these requirements above as they will be provided via the cross container.  This does require <code>docker</code> or <code>podman</code>. Refer to the <a href="https://github.com/cross-rs/cross/wiki/Getting-Started">cross getting started page</a> for more details.</p>
 <p>Install cross:</p>
 <pre><code>scripts/setup-cross.sh
 </code></pre>
 <h2 id="project-structure-and-architecture"><a class="header" href="#project-structure-and-architecture">Project structure and architecture</a></h2>
-<p>For a detailed overview of the Runwasi structure and architecture, please refer to the <a href="./docs/src/user-guide/architecture.html">Architecture Documentation</a>.</p>
+<p>For a detailed overview of the Runwasi structure and architecture, please refer to the <a href="https://runwasi.dev/developer/architecture.html">Architecture Documentation</a>.</p>
 <p>The documentation covers:</p>
 <ul>
 <li>High-level structure of Runwasi</li>
@@ -196,12 +196,12 @@ which apply to all containerd projects.</p>
 <p>To build a shim for specific runtime (wasmtime, wasmer, wasmedge, wamr, etc):</p>
 <pre><code>make build-&lt;runtime&gt;
 </code></pre>
-<p>By default the runtimes will build for your current OS and architecture.  If you want to build for a specific OS and architecture you can specify <code>TARGET</code>, where it matches a target in <a href="./Cross.toml">Cross.toml</a>. If your target doesn’t match your host OS and architecture <a href="https://github.com/cross-rs/cross">Cross</a> will be used. As an example will build a static binary:</p>
+<p>By default the runtimes will build for your current OS and architecture.  If you want to build for a specific OS and architecture you can specify <code>TARGET</code>, where it matches a target in “Cross.toml”. If your target doesn’t match your host OS and architecture <a href="https://github.com/cross-rs/cross">Cross</a> will be used. As an example will build a static binary:</p>
 <pre><code>TARGET=x86_64-unknown-linux-musl make build
 </code></pre>
 <h2 id="running-tests"><a class="header" href="#running-tests">Running tests</a></h2>
 <h3 id="unit-tests"><a class="header" href="#unit-tests">Unit tests</a></h3>
-<p>Unit tests are run via <code>make test</code>  or for a specific runtime <code>make test-&lt;runtime&gt;</code>. On linux the tests will run using <code>sudo</code>. This is configured in the <code>runner</code> field in <a href="./.cargo/config.toml">.cargo/config.toml</a></p>
+<p>Unit tests are run via <code>make test</code>  or for a specific runtime <code>make test-&lt;runtime&gt;</code>. On linux the tests will run using <code>sudo</code>. This is configured in the <code>runner</code> field in “.cargo/config.toml”</p>
 <p>You should see some output like:</p>
 <pre><code class="language-terminal">make test
 running 3 tests
@@ -213,8 +213,8 @@ test instance::wasitest::test_wasi ... ok
 <pre><code>RUST_LOG=DEBUG cargo test --package containerd-shim-wasmtime --lib -- wasmtime_tests::test_hello_world --exact --nocapture
 </code></pre>
 <h3 id="end-to-end-tests"><a class="header" href="#end-to-end-tests">End to End tests</a></h3>
-<p>The e2e test run on <a href="https://k3s.io/">k3s</a> and <a href="https://kind.sigs.k8s.io/">kind</a>.  A test image is built using <a href="./crates/oci-tar-builder/">oci-tar-builder</a> and is loaded onto the clusters.  This test image is not pushed to an external registry so be sure to use the Makefile targets to build the image and load it on the cluster.</p>
-<p>The deployment file in <a href="./test/k8s/Dockerfile">test/k8s/Dockerfile</a> is run and verified that it deploys and runs successfully.  To execute the e2e tests in either kind or k3s:</p>
+<p>The e2e test run on <a href="https://k3s.io/">k3s</a> and <a href="https://kind.sigs.k8s.io/">kind</a>.  A test image is built using <a href="https://github.com/containerd/runwasi/tree/main/crates/oci-tar-builder">oci-tar-builder</a> and is loaded onto the clusters.  This test image is not pushed to an external registry so be sure to use the Makefile targets to build the image and load it on the cluster.</p>
+<p>The deployment file in <a href="https://github.com/containerd/runwasi/blob/main/test/k8s/Dockerfile">test/k8s/Dockerfile</a> is run and verified that it deploys and runs successfully.  To execute the e2e tests in either kind or k3s:</p>
 <pre><code>make test/k8s-&lt;runtime&gt; # runs using kind
 make test/k3s-&lt;runtime&gt;
 </code></pre>
@@ -222,7 +222,7 @@ make test/k3s-&lt;runtime&gt;
 <pre><code>make test/k8s-oci-&lt;runtime&gt;
 </code></pre>
 <h3 id="building-the-test-image"><a class="header" href="#building-the-test-image">Building the test image</a></h3>
-<p>This builds a <a href="crates/wasi-demo-app/">wasm application</a> and packages it in an OCI format:</p>
+<p>This builds a <a href="https://github.com/containerd/runwasi/tree/main/crates/wasi-demo-app/">wasm application</a> and packages it in an OCI format:</p>
 <pre><code>make test-image
 </code></pre>
 <h2 id="code-style"><a class="header" href="#code-style">Code style</a></h2>
@@ -235,7 +235,7 @@ make test/k3s-&lt;runtime&gt;
 <h2 id="adding-new-features"><a class="header" href="#adding-new-features">Adding new features</a></h2>
 <p>Most features will likely have most of the code in the <code>containerd-shim-wasm</code> project and a few runtime specific additions to each runtime shim.  The general expectation is that the feature should be added to all runtimes. We will evaluate on a case by case basis exceptions, where runtimes may not be able to support a given feature or requires changes that make it hard to review.  In those cases we it may make sense to implement in follow up PR’s for other runtimes.</p>
 <p>A tip for developing a new feature is to implement it and test it with one runtime you are familiar with then add it to all the runtimes.  This makes it easier to test and iterate before making changes across all the runtimes.</p>
-<p>Any changes made to the <code>containerd-shim-wasm</code> crate needs to be documented in the <a href="./crates/containerd-shim-wasm/CHANGELOG.html">CHANGELOG.md</a> file following the <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> format.</p>
+<p>Any changes made to the <code>containerd-shim-wasm</code> crate needs to be documented in the <a href="https://github.com/containerd/runwasi/blob/main/crates/containerd-shim-wasm/CHANGELOG.md">CHANGELOG.md</a> file following the <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> format.</p>
 <h2 id="adding-new-shims"><a class="header" href="#adding-new-shims">Adding new shims</a></h2>
 <p>We welcome new shims, though you can also host them in your own repositories as well and use the <code>coantainerd-shim-wasm</code> crate.  We recognize that the project is moving fast and having them in this repository can reduce the need for changes as well for discoverability.</p>
 <p>Please open an issue before submitting a PR for discussion to make sure it is a good fit.  As a general rule, we want shims to be adopting WASI spec (this is after all called run<em>wasi</em> :-)). In the future we may require shims in the repository to pass WASI compliance tests when the standards mature more. See https://github.com/containerd/runwasi/issues/338 for more discussion.</p>
