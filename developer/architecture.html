@@ -161,27 +161,36 @@
                         <h1 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h1>
 <p>This document provides an overview of the Runwasi architecture and how it integrates with the container ecosystem.</p>
 <h2 id="high-level-architecture"><a class="header" href="#high-level-architecture">High-Level Architecture</a></h2>
-<p>Runwasi’s <code>containerd-shim-wasm</code> crate is designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:</p>
+<p>Runwasi is designed as a library that can be integrated with WebAssembly runtimes to enable them to be used with containerd. The following diagram illustrates the high-level architecture:</p>
 <p><img src="../assets/runwasi-architecture.png" alt="A diagram of runwasi architecture" /></p>
 <h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
 <p>The Runwasi project is organized into several components:</p>
 <ul>
-<li><strong>containerd-shim-wasm</strong> - Main library that is used by runtimes to create shims. Most of the shared code lives here.</li>
+<li><strong>containerd-shim-wasm</strong> - A higher level library that is used by WebAssembly runtimes to create shims. Most of the WebAssembly-specific shared code lives here.</li>
 <li><strong>containerd-shim-wasm-test-modules</strong> - Library with WebAssembly test modules used in the testing framework.</li>
 <li><strong>containerd-shim-&lt;runtime&gt;</strong> - Shim reference implementation for selected runtimes (wasmtime, wasmedge, wasmer, wamr, etc.). These produce binaries that are the shims which containerd can communicate with.</li>
+<li><strong>containerd-shimkit</strong> - A lower level, opinionated library providing a API for building containerd shims. It serves as the building block of <code>containerd-shim-wasm</code>.</li>
 <li><strong>oci-tar-builder</strong> - Library and executable that helps build OCI tar files that follow the <a href="https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/"><code>wasm-oci</code> spec</a>.</li>
 <li><strong>wasi-demo-app</strong> - WebAssembly application that is used for demos and testing.</li>
 </ul>
 <h2 id="components"><a class="header" href="#components">Components</a></h2>
 <h3 id="containerd-shim"><a class="header" href="#containerd-shim">Containerd Shim</a></h3>
 <p>The Containerd “shim” is a daemon process that serves the <a href="https://github.com/containerd/containerd/blob/v2.0.0/core/runtime/v2/README.md#tasks">Task Service API</a>. It listens on a socket to receive ttrpc requests from Containerd, allowing for lifecycle management for containers (create, start, stop, etc.).</p>
-<h3 id="runwasi-library"><a class="header" href="#runwasi-library">Runwasi Library</a></h3>
-<p>The core of Runwasi is a Rust library that provides:</p>
+<h3 id="runwasi-libraries"><a class="header" href="#runwasi-libraries">Runwasi Libraries</a></h3>
+<p>The core of Runwasi is the <code>containerd-wasm-shim</code> library crate.</p>
+<p>The <code>containerd-shim-wasm</code> crate provides a high-level API for building WebAssembly shims, mainly the <code>Engine</code> trait. The <code>Engine</code> trait has the following features:</p>
 <ol>
-<li><strong>Shim Implementation</strong>: Implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime.</li>
-<li><strong>Host Integration Traits</strong>: Provides traits that WebAssembly runtimes must implement to integrate with the Runwasi shim.</li>
+<li><strong>Shim Implementation</strong>: It implements the containerd shim v2 API to facilitate communication between containerd and the WebAssembly runtime. This is done through the <code>containerd-shimkit</code>’s <code>Instance</code> trait (more on this trait below).</li>
 <li><strong>Wasm OCI Integration</strong>: Transparent handling of the <a href="https://tag-runtime.cncf.io/wgs/wasm/deliverables/wasm-oci-artifact/">wasm-oci spec</a>.</li>
+<li><strong>Wasm-specific Features</strong>: Support for Wasm module or component validation and precompilation.</li>
 </ol>
+<p>The <code>Engine</code> trait is built on top of the <code>containerd-shimkit</code>’s <code>Instance</code> trait. The <code>Instance</code> trait provides a low-level API for implementing containerd shims. It supports Linux, MacOS, and Windows and provides observability and tracing for monitoring shim operations. However, it also has limitations:</p>
+<ul>
+<li>It is <em>not</em> stable, and considered an implementation detail for <code>containerd-shim-wasm</code></li>
+<li>No precompilation out-of-the-box</li>
+<li>Does not support for native containers out-of-the-box</li>
+<li>Requires manual handling of cgroup setup</li>
+</ul>
 <h3 id="engine-types"><a class="header" href="#engine-types">Engine Types</a></h3>
 <p>Runwasi supports two types of engines:</p>
 <ol>
@@ -193,7 +202,7 @@
 <p>Runwasi provides two approaches for integrating WebAssembly runtimes, depending on how much control you need over the container lifecycle and the level of sandboxing you want to provide:</p>
 <ol>
 <li>
-<p><strong><code>container::Engine</code> Trait</strong>: A simpler interface for implementing a WebAssembly runtime that runs single containers. This approach uses <a href="https://github.com/youki-dev/youki">Youki</a>’s <code>libcontainer</code> crate to manage the container lifecycle (creating, starting, and deleting containers), and Youki handles container sandboxing for you. The <code>Engine</code> trait provides several methods you can implement:</p>
+<p><strong><code>containerd_shim_wasm::Engine</code> Trait</strong>: A simpler interface for implementing a WebAssembly runtime that runs single containers. This approach uses <a href="https://github.com/youki-dev/youki">Youki</a>’s <code>libcontainer</code> crate to manage the container lifecycle (creating, starting, and deleting containers), and Youki handles container sandboxing for you. The <code>Engine</code> trait provides several methods you can implement:</p>
 <ul>
 <li><code>name()</code> - Returns the name of the engine (required)</li>
 <li><code>run_wasi()</code> - Executes the WebAssembly module (required)</li>
@@ -204,7 +213,7 @@
 </ul>
 </li>
 <li>
-<p><strong><code>sandbox::Instance</code> Trait</strong>: A more flexible but complex interface for implementing a WebAssembly runtime that needs direct control over the container lifecycle. This approach gives you full control over how containers are created, started, and managed. The <code>Instance</code> trait requires implementing methods like:</p>
+<p><strong><code>containerd_shimkit::sandbox::Instance</code> Trait</strong>: A more flexible but complex interface for implementing a WebAssembly runtime that needs direct control over the container lifecycle. This approach gives you full control over how containers are created, started, and managed. The <code>Instance</code> trait requires implementing methods like:</p>
 <ul>
 <li><code>new()</code> - Creates a new instance</li>
 <li><code>start()</code> - Starts the instance</li>
