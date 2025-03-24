@@ -186,7 +186,7 @@ impl Client {
             let mut response_stream = match client.write(request_stream).await {
                 Ok(response_stream) => response_stream.into_inner(),
                 Err(e) if e.code() == Code::AlreadyExists => {
-                    log::info!("content already exists {}", expected.clone().to_string());
+                    log::info!("content already exists {expected}");
                     break 'digest expected;
                 }
                 Err(e) => return Err(ShimError::Containerd(e.to_string())),
