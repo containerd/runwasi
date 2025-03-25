@@ -17,7 +17,7 @@ Then, you may use the `containerd_shim_wasm::sandbox::cli::shim_main` function t
 
 ```rust
 fn main() {
-    shim_main::<WasmtimeInstance>("wasmtime", version!(), revision!(), "v1", None);
+    shim_main::<WasmtimeInstance>(version!(), revision!(), None);
 }
 ```
 

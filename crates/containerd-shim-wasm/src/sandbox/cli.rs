@@ -31,8 +31,8 @@
 //!
 //! The module provides two macros for version information:
 //!
-//! - [`version!()`] - Returns the crate version from Cargo.toml
-//! - [`revision!()`] - Returns the Git revision hash, if available
+//! - [`version!()`](crate::version) - Returns the crate version from Cargo.toml
+//! - [`revision!()`](crate::revision) - Returns the Git revision hash, if available
 //!
 //! ## Example usage:
 //!
@@ -63,11 +63,9 @@
 //! };
 //!
 //! shim_main::<MyEngine>(
-//!     "my-engine",
 //!     version!(),
 //!     revision!(),
-//!     "v1",
-//!     Some(config),
+//!     config,
 //! );
 //! ```
 //!
@@ -88,17 +86,14 @@ use crate::container::{Engine, Instance};
 ///
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
 pub fn shim_main<'a, E: Engine + Default>(
-    name: &str,
-    version: &str,
+    version: impl Into<Option<&'a str>> + std::fmt::Debug,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: Option<Config>,
+    config: impl Into<Option<Config>>,
 ) {
     containerd_shimkit::sandbox::cli::shim_main::<Instance<E>>(
-        name,
+        E::name(),
         version,
         revision,
-        shim_version,
-        config,
+        config.into(),
     )
 }
