@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
+use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim};
 use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInst;
 use wamr_rust_sdk::module::Module;

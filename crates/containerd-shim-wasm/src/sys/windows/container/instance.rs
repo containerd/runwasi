@@ -7,7 +7,7 @@ use containerd_shimkit::sandbox::{
     Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
 };
 
-use crate::container::Shim;
+use crate::shim::Shim;
 
 pub struct Instance<S: Shim>(PhantomData<S>);
 

@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use cfg_if::cfg_if;
-use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
+use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim};
 #[cfg(all(feature = "plugin", not(target_env = "musl")))]
 use wasmedge_sdk::AsInstance;
 use wasmedge_sdk::config::{CommonConfigOptions, Config, ConfigBuilder};

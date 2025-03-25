@@ -5,8 +5,8 @@ use std::io::Read;
 use anyhow::{Context, Result};
 
 use super::Source;
-use crate::container::{PathResolve, RuntimeContext};
 use crate::sandbox::oci::WasmLayer;
+use crate::shim::{PathResolve, RuntimeContext};
 
 /// The `Shim` trait provides a simplified API for running WebAssembly containers.
 ///

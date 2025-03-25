@@ -2,10 +2,10 @@ use std::hash::Hash;
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
-use containerd_shim_wasm::container::{
+use containerd_shim_wasm::sandbox::WasmLayer;
+use containerd_shim_wasm::shim::{
     Compiler, Entrypoint, RuntimeContext, Sandbox, Shim, WasmBinaryType,
 };
-use containerd_shim_wasm::sandbox::WasmLayer;
 use tokio_util::sync::CancellationToken;
 use wasi_preview1::WasiP1Ctx;
 use wasi_preview2::bindings::Command;

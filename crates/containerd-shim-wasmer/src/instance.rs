@@ -1,5 +1,5 @@
 use anyhow::Result;
-use containerd_shim_wasm::container::{Entrypoint, RuntimeContext, Sandbox, Shim};
+use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;

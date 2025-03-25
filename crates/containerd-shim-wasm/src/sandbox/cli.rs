@@ -39,7 +39,7 @@
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
 //!     revision, shim_main, version,
-//!     container::{Shim, Sandbox, RuntimeContext},
+//!     shim::{Shim, Sandbox, RuntimeContext},
 //!     Config,
 //! };
 //! use anyhow::Result;
@@ -84,7 +84,7 @@
 //!
 
 use crate::Config;
-use crate::container::{Instance, Shim};
+use crate::shim::{Instance, Shim};
 
 /// Main entry point for the shim.
 ///

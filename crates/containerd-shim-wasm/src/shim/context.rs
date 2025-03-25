@@ -5,8 +5,8 @@ use anyhow::{Context, bail};
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::path::PathResolve;
 use crate::sandbox::oci::WasmLayer;
+use crate::shim::path::PathResolve;
 
 /// The `RuntimeContext` trait provides access to the runtime context that includes
 /// the arguments, environment variables, and entrypoint for the container.

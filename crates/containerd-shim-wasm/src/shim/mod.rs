@@ -19,7 +19,7 @@
 //! ## Example Usage
 //!
 //! ```rust
-//! use containerd_shim_wasm::container::{Shim, Sandbox, RuntimeContext};
+//! use containerd_shim_wasm::shim::{Shim, Sandbox, RuntimeContext};
 //! use anyhow::Result;
 //!
 //! struct MyShim;
@@ -48,16 +48,17 @@
 //! ```
 
 mod context;
-mod engine;
 pub mod log;
 mod path;
+#[allow(clippy::module_inception)]
+mod shim;
 mod wasm;
 
 pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
-pub use engine::{Compiler, Sandbox, Shim};
 pub(crate) use instance::Instance;
 pub(crate) use path::PathResolve;
+pub use shim::{Compiler, Sandbox, Shim};
 pub use wasm::WasmBinaryType;
 
 use crate::sys::container::instance;
@@ -67,4 +68,4 @@ mod tests;
 
 // This is used in containerd::Client tests
 #[cfg(test)]
-pub(crate) use engine::NO_COMPILER;
+pub(crate) use shim::NO_COMPILER;

@@ -21,7 +21,7 @@ use oci_spec::runtime::{
     get_default_namespaces,
 };
 
-use crate::container::{Instance, Shim};
+use crate::shim::{Instance, Shim};
 
 pub const TEST_NAMESPACE: &str = "runwasi-test";
 pub const SIGKILL: u32 = 9;

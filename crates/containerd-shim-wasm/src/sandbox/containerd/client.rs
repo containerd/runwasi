@@ -27,8 +27,8 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
 
 use super::lease::LeaseGuard;
-use crate::container::Compiler;
 use crate::sandbox::oci::{self, WasmLayer};
+use crate::shim::Compiler;
 
 // Adds lease info to grpc header
 // https://github.com/containerd/containerd/blob/8459273f806e068e1a6bacfaf1355bbbad738d5e/docs/garbage-collection.md#using-grpc
@@ -631,7 +631,7 @@ mod tests {
     use oci_tar_builder::WASM_LAYER_MEDIA_TYPE;
 
     use super::*;
-    use crate::container::NO_COMPILER;
+    use crate::shim::NO_COMPILER;
     use crate::testing::oci_helpers::ImageContent;
     use crate::testing::{TEST_NAMESPACE, oci_helpers};
 

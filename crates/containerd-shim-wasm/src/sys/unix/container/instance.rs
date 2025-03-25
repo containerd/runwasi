@@ -13,8 +13,8 @@ use oci_spec::image::Platform;
 use tokio::sync::OnceCell;
 
 use super::container::Container;
-use crate::container::{Compiler, Shim};
 use crate::sandbox::{WasmLayer, containerd};
+use crate::shim::{Compiler, Shim};
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
 
