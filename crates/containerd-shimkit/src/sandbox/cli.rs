@@ -85,7 +85,6 @@
 //!     "my-engine",
 //!     version!(),
 //!     revision!(),
-//!     "v1",
 //!     Some(config),
 //! );
 //! ```
@@ -118,7 +117,7 @@ pub use crate::{revision, version};
 #[macro_export]
 macro_rules! version {
     () => {
-        env!("CARGO_PKG_VERSION")
+        option_env!("CARGO_PKG_VERSION")
     };
 }
 
@@ -195,9 +194,8 @@ fn init_zygote_and_logger(debug: bool, config: &Config) {
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
 pub fn shim_main<'a, I>(
     name: &str,
-    version: &str,
+    version: impl Into<Option<&'a str>> + std::fmt::Debug,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: Option<Config>,
 ) where
     I: 'static + Instance + Sync + Send,
@@ -212,7 +210,7 @@ pub fn shim_main<'a, I>(
     if flags.version {
         println!("{argv0}:");
         println!("  Runtime: {name}");
-        println!("  Version: {version}");
+        println!("  Version: {}", version.into().unwrap_or("<none>"));
         println!("  Revision: {}", revision.into().unwrap_or("<none>"));
         println!();
 
@@ -236,17 +234,17 @@ pub fn shim_main<'a, I>(
                 .init()
                 .expect("Failed to initialize OpenTelemetry.");
             tokio::task::block_in_place(move || {
-                shim_main_inner::<I>(name, shim_version, config);
+                shim_main_inner::<I>(name, config);
             });
         }
         .block_on();
     } else {
-        shim_main_inner::<I>(name, shim_version, config);
+        shim_main_inner::<I>(name, config);
     }
 
     #[cfg(not(feature = "opentelemetry"))]
     {
-        shim_main_inner::<I>(name, shim_version, config);
+        shim_main_inner::<I>(name, config);
     }
 
     #[cfg(target_os = "linux")]
@@ -254,11 +252,8 @@ pub fn shim_main<'a, I>(
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(
-    name: &str,
-    shim_version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: Option<Config>,
-) where
+fn shim_main_inner<'a, I>(name: &str, config: Option<Config>)
+where
     I: 'static + Instance + Sync + Send,
 {
     #[cfg(feature = "opentelemetry")]
@@ -277,9 +272,5 @@ fn shim_main_inner<'a, I>(
         }
     }
 
-    let shim_version = shim_version.into().unwrap_or("v1");
-    let lower_name = name.to_lowercase();
-    let shim_id = format!("io.containerd.{lower_name}.{shim_version}");
-
-    run::<Shim<I>>(&shim_id, config);
+    run::<Shim<I>>(name, config);
 }

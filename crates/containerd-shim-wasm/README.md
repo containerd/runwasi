@@ -31,10 +31,8 @@ impl Engine for MyEngine {
 }
 
 shim_main::<MyEngine>(
-    "my-engine",
     version!(),
     revision!(),
-    "v1",
     None,
 );
 ```

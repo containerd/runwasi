@@ -9,5 +9,5 @@ fn main() {
 
 #[cfg(not(target_os = "windows"))]
 fn main() {
-    shim_main::<WamrEngine>("wamr", version!(), revision!(), "v1", None);
+    shim_main::<WamrEngine>(version!(), revision!(), None);
 }
