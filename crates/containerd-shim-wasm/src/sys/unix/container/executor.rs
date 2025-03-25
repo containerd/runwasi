@@ -16,37 +16,37 @@ use libcontainer::workload::{
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::container::{PathResolve, RuntimeContext, Sandbox, Source, WasiContext};
+use crate::container::{PathResolve, RuntimeContext, Sandbox, Shim, Source, WasiContext};
 use crate::sandbox::oci::WasmLayer;
 
 #[derive(Clone)]
-enum ExecutorType<C: Sandbox> {
-    Wasm(C),
+enum ExecutorType<S: Shim> {
+    Wasm(S::Sandbox),
     Linux,
     CantHandle,
 }
 
-pub(crate) struct Executor<C: Sandbox>(Arc<InnerExecutor<C>>);
+pub(crate) struct Executor<S: Shim>(Arc<InnerExecutor<S>>);
 
-impl<C: Sandbox> Clone for Executor<C> {
+impl<S: Shim> Clone for Executor<S> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-pub(crate) struct InnerExecutor<C: Sandbox> {
-    ty: OnceCell<ExecutorType<C>>,
+pub(crate) struct InnerExecutor<S: Shim> {
+    ty: OnceCell<ExecutorType<S>>,
     wasm_layers: Vec<WasmLayer>,
     platform: Platform,
     id: String,
 }
 
-impl<C: Sandbox> LibcontainerExecutor for Executor<C> {
+impl<S: Shim> LibcontainerExecutor for Executor<S> {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Debug"))]
     fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError> {
         // We can handle linux container. We delegate wasm container to the engine.
         match self.ty(spec) {
-            ExecutorType::CantHandle => Err(ExecutorValidationError::CantHandle("WasmContainer")),
+            ExecutorType::CantHandle => Err(ExecutorValidationError::CantHandle(S::name())),
             _ => Ok(()),
         }
     }
@@ -56,7 +56,7 @@ impl<C: Sandbox> LibcontainerExecutor for Executor<C> {
         // If it looks like a linux container, run it as a linux container.
         // Otherwise, run it as a wasm container
         match self.ty(spec) {
-            ExecutorType::CantHandle => Err(LibcontainerExecutorError::CantHandle("WasmContainer")),
+            ExecutorType::CantHandle => Err(LibcontainerExecutorError::CantHandle(S::name())),
             ExecutorType::Linux => {
                 log::info!("executing linux container");
                 DefaultExecutor {}.exec(spec)
@@ -91,7 +91,7 @@ impl<C: Sandbox> LibcontainerExecutor for Executor<C> {
     }
 }
 
-impl<C: Sandbox> Executor<C> {
+impl<S: Shim> Executor<S> {
     pub fn new(wasm_layers: Vec<WasmLayer>, platform: Platform, id: String) -> Self {
         Self(Arc::new(InnerExecutor {
             ty: Default::default(),
@@ -112,14 +112,14 @@ impl<C: Sandbox> Executor<C> {
         }
     }
 
-    fn ty(&self, spec: &Spec) -> &ExecutorType<C> {
+    fn ty(&self, spec: &Spec) -> &ExecutorType<S> {
         self.0.ty.get_or_init(|| {
             let ctx = &self.ctx(spec);
             match is_linux_container(ctx) {
                 Ok(_) => ExecutorType::Linux,
                 Err(err) => {
                     log::debug!("error checking if linux container: {err}. Fallback to wasm container");
-                    let container = C::default();
+                    let container = S::Sandbox::default();
                     match container.can_handle(ctx).block_on() {
                         Ok(_) => ExecutorType::Wasm(container),
                         Err(err) => {
