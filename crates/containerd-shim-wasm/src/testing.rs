@@ -26,7 +26,7 @@ use crate::container::{Instance, Shim};
 pub const TEST_NAMESPACE: &str = "runwasi-test";
 pub const SIGKILL: u32 = 9;
 
-pub struct WasiTestBuilder<WasiEngine: Shim + Default> {
+pub struct WasiTestBuilder<WasiEngine: Shim> {
     container_name: String,
     start_fn: String,
     namespaces: Vec<LinuxNamespace>,
@@ -34,12 +34,12 @@ pub struct WasiTestBuilder<WasiEngine: Shim + Default> {
     _phantom: PhantomData<WasiEngine>,
 }
 
-pub struct WasiTest<WasiEngine: Shim + Default> {
+pub struct WasiTest<WasiEngine: Shim> {
     instance: Instance<WasiEngine>,
     tempdir: tempfile::TempDir,
 }
 
-impl<WasiEngine: Shim + Default> WasiTestBuilder<WasiEngine> {
+impl<WasiEngine: Shim> WasiTestBuilder<WasiEngine> {
     pub fn new() -> Result<Self> {
         containerd_shimkit::zygote::Zygote::init();
 
@@ -223,7 +223,7 @@ impl<WasiEngine: Shim + Default> WasiTestBuilder<WasiEngine> {
     }
 }
 
-impl<WasiEngine: Shim + Default> WasiTest<WasiEngine> {
+impl<WasiEngine: Shim> WasiTest<WasiEngine> {
     pub fn builder() -> Result<WasiTestBuilder<WasiEngine>> {
         WasiTestBuilder::new()
     }

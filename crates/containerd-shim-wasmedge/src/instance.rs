@@ -16,7 +16,6 @@ use wasmedge_sdk::plugin::PluginManager;
 use wasmedge_sdk::wasi::WasiModule;
 use wasmedge_sdk::{Module, Store, Vm};
 
-#[derive(Default, Clone)]
 pub struct WasmEdgeShim;
 
 pub struct WasmEdgeSandbox {

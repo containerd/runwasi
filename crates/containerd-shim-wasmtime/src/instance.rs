@@ -50,7 +50,6 @@ impl<'a> ComponentTarget<'a> {
     }
 }
 
-#[derive(Clone, Default)]
 pub struct WasmtimeShim;
 
 pub struct WasmtimeCompiler(wasmtime::Engine);

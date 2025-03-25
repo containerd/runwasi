@@ -22,7 +22,6 @@
 //! use containerd_shim_wasm::container::{Shim, Sandbox, RuntimeContext};
 //! use anyhow::Result;
 //!
-//! #[derive(Clone, Default)]
 //! struct MyShim;
 //!
 //! #[derive(Default)]

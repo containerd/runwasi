@@ -53,7 +53,7 @@ impl<P: Compiler> OciClient for EngineOciClient<P> {
 
 static OCI_CLIENT: OnceCell<Box<dyn OciClient + Send + Sync + 'static>> = OnceCell::const_new();
 
-impl<S: Shim + Default> SandboxInstance for Instance<S> {
+impl<S: Shim> SandboxInstance for Instance<S> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
     async fn new(id: String, cfg: &InstanceConfig) -> Result<Self, SandboxError> {
         let oci_client = OCI_CLIENT

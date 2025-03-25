@@ -33,7 +33,6 @@ use tokio::time::sleep as async_sleep;
 use crate::container::{RuntimeContext, Sandbox, Shim};
 use crate::testing::WasiTest;
 
-#[derive(Clone, Default)]
 pub struct SomeEngine;
 
 #[derive(Default)]

@@ -5,7 +5,6 @@ use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
 
-#[derive(Clone, Default)]
 pub struct WasmerShim;
 
 #[derive(Default)]

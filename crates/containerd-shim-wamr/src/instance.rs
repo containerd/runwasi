@@ -6,7 +6,6 @@ use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
 use wamr_rust_sdk::wasi_context::WasiCtxBuilder;
 
-#[derive(Default, Clone)]
 pub struct WamrShim;
 
 pub struct WamrSandbox {

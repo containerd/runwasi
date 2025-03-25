@@ -12,7 +12,7 @@ use crate::sandbox::oci::WasmLayer;
 ///
 /// It handles the lifecycle of the container and OCI spec details for you.
 #[trait_variant::make(Send)]
-pub trait Shim: Clone + Send + Sync + 'static {
+pub trait Shim: Sync + 'static {
     /// The name to use for this shim
     fn name() -> &'static str;
 
@@ -41,7 +41,7 @@ pub trait Shim: Clone + Send + Sync + 'static {
 }
 
 #[trait_variant::make(Send)]
-pub trait Compiler: Send + Sync + 'static {
+pub trait Compiler: Sync {
     /// `cache_key` returns a hasable type that will be used as a cache key for the precompiled module.
     ///
     /// the return value should at least include the version of the shim running but could include other information such as
@@ -62,7 +62,7 @@ pub trait Compiler: Send + Sync + 'static {
 }
 
 #[trait_variant::make(Send)]
-pub trait Sandbox: Default + Send + Sync + 'static {
+pub trait Sandbox: Default + 'static {
     /// Run a WebAssembly container
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32>;
 

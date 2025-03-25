@@ -4,7 +4,6 @@ use super::engine::Sandbox;
 use crate::container::{RuntimeContext, Shim};
 use crate::testing::WasiTest;
 
-#[derive(Clone, Default)]
 struct EngineFailingValidation;
 
 #[derive(Default)]

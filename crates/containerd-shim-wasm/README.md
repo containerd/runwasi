@@ -16,7 +16,6 @@ use containerd_shim_wasm::{
 };
 use anyhow::Result;
 
-#[derive(Clone, Default)]
 struct MyShim;
 
 #[derive(Default)]

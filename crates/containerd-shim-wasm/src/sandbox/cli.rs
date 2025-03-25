@@ -44,10 +44,9 @@
 //! };
 //! use anyhow::Result;
 //!
-//! #[derive(Clone, Default)]
 //! struct MyShim;
 //!
-//! #[derive(Clone, Default)]
+//! #[derive(Default)]
 //! struct MySandbox;
 //!
 //! impl Shim for MyShim {
@@ -92,7 +91,7 @@ use crate::container::{Instance, Shim};
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
 ///
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
-pub fn shim_main<'a, S: Shim + Default>(
+pub fn shim_main<'a, S: Shim>(
     version: impl Into<Option<&'a str>> + std::fmt::Debug,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: impl Into<Option<Config>>,
