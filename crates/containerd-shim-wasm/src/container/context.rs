@@ -33,7 +33,7 @@ pub trait RuntimeContext: Send + Sync {
     fn entrypoint(&self) -> Entrypoint;
 
     /// Returns the platform for the container using the struct defined on the OCI spec definition
-    /// https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md
+    /// <https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md>
     fn platform(&self) -> &Platform;
 
     /// Returns the container id for the running container

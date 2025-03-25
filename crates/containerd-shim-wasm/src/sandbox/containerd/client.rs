@@ -1,6 +1,7 @@
 #![cfg(unix)]
 
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::{DefaultHasher, Hash, Hasher as _};
 use std::path::Path;
 
@@ -350,7 +351,7 @@ impl Client {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "Debug"))]
-    async fn get_container(&self, container_name: impl AsRef<str>) -> Result<Container> {
+    async fn get_container(&self, container_name: impl AsRef<str> + Debug) -> Result<Container> {
         let container_name = container_name.as_ref();
         let id = container_name.to_string();
         let req = GetContainerRequest { id };
@@ -386,12 +387,12 @@ impl Client {
     // and possibly other configuration layers.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip(engine), level = "Debug")
+        tracing::instrument(skip(compiler), level = "Debug")
     )]
     pub async fn load_modules(
         &self,
-        containerd_id: impl AsRef<str>,
-        engine_name: impl AsRef<str>,
+        containerd_id: impl AsRef<str> + Debug,
+        engine_name: impl AsRef<str> + Debug,
         supported_layer_types: &[&str],
         compiler: Option<&impl Compiler>,
     ) -> Result<(Vec<oci::WasmLayer>, Platform)> {

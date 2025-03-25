@@ -18,7 +18,7 @@ use crate::sandbox::sync::WaitableCell;
 
 /// Shim implements the [containerd_shim::Shim] trait using `Local<T>` as the task service.
 ///
-/// It can be used as [containerd_shim::synchronous::run<Shim<I>>()] to start the shim.
+/// It can be used as [`containerd_shim::synchronous::run<Shim<I>>()`] to start the shim.
 pub struct Shim<I: Instance + Sync + Send> {
     namespace: String,
     containerd_address: String,

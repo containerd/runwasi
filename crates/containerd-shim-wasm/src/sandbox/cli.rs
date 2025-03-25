@@ -39,19 +39,26 @@
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
 //!     revision, shim_main, version,
-//!     container::{Engine, RuntimeContext},
+//!     container::{Shim, Sandbox, RuntimeContext},
 //!     Config,
 //! };
 //! use anyhow::Result;
 //!
 //! #[derive(Clone, Default)]
-//! struct MyEngine;
+//! struct MyShim;
 //!
-//! impl Engine for MyEngine {
+//! #[derive(Clone, Default)]
+//! struct MySandbox;
+//!
+//! impl Shim for MyShim {
+//!     type Sandbox = MySandbox;
+//!
 //!     fn name() -> &'static str {
-//!         "my-engine"
+//!         "my-shim"
 //!     }
+//! }
 //!
+//! impl Sandbox for MySandbox {
 //!     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
 //!         Ok(0)
 //!     }
@@ -62,7 +69,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! shim_main::<MyEngine>(
+//! shim_main::<MyShim>(
 //!     version!(),
 //!     revision!(),
 //!     config,

@@ -51,8 +51,6 @@
 //!     }
 //! }
 //! ```
-//!
-//! For simpler use cases, consider using the [`crate::container`] module instead.
 
 pub mod cli;
 pub mod error;

@@ -211,7 +211,7 @@ where
     }
 }
 
-/// MetadataExtractor is a wrapper around HashMap<String, Vec<String>> which is the type
+/// MetadataExtractor is a wrapper around `HashMap<String, Vec<String>>` which is the type
 /// as TtrpcContext.meatdata. It implements the Extractor trait from opentelemetry.
 struct MetadataExtractor<'a>(pub &'a HashMap<String, Vec<String>>);
 

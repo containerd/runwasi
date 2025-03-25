@@ -12,7 +12,7 @@
 //!
 //! The shim can be configured using the [`Config`] struct:
 //!
-//! ```rust, no_run
+//! ```rust,no_run
 //! use containerd_shimkit::Config;
 //!
 //! let config = Config {
@@ -36,7 +36,7 @@
 //!
 //! ## Example usage:
 //!
-//! ```rust, no_run
+//! ```rust,no_run
 //! use containerd_shimkit::{
 //!     sandbox::{Instance, InstanceConfig, Result},
 //!     sandbox::cli::{revision, shim_main, version},

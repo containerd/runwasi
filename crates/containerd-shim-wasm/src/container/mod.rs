@@ -12,7 +12,8 @@
 //!
 //! ## Key Components
 //!
-//! - [`Engine`]: The core trait for implementing Wasm runtimes
+//! - [`Shim`]: The trait for implementing the shim entrypoint
+//! - [`Sandbox`]: The core trait for implementing Wasm runtimes
 //! - [`RuntimeContext`]: The context for running WASI modules
 //!
 //! ## Example Usage
