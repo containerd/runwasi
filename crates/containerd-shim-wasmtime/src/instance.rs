@@ -4,8 +4,9 @@ use std::sync::LazyLock;
 use anyhow::{Context, Result, bail};
 use containerd_shim_wasm::sandbox::WasmLayer;
 use containerd_shim_wasm::shim::{
-    Compiler, Entrypoint, RuntimeContext, Sandbox, Shim, WasmBinaryType,
+    Compiler, Entrypoint, RuntimeContext, Sandbox, Shim, Version, WasmBinaryType,
 };
+use containerd_shim_wasm::version;
 use tokio_util::sync::CancellationToken;
 use wasi_preview1::WasiP1Ctx;
 use wasi_preview2::bindings::Command;
@@ -126,6 +127,10 @@ impl Shim for WasmtimeShim {
         "wasmtime"
     }
 
+    fn version() -> Version {
+        version!()
+    }
+
     type Sandbox = WasmtimeSandbox;
 
     #[allow(refining_impl_trait)]
@@ -177,11 +182,9 @@ impl Compiler for WasmtimeCompiler {
                 continue;
             }
 
-            use WasmBinaryType::*;
-
             let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(Module) => self.0.precompile_module(&layer.layer)?,
-                Some(Component) => self.0.precompile_component(&layer.layer)?,
+                Some(WasmBinaryType::Module) => self.0.precompile_module(&layer.layer)?,
+                Some(WasmBinaryType::Component) => self.0.precompile_component(&layer.layer)?,
                 None => {
                     log::warn!("Unknown WASM binary type");
                     continue;

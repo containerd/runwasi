@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim};
+use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim, Version};
+use containerd_shim_wasm::version;
 use wamr_rust_sdk::function::Function;
 use wamr_rust_sdk::instance::Instance as WamrInst;
 use wamr_rust_sdk::module::Module;
@@ -27,6 +28,10 @@ impl Shim for WamrShim {
 
     fn name() -> &'static str {
         "wamr"
+    }
+
+    fn version() -> Version {
+        version!()
     }
 }
 
