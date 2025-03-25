@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742862502041,
+  "lastUpdate": 1742862688761,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9568,6 +9568,76 @@ window.BENCHMARK_DATA = {
             "value": 19644,
             "unit": "kB",
             "extra": "shim: 16256 kB\nzygote: 3388 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b2829742f7ae2f0799a0bd8ac4261501361ce7c4",
+          "message": "chore(deps): bump the patch group with 7 updates (#939)\n\n* chore(deps): bump the patch group with 7 updates\n\nBumps the patch group with 7 updates:\n\n| Package | From | To |\n| --- | --- | --- |\n| [libc](https://github.com/rust-lang/libc) | `0.2.170` | `0.2.171` |\n| [libcontainer](https://github.com/containers/youki) | `0.5.2` | `0.5.3` |\n| [log](https://github.com/rust-lang/log) | `0.4.26` | `0.4.27` |\n| [tokio](https://github.com/tokio-rs/tokio) | `1.44.0` | `1.44.1` |\n| [tokio-util](https://github.com/tokio-rs/tokio) | `0.7.13` | `0.7.14` |\n| [clap](https://github.com/clap-rs/clap) | `4.5.31` | `4.5.32` |\n| [time](https://github.com/time-rs/time) | `0.3.39` | `0.3.41` |\n\n\nUpdates `libc` from 0.2.170 to 0.2.171\n- [Release notes](https://github.com/rust-lang/libc/releases)\n- [Changelog](https://github.com/rust-lang/libc/blob/0.2.171/CHANGELOG.md)\n- [Commits](https://github.com/rust-lang/libc/compare/0.2.170...0.2.171)\n\nUpdates `libcontainer` from 0.5.2 to 0.5.3\n- [Release notes](https://github.com/containers/youki/releases)\n- [Changelog](https://github.com/youki-dev/youki/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/containers/youki/compare/v0.5.2...v0.5.3)\n\nUpdates `log` from 0.4.26 to 0.4.27\n- [Release notes](https://github.com/rust-lang/log/releases)\n- [Changelog](https://github.com/rust-lang/log/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/rust-lang/log/compare/0.4.26...0.4.27)\n\nUpdates `tokio` from 1.44.0 to 1.44.1\n- [Release notes](https://github.com/tokio-rs/tokio/releases)\n- [Commits](https://github.com/tokio-rs/tokio/compare/tokio-1.44.0...tokio-1.44.1)\n\nUpdates `tokio-util` from 0.7.13 to 0.7.14\n- [Release notes](https://github.com/tokio-rs/tokio/releases)\n- [Commits](https://github.com/tokio-rs/tokio/compare/tokio-util-0.7.13...tokio-util-0.7.14)\n\nUpdates `clap` from 4.5.31 to 4.5.32\n- [Release notes](https://github.com/clap-rs/clap/releases)\n- [Changelog](https://github.com/clap-rs/clap/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/clap-rs/clap/compare/v4.5.31...clap_complete-v4.5.32)\n\nUpdates `time` from 0.3.39 to 0.3.41\n- [Release notes](https://github.com/time-rs/time/releases)\n- [Changelog](https://github.com/time-rs/time/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/time-rs/time/compare/v0.3.39...v0.3.41)\n\n---\nupdated-dependencies:\n- dependency-name: libc\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: libcontainer\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: log\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: tokio\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: tokio-util\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: clap\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: time\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\n\n* fix lint\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\n\n---------\n\nSigned-off-by: dependabot[bot] <support@github.com>\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Jorge Prendes <jorge.prendes@gmail.com>",
+          "timestamp": "2025-03-24T23:15:38Z",
+          "url": "https://github.com/containerd/runwasi/commit/b2829742f7ae2f0799a0bd8ac4261501361ce7c4"
+        },
+        "date": 1742862687879,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 136168925,
+            "range": "± 2795603",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 82437089,
+            "range": "± 1287769",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 111700931,
+            "range": "± 1896824",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 121133746,
+            "range": "± 1638890",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 133858712,
+            "range": "± 2659331",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 134980077,
+            "range": "± 3314291",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 84073473,
+            "range": "± 2227199",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 84651206,
+            "range": "± 992269",
+            "unit": "ns/iter"
           }
         ]
       }
