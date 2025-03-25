@@ -170,7 +170,7 @@
 </code></pre>
 <p>Then, you may use the <code>containerd_shim_wasm::sandbox::cli::shim_main</code> function to run the shim with OpenTelemetry tracing.</p>
 <pre><pre class="playground"><code class="language-rust">fn main() {
-    shim_main::&lt;WasmtimeInstance&gt;("wasmtime", version!(), revision!(), "v1", None);
+    shim_main::&lt;WasmtimeInstance&gt;(version!(), revision!(), None);
 }</code></pre></pre>
 <p>You may also use the <code>containerd_shim_wasm::sandbox::shim::OtlpConfig</code> struct to configure the OpenTelemetry tracing manually.</p>
 <h3 id="running-containerd-with-opentelemetry"><a class="header" href="#running-containerd-with-opentelemetry">Running containerd with OpenTelemetry</a></h3>
