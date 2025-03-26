@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742948314766,
+  "lastUpdate": 1742948316504,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -14740,6 +14740,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.4,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7049490b0bbbe1843e537f1796dee3bada84a133",
+          "message": "Merge pull request #943 from jprendes/remove-shim-version\n\nSimplify the signature of `shim_main`",
+          "timestamp": "2025-03-25T18:04:50Z",
+          "url": "https://github.com/containerd/runwasi/commit/7049490b0bbbe1843e537f1796dee3bada84a133"
+        },
+        "date": 1742948315999,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
             "unit": "ms"
           }
         ]
