@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - `containerd_shim_wasm::sandbox::shim::Cli` -> `containerd_shim_wasm::sandbox::shim::Shim` and it is no longer public, because this was not intended to be used by users of the crate.
 - Breaking change: All methods in the `Engine` trait (except `name` and `supported_layers_types`) are now async. ([#931](https://github.com/containerd/runwasi/pull/931))
+- The `Engine` trait is now being split into `Shim`, `Sandbox` and `Compiler` traits. ([#936](https://github.com/containerd/runwasi/pull/936))
+- The `container` module is renamed to `shim` module. ([#936](https://github.com/containerd/runwasi/pull/936))
+- The `Instance` trait is moved to the `containerd_shimkit` crate, which has it's own changelog, version and README. ([#930](https://github.com/containerd/runwasi/pull/930))
+
+### Removed
+- Removed the `shim_main` function. Use `ShimCli::run` trait method instead. ([#944](https://github.com/containerd/runwasi/pull/944) and [#943](https://github.com/containerd/runwasi/pull/943))
+- The `with_lease` macro, `otel` module and `instance_utils` module are now private. ([#929](https://github.com/containerd/runwasi/pull/929))
 
 ## [v0.10.0] - 2025-03-05
 
