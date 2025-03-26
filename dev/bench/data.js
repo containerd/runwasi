@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742863042145,
+  "lastUpdate": 1742948314766,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -12175,6 +12175,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20532.4502,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7049490b0bbbe1843e537f1796dee3bada84a133",
+          "message": "Merge pull request #943 from jprendes/remove-shim-version\n\nSimplify the signature of `shim_main`",
+          "timestamp": "2025-03-25T18:04:50Z",
+          "url": "https://github.com/containerd/runwasi/commit/7049490b0bbbe1843e537f1796dee3bada84a133"
+        },
+        "date": 1742948313516,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 20935.2215,
             "unit": "req/s"
           }
         ]
