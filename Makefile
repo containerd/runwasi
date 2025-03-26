@@ -79,9 +79,12 @@ STRESS_TEST_JSON_FLAG = $(if $(STRESS_TEST_JSON),--json-output $(STRESS_TEST_JSO
 .PHONY: build build-common build-wasm build-%
 build: build-wasm $(RUNTIMES:%=build-%);
 
-build-common: build-wasm;
+build-common: build-wasm build-containerd-shimkit;
 build-wasm:
 	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-wasm $(FEATURES_wasm) $(RELEASE_FLAG)
+
+build-containerd-shimkit:
+	$(CARGO) build $(TARGET_FLAG) -p containerd-shimkit $(RELEASE_FLAG)
 
 build-%:
 	$(CARGO) build $(TARGET_FLAG) -p containerd-shim-$* $(FEATURES_$*) $(RELEASE_FLAG)
@@ -98,11 +101,16 @@ publish-check:
 .PHONY: check check-common check-wasm check-%
 check: check-wasm $(RUNTIMES:%=check-%);
 
-check-common: check-wasm;
+check-common: check-wasm check-containerd-shimkit;
 check-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- --check
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+
+check-containerd-shimkit:
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p containerd-shimkit -- --check
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) -p containerd-shimkit -- $(WARNINGS)
 
 check-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -112,11 +120,16 @@ check-%:
 .PHONY: fix fix-common fix-wasm fix-%
 fix: fix-wasm $(RUNTIMES:%=fix-%);
 
-fix-common: fix-wasm;
+fix-common: fix-wasm fix-containerd-shimkit;
 fix-wasm:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
 	CARGO= $(CARGO) +nightly fmt -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules
 	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p oci-tar-builder -p wasi-demo-app -p containerd-shimkit -p containerd-shim-wasm -p containerd-shim-wasm-test-modules -- $(WARNINGS)
+
+fix-containerd-shimkit:
+	# clear CARGO envvar as it otherwise interferes with rustfmt
+	CARGO= $(CARGO) +nightly fmt -p containerd-shimkit
+	$(CARGO) clippy $(TARGET_FLAG) $(FEATURES_wasm) --fix -p containerd-shimkit -- $(WARNINGS)
 
 fix-%:
 	# clear CARGO envvar as it otherwise interferes with rustfmt
@@ -126,11 +139,13 @@ fix-%:
 .PHONY: test test-common test-wasm test-wasmedge test-%
 test: test-wasm $(RUNTIMES:%=test-%);
 
-test-common: test-wasm;
+test-common: test-wasm test-containerd-shimkit;
 test-wasm:
 	# oci-tar-builder and wasi-demo-app have no tests
-	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shimkit $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shim-wasm $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
+
+test-containerd-shimkit:
+	RUST_LOG=trace $(CARGO) test $(TARGET_FLAG) --package containerd-shimkit $(FEATURES_wasm) --verbose $(TEST_ARGS_SEP) --nocapture --test-threads=1
 
 test-wasmedge:
 	# run tests in one thread to prevent parallelism
