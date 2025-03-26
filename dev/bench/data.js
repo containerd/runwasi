@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742948316504,
+  "lastUpdate": 1742948376199,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9638,6 +9638,52 @@ window.BENCHMARK_DATA = {
             "value": 84651206,
             "range": "± 992269",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7049490b0bbbe1843e537f1796dee3bada84a133",
+          "message": "Merge pull request #943 from jprendes/remove-shim-version\n\nSimplify the signature of `shim_main`",
+          "timestamp": "2025-03-25T18:04:50Z",
+          "url": "https://github.com/containerd/runwasi/commit/7049490b0bbbe1843e537f1796dee3bada84a133"
+        },
+        "date": 1742948375217,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15404,
+            "unit": "kB",
+            "extra": "shim: 12544 kB\nzygote: 2860 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66128,
+            "unit": "kB",
+            "extra": "shim: 53504 kB\nzygote: 12624 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18948,
+            "unit": "kB",
+            "extra": "shim: 15360 kB\nzygote: 3588 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19912,
+            "unit": "kB",
+            "extra": "shim: 16256 kB\nzygote: 3656 kB"
           }
         ]
       }
