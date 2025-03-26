@@ -3,6 +3,8 @@ use std::hash::Hash;
 use std::io::Read;
 
 use anyhow::{Context, Result};
+#[doc(inline)]
+pub use containerd_shimkit::sandbox::cli::Version;
 
 use super::Source;
 use crate::sandbox::oci::WasmLayer;
@@ -15,6 +17,12 @@ use crate::shim::{PathResolve, RuntimeContext};
 pub trait Shim: Sync + 'static {
     /// The name to use for this shim
     fn name() -> &'static str;
+
+    /// Returns the shim version.
+    /// Usually implemented using the [`version!()`](crate::version) macro.
+    fn version() -> Version {
+        Version::default()
+    }
 
     type Sandbox: Sandbox;
 

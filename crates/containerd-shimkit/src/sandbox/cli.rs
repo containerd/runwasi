@@ -38,8 +38,9 @@
 //!
 //! ```rust,no_run
 //! use containerd_shimkit::{
+//!     shim_version,
 //!     sandbox::{Instance, InstanceConfig, Result},
-//!     sandbox::cli::{revision, shim_main, version},
+//!     sandbox::cli::shim_main,
 //!     sandbox::sync::WaitableCell,
 //!     Config,
 //! };
@@ -83,8 +84,7 @@
 //!
 //! shim_main::<MyInstance>(
 //!     "my-engine",
-//!     version!(),
-//!     revision!(),
+//!     shim_version!(),
 //!     Some(config),
 //! );
 //! ```
@@ -133,6 +133,30 @@ macro_rules! revision {
             version => Some(version),
         }
     };
+}
+
+pub struct Version {
+    pub version: &'static str,
+    pub revision: &'static str,
+}
+
+#[macro_export]
+macro_rules! shim_version {
+    () => {
+        $crate::sandbox::cli::Version {
+            version: $crate::version!().unwrap_or("<none>"),
+            revision: $crate::revision!().unwrap_or("<none>"),
+        }
+    };
+}
+
+impl Default for Version {
+    fn default() -> Self {
+        Self {
+            version: "<none>",
+            revision: "<none>",
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -192,12 +216,8 @@ fn init_zygote_and_logger(debug: bool, config: &Config) {
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
 ///
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
-pub fn shim_main<'a, I>(
-    name: &str,
-    version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: Option<Config>,
-) where
+pub fn shim_main<I>(name: &str, version: Version, config: Option<Config>)
+where
     I: 'static + Instance + Sync + Send,
 {
     // parse the version flag
@@ -210,8 +230,8 @@ pub fn shim_main<'a, I>(
     if flags.version {
         println!("{argv0}:");
         println!("  Runtime: {name}");
-        println!("  Version: {}", version.into().unwrap_or("<none>"));
-        println!("  Revision: {}", revision.into().unwrap_or("<none>"));
+        println!("  Version: {}", version.version);
+        println!("  Revision: {}", version.revision);
         println!();
 
         std::process::exit(0);

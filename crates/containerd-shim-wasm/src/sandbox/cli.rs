@@ -31,15 +31,15 @@
 //!
 //! The module provides two macros for version information:
 //!
-//! - [`version!()`](crate::version) - Returns the crate version from Cargo.toml
-//! - [`revision!()`](crate::revision) - Returns the Git revision hash, if available
+//! - [`version!()`](crate::version) - Returns the crate version from Cargo.toml and
+//!   Git revision hash, if available.
 //!
 //! ## Example usage:
 //!
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
-//!     revision, shim_main, version,
-//!     shim::{Shim, Sandbox, RuntimeContext},
+//!     Cli, version,
+//!     shim::{Shim, Sandbox, RuntimeContext, Version},
 //!     Config,
 //! };
 //! use anyhow::Result;
@@ -55,6 +55,10 @@
 //!     fn name() -> &'static str {
 //!         "my-shim"
 //!     }
+//!
+//!     fn version() -> Version {
+//!         version!()
+//!     }
 //! }
 //!
 //! impl Sandbox for MySandbox {
@@ -68,11 +72,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! shim_main::<MyShim>(
-//!     version!(),
-//!     revision!(),
-//!     config,
-//! );
+//! MyShim::run(config);
 //! ```
 //!
 //! When the `opentelemetry` feature is enabled, additional runtime config
@@ -86,20 +86,27 @@
 use crate::Config;
 use crate::shim::{Instance, Shim};
 
-/// Main entry point for the shim.
-///
-/// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
-///
-/// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
-pub fn shim_main<'a, S: Shim>(
-    version: impl Into<Option<&'a str>> + std::fmt::Debug,
-    revision: impl Into<Option<&'a str>> + std::fmt::Debug,
-    config: impl Into<Option<Config>>,
-) {
-    containerd_shimkit::sandbox::cli::shim_main::<Instance<S>>(
-        S::name(),
-        version,
-        revision,
-        config.into(),
-    )
+mod private {
+    pub trait Sealed {}
+}
+
+impl<S: Shim> private::Sealed for S {}
+
+pub trait Cli: Shim + private::Sealed {
+    /// Main entry point for the shim.
+    ///
+    /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
+    ///
+    /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
+    fn run(config: impl Into<Option<Config>>);
+}
+
+impl<S: Shim> Cli for S {
+    fn run(config: impl Into<Option<Config>>) {
+        containerd_shimkit::sandbox::cli::shim_main::<Instance<S>>(
+            S::name(),
+            S::version(),
+            config.into(),
+        )
+    }
 }

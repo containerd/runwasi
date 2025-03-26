@@ -10,8 +10,8 @@ To implement a shim, simply implement the `Shim` and `Sandbox` trait:
 
 ```rust,no_run
 use containerd_shim_wasm::{
-    revision, shim_main, version,
-    shim::{Shim, Sandbox, RuntimeContext},
+    Cli, version,
+    shim::{Shim, Sandbox, RuntimeContext, Version},
     Config,
 };
 use anyhow::Result;
@@ -27,6 +27,10 @@ impl Shim for MyShim {
     fn name() -> &'static str {
         "my-shim"
     }
+
+    fn version() -> Version {
+        version!()
+    }
 }
 
 impl Sandbox for MySandbox {
@@ -36,11 +40,7 @@ impl Sandbox for MySandbox {
     }
 }
 
-shim_main::<MyShim>(
-    version!(),
-    revision!(),
-    None,
-);
+MyShim::run(None);
 ```
 
 The `Engine` trait provides optional methods you can override:

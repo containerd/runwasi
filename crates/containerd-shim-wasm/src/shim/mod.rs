@@ -58,7 +58,7 @@ pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
 pub(crate) use instance::Instance;
 pub(crate) use path::PathResolve;
-pub use shim::{Compiler, Sandbox, Shim};
+pub use shim::{Compiler, Sandbox, Shim, Version};
 pub use wasm::WasmBinaryType;
 
 use crate::sys::container::instance;

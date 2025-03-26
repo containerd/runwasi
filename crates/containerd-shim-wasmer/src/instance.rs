@@ -1,5 +1,6 @@
 use anyhow::Result;
-use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim};
+use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim, Version};
+use containerd_shim_wasm::version;
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
@@ -15,6 +16,10 @@ pub struct WasmerSandbox {
 impl Shim for WasmerShim {
     fn name() -> &'static str {
         "wasmer"
+    }
+
+    fn version() -> Version {
+        version!()
     }
 
     type Sandbox = WasmerSandbox;
