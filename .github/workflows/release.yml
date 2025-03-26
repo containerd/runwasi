@@ -84,7 +84,7 @@ jobs:
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
       ### If this is the first time releasing this crate, skip this step
       - name: Add crates.io ownership
-        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' && inputs.initial_release != 'true' }}
+        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' && !inputs.initial_release }}
         run: |
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
