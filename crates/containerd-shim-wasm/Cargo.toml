@@ -72,6 +72,7 @@ tempfile = { workspace = true }
 oci-tar-builder = { workspace = true }
 rand = "0.9"
 temp-env = "0.3"
+ctor = "0.4.1"
 
 [features]
 testing = [

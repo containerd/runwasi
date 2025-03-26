@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use anyhow::{Result, bail};
-use containerd_shim_wasm::container::RuntimeContext;
+use containerd_shim_wasm::shim::RuntimeContext;
 use hyper::server::conn::http1;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;

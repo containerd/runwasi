@@ -19,7 +19,7 @@
 //! This file is vendored from the containerd-shim crate and should be replaced
 //! with the upstream version when a new release is available.
 //!
-//! Source: https://github.com/containerd/rust-extensions/blob/main/crates/containerd-shim/src/logger.rs
+//! Source: <https://github.com/containerd/rust-extensions/blob/main/crates/containerd-shim/src/logger.rs>
 
 use std::borrow::BorrowMut;
 use std::fmt::Write as fmtwrite;

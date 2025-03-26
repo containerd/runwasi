@@ -39,19 +39,25 @@
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
 //!     revision, shim_main, version,
-//!     container::{Engine, RuntimeContext},
+//!     shim::{Shim, Sandbox, RuntimeContext},
 //!     Config,
 //! };
 //! use anyhow::Result;
 //!
-//! #[derive(Clone, Default)]
-//! struct MyEngine;
+//! struct MyShim;
 //!
-//! impl Engine for MyEngine {
+//! #[derive(Default)]
+//! struct MySandbox;
+//!
+//! impl Shim for MyShim {
+//!     type Sandbox = MySandbox;
+//!
 //!     fn name() -> &'static str {
-//!         "my-engine"
+//!         "my-shim"
 //!     }
+//! }
 //!
+//! impl Sandbox for MySandbox {
 //!     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
 //!         Ok(0)
 //!     }
@@ -62,7 +68,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! shim_main::<MyEngine>(
+//! shim_main::<MyShim>(
 //!     version!(),
 //!     revision!(),
 //!     config,
@@ -78,20 +84,20 @@
 //!
 
 use crate::Config;
-use crate::container::{Engine, Instance};
+use crate::shim::{Instance, Shim};
 
 /// Main entry point for the shim.
 ///
 /// If the `opentelemetry` feature is enabled, this function will start the shim with OpenTelemetry tracing.
 ///
 /// It parses OTLP configuration from the environment and initializes the OpenTelemetry SDK.
-pub fn shim_main<'a, E: Engine + Default>(
+pub fn shim_main<'a, S: Shim>(
     version: impl Into<Option<&'a str>> + std::fmt::Debug,
     revision: impl Into<Option<&'a str>> + std::fmt::Debug,
     config: impl Into<Option<Config>>,
 ) {
-    containerd_shimkit::sandbox::cli::shim_main::<Instance<E>>(
-        E::name(),
+    containerd_shimkit::sandbox::cli::shim_main::<Instance<S>>(
+        S::name(),
         version,
         revision,
         config.into(),
