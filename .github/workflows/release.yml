@@ -28,6 +28,10 @@ on:
         description: "The version of the crate to release. (e.g., 1.2.3)"
         type: string
         required: true
+      initial_release:
+        description: "If this is the first time releasing this crate, set to true"
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.workflow }}-${{ inputs.crate }}-${{ inputs.version }}
@@ -78,8 +82,9 @@ jobs:
               core.setOutput('is_shim', true);
             }
       ### If we are releasing a crate rather than producing a bin, check for crates.io access
+      ### If this is the first time releasing this crate, skip this step
       - name: Add crates.io ownership
-        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' }}
+        if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' && inputs.initial_release != 'true' }}
         run: |
           cargo owner --list ${{ inputs.crate }} | grep github:containerd:runwasi-committers || \
           cargo owner --add github:containerd:runwasi-committers ${{ inputs.crate }}
