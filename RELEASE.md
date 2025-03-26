@@ -79,7 +79,7 @@ In the Github release page, please provide the above command in the instructions
 ### First time release of a crate
 
 If the crate has never been published to crates.io before then ownership of the crate will need to be configured.
-1. You should pass `first_time_release=true` to the release workflow to skip the ownership step.
+1. You should pass `initial_release=true` to the release workflow to skip the ownership step.
 2. The containerd/runwasi-committers team will need to be added as an owner of the crate.
 
 The release workflow will automatically invite the person who triggered the workflow run to be an owner of the crate.
