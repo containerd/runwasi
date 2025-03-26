@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - `containerd_shim_wasm::sandbox::shim::Cli` -> `containerd_shim_wasm::sandbox::shim::Shim` and it is no longer public, because this was not intended to be used by users of the crate.
 - Breaking change: All methods in the `Engine` trait (except `name` and `supported_layers_types`) are now async. ([#931](https://github.com/containerd/runwasi/pull/931))
-- The `Engine` trait is now being splitted into `Shim`, `Sandbox` and `Compiler` traits. ([#936](https://github.com/containerd/runwasi/pull/936))
+- The `Engine` trait is now being split into `Shim`, `Sandbox` and `Compiler` traits. ([#936](https://github.com/containerd/runwasi/pull/936))
 - The `container` module is renamed to `shim` module. ([#936](https://github.com/containerd/runwasi/pull/936))
 - The `Instance` trait is moved to the `containerd_shimkit` crate, which has it's own changelog, version and README. ([#930](https://github.com/containerd/runwasi/pull/930))
 
