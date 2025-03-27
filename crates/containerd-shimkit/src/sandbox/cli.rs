@@ -272,7 +272,7 @@ where
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(level = "Info"))]
-fn shim_main_inner<'a, I>(name: &str, config: Option<Config>)
+fn shim_main_inner<I>(name: &str, config: Option<Config>)
 where
     I: 'static + Instance + Sync + Send,
 {

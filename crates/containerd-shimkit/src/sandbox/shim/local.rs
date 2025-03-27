@@ -172,13 +172,13 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         let rootfs_mounts = req.rootfs().to_vec();
         if !rootfs_mounts.is_empty() {
             for m in rootfs_mounts {
-                let mount_type = m.type_().none_if(|&x| x.is_empty());
-                let source = m.source.as_str().none_if(|&x| x.is_empty());
+                let _mount_type = m.type_().none_if(|&x| x.is_empty());
+                let _source = m.source.as_str().none_if(|&x| x.is_empty());
 
                 #[cfg(unix)]
                 containerd_shim::mount::mount_rootfs(
-                    mount_type,
-                    source,
+                    _mount_type,
+                    _source,
                     &m.options.to_vec(),
                     rootfs,
                 )?;
