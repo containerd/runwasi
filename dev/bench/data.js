@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743035407499,
+  "lastUpdate": 1743035425181,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -12364,6 +12364,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 20935.2215,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "205f9416f8addc8ccf64c613dc82edbf364124cb",
+          "message": "Merge pull request #951 from Mossaka/bump-containerd-shim-wasm-v1\n\ncontainerd-shim-wasm: bump version to 1.0.0 and updated CHANGELOG",
+          "timestamp": "2025-03-26T19:32:47Z",
+          "url": "https://github.com/containerd/runwasi/commit/205f9416f8addc8ccf64c613dc82edbf364124cb"
+        },
+        "date": 1743035424320,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 19359.3599,
             "unit": "req/s"
           }
         ]
