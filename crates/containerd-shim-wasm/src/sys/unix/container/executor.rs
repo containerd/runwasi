@@ -16,8 +16,10 @@ use libcontainer::workload::{
 use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
-use crate::sandbox::oci::WasmLayer;
-use crate::shim::{PathResolve, RuntimeContext, Sandbox, Shim, Source, WasiContext};
+use crate::sandbox::Sandbox;
+use crate::sandbox::context::{RuntimeContext, Source, WasiContext, WasmLayer};
+use crate::sandbox::path::PathResolve;
+use crate::shim::Shim;
 
 #[derive(Clone)]
 enum ExecutorType<S: Shim> {

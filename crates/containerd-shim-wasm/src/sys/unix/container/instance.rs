@@ -15,8 +15,9 @@ use oci_spec::runtime::Spec;
 use tokio::sync::OnceCell;
 
 use super::container::Container;
-use crate::sandbox::{WasmLayer, containerd};
-use crate::shim::{Compiler, Shim, pod_id};
+use crate::containerd;
+use crate::sandbox::context::{WasmLayer, pod_id};
+use crate::shim::{Compiler, Shim};
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
 

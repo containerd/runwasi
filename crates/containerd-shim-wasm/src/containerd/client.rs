@@ -5,7 +5,6 @@ use std::fmt::Debug;
 use std::hash::{DefaultHasher, Hash, Hasher as _};
 use std::path::Path;
 
-use containerd_client;
 use containerd_client::services::v1::containers_client::ContainersClient;
 use containerd_client::services::v1::content_client::ContentClient;
 use containerd_client::services::v1::images_client::ImagesClient;
@@ -27,7 +26,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request};
 
 use super::lease::LeaseGuard;
-use crate::sandbox::oci::{self, WasmLayer};
+use crate::sandbox::context::WasmLayer;
 use crate::shim::Compiler;
 
 // Adds lease info to grpc header
@@ -395,7 +394,7 @@ impl Client {
         engine_name: impl AsRef<str> + Debug,
         supported_layer_types: &[&str],
         compiler: Option<&impl Compiler>,
-    ) -> Result<(Vec<oci::WasmLayer>, Platform)> {
+    ) -> Result<(Vec<WasmLayer>, Platform)> {
         let container = self.get_container(containerd_id).await?;
         let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image).await?;
 

@@ -1,6 +1,7 @@
 use anyhow::Result;
-use containerd_shim_wasm::shim::{Entrypoint, RuntimeContext, Sandbox, Shim, Version};
-use containerd_shim_wasm::version;
+use containerd_shim_wasm::sandbox::Sandbox;
+use containerd_shim_wasm::sandbox::context::{Entrypoint, RuntimeContext};
+use containerd_shim_wasm::shim::{Shim, Version, version};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;

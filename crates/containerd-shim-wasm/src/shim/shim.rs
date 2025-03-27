@@ -1,14 +1,11 @@
-use std::fs::File;
 use std::hash::Hash;
-use std::io::Read;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 #[doc(inline)]
 pub use containerd_shimkit::sandbox::cli::Version;
 
-use super::Source;
-use crate::sandbox::oci::WasmLayer;
-use crate::shim::{PathResolve, RuntimeContext};
+use crate::sandbox::Sandbox;
+use crate::sandbox::context::WasmLayer;
 
 /// The `Shim` trait provides a simplified API for running WebAssembly containers.
 ///
@@ -19,7 +16,7 @@ pub trait Shim: Sync + 'static {
     fn name() -> &'static str;
 
     /// Returns the shim version.
-    /// Usually implemented using the [`version!()`](crate::version) macro.
+    /// Usually implemented using the [`version!()`](crate::shim::version) macro.
     fn version() -> Version {
         Version::default()
     }
@@ -69,44 +66,6 @@ pub trait Compiler: Sync {
     async fn compile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>>;
 }
 
-#[trait_variant::make(Send)]
-pub trait Sandbox: Default + 'static {
-    /// Run a WebAssembly container
-    async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32>;
-
-    /// Check that the runtime can run the container.
-    /// This checks runs after the container creation and before the container starts.
-    /// By default it checks that the wasi_entrypoint is either:
-    /// * a OCI image with wasm layers
-    /// * a file with the `wasm` filetype header
-    /// * a parsable `wat` file.
-    async fn can_handle(&self, ctx: &impl RuntimeContext) -> Result<()> {
-        // this async block is required to make the rewrite of trait_variant happy
-        async move {
-            let source = ctx.entrypoint().source;
-
-            let path = match source {
-                Source::File(path) => path,
-                Source::Oci(_) => return Ok(()),
-            };
-
-            path.resolve_in_path_or_cwd()
-                .next()
-                .context("module not found")?;
-
-            let mut buffer = [0; 4];
-            File::open(&path)?.read_exact(&mut buffer)?;
-
-            if buffer.as_slice() != b"\0asm" {
-                // Check if this is a `.wat` file
-                wat::parse_file(&path)?;
-            }
-
-            Ok(())
-        }
-    }
-}
-
 /// Like the unstable never type, this type can never be constructed.
 /// Ideally we should use the never type (`!`), but it's unstable.
 /// This type can be used to indicate that an engine doesn't support
@@ -123,10 +82,7 @@ impl Compiler for NoCompiler {
         unreachable!()
     }
 
-    async fn compile(
-        &self,
-        _layers: &[crate::sandbox::WasmLayer],
-    ) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
+    async fn compile(&self, _layers: &[WasmLayer]) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
         unreachable!()
     }
 }

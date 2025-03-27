@@ -2,11 +2,12 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, bail};
-use oci_spec::image::Platform;
+use oci_spec::image::{Descriptor, Platform};
 use oci_spec::runtime::Spec;
+use serde::{Deserialize, Serialize};
+use wasmparser::Parser;
 
-use crate::sandbox::oci::WasmLayer;
-use crate::shim::path::PathResolve;
+use crate::sandbox::path::PathResolve;
 
 /// The `RuntimeContext` trait provides access to the runtime context that includes
 /// the arguments, environment variables, and entrypoint for the container.
@@ -60,6 +61,13 @@ pub enum Source<'a> {
     /// and they will be included in this array, e.g., a `toml` file with the
     /// runtime configuration.
     Oci(&'a [WasmLayer]),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WasmLayer {
+    pub config: Descriptor,
+    #[serde(with = "serde_bytes")]
+    pub layer: Vec<u8>,
 }
 
 impl<'a> Source<'a> {
@@ -163,6 +171,27 @@ pub(crate) fn pod_id(spec: &Spec) -> Option<&str> {
         .as_ref()
         .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
         .map(|s| s.as_str())
+}
+
+/// The type of a wasm binary.
+pub enum WasmBinaryType {
+    /// A wasm module.
+    Module,
+    /// A wasm component.
+    Component,
+}
+
+impl WasmBinaryType {
+    /// Returns the type of the wasm binary.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        if Parser::is_component(bytes) {
+            Some(Self::Component)
+        } else if Parser::is_core_wasm(bytes) {
+            Some(Self::Module)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
