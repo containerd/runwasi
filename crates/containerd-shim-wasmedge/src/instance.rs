@@ -55,7 +55,7 @@ impl Sandbox for WasmEdgeSandbox {
             name,
         } = ctx.entrypoint();
 
-        containerd_shim_wasm::debug!(ctx, "initializing WasmEdge runtime");
+        log::debug!("initializing WasmEdge runtime");
 
         let prefix = "WASMEDGE_";
         for env in envs.iter().filter(|env| env.starts_with(prefix)) {
@@ -103,7 +103,7 @@ impl Sandbox for WasmEdgeSandbox {
             .register_module(Some(&mod_name), module)
             .context("registering module")?;
 
-        containerd_shim_wasm::debug!(ctx, "running with method {func:?}");
+        log::debug!("running with method {func:?}");
         vm.run_func(Some(&mod_name), func, vec![])?;
 
         Ok(wasi_module.exit_code() as i32)

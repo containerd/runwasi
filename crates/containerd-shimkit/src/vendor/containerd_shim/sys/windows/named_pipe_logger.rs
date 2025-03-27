@@ -87,10 +87,13 @@ impl log::Log for NamedPipeLogger {
             let mut writer = logger::SimpleWriteVisitor::new();
             let _ = record.key_values().visit(&mut writer);
 
+            let kvs = logger::KEY_VALUES.lock().unwrap().clone();
+
             let message = format!(
-                "time=\"{}\" level={}{} msg=\"{}\"\n",
+                "time=\"{}\" level={}{}{} msg=\"{}\"\n",
                 logger::rfc3339_formatted(),
                 record.level().as_str().to_lowercase(),
+                kvs,
                 writer.as_str(),
                 record.args()
             );

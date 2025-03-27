@@ -92,7 +92,7 @@ pub struct WasiPreview2Ctx {
 
 impl WasiPreview2Ctx {
     pub fn new(ctx: &impl RuntimeContext) -> Result<Self> {
-        containerd_shim_wasm::debug!(ctx, "Creating new WasiPreview2Ctx");
+        log::debug!("Creating new WasiPreview2Ctx");
         Ok(Self {
             wasi_ctx: wasi_builder(ctx)?.build(),
             wasi_http: WasiHttpCtx::new(),
@@ -152,7 +152,7 @@ impl Shim for WasmtimeShim {
 
 impl Sandbox for WasmtimeSandbox {
     async fn run_wasi(&self, ctx: &impl RuntimeContext) -> Result<i32> {
-        containerd_shim_wasm::info!(ctx, "setting up wasi");
+        log::info!("setting up wasi");
 
         let Entrypoint {
             source,
@@ -209,27 +209,27 @@ impl WasmtimeSandbox {
         module: Module,
         func: &String,
     ) -> Result<i32> {
-        containerd_shim_wasm::debug!(ctx, "execute module");
+        log::debug!("execute module");
 
         let ctx_p1 = wasi_builder(ctx)?.build_p1();
         let mut store = Store::new(&self.engine, ctx_p1);
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
-        containerd_shim_wasm::debug!(ctx, "init linker");
+        log::debug!("init linker");
         wasi_preview1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiP1Ctx| {
             wasi_ctx
         })?;
 
-        containerd_shim_wasm::info!(ctx, "instantiating instance");
+        log::info!("instantiating instance");
         let instance: wasmtime::Instance =
             module_linker.instantiate_async(&mut store, &module).await?;
 
-        containerd_shim_wasm::debug!(ctx, "getting start function");
+        log::debug!("getting start function");
         let start_func = instance
             .get_func(&mut store, func)
             .context("module does not have a WASI start function")?;
 
-        containerd_shim_wasm::info!(ctx, "running start function {func:?}");
+        log::info!("running start function {func:?}");
 
         start_func
             .call_async(&mut store, &[], &mut [])
@@ -243,7 +243,7 @@ impl WasmtimeSandbox {
         component: Component,
         func: String,
     ) -> Result<i32> {
-        containerd_shim_wasm::info!(ctx, "instantiating component");
+        log::info!("instantiating component");
 
         let target = ComponentTarget::new(
             component.component_type().exports(&self.engine),
@@ -253,21 +253,21 @@ impl WasmtimeSandbox {
         // This is a adapter logic that converts wasip1 `_start` function to wasip2 `run` function.
         let status = match target {
             ComponentTarget::HttpProxy => {
-                containerd_shim_wasm::info!(ctx, "Found HTTP proxy target");
+                log::info!("Found HTTP proxy target");
                 let mut linker = component::Linker::new(&self.engine);
                 wasmtime_wasi::add_to_linker_async(&mut linker)?;
                 wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
 
                 let pre = linker.instantiate_pre(&component)?;
-                containerd_shim_wasm::info!(ctx, "pre-instantiate_pre");
+                log::info!("pre-instantiate_pre");
                 let instance = ProxyPre::new(pre)?;
 
-                containerd_shim_wasm::info!(ctx, "starting HTTP server");
+                log::info!("starting HTTP server");
                 let cancel = self.cancel.clone();
                 serve_conn(ctx, instance, cancel).await
             }
             ComponentTarget::Command => {
-                containerd_shim_wasm::info!(ctx, "Found command target");
+                log::info!("Found command target");
                 let wasi_ctx = WasiPreview2Ctx::new(ctx)?;
                 let (mut store, linker) = store_for_context(&self.engine, wasi_ctx)?;
 
@@ -284,22 +284,19 @@ impl WasmtimeSandbox {
                     })
             }
             ComponentTarget::Core(func) => {
-                containerd_shim_wasm::info!(ctx, "Found Core target");
+                log::info!("Found Core target");
                 let wasi_ctx = WasiPreview2Ctx::new(ctx)?;
                 let (mut store, linker) = store_for_context(&self.engine, wasi_ctx)?;
 
                 let pre = linker.instantiate_pre(&component)?;
                 let instance = pre.instantiate_async(&mut store).await?;
 
-                containerd_shim_wasm::info!(ctx, "getting component exported function {func:?}");
+                log::info!("getting component exported function {func:?}");
                 let start_func = instance.get_func(&mut store, func).context(format!(
                     "component does not have exported function {func:?}"
                 ))?;
 
-                containerd_shim_wasm::debug!(
-                    ctx,
-                    "running exported function {func:?} {start_func:?}"
-                );
+                log::debug!("running exported function {func:?} {start_func:?}");
                 start_func.call_async(&mut store, &[], &mut []).await
             }
         };
@@ -317,7 +314,7 @@ impl WasmtimeSandbox {
         component: Component,
         func: String,
     ) -> Result<i32> {
-        containerd_shim_wasm::debug!(ctx, "loading wasm component");
+        log::debug!("loading wasm component");
         tokio::select! {
             status = self.execute_component_async(ctx, component, func) => {
                 status
@@ -352,7 +349,7 @@ impl WasmtimeSandbox {
     ) -> Result<i32> {
         match WasmBinaryType::from_bytes(wasm_binary) {
             Some(WasmBinaryType::Module) => {
-                containerd_shim_wasm::debug!(ctx, "loading wasm module");
+                log::debug!("loading wasm module");
                 let module = Module::from_binary(&self.engine, wasm_binary)?;
                 self.execute_module(ctx, module, &func).await
             }
@@ -362,12 +359,12 @@ impl WasmtimeSandbox {
             }
             None => match &self.engine.detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
-                    containerd_shim_wasm::info!(ctx, "using precompiled module");
+                    log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
                     self.execute_module(ctx, module, &func).await
                 }
                 Some(Precompiled::Component) => {
-                    containerd_shim_wasm::info!(ctx, "using precompiled component");
+                    log::info!("using precompiled component");
                     let component = unsafe { Component::deserialize(&self.engine, wasm_binary) }?;
                     self.execute_component(ctx, component, func).await
                 }
@@ -406,7 +403,7 @@ fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuild
     // TODO: make this more configurable (e.g. allow the user to specify the
     // preopened directories and their permissions)
     // https://github.com/containerd/runwasi/issues/413
-    containerd_shim_wasm::debug!(ctx, "building WASI context");
+    log::debug!("building WASI context");
 
     let file_perms = wasi_preview2::FilePerms::all();
     let dir_perms = wasi_preview2::DirPerms::all();
@@ -423,7 +420,7 @@ fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuild
         .allow_ip_name_lookup(true)
         .preopened_dir("/", "/", dir_perms, file_perms)?;
 
-    containerd_shim_wasm::debug!(ctx, "WASI context built successfully");
+    log::debug!("WASI context built successfully");
     Ok(builder)
 }
 

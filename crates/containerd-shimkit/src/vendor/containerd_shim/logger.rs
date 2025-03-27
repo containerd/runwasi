@@ -87,6 +87,14 @@ impl SimpleWriteVisitor {
     }
 }
 
+pub(super) static KEY_VALUES: Mutex<String> = Mutex::new(String::new());
+
+pub fn set_logger_kv(kv: impl kv::Source) {
+    let mut writer = SimpleWriteVisitor::new();
+    let _ = kv.visit(&mut writer);
+    *KEY_VALUES.lock().unwrap() = writer.key_values;
+}
+
 impl log::Log for FifoLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= log::max_level()
@@ -100,6 +108,8 @@ impl log::Log for FifoLogger {
             let mut writer = SimpleWriteVisitor::new();
             let _ = record.key_values().visit(&mut writer);
 
+            let kvs = KEY_VALUES.lock().unwrap().clone();
+
             // The logger server may have temporarily shutdown, ignore the error instead of panic.
             //
             // Manual for pipe/FIFO: https://man7.org/linux/man-pages/man7/pipe.7.html
@@ -109,9 +119,10 @@ impl log::Log for FifoLogger {
             // EPIPE.
             let _ = writeln!(
                 guard.borrow_mut(),
-                "time=\"{}\" level={}{} msg=\"{}\"\n",
+                "time=\"{}\" level={}{}{} msg=\"{}\"\n",
                 rfc3339_formatted(),
                 record.level().as_str().to_lowercase(),
+                kvs,
                 writer.as_str(),
                 record.args()
             );
