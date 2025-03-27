@@ -6,15 +6,17 @@ use containerd_shimkit::sandbox::sync::WaitableCell;
 use containerd_shimkit::sandbox::{
     Error as SandboxError, Instance as SandboxInstance, InstanceConfig,
 };
+use containerd_shimkit::set_logger_kv;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
 use oci_spec::image::Platform;
+use oci_spec::runtime::Spec;
 use tokio::sync::OnceCell;
 
 use super::container::Container;
 use crate::sandbox::{WasmLayer, containerd};
-use crate::shim::{Compiler, Shim};
+use crate::shim::{Compiler, Shim, pod_id};
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
 
@@ -83,6 +85,15 @@ impl<S: Shim> SandboxInstance for Instance<S> {
 
         let container = Container::build(
             |(id, cfg, modules, platform)| {
+                let source_spec_path = cfg.bundle.join("config.json");
+                let spec = Spec::load(source_spec_path)?;
+                let pod_id = pod_id(&spec);
+
+                match pod_id {
+                    Some(pod_id) => set_logger_kv([("instance", id.as_str()), ("pod", pod_id)]),
+                    None => set_logger_kv([("instance", id.as_str())]),
+                };
+
                 let rootdir = cfg.determine_rootdir(S::name())?;
 
                 let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)

@@ -9,5 +9,6 @@ pub(crate) mod sys;
 
 pub use containerd_shim::Config;
 pub use sandbox::async_utils::AmbientRuntime;
+pub use vendor::containerd_shim::logger::set_logger_kv;
 #[cfg(unix)]
 pub use zygote;

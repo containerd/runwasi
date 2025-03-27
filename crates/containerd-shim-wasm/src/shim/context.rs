@@ -154,12 +154,15 @@ impl RuntimeContext for WasiContext<'_> {
     }
 
     fn pod_id(&self) -> Option<&str> {
-        self.spec
-            .annotations()
-            .as_ref()
-            .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
-            .map(|s| s.as_str())
+        pod_id(self.spec)
     }
+}
+
+pub(crate) fn pod_id(spec: &Spec) -> Option<&str> {
+    spec.annotations()
+        .as_ref()
+        .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
+        .map(|s| s.as_str())
 }
 
 #[cfg(test)]

@@ -47,7 +47,7 @@ impl Sandbox for WamrSandbox {
             .as_bytes()
             .context("Failed to get bytes from source")?;
 
-        containerd_shim_wasm::info!(ctx, "Create a WAMR module");
+        log::info!("Create a WAMR module");
 
         // TODO: error handling isn't ideal
 
@@ -56,7 +56,7 @@ impl Sandbox for WamrSandbox {
         let mut module = Module::from_buf(&self.runtime, &wasm_bytes, &mod_name)
             .context("Failed to create module from bytes")?;
 
-        containerd_shim_wasm::info!(ctx, "Create a WASI context");
+        log::info!("Create a WASI context");
 
         let wasi_ctx = WasiCtxBuilder::new()
             .set_pre_open_path(vec!["/"], vec![])
@@ -68,19 +68,19 @@ impl Sandbox for WamrSandbox {
 
         // TODO: no way to register a named module with bytes?
 
-        containerd_shim_wasm::info!(ctx, "Create a WAMR instance");
+        log::info!("Create a WAMR instance");
 
         let instance = WamrInst::new(&self.runtime, &module, 1024 * 64)
             .context("Failed to create instance")?;
 
-        containerd_shim_wasm::info!(ctx, "Running {func:?}");
+        log::info!("Running {func:?}");
         let function =
             Function::find_export_func(&instance, &func).context("Failed to find function")?;
         let status = function
             .call(&instance, &vec![])
             .map(|_| 0)
             .map_err(|err| {
-                containerd_shim_wasm::error!(ctx, "Error: {:?}", err);
+                log::error!("Error: {err:?}");
                 err
             })
             .context("Failed to call function")?;

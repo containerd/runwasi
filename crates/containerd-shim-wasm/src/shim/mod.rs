@@ -48,14 +48,13 @@
 //! ```
 
 mod context;
-pub mod log;
 mod path;
 #[allow(clippy::module_inception)]
 mod shim;
 mod wasm;
 
-pub(crate) use context::WasiContext;
 pub use context::{Entrypoint, RuntimeContext, Source};
+pub(crate) use context::{WasiContext, pod_id};
 pub(crate) use instance::Instance;
 pub(crate) use path::PathResolve;
 pub use shim::{Compiler, Sandbox, Shim, Version};

@@ -100,7 +100,7 @@ pub(crate) async fn serve_conn(
     let listener = socket.listen(backlog)?;
     let tracker = TaskTracker::new();
 
-    containerd_shim_wasm::info!(ctx, "Serving HTTP on http://{}/", listener.local_addr()?);
+    log::info!("Serving HTTP on http://{}/", listener.local_addr()?);
 
     let env = env.into_iter().collect();
     let handler = Arc::new(ProxyHandler::new(instance, env, tracker.clone()));

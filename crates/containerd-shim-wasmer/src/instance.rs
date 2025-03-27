@@ -45,13 +45,13 @@ impl Sandbox for WasmerSandbox {
 
         let mod_name = name.unwrap_or_else(|| "main".to_string());
 
-        containerd_shim_wasm::info!(ctx, "Create a Store");
+        log::info!("Create a Store");
         let mut store = Store::new(self.engine.clone());
 
         let wasm_bytes = source.as_bytes()?;
         let module = Module::from_binary(&store, &wasm_bytes)?;
 
-        containerd_shim_wasm::info!(ctx, "Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
+        log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
         let fs = FileSystem::new(Handle::current(), "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
@@ -60,7 +60,7 @@ impl Sandbox for WasmerSandbox {
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
 
-        containerd_shim_wasm::info!(ctx, "Running {func:?}");
+        log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;
         wasi_env.data(&store).thread.set_status_running();
         let status = tokio::task::block_in_place(|| {
