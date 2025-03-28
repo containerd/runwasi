@@ -81,7 +81,7 @@ pub use containerd_shimkit::shim_version as version;
 pub struct Config {
     /// Disables automatic configuration to use the shim FIFO
     pub no_setup_logger: bool,
-    // Sets the the default log level. Default is info
+    /// Sets the the default log level. Default is info
     pub default_log_level: String,
 }
 
