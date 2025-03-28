@@ -924,7 +924,6 @@ dependencies = [
  "nix 0.29.0",
  "oci-spec",
  "oci-tar-builder",
- "protobuf 3.2.0",
  "rand 0.9.0",
  "serde",
  "serde_bytes",
