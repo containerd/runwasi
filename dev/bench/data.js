@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743035947336,
+  "lastUpdate": 1743121075132,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9870,6 +9870,52 @@ window.BENCHMARK_DATA = {
             "value": 81230395,
             "range": "± 1160503",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fefb938c6ebc2ff4c60d76a86326649eb26d9022",
+          "message": "bump shimkit v0.1.1 (#956)\n\n* shimkit: Update CHANGELOG.md for v0.1.1 release\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n* shimkit: Update containerd-shimkit version to 0.1.1\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n---------\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>",
+          "timestamp": "2025-03-27T21:20:24Z",
+          "url": "https://github.com/containerd/runwasi/commit/fefb938c6ebc2ff4c60d76a86326649eb26d9022"
+        },
+        "date": 1743121074411,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14884,
+            "unit": "kB",
+            "extra": "shim: 11904 kB\nzygote: 2980 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66004,
+            "unit": "kB",
+            "extra": "shim: 53504 kB\nzygote: 12500 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18560,
+            "unit": "kB",
+            "extra": "shim: 14976 kB\nzygote: 3584 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19124,
+            "unit": "kB",
+            "extra": "shim: 15744 kB\nzygote: 3380 kB"
           }
         ]
       }
