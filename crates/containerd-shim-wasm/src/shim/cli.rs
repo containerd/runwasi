@@ -20,10 +20,6 @@
 //!     no_setup_logger: false,
 //!     // Set default log level
 //!     default_log_level: "info".to_string(),
-//!     // Disable child process reaping
-//!     no_reaper: false,
-//!     // Disable subreaper setting
-//!     no_sub_reaper: false,
 //! };
 //! ```
 //!
@@ -95,10 +91,17 @@ pub trait Cli: Shim + private::Sealed {
 
 impl<S: Shim> Cli for S {
     fn run(config: impl Into<Option<Config>>) {
+        let config = config.into().unwrap_or_default();
+        let config = containerd_shimkit::Config {
+            no_setup_logger: config.no_setup_logger,
+            default_log_level: config.default_log_level,
+            no_reaper: false,
+            no_sub_reaper: false,
+        };
         containerd_shimkit::sandbox::cli::shim_main::<Instance<S>>(
             S::name(),
             S::version(),
-            config.into(),
+            Some(config),
         )
     }
 }

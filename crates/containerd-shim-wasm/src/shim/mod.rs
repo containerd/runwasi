@@ -74,4 +74,22 @@ pub(crate) use shim::NO_COMPILER;
 pub(crate) mod cli;
 
 pub use cli::Cli;
-pub use containerd_shimkit::{Config, shim_version as version};
+pub use containerd_shimkit::shim_version as version;
+
+/// Config of shim binary options provided by shim implementations
+#[derive(Debug)]
+pub struct Config {
+    /// Disables automatic configuration to use the shim FIFO
+    pub no_setup_logger: bool,
+    // Sets the the default log level. Default is info
+    pub default_log_level: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            no_setup_logger: false,
+            default_log_level: "info".to_string(),
+        }
+    }
+}
