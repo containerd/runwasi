@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 /// PathResolve allows to resolve a file path in a set of directories.
-pub trait PathResolve {
+pub(crate) trait PathResolve {
     /// Resolve the path of a file give a set of directories as the `which` unix
     /// command would do with components of the `PATH` environment variable, and
     /// return an iterator over all candidates.
@@ -19,7 +19,7 @@ pub trait PathResolve {
 }
 
 /// Gets the content of the `PATH` environment variable as an iterator over its components
-pub fn paths() -> impl Iterator<Item = PathBuf> {
+pub(crate) fn paths() -> impl Iterator<Item = PathBuf> {
     std::env::var_os("PATH")
         .as_ref()
         .map(std::env::split_paths)

@@ -1,6 +1,6 @@
 #[cfg(not(target_os = "windows"))]
 use containerd_shim_wamr::WamrShim;
-use containerd_shim_wasm::Cli;
+use containerd_shim_wasm::shim::Cli;
 
 #[cfg(target_os = "windows")]
 fn main() {

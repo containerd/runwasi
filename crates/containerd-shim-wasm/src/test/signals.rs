@@ -30,7 +30,9 @@ use anyhow::{Result, bail};
 use containerd_shim_wasm_test_modules::HELLO_WORLD;
 use tokio::time::sleep as async_sleep;
 
-use crate::shim::{RuntimeContext, Sandbox, Shim};
+use crate::sandbox::Sandbox;
+use crate::sandbox::context::RuntimeContext;
+use crate::shim::Shim;
 use crate::testing::WasiTest;
 
 pub struct SomeEngine;

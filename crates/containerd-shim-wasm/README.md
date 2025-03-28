@@ -10,9 +10,9 @@ To implement a shim, simply implement the `Shim` and `Sandbox` trait:
 
 ```rust,no_run
 use containerd_shim_wasm::{
-    Cli, version,
-    shim::{Shim, Sandbox, RuntimeContext, Version},
-    Config,
+    shim::{Shim, Config, Cli, Version, version},
+    sandbox::Sandbox,
+    sandbox::context::RuntimeContext,
 };
 use anyhow::Result;
 

@@ -13,13 +13,22 @@
 //! ## Key Components
 //!
 //! - [`Shim`]: The trait for implementing the shim entrypoint
-//! - [`Sandbox`]: The core trait for implementing Wasm runtimes
-//! - [`RuntimeContext`]: The context for running WASI modules
+//! - [`Sandbox`](crate::sandbox::Sandbox): The core trait for implementing Wasm runtimes
+//! - [`RuntimeContext`](crate::sandbox::context::RuntimeContext): The context for running WASI modules
+//!
+//! ## Version Information
+//!
+//! The module provides two macros for version information:
+//!
+//! - [`version!()`](crate::shim::version) - Returns the crate version from Cargo.toml and
+//!   Git revision hash, if available.
 //!
 //! ## Example Usage
 //!
 //! ```rust
-//! use containerd_shim_wasm::shim::{Shim, Sandbox, RuntimeContext};
+//! use containerd_shim_wasm::shim::Shim;
+//! use containerd_shim_wasm::sandbox::Sandbox;
+//! use containerd_shim_wasm::sandbox::context::RuntimeContext;
 //! use anyhow::Result;
 //!
 //! struct MyShim;
@@ -47,18 +56,11 @@
 //! }
 //! ```
 
-mod context;
-mod path;
 #[allow(clippy::module_inception)]
 mod shim;
-mod wasm;
 
-pub use context::{Entrypoint, RuntimeContext, Source};
-pub(crate) use context::{WasiContext, pod_id};
 pub(crate) use instance::Instance;
-pub(crate) use path::PathResolve;
-pub use shim::{Compiler, Sandbox, Shim, Version};
-pub use wasm::WasmBinaryType;
+pub use shim::{Compiler, Shim, Version};
 
 use crate::sys::container::instance;
 
@@ -68,3 +70,26 @@ mod tests;
 // This is used in containerd::Client tests
 #[cfg(test)]
 pub(crate) use shim::NO_COMPILER;
+
+pub(crate) mod cli;
+
+pub use cli::Cli;
+pub use containerd_shimkit::shim_version as version;
+
+/// Config of shim binary options provided by shim implementations
+#[derive(Debug)]
+pub struct Config {
+    /// Disables automatic configuration to use the shim FIFO
+    pub no_setup_logger: bool,
+    /// Sets the the default log level. Default is info
+    pub default_log_level: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            no_setup_logger: false,
+            default_log_level: "info".to_string(),
+        }
+    }
+}

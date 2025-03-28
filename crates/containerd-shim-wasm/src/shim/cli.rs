@@ -13,34 +13,23 @@
 //! The shim can be configured using the [`Config`] struct:
 //!
 //! ```rust, no_run
-//! use containerd_shim_wasm::Config;
+//! use containerd_shim_wasm::shim::Config;
 //!
 //! let config = Config {
 //!     // Disable automatic logger setup
 //!     no_setup_logger: false,
 //!     // Set default log level
 //!     default_log_level: "info".to_string(),
-//!     // Disable child process reaping
-//!     no_reaper: false,
-//!     // Disable subreaper setting
-//!     no_sub_reaper: false,
 //! };
 //! ```
-//!
-//! ## Version Information
-//!
-//! The module provides two macros for version information:
-//!
-//! - [`version!()`](crate::version) - Returns the crate version from Cargo.toml and
-//!   Git revision hash, if available.
 //!
 //! ## Example usage:
 //!
 //! ```rust, no_run
 //! use containerd_shim_wasm::{
-//!     Cli, version,
-//!     shim::{Shim, Sandbox, RuntimeContext, Version},
-//!     Config,
+//!     shim::{Shim, Cli, Config, Version, version},
+//!     sandbox::Sandbox,
+//!     sandbox::context::RuntimeContext,
 //! };
 //! use anyhow::Result;
 //!
@@ -83,8 +72,7 @@
 //! - `OTEL_SDK_DISABLED`: Disable OpenTelemetry SDK
 //!
 
-use crate::Config;
-use crate::shim::{Instance, Shim};
+use crate::shim::{Config, Instance, Shim};
 
 mod private {
     pub trait Sealed {}
@@ -103,10 +91,17 @@ pub trait Cli: Shim + private::Sealed {
 
 impl<S: Shim> Cli for S {
     fn run(config: impl Into<Option<Config>>) {
+        let config = config.into().unwrap_or_default();
+        let config = containerd_shimkit::Config {
+            no_setup_logger: config.no_setup_logger,
+            default_log_level: config.default_log_level,
+            no_reaper: false,
+            no_sub_reaper: false,
+        };
         containerd_shimkit::sandbox::cli::shim_main::<Instance<S>>(
             S::name(),
             S::version(),
-            config.into(),
+            Some(config),
         )
     }
 }

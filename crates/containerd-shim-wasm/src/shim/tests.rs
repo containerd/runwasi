@@ -1,7 +1,8 @@
 use anyhow::bail;
 
-use super::shim::Sandbox;
-use crate::shim::{RuntimeContext, Shim};
+use super::shim::Shim;
+use crate::sandbox::Sandbox;
+use crate::sandbox::context::RuntimeContext;
 use crate::testing::WasiTest;
 
 struct EngineFailingValidation;
