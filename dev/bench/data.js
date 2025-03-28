@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743121089948,
+  "lastUpdate": 1743121195706,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -9916,6 +9916,76 @@ window.BENCHMARK_DATA = {
             "value": 19124,
             "unit": "kB",
             "extra": "shim: 15744 kB\nzygote: 3380 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fefb938c6ebc2ff4c60d76a86326649eb26d9022",
+          "message": "bump shimkit v0.1.1 (#956)\n\n* shimkit: Update CHANGELOG.md for v0.1.1 release\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n* shimkit: Update containerd-shimkit version to 0.1.1\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n---------\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>",
+          "timestamp": "2025-03-27T21:20:24Z",
+          "url": "https://github.com/containerd/runwasi/commit/fefb938c6ebc2ff4c60d76a86326649eb26d9022"
+        },
+        "date": 1743121194717,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 135728617,
+            "range": "± 4044194",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 77944376,
+            "range": "± 256273",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 109768552,
+            "range": "± 1546075",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 116650419,
+            "range": "± 1250227",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 130385307,
+            "range": "± 2335054",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 129992021,
+            "range": "± 1560820",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 80194051,
+            "range": "± 2578053",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 81091810,
+            "range": "± 1679673",
+            "unit": "ns/iter"
           }
         ]
       }
