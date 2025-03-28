@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The `Engine` trait is now being split into `Shim`, `Sandbox` and `Compiler` traits. ([#936](https://github.com/containerd/runwasi/pull/936))
 - The `container` module is renamed to `shim` module. ([#936](https://github.com/containerd/runwasi/pull/936))
 - The `Instance` trait is moved to the `containerd_shimkit` crate, which has it's own changelog, version and README. ([#930](https://github.com/containerd/runwasi/pull/930))
+- Reorganized types, traits and macros in more meaningful modules. ([#957](https://github.com/containerd/runwasi/pull/957))
 
 ### Removed
 - Removed the `shim_main` function. Use `ShimCli::run` trait method instead. ([#944](https://github.com/containerd/runwasi/pull/944) and [#943](https://github.com/containerd/runwasi/pull/943))
