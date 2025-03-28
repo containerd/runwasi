@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743121088529,
+  "lastUpdate": 1743121089948,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -15126,6 +15126,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.7,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fefb938c6ebc2ff4c60d76a86326649eb26d9022",
+          "message": "bump shimkit v0.1.1 (#956)\n\n* shimkit: Update CHANGELOG.md for v0.1.1 release\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n* shimkit: Update containerd-shimkit version to 0.1.1\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>\n\n---------\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>",
+          "timestamp": "2025-03-27T21:20:24Z",
+          "url": "https://github.com/containerd/runwasi/commit/fefb938c6ebc2ff4c60d76a86326649eb26d9022"
+        },
+        "date": 1743121089565,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.4,
             "unit": "ms"
           }
         ]
