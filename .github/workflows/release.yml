@@ -86,7 +86,7 @@ jobs:
       - name: Add crates.io ownership
         if: ${{ steps.runtime_sub.outputs.is_shim != 'true' && github.repository == 'containerd/runwasi' && !inputs.initial_release }}
         run: |
-          cargo owner --list ${{ inputs.crate }} | grep ${{ github.actor }} || \
+          cargo owner --list ${{ inputs.crate }} | grep -E 'github:containerd:runwasi-committers|${{ github.actor }}' || \
           cargo owner --add ${{ github.actor }} ${{ inputs.crate }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_PUBLISH_TOKEN }}
