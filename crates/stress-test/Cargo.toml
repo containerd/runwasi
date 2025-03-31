@@ -14,7 +14,7 @@ prost = "0.13"
 prost-types = "0.13"
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "process", "signal"] }
 tokio-async-drop = "0.1.0"
-humantime = "2.1.0"
+humantime = "2.2.0"
 tempfile = { workspace = true }
 oci-spec = { workspace = true }
 clap = { version = "4", features = ["derive"] }
