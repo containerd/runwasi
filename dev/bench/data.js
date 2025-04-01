@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743467612317,
+  "lastUpdate": 1743467700782,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -10334,6 +10334,52 @@ window.BENCHMARK_DATA = {
             "value": 83092259,
             "range": "± 1029433",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "6a47341565bd44c04fae8540b41721d504294e9a",
+          "message": "chore(deps): bump clap from 4.5.32 to 4.5.34 in the patch group (#961)\n\nBumps the patch group with 1 update: [clap](https://github.com/clap-rs/clap).\n\n\nUpdates `clap` from 4.5.32 to 4.5.34\n- [Release notes](https://github.com/clap-rs/clap/releases)\n- [Changelog](https://github.com/clap-rs/clap/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/clap-rs/clap/compare/clap_complete-v4.5.32...clap_complete-v4.5.34)\n\n---\nupdated-dependencies:\n- dependency-name: clap\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-03-31T17:04:37Z",
+          "url": "https://github.com/containerd/runwasi/commit/6a47341565bd44c04fae8540b41721d504294e9a"
+        },
+        "date": 1743467699252,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15140,
+            "unit": "kB",
+            "extra": "shim: 12288 kB\nzygote: 2852 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66768,
+            "unit": "kB",
+            "extra": "shim: 54144 kB\nzygote: 12624 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18560,
+            "unit": "kB",
+            "extra": "shim: 15104 kB\nzygote: 3456 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19508,
+            "unit": "kB",
+            "extra": "shim: 16128 kB\nzygote: 3380 kB"
           }
         ]
       }
