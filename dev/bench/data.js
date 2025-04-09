@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1744072778368,
+  "lastUpdate": 1744157910838,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11262,6 +11262,52 @@ window.BENCHMARK_DATA = {
             "value": 83187987,
             "range": "± 1451581",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "696687f832885ed4979482bcf77ef66f1dd8833d",
+          "message": "chore(deps): bump the patch group with 2 updates (#969)\n\nBumps the patch group with 2 updates: [tokio](https://github.com/tokio-rs/tokio) and [clap](https://github.com/clap-rs/clap).\n\n\nUpdates `tokio` from 1.44.1 to 1.44.2\n- [Release notes](https://github.com/tokio-rs/tokio/releases)\n- [Commits](https://github.com/tokio-rs/tokio/compare/tokio-1.44.1...tokio-1.44.2)\n\nUpdates `clap` from 4.5.34 to 4.5.35\n- [Release notes](https://github.com/clap-rs/clap/releases)\n- [Changelog](https://github.com/clap-rs/clap/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/clap-rs/clap/compare/clap_complete-v4.5.34...clap_complete-v4.5.35)\n\n---\nupdated-dependencies:\n- dependency-name: tokio\n  dependency-version: 1.44.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n- dependency-name: clap\n  dependency-version: 4.5.35\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-04-07T20:52:33Z",
+          "url": "https://github.com/containerd/runwasi/commit/696687f832885ed4979482bcf77ef66f1dd8833d"
+        },
+        "date": 1744157909985,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15012,
+            "unit": "kB",
+            "extra": "shim: 12032 kB\nzygote: 2980 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66640,
+            "unit": "kB",
+            "extra": "shim: 54144 kB\nzygote: 12496 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18688,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3456 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19256,
+            "unit": "kB",
+            "extra": "shim: 15872 kB\nzygote: 3384 kB"
           }
         ]
       }
