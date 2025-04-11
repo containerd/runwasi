@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1744331495202,
+  "lastUpdate": 1744331549326,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11540,6 +11540,76 @@ window.BENCHMARK_DATA = {
             "value": 19384,
             "unit": "kB",
             "extra": "shim: 16000 kB\nzygote: 3384 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7e44250d20785d43eb7641d543b1ee9ec4018287",
+          "message": "chore(deps): bump crossbeam-channel in the cargo group (#970)\n\nBumps the cargo group with 1 update: [crossbeam-channel](https://github.com/crossbeam-rs/crossbeam).\n\n\nUpdates `crossbeam-channel` from 0.5.13 to 0.5.15\n- [Release notes](https://github.com/crossbeam-rs/crossbeam/releases)\n- [Changelog](https://github.com/crossbeam-rs/crossbeam/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/crossbeam-rs/crossbeam/compare/crossbeam-channel-0.5.13...crossbeam-channel-0.5.15)\n\n---\nupdated-dependencies:\n- dependency-name: crossbeam-channel\n  dependency-version: 0.5.15\n  dependency-type: indirect\n  dependency-group: cargo\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-04-10T15:05:52Z",
+          "url": "https://github.com/containerd/runwasi/commit/7e44250d20785d43eb7641d543b1ee9ec4018287"
+        },
+        "date": 1744331548488,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 138477537,
+            "range": "± 3720112",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 81556270,
+            "range": "± 1456988",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 116956226,
+            "range": "± 1500568",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 120146604,
+            "range": "± 1206052",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 132553867,
+            "range": "± 4449867",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 134012679,
+            "range": "± 1642714",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 82657967,
+            "range": "± 2773103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 83063020,
+            "range": "± 1080744",
+            "unit": "ns/iter"
           }
         ]
       }
