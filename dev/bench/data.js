@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1744244819258,
+  "lastUpdate": 1744331447945,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -11494,6 +11494,52 @@ window.BENCHMARK_DATA = {
             "value": 92229184,
             "range": "± 1657259",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7e44250d20785d43eb7641d543b1ee9ec4018287",
+          "message": "chore(deps): bump crossbeam-channel in the cargo group (#970)\n\nBumps the cargo group with 1 update: [crossbeam-channel](https://github.com/crossbeam-rs/crossbeam).\n\n\nUpdates `crossbeam-channel` from 0.5.13 to 0.5.15\n- [Release notes](https://github.com/crossbeam-rs/crossbeam/releases)\n- [Changelog](https://github.com/crossbeam-rs/crossbeam/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/crossbeam-rs/crossbeam/compare/crossbeam-channel-0.5.13...crossbeam-channel-0.5.15)\n\n---\nupdated-dependencies:\n- dependency-name: crossbeam-channel\n  dependency-version: 0.5.15\n  dependency-type: indirect\n  dependency-group: cargo\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-04-10T15:05:52Z",
+          "url": "https://github.com/containerd/runwasi/commit/7e44250d20785d43eb7641d543b1ee9ec4018287"
+        },
+        "date": 1744331446859,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14884,
+            "unit": "kB",
+            "extra": "shim: 11904 kB\nzygote: 2980 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65748,
+            "unit": "kB",
+            "extra": "shim: 53248 kB\nzygote: 12500 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18688,
+            "unit": "kB",
+            "extra": "shim: 15232 kB\nzygote: 3456 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19384,
+            "unit": "kB",
+            "extra": "shim: 16000 kB\nzygote: 3384 kB"
           }
         ]
       }
