@@ -49,7 +49,6 @@
 //!         let args = ctx.args();
 //!         let envs = ctx.envs();
 //!         let entrypoint = ctx.entrypoint();
-//!         let platform = ctx.platform();
 //!
 //!         Ok(0)
 //!     }
