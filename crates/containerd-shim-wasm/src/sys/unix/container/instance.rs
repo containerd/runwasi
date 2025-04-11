@@ -16,7 +16,7 @@ use tokio::sync::OnceCell;
 
 use super::container::Container;
 use crate::containerd;
-use crate::sandbox::context::{WasmLayer, pod_id};
+use crate::sandbox::context::WasmLayer;
 use crate::shim::{Compiler, Shim};
 use crate::sys::container::executor::Executor;
 use crate::sys::pid_fd::PidFd;
@@ -76,7 +76,7 @@ impl<S: Shim> SandboxInstance for Instance<S> {
             .await?;
 
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, platform) = oci_client
+        let (modules, _) = oci_client
             .load_modules(&id)
             .await
             .unwrap_or_else(|e| {
@@ -85,7 +85,7 @@ impl<S: Shim> SandboxInstance for Instance<S> {
             });
 
         let container = Container::build(
-            |(id, cfg, modules, platform)| {
+            |(id, cfg, modules)| {
                 let source_spec_path = cfg.bundle.join("config.json");
                 let spec = Spec::load(source_spec_path)?;
                 let pod_id = pod_id(&spec);
@@ -97,8 +97,8 @@ impl<S: Shim> SandboxInstance for Instance<S> {
 
                 let rootdir = cfg.determine_rootdir(S::name())?;
 
-                let mut builder = ContainerBuilder::new(id.clone(), SyscallType::Linux)
-                    .with_executor(Executor::<S>::new(modules, platform, id))
+                let mut builder = ContainerBuilder::new(id, SyscallType::Linux)
+                    .with_executor(Executor::<S>::new(modules))
                     .with_root_path(rootdir.clone())?;
 
                 if let Ok(f) = cfg.open_stdin() {
@@ -119,7 +119,7 @@ impl<S: Shim> SandboxInstance for Instance<S> {
 
                 Ok(container)
             },
-            (id.clone(), cfg.clone(), modules, platform),
+            (id.clone(), cfg.clone(), modules),
         )?;
 
         Ok(Self {
@@ -194,5 +194,53 @@ impl<S: Shim> SandboxInstance for Instance<S> {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     async fn wait(&self) -> (u32, DateTime<Utc>) {
         *self.exit_code.wait().await
+    }
+}
+
+fn pod_id(spec: &Spec) -> Option<&str> {
+    spec.annotations()
+        .as_ref()
+        .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
+        .map(|s| s.as_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use oci_spec::runtime::{ProcessBuilder, RootBuilder, SpecBuilder};
+
+    use super::*;
+
+    #[test]
+    fn test_get_pod_id() -> Result<()> {
+        use std::collections::HashMap;
+
+        let mut annotations = HashMap::new();
+        annotations.insert(
+            "io.kubernetes.cri.sandbox-id".to_string(),
+            "test-pod-id".to_string(),
+        );
+
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").build()?)
+            .annotations(annotations)
+            .build()?;
+
+        assert_eq!(pod_id(&spec), Some("test-pod-id"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_pod_id_no_annotation() -> Result<()> {
+        let spec = SpecBuilder::default()
+            .root(RootBuilder::default().path("rootfs").build()?)
+            .process(ProcessBuilder::default().cwd("/").build()?)
+            .build()?;
+
+        assert_eq!(pod_id(&spec), None);
+
+        Ok(())
     }
 }

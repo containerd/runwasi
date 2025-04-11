@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, bail};
-use oci_spec::image::{Descriptor, Platform};
+use oci_spec::image::Descriptor;
 use oci_spec::runtime::Spec;
 use serde::{Deserialize, Serialize};
 use wasmparser::Parser;
@@ -32,20 +32,6 @@ pub trait RuntimeContext: Send + Sync {
     ///   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
     ///   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
     fn entrypoint(&self) -> Entrypoint;
-
-    /// Returns the platform for the container using the struct defined on the OCI spec definition
-    /// <https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md>
-    fn platform(&self) -> &Platform;
-
-    /// Returns the container id for the running container
-    fn container_id(&self) -> &str;
-
-    /// Returns the pod id for the running container (if available)
-    /// In Kubernetes environments, containers run within pods, and the pod ID is usually
-    /// stored in the OCI spec annotations under "io.kubernetes.cri.sandbox-id"
-    fn pod_id(&self) -> Option<&str> {
-        None
-    }
 }
 
 /// The source for a WASI module / components.
@@ -104,8 +90,6 @@ pub struct Entrypoint<'a> {
 pub(crate) struct WasiContext<'a> {
     pub spec: &'a Spec,
     pub wasm_layers: &'a [WasmLayer],
-    pub platform: &'a Platform,
-    pub id: String,
 }
 
 impl RuntimeContext for WasiContext<'_> {
@@ -152,25 +136,6 @@ impl RuntimeContext for WasiContext<'_> {
             name: module_name,
         }
     }
-
-    fn platform(&self) -> &Platform {
-        self.platform
-    }
-
-    fn container_id(&self) -> &str {
-        &self.id
-    }
-
-    fn pod_id(&self) -> Option<&str> {
-        pod_id(self.spec)
-    }
-}
-
-pub(crate) fn pod_id(spec: &Spec) -> Option<&str> {
-    spec.annotations()
-        .as_ref()
-        .and_then(|a| a.get("io.kubernetes.cri.sandbox-id"))
-        .map(|s| s.as_str())
 }
 
 /// The type of a wasm binary.
@@ -217,8 +182,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -238,8 +201,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -267,8 +228,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let args = ctx.args();
@@ -290,8 +249,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let path = ctx.entrypoint().source;
@@ -322,8 +279,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("hello.wat");
@@ -363,8 +318,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("/root/hello.wat");
@@ -404,8 +357,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let expected_path = PathBuf::from("/root/hello.wat");
@@ -443,8 +394,6 @@ mod tests {
                     Digest::try_from(format!("sha256:{:064?}", 0))?,
                 ),
             }],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         assert!(matches!(ctx.entrypoint().source, Source::Oci(_)));
@@ -467,8 +416,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let envs = ctx.envs();
@@ -489,8 +436,6 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let envs = ctx.envs();
@@ -509,59 +454,10 @@ mod tests {
         let ctx = WasiContext {
             spec: &spec,
             wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test".to_string(),
         };
 
         let envs = ctx.envs();
         assert_eq!(envs.len(), 2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_pod_id() -> Result<()> {
-        use std::collections::HashMap;
-
-        let mut annotations = HashMap::new();
-        annotations.insert(
-            "io.kubernetes.cri.sandbox-id".to_string(),
-            "test-pod-id".to_string(),
-        );
-
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(ProcessBuilder::default().cwd("/").build()?)
-            .annotations(annotations)
-            .build()?;
-
-        let ctx = WasiContext {
-            spec: &spec,
-            wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test-container".to_string(),
-        };
-
-        assert_eq!(ctx.pod_id(), Some("test-pod-id"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_pod_id_no_annotation() -> Result<()> {
-        let spec = SpecBuilder::default()
-            .root(RootBuilder::default().path("rootfs").build()?)
-            .process(ProcessBuilder::default().cwd("/").build()?)
-            .build()?;
-
-        let ctx = WasiContext {
-            spec: &spec,
-            wasm_layers: &[],
-            platform: &Platform::default(),
-            id: "test-container".to_string(),
-        };
-
-        assert_eq!(ctx.pod_id(), None);
 
         Ok(())
     }
