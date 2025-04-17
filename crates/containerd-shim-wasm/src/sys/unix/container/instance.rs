@@ -10,7 +10,6 @@ use containerd_shimkit::set_logger_kv;
 use libcontainer::container::builder::ContainerBuilder;
 use libcontainer::syscall::syscall::SyscallType;
 use nix::sys::wait::WaitStatus;
-use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 use tokio::sync::OnceCell;
 
@@ -30,7 +29,7 @@ pub struct Instance<S: Shim> {
 
 #[async_trait]
 trait OciClient {
-    async fn load_modules(&self, id: &str) -> Result<(Vec<WasmLayer>, Platform), SandboxError>;
+    async fn load_modules(&self, id: &str) -> Result<Vec<WasmLayer>, SandboxError>;
 }
 
 struct EngineOciClient<P: Compiler> {
@@ -42,7 +41,7 @@ struct EngineOciClient<P: Compiler> {
 
 #[async_trait]
 impl<P: Compiler> OciClient for EngineOciClient<P> {
-    async fn load_modules(&self, id: &str) -> Result<(Vec<WasmLayer>, Platform), SandboxError> {
+    async fn load_modules(&self, id: &str) -> Result<Vec<WasmLayer>, SandboxError> {
         self.client
             .load_modules(
                 id,
@@ -76,12 +75,12 @@ impl<S: Shim> SandboxInstance for Instance<S> {
             .await?;
 
         // check if container is OCI image with wasm layers and attempt to read the module
-        let (modules, _) = oci_client
+        let modules = oci_client
             .load_modules(&id)
             .await
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
-                (vec![], Platform::default())
+                vec![]
             });
 
         let container = Container::build(
