@@ -893,7 +893,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wamr"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
@@ -953,7 +953,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmedge"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmer"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
@@ -980,7 +980,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmtime"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
