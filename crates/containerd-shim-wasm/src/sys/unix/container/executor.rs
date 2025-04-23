@@ -13,7 +13,6 @@ use libcontainer::workload::{
     Executor as LibcontainerExecutor, ExecutorError as LibcontainerExecutorError,
     ExecutorSetEnvsError, ExecutorValidationError,
 };
-use oci_spec::image::Platform;
 use oci_spec::runtime::Spec;
 
 use crate::sandbox::Sandbox;
@@ -39,8 +38,6 @@ impl<S: Shim> Clone for Executor<S> {
 pub(crate) struct InnerExecutor<S: Shim> {
     ty: OnceCell<ExecutorType<S>>,
     wasm_layers: Vec<WasmLayer>,
-    platform: Platform,
-    id: String,
 }
 
 impl<S: Shim> LibcontainerExecutor for Executor<S> {
@@ -94,24 +91,16 @@ impl<S: Shim> LibcontainerExecutor for Executor<S> {
 }
 
 impl<S: Shim> Executor<S> {
-    pub fn new(wasm_layers: Vec<WasmLayer>, platform: Platform, id: String) -> Self {
+    pub fn new(wasm_layers: Vec<WasmLayer>) -> Self {
         Self(Arc::new(InnerExecutor {
             ty: Default::default(),
             wasm_layers,
-            platform,
-            id,
         }))
     }
 
     fn ctx<'a>(&'a self, spec: &'a Spec) -> WasiContext<'a> {
         let wasm_layers = &self.0.wasm_layers;
-        let platform = &self.0.platform;
-        WasiContext {
-            spec,
-            wasm_layers,
-            platform,
-            id: self.0.id.clone(),
-        }
+        WasiContext { spec, wasm_layers }
     }
 
     fn ty(&self, spec: &Spec) -> &ExecutorType<S> {

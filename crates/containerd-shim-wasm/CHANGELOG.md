@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Removed the `shim_main` function. Use `ShimCli::run` trait method instead. ([#944](https://github.com/containerd/runwasi/pull/944) and [#943](https://github.com/containerd/runwasi/pull/943))
 - The `with_lease` macro, `otel` module and `instance_utils` module are now private. ([#929](https://github.com/containerd/runwasi/pull/929))
 - The logging macros are removed. Now, the pod ID and container ID are unconditionally added to any logging coming from a sandbox process. ([#953](https://github.com/containerd/runwasi/pull/953)
+- Removed from `RuntimeContext` the methods: `platform`, `pod_id`, and `container_id`. ([#971](https://github.com/containerd/runwasi/pull/971))
 
 ## [v0.10.0] - 2025-03-05
 
