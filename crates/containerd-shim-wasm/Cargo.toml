@@ -28,7 +28,7 @@ tempfile = { workspace = true, optional = true }
 wat = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 futures = { version = "0.3.30" }
-wasmparser = { version = "0.227.1" }
+wasmparser = { version = "0.228.0" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
 serde_bytes = "0.11"
