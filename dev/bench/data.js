@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745627195579,
+  "lastUpdate": 1745713183899,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -13350,6 +13350,52 @@ window.BENCHMARK_DATA = {
             "value": 89283015,
             "range": "± 2107445",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5652bc9ea424c5599f0109c80c4cec04b844dc0d",
+          "message": "chore(deps): bump wasmparser from 0.227.1 to 0.228.0 (#975)\n\nBumps [wasmparser](https://github.com/bytecodealliance/wasm-tools) from 0.227.1 to 0.228.0.\n- [Release notes](https://github.com/bytecodealliance/wasm-tools/releases)\n- [Commits](https://github.com/bytecodealliance/wasm-tools/commits)\n\n---\nupdated-dependencies:\n- dependency-name: wasmparser\n  dependency-version: 0.228.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-04-23T10:42:58Z",
+          "url": "https://github.com/containerd/runwasi/commit/5652bc9ea424c5599f0109c80c4cec04b844dc0d"
+        },
+        "date": 1745713182729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 14884,
+            "unit": "kB",
+            "extra": "shim: 12152 kB\nzygote: 2732 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66216,
+            "unit": "kB",
+            "extra": "shim: 53664 kB\nzygote: 12552 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18868,
+            "unit": "kB",
+            "extra": "shim: 15228 kB\nzygote: 3640 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19688,
+            "unit": "kB",
+            "extra": "shim: 16236 kB\nzygote: 3452 kB"
           }
         ]
       }
