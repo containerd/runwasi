@@ -18,6 +18,8 @@ permissions:
   deployments: write
   # contents permission to update benchmark contents in gh-pages branch
   contents: write
+  # pull requests permission to comment on PRs
+  pull-requests: write
 
 jobs:
   benchmark:
@@ -38,7 +40,7 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1.20.4
         with:
-          name: Criterion.rs Benchmark
+          name: End-to-End Benchmark
           tool: 'cargo'
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -53,6 +55,8 @@ jobs:
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
           auto-push: ${{ github.event_name == 'schedule' }}
+          # Enable comment to the PR
+          comment-always: ${{ github.event_name != 'schedule' }}
 
   benchmark-mem:
     runs-on: ubuntu-latest
@@ -75,7 +79,7 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1.20.4
         with:
-          name: Criterion.rs Benchmark
+          name: Memory Benchmark
           tool: 'customSmallerIsBetter'
           output-file-path: bench-mem.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -90,6 +94,8 @@ jobs:
           # Automatically push the benchmark result to gh-pages branch
           # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
           auto-push: ${{ github.event_name == 'schedule' }}
+          # Enable comment to the PR
+          comment-always: ${{ github.event_name != 'schedule' }}
   
   benchmark-http:
     runs-on: ubuntu-latest
