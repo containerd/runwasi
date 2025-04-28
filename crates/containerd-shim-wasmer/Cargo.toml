@@ -10,7 +10,7 @@ log = { workspace = true }
 tokio = { workspace = true }
 
 wasmer = "5.0.2"
-wasmer-wasix = "0.32"
+wasmer-wasix = "0.600"
 mio = { version = "1", features = ["net"] }
 
 [dev-dependencies]
