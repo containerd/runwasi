@@ -106,8 +106,7 @@ jobs:
     needs: [build-ubuntu, test-image]
     strategy:
       matrix:
-        # 20.04 uses cgroupv1, 22.04 uses cgroupv2
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
+        os: ["ubuntu-22.04"]
         runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-smoke.yml
     with:
@@ -120,8 +119,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20.04 uses cgroupv1, 22.04 uses cgroupv2
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
+        os: ["ubuntu-22.04"]
         runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-kind.yml
     with:
@@ -149,7 +147,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-20.04", "ubuntu-22.04"]
+        os: ["ubuntu-22.04"]
         runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
     uses: ./.github/workflows/action-test-k3s.yml
     with:
