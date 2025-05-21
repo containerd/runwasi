@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747701757373,
+  "lastUpdate": 1747786776569,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -16134,6 +16134,52 @@ window.BENCHMARK_DATA = {
             "value": 88018971,
             "range": "± 1669144",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5680b21a3386869ab2b3e8724c71238f3c25422c",
+          "message": "Merge pull request #978 from Mossaka/batch-bump\n\nchore: batch bump minor version of shim binaries",
+          "timestamp": "2025-05-20T17:44:36Z",
+          "url": "https://github.com/containerd/runwasi/commit/5680b21a3386869ab2b3e8724c71238f3c25422c"
+        },
+        "date": 1747786774710,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15404,
+            "unit": "kB",
+            "extra": "shim: 12304 kB\nzygote: 3100 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66220,
+            "unit": "kB",
+            "extra": "shim: 53532 kB\nzygote: 12688 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18280,
+            "unit": "kB",
+            "extra": "shim: 14940 kB\nzygote: 3340 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19300,
+            "unit": "kB",
+            "extra": "shim: 15812 kB\nzygote: 3488 kB"
           }
         ]
       }
