@@ -830,9 +830,9 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
 name = "containerd-client"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce8bbfa492159a878a45bbd8fbd8d5a6fb2a4d6bd74836204a324523ba3233e0"
+checksum = "936cc6911381d95039f381080ec148024d2bb0044a03363542b0a6b0b2c46592"
 dependencies = [
  "hyper-util",
  "prost 0.13.5",
@@ -841,7 +841,7 @@ dependencies = [
  "tokio",
  "tonic 0.12.3",
  "tonic-build",
- "tower 0.4.13",
+ "tower 0.5.1",
 ]
 
 [[package]]
