@@ -48,7 +48,7 @@ windows-sys = "0.59"
 serial_test = "3"
 tracing = "0.1"
 hyper = "1.6.0"
-tokio = { version = "1.45.0", default-features = false }
+tokio = { version = "1.45.1", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 cfg-if = "1.0"
 
