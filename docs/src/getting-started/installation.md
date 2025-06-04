@@ -77,7 +77,7 @@ After installation, you can test your setup by pulling and running a test image:
 1. Pull the test image:
 
 ```bash
-sudo ctr pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
+sudo ctr images pull ghcr.io/containerd/runwasi/wasi-demo-app:latest
 ```
 
 2. Run a test container:
