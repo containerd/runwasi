@@ -13,8 +13,8 @@ use wasi_preview2::bindings::Command;
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
+use wasmtime_wasi::p2::{self as wasi_preview2};
 use wasmtime_wasi::preview1::{self as wasi_preview1};
-use wasmtime_wasi::{self as wasi_preview2};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
@@ -103,20 +103,18 @@ impl WasiPreview2Ctx {
 
 /// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
 impl wasi_preview2::WasiView for WasiPreview2Ctx {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.resource_table
-    }
-
     fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
         &mut self.wasi_ctx
     }
 }
 
-impl WasiHttpView for WasiPreview2Ctx {
-    fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
+impl wasi_preview2::IoView for WasiPreview2Ctx {
+    fn table(&mut self) -> &mut ResourceTable {
         &mut self.resource_table
     }
+}
 
+impl WasiHttpView for WasiPreview2Ctx {
     fn ctx(&mut self) -> &mut wasmtime_wasi_http::WasiHttpCtx {
         &mut self.wasi_http
     }
@@ -176,7 +174,7 @@ impl Compiler for WasmtimeCompiler {
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
-            if self.0.detect_precompiled(&layer.layer).is_some() {
+            if wasmtime::Engine::detect_precompiled(&layer.layer).is_some() {
                 log::info!("Already precompiled");
                 compiled_layers.push(None);
                 continue;
@@ -255,7 +253,7 @@ impl WasmtimeSandbox {
             ComponentTarget::HttpProxy => {
                 log::info!("Found HTTP proxy target");
                 let mut linker = component::Linker::new(&self.engine);
-                wasmtime_wasi::add_to_linker_async(&mut linker)?;
+                wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
                 wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
 
                 let pre = linker.instantiate_pre(&component)?;
@@ -357,7 +355,7 @@ impl WasmtimeSandbox {
                 let component = Component::from_binary(&self.engine, wasm_binary)?;
                 self.execute_component(ctx, component, func).await
             }
-            None => match &self.engine.detect_precompiled(wasm_binary) {
+            None => match wasmtime::Engine::detect_precompiled(wasm_binary) {
                 Some(Precompiled::Module) => {
                     log::info!("using precompiled module");
                     let module = unsafe { Module::deserialize(&self.engine, wasm_binary) }?;
@@ -405,8 +403,8 @@ fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuild
     // https://github.com/containerd/runwasi/issues/413
     log::debug!("building WASI context");
 
-    let file_perms = wasi_preview2::FilePerms::all();
-    let dir_perms = wasi_preview2::DirPerms::all();
+    let file_perms = wasmtime_wasi::FilePerms::all();
+    let dir_perms = wasmtime_wasi::DirPerms::all();
     let envs = envs_from_ctx(ctx);
 
     let mut builder = wasi_preview2::WasiCtxBuilder::new();
@@ -452,7 +450,7 @@ fn use_pooling_allocator_by_default() -> bool {
         const BITS_TO_TEST: u32 = 42;
         let mut config = Config::new();
         config.wasm_memory64(true);
-        config.static_memory_maximum_size(1 << BITS_TO_TEST);
+        config.memory_reservation(1 << BITS_TO_TEST);
         let Ok(engine) = wasmtime::Engine::new(&config) else {
             return false;
         };
