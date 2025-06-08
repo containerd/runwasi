@@ -164,7 +164,7 @@ impl ProxyHandler {
 
     fn wasi_store_for_request(&self, req_id: u64) -> Store<WasiPreview2Ctx> {
         let engine = self.instance_pre.engine();
-        let mut builder = wasmtime_wasi::WasiCtxBuilder::new();
+        let mut builder = wasmtime_wasi::p2::WasiCtxBuilder::new();
 
         builder.envs(&self.env);
         builder.env("REQUEST_ID", req_id.to_string());
