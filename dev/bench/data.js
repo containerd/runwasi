@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749429199031,
+  "lastUpdate": 1749429200233,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -18338,6 +18338,52 @@ window.BENCHMARK_DATA = {
             "value": 88926032,
             "range": "± 1702413",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rikito Taniguchi",
+            "username": "tanishiking",
+            "email": "rikiriki1238@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "124b5b087a999b3c348b29038f9722e7b5048a1d",
+          "message": "chore(deps): bump the wasmtime to 33.0.0 (#1006)\n\n`IOView` is split off of `WasiView`.\nhttps://github.com/bytecodealliance/wasmtime/pull/10016\n\n`static_memory_maximum_size` is now `memory_reservation`.\nhttps://github.com/bytecodealliance/wasmtime/pull/9545\n\n`detect_precompiled` is now associated function.\nhttps://github.com/bytecodealliance/wasmtime/pull/10405\n\nMoved WASIp2 related things to `wasmtime_wasi::p2` module.\nhttps://github.com/bytecodealliance/wasmtime/pull/10073",
+          "timestamp": "2025-06-08T11:47:41Z",
+          "url": "https://github.com/containerd/runwasi/commit/124b5b087a999b3c348b29038f9722e7b5048a1d"
+        },
+        "date": 1749429195884,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15140,
+            "unit": "kB",
+            "extra": "shim: 12408 kB\nzygote: 2732 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66564,
+            "unit": "kB",
+            "extra": "shim: 54000 kB\nzygote: 12564 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18936,
+            "unit": "kB",
+            "extra": "shim: 15336 kB\nzygote: 3600 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19524,
+            "unit": "kB",
+            "extra": "shim: 15888 kB\nzygote: 3636 kB"
           }
         ]
       }
