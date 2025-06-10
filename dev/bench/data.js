@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749514853040,
+  "lastUpdate": 1749514854245,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -27706,6 +27706,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.4,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rikito Taniguchi",
+            "username": "tanishiking",
+            "email": "rikiriki1238@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "124b5b087a999b3c348b29038f9722e7b5048a1d",
+          "message": "chore(deps): bump the wasmtime to 33.0.0 (#1006)\n\n`IOView` is split off of `WasiView`.\nhttps://github.com/bytecodealliance/wasmtime/pull/10016\n\n`static_memory_maximum_size` is now `memory_reservation`.\nhttps://github.com/bytecodealliance/wasmtime/pull/9545\n\n`detect_precompiled` is now associated function.\nhttps://github.com/bytecodealliance/wasmtime/pull/10405\n\nMoved WASIp2 related things to `wasmtime_wasi::p2` module.\nhttps://github.com/bytecodealliance/wasmtime/pull/10073",
+          "timestamp": "2025-06-08T11:47:41Z",
+          "url": "https://github.com/containerd/runwasi/commit/124b5b087a999b3c348b29038f9722e7b5048a1d"
+        },
+        "date": 1749514853958,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.3,
             "unit": "ms"
           }
         ]
