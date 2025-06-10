@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749514854245,
+  "lastUpdate": 1749514891551,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -18500,6 +18500,76 @@ window.BENCHMARK_DATA = {
             "value": 19704,
             "unit": "kB",
             "extra": "shim: 16236 kB\nzygote: 3468 kB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Rikito Taniguchi",
+            "username": "tanishiking",
+            "email": "rikiriki1238@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "124b5b087a999b3c348b29038f9722e7b5048a1d",
+          "message": "chore(deps): bump the wasmtime to 33.0.0 (#1006)\n\n`IOView` is split off of `WasiView`.\nhttps://github.com/bytecodealliance/wasmtime/pull/10016\n\n`static_memory_maximum_size` is now `memory_reservation`.\nhttps://github.com/bytecodealliance/wasmtime/pull/9545\n\n`detect_precompiled` is now associated function.\nhttps://github.com/bytecodealliance/wasmtime/pull/10405\n\nMoved WASIp2 related things to `wasmtime_wasi::p2` module.\nhttps://github.com/bytecodealliance/wasmtime/pull/10073",
+          "timestamp": "2025-06-08T11:47:41Z",
+          "url": "https://github.com/containerd/runwasi/commit/124b5b087a999b3c348b29038f9722e7b5048a1d"
+        },
+        "date": 1749514889615,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-app:latest",
+            "value": 142601999,
+            "range": "± 4191650",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmtime/wasi-demo-oci:latest",
+            "value": 83360516,
+            "range": "± 2500334",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-app:latest",
+            "value": 113959850,
+            "range": "± 2238260",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmedge/wasi-demo-oci:latest",
+            "value": 126238945,
+            "range": "± 3368187",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-app:latest",
+            "value": 134077065,
+            "range": "± 8195864",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wasmer/wasi-demo-oci:latest",
+            "value": 137281673,
+            "range": "± 1859420",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-app:latest",
+            "value": 87822530,
+            "range": "± 1920696",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "end-to-end/wamr/wasi-demo-oci:latest",
+            "value": 87154621,
+            "range": "± 1727329",
+            "unit": "ns/iter"
           }
         ]
       }
