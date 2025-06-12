@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749687572726,
+  "lastUpdate": 1749687621897,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -18686,6 +18686,52 @@ window.BENCHMARK_DATA = {
             "value": 92815324,
             "range": "± 2729303",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5322c335c73dd50c6b0ad78c8c1ff3e73b2188b2",
+          "message": "Merge pull request #1009 from containerd/dependabot/cargo/patch-2599ad99c4\n\nchore(deps): bump toml from 0.8.22 to 0.8.23 in the patch group",
+          "timestamp": "2025-06-10T06:01:59Z",
+          "url": "https://github.com/containerd/runwasi/commit/5322c335c73dd50c6b0ad78c8c1ff3e73b2188b2"
+        },
+        "date": 1749687619661,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15044,
+            "unit": "kB",
+            "extra": "shim: 12144 kB\nzygote: 2900 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66216,
+            "unit": "kB",
+            "extra": "shim: 53664 kB\nzygote: 12552 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18720,
+            "unit": "kB",
+            "extra": "shim: 15216 kB\nzygote: 3504 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19716,
+            "unit": "kB",
+            "extra": "shim: 16080 kB\nzygote: 3636 kB"
           }
         ]
       }
