@@ -30,7 +30,7 @@ jobs:
       wasi_demo_oci_artifact: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact }}
       wasi_demo_http: ${{ steps.get_digests.outputs.wasi_demo_http }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-env
       - name: Install Rust and wasm32-wasi target
         uses: actions-rs/toolchain@v1
