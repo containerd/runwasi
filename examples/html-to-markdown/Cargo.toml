@@ -1,0 +1,18 @@
+[package]
+name = "html-to-markdown"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[package.metadata.component]
+package = "component:html-to-markdown"
+
+[package.metadata.component.dependencies]
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+scraper = "0.20"
+html2md = "0.2"

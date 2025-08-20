@@ -10,7 +10,7 @@ members = [
     "crates/containerd-shim-wamr",
     "crates/containerd-shimkit",
     "crates/stress-test",
-    "benches/containerd-shim-benchmarks",
+    "benches/containerd-shim-benchmarks", "examples/html-to-markdown",
 ]
 resolver = "2"
 

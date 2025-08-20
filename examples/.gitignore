@@ -1,0 +1,8 @@
+# Build artifacts
+target/
+*.wasm
+*.md.tmp
+
+# Test output files (keep test.html as it's a test input)
+test.md
+output.md
