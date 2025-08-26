@@ -175,7 +175,7 @@ jobs:
     - uses: actions-rust-lang/setup-rust-toolchain@v1
     - uses: Swatinem/rust-cache@v2
     - name: Check unused dependencies
-      uses: bnjbvr/cargo-machete@v0.8.0
+      uses: bnjbvr/cargo-machete@v0.9.1
 
   spelling:
     name: spell check with typos
