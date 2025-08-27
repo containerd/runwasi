@@ -40,7 +40,7 @@ jobs:
       - name: describe runner
         run: |
           echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-env
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         env:
