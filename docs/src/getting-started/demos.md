@@ -101,6 +101,29 @@ make test/k8s-oci-wasmtime
 
 The `wasmtime-shim` includes support for the WASI/HTTP specification. For details on running HTTP-based WebAssembly modules, see the [wasmtime-shim documentation](https://github.com/containerd/runwasi/blob/main/crates/containerd-shim-wasmtime/README.md#WASI/HTTP).
 
+### WASI/HTTP
+
+The `wasmtime-shim` supports [`wasi/http`][1] and can be used to serve requests from a `wasi/http` proxy component. The
+shim code will try to detect components targeting `http/proxy`, and start up a hyper server to listen for incoming
+connections, forwarding the requests to the WASM component for handling.
+
+This behavior is very similar to what the [`wasmtime serve`][2] command currently offers. The server task is terminated
+upon receiving a terminate or interrupt signal in the container.
+
+This is particularly useful on Wasm-first platforms to enable instance-per-request isolation:
+
+> Each Wasm instance serves only one HTTP request, and then goes away.  
+> This improves security and bug mitigation: the blast radius of an exploit or guest-runtime bug is limited to a single request, and cannot access data from other users or other requests by the same user. [3]
+
+The server can be customized using environment variables passed to the `RuntimeContext`:
+
+- `WASMTIME_HTTP_PROXY_SOCKET_ADDR`: Defines the socket address to bind to (default: `0.0.0.0:8080`).
+- `WASMTIME_HTTP_PROXY_BACKLOG`: Defines the maximum number of pending connections in the queue (default: `100`).
+
+[1]: https://github.com/WebAssembly/wasi-http  
+[2]: https://docs.wasmtime.dev/cli/wasmtime-serve.html  
+[3]: https://bytecodealliance.org/articles/announcing-wasi-http
+
 ## Using Different WebAssembly Runtimes
 
 All demos can be run using any of the available Runwasi shims by replacing `wasmtime` with the runtime of your choice:
