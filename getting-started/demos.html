@@ -36,6 +36,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc.js"></script>
@@ -92,10 +93,13 @@
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
+                sidebar_toggle.checked = false;
             }
-            sidebar_toggle.checked = sidebar === 'visible';
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
@@ -143,7 +147,7 @@
                         <a href="https://github.com/containerd/runwasi" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/getting-started/demos.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/containerd/runwasi/edit/main/docs/src/getting-started/demos.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -152,7 +156,12 @@
 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -234,6 +243,22 @@ exiting
 </blockquote>
 <h2 id="wasihttp-demo-for-wasmtime-shim"><a class="header" href="#wasihttp-demo-for-wasmtime-shim">WASI/HTTP Demo for Wasmtime Shim</a></h2>
 <p>The <code>wasmtime-shim</code> includes support for the WASI/HTTP specification. For details on running HTTP-based WebAssembly modules, see the <a href="https://github.com/containerd/runwasi/blob/main/crates/containerd-shim-wasmtime/README.md#WASI/HTTP">wasmtime-shim documentation</a>.</p>
+<h3 id="wasihttp"><a class="header" href="#wasihttp">WASI/HTTP</a></h3>
+<p>The <code>wasmtime-shim</code> supports <a href="https://github.com/WebAssembly/wasi-http"><code>wasi/http</code></a> and can be used to serve requests from a <code>wasi/http</code> proxy component. The
+shim code will try to detect components targeting <code>http/proxy</code>, and start up a hyper server to listen for incoming
+connections, forwarding the requests to the WASM component for handling.</p>
+<p>This behavior is very similar to what the <a href="https://docs.wasmtime.dev/cli/wasmtime-serve.html"><code>wasmtime serve</code></a> command currently offers. The server task is terminated
+upon receiving a terminate or interrupt signal in the container.</p>
+<p>This is particularly useful on Wasm-first platforms to enable instance-per-request isolation:</p>
+<blockquote>
+<p>Each Wasm instance serves only one HTTP request, and then goes away.<br />
+This improves security and bug mitigation: the blast radius of an exploit or guest-runtime bug is limited to a single request, and cannot access data from other users or other requests by the same user. <a href="https://bytecodealliance.org/articles/announcing-wasi-http">3</a></p>
+</blockquote>
+<p>The server can be customized using environment variables passed to the <code>RuntimeContext</code>:</p>
+<ul>
+<li><code>WASMTIME_HTTP_PROXY_SOCKET_ADDR</code>: Defines the socket address to bind to (default: <code>0.0.0.0:8080</code>).</li>
+<li><code>WASMTIME_HTTP_PROXY_BACKLOG</code>: Defines the maximum number of pending connections in the queue (default: <code>100</code>).</li>
+</ul>
 <h2 id="using-different-webassembly-runtimes"><a class="header" href="#using-different-webassembly-runtimes">Using Different WebAssembly Runtimes</a></h2>
 <p>All demos can be run using any of the available Runwasi shims by replacing <code>wasmtime</code> with the runtime of your choice:</p>
 <ul>
@@ -300,6 +325,7 @@ exiting
         <!-- Custom JS scripts -->
         <script src="../mermaid.min.js"></script>
         <script src="../mermaid-init.js"></script>
+
 
 
     </div>
