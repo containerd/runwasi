@@ -36,7 +36,7 @@ jobs:
           set -o pipefail
           cargo bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.4
+        uses: benchmark-action/github-action-benchmark@v1.20.7
         with:
           name: Criterion.rs Benchmark
           tool: 'cargo'
@@ -73,7 +73,7 @@ jobs:
           done
           cat bench-mem-* | jq -s 'flatten(1)' > bench-mem.json
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.4
+        uses: benchmark-action/github-action-benchmark@v1.20.7
         with:
           name: Criterion.rs Benchmark
           tool: 'customSmallerIsBetter'
@@ -159,7 +159,7 @@ jobs:
           done
           cat stress-bench-*.json | jq -s 'flatten(1)' > stress-bench.json
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.4
+        uses: benchmark-action/github-action-benchmark@v1.20.7
         with:
           name: Stress Test Benchmark
           tool: 'customBiggerIsBetter'
