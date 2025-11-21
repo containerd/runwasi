@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, bail};
@@ -32,6 +33,12 @@ pub trait RuntimeContext: Send + Sync {
     ///   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
     ///   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
     fn entrypoint(&self) -> Entrypoint;
+
+    /// Returns the annotations map from the OCI runtime spec, if any.
+    ///
+    /// Annotations are provided by the runtime (for example `ctr --annotation key=value`) and
+    /// are available on the `Spec` as a map of string key/values.
+    fn annotations(&self) -> &Option<HashMap<String, String>>;
 }
 
 /// The source for a WASI module / components.
@@ -135,6 +142,10 @@ impl RuntimeContext for WasiContext<'_> {
             source,
             name: module_name,
         }
+    }
+
+    fn annotations(&self) -> &Option<HashMap<String, String>> {
+        self.spec.annotations()
     }
 }
 
