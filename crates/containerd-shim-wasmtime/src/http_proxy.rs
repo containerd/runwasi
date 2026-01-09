@@ -15,6 +15,7 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use wasmtime::Store;
 use wasmtime::component::ResourceTable;
+use wasmtime_wasi::{WasiCtxBuilder};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
@@ -164,7 +165,7 @@ impl ProxyHandler {
 
     fn wasi_store_for_request(&self, req_id: u64) -> Store<WasiPreview2Ctx> {
         let engine = self.instance_pre.engine();
-        let mut builder = wasmtime_wasi::p2::WasiCtxBuilder::new();
+        let mut builder = WasiCtxBuilder::new();
 
         builder.envs(&self.env);
         builder.env("REQUEST_ID", req_id.to_string());
@@ -172,6 +173,16 @@ impl ProxyHandler {
         let ctx = WasiPreview2Ctx {
             wasi_ctx: builder.build(),
             wasi_http: WasiHttpCtx::new(),
+            #[cfg(feature = "wasmtime-wasi-nn")]
+            wasi_nn: {
+                // Create wasi-nn with backends
+                let backends = vec![
+                    #[cfg(feature = "pytorch")]
+                    wasmtime_wasi_nn::Backend::from(wasmtime_wasi_nn::backend::pytorch::PytorchBackend::default()),
+                ];
+                let registry = wasmtime_wasi_nn::Registry::from(wasmtime_wasi_nn::InMemoryRegistry::new());
+                wasmtime_wasi_nn::wit::WasiNnCtx::new(backends, registry)
+            },
             resource_table: ResourceTable::default(),
         };
 

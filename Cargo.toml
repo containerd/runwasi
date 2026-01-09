@@ -53,9 +53,10 @@ tokio-util = { version = "0.7", default-features = false }
 cfg-if = "1.0"
 
 # wasmtime
-wasmtime = { version = "33.0.2", features = ["async"] }
-wasmtime-wasi = { version = "33.0.2" }
-wasmtime-wasi-http = { version = "33.0.0" }
+wasmtime = { version = "40.0.1", features = ["async"] }
+wasmtime-wasi = { version = "40.0.1" }
+wasmtime-wasi-http = { version = "40.0.1" }
+wasmtime-wasi-nn = { version = "40.0.1" }
 
 [profile.release]
 panic = "abort"
