@@ -1,8 +1,15 @@
 #!/bin/bash
-# Install cross from crates.io which has locked dependencies compatible with rustc 1.85.0
-# Installing from git causes cargo to resolve dependencies to latest versions,
-# some of which (like home v0.5.12+) require rustc 1.88+
-cargo install cross --version 0.2.5
+# Use cargo-binstall to install cross from pre-built binaries
+# This avoids the dependency resolution issue where cargo install
+# resolves dependencies to latest versions that require rustc 1.88+
+
+# Install cargo-binstall if not already installed
+if ! command -v cargo-binstall &> /dev/null; then
+    curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+fi
+
+# Install cross using cargo-binstall (downloads pre-built binary)
+cargo binstall cross --version 0.2.5 --no-confirm
 
 if [ ! -z "$CI" ]; then
 
