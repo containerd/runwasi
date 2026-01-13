@@ -85,6 +85,6 @@ We use [benchmark-action](https://github.com/benchmark-action/github-action-benc
 
 If you want to contribute to the benchmarks, whether it's adding a new benchmark or improving the existing ones, or just want to share your ideas, please refer to the following issue:
 
-- [Bencharking issue #97](https://github.com/containerd/runwasi/issues/97)
+- [Benchmarking issue #97](https://github.com/containerd/runwasi/issues/97)
 
 Any PRs are welcome!

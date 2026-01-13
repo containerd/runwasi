@@ -31,7 +31,7 @@ pub trait RuntimeContext: Send + Sync {
     ///   "/app/app.wasm#entry" -> { source: File("/app/app.wasm"), func: "entry", name: "Some(app)", arg0: "/app/app.wasm#entry" }
     ///   "my_module.wat" -> { source: File("my_module.wat"), func: "_start", name: "Some(my_module)", arg0: "my_module.wat" }
     ///   "#init" -> { source: File(""), func: "init", name: None, arg0: "#init" }
-    fn entrypoint(&self) -> Entrypoint;
+    fn entrypoint(&self) -> Entrypoint<'_>;
 }
 
 /// The source for a WASI module / components.
@@ -111,7 +111,7 @@ impl RuntimeContext for WasiContext<'_> {
             .unwrap_or_default()
     }
 
-    fn entrypoint(&self) -> Entrypoint {
+    fn entrypoint(&self) -> Entrypoint<'_> {
         let arg0 = self.args().first();
 
         let entry_point = arg0.map(String::as_str).unwrap_or("");
