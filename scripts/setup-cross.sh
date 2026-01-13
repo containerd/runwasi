@@ -1,5 +1,8 @@
 #!/bin/bash
-cargo install cross --git https://github.com/cross-rs/cross
+# Install cross from crates.io which has locked dependencies compatible with rustc 1.85.0
+# Installing from git causes cargo to resolve dependencies to latest versions,
+# some of which (like home v0.5.12+) require rustc 1.88+
+cargo install cross --version 0.2.5
 
 if [ ! -z "$CI" ]; then
 
