@@ -36,12 +36,10 @@ This is for Wasmtime shim. We use `hey` to load test the Wasmtime shim running "
 
 We built a distroless container image with `wasmtime` runtime installed. Then we run stress-test for `wasmtime` shim and the distroless container for the same workload. The result is shown below.
 
-| Runtime | Tasks | Time | Throughput |
-|---------|-------|------|------------|
-| runwasi wasmtime | 1000 | 3s 31ms 663us 672ns | 329.85 tasks/s |
-| runc distroless wasmtime | 1000 | 11s 795ms 27us 285ns | 84.78 tasks/s |
-
-
+| Runtime                  | Tasks | Time                 | Throughput     |
+| ------------------------ | ----- | -------------------- | -------------- |
+| runwasi wasmtime         | 1000  | 3s 31ms 663us 672ns  | 329.85 tasks/s |
+| runc distroless wasmtime | 1000  | 11s 795ms 27us 285ns | 84.78 tasks/s  |
 
 The Dockerfile for the distroless container is shown below.
 
@@ -85,6 +83,6 @@ We use [benchmark-action](https://github.com/benchmark-action/github-action-benc
 
 If you want to contribute to the benchmarks, whether it's adding a new benchmark or improving the existing ones, or just want to share your ideas, please refer to the following issue:
 
-- [Bencharking issue #97](https://github.com/containerd/runwasi/issues/97)
+- [Benchmarking issue #97](https://github.com/containerd/runwasi/issues/97)
 
 Any PRs are welcome!
