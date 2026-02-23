@@ -27,7 +27,7 @@ upon receiving a terminate or interrupt signal in the container.
 
 This can be very useful on the Wasm-first platforms to allow instance-per-request isolation:
 
-> Eeach Wasm instance serves only one HTTP request, and then goes away. This is fantastic for security and bug
+> Each Wasm instance serves only one HTTP request, and then goes away. This is fantastic for security and bug
 > mitigation: the blast radius of an exploit or guest-runtime bug is only a single request, and can never see the data
 > from other users of the platform or even other requests by the same user. [3]
 
