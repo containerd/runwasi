@@ -65,16 +65,36 @@ containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "0.4.0"
 
 ### Verify signing
 
-The release pipeline uses `cosign` to sign the release blobs, if any. It uses Github's OIDC token to authenticate with Sigstore to prove identity and outputs a `.bundle` file, which contains a signature and a key. This file can be verified using `cosign verify-blob` command, providing the workflow tag and Github as the issuer. The full command looks like this (e.g. wasmtime shim):
+The release pipeline uses [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) to sign the release binaries. It leverages Github's OIDC token to authenticate with Sigstore, proving identity, and produces `.sig` (signature) and `.pem` (certificate) files for each binary. These signing artifacts are included in the release tarball alongside the binary itself.
 
-```sh
-cosign verify-blob --bundle containerd-shim-wasmtime-v1.bundle \
---certificate-identity https://github.com/containerd/runwasi/.github/workflows/release.yml@refs/tags/containerd-shim-wasmtime/<tag> \ 
---certificate-oidc-issuer https://token.actions.githubusercontent.com \
-containerd-shim-wasmtime-v1
+To verify a release binary (using the wasmtime shim as an example):
+
+**Step 1.** Download and unpack the release tarball:
+
+```console
+# Fetch the release tarball — substitute <tag> (e.g. 0.8.0) and <arch> (e.g. x86_64 or aarch64) accordingly
+$ wget "https://github.com/containerd/runwasi/releases/download/containerd-shim-wasmtime%2Fv<tag>/containerd-shim-wasmtime-<arch>-linux-musl.tar.gz"
+
+# Unpack — the tarball contains the binary plus .sig and .pem signing artifacts
+$ tar -xvf containerd-shim-wasmtime-<arch>-linux-musl.tar.gz
 ```
 
-In the Github release page, please provide the above command in the instructions for the consumer to verify the release.
+**Step 2.** Verify the binary with cosign:
+
+```console
+$ cosign verify-blob \
+    --certificate containerd-shim-wasmtime-v1.pem \
+    --signature containerd-shim-wasmtime-v1.sig \
+    --certificate-identity \
+      "https://github.com/containerd/runwasi/.github/workflows/action-build.yml@refs/heads/main" \
+    --certificate-oidc-issuer \
+      "https://token.actions.githubusercontent.com" \
+    containerd-shim-wasmtime-v1
+```
+
+> **Why does the certificate identity reference `action-build.yml@refs/heads/main` instead of `release.yml`?**
+> Signing runs inside the reusable build workflow ([action-build.yml](.github/workflows/action-build.yml)), which is invoked by the release workflow. GitHub OIDC tokens for reusable workflows use the *called* workflow's identity, not the caller's, so the certificate always references `action-build.yml@refs/heads/main`.
+
 
 ### First time release of a crate
 
