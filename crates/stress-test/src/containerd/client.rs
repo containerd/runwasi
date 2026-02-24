@@ -25,8 +25,8 @@ use oci_spec::image::{Arch, ImageConfiguration, ImageIndex, ImageManifest};
 use oci_spec::runtime::Spec;
 use prost_types::Any;
 use tokio_async_drop::tokio_async_drop as async_drop;
-use tonic::Request;
-use tonic::transport::Channel;
+use containerd_client::tonic::Request;
+use containerd_client::tonic::transport::Channel;
 
 struct ClientInner {
     channel: Channel,
