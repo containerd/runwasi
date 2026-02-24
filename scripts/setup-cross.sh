@@ -9,7 +9,9 @@ if ! command -v cargo-binstall &> /dev/null; then
 fi
 
 # Install cross using cargo-binstall (downloads pre-built binary)
-cargo binstall cross --version 0.2.5 --no-confirm
+# Use --force to ensure the binary is actually present even if metadata
+# says it's already installed (the Rust cache may have cleaned the binary)
+cargo binstall cross --version 0.2.5 --no-confirm --force
 
 if [ ! -z "$CI" ]; then
 
