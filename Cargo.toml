@@ -53,7 +53,7 @@ tokio-util = { version = "0.7", default-features = false }
 cfg-if = "1.0"
 
 # wasmtime
-wasmtime = { version = "33.0.2", features = ["async"] }
+wasmtime = { version = "36.0.6", features = ["async"] }
 wasmtime-wasi = { version = "33.0.2" }
 wasmtime-wasi-http = { version = "33.0.0" }
 
