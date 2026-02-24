@@ -3,6 +3,18 @@ ARG CROSS_DEB_ARCH
 FROM $CROSS_BASE_IMAGE
 
 ARG CROSS_DEB_ARCH
+
+# Install newer libclang from LLVM apt repo (cross base images use Ubuntu 16.04
+# with libclang 3.8 which is too old for bindgen/clang-sys >= 6.0 requirement)
+RUN apt-get -y update && \
+    apt-get install -y wget gnupg software-properties-common && \
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main" >> /etc/apt/sources.list && \
+    apt-get -y update && \
+    apt-get install -y libclang-9-dev
+
+ENV LIBCLANG_PATH="/usr/lib/llvm-9/lib"
+
 RUN dpkg --add-architecture ${CROSS_DEB_ARCH} && \
     apt-get -y update && \
     apt-get install -y pkg-config libseccomp-dev:${CROSS_DEB_ARCH} libzstd-dev:${CROSS_DEB_ARCH} libssl-dev unzip
