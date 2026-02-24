@@ -3,16 +3,16 @@ default-target = "x86_64-unknown-linux-musl"
 
 [target.aarch64-unknown-linux-musl.dockerfile]
 file = "cross/Dockerfile.musl"
-build-args = { CROSS_BASE_IMAGE = "ghcr.io/cross-rs/aarch64-unknown-linux-musl:main", CROSS_CMAKE_SYSTEM_PROCESSOR = "aarch64", CROSS_SYSROOT = "/usr/local/aarch64-linux-musl" }
+build-args = { BASE_IMAGE = "ghcr.io/cross-rs/aarch64-unknown-linux-musl:main", CROSS_CMAKE_SYSTEM_PROCESSOR = "aarch64", CROSS_SYSROOT = "/usr/local/aarch64-linux-musl" }
 
 [target.x86_64-unknown-linux-musl.dockerfile]
 file = "cross/Dockerfile.musl"
-build-args = { CROSS_BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:main", CROSS_CMAKE_SYSTEM_PROCESSOR = "x86_64", CROSS_SYSROOT = "/usr/local/x86_64-linux-musl" }
+build-args = { BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:main", CROSS_CMAKE_SYSTEM_PROCESSOR = "x86_64", CROSS_SYSROOT = "/usr/local/x86_64-linux-musl" }
 
 [target.aarch64-unknown-linux-gnu.dockerfile]
 file = "cross/Dockerfile.gnu"
-build-args = { CROSS_BASE_IMAGE = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main" }
+build-args = { BASE_IMAGE = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main" }
 
 [target.x86_64-unknown-linux-gnu.dockerfile]
 file = "cross/Dockerfile.gnu"
-build-args = { CROSS_BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:main" }
+build-args = { BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:main" }
