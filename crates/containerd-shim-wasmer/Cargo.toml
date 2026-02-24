@@ -9,8 +9,8 @@ containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 log = { workspace = true }
 tokio = { workspace = true }
 
-wasmer = "5.0.2"
-wasmer-wasix = "0.32"
+wasmer = "6.0.1"
+wasmer-wasix = "0.600.1"
 mio = { version = "1", features = ["net"] }
 
 [dev-dependencies]

@@ -11,7 +11,7 @@ pub struct WasmerShim;
 
 #[derive(Default)]
 pub struct WasmerSandbox {
-    engine: wasmer::Cranelift,
+    engine: wasmer::sys::Cranelift,
 }
 
 impl Shim for WasmerShim {
