@@ -3,6 +3,10 @@ name = "containerd-shim-wasmtime"
 version = "0.6.0"
 edition.workspace = true
 
+[features]
+default = []
+pytorch = ["wasmtime-wasi-nn/pytorch"]
+
 [dependencies]
 anyhow = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
@@ -15,6 +19,7 @@ tokio-util = { workspace = true, features = ["rt"] }
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true }
 wasmtime-wasi-http = { workspace = true }
+wasmtime-wasi-nn = { workspace = true, optional = true }
 
 [dev-dependencies]
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
