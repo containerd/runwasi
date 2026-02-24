@@ -17,7 +17,7 @@ jobs:
     name: e2e k3s test on ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-env
       - name: Download artifacts
         uses: actions/download-artifact@master
