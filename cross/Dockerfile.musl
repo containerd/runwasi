@@ -1,5 +1,8 @@
-ARG CROSS_BASE_IMAGE
-FROM $CROSS_BASE_IMAGE
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG CROSS_CMAKE_SYSTEM_PROCESSOR
+ARG CROSS_SYSROOT
 
 COPY --from=jorgeprendes420/apk-anywhere / /
 ENV MARCH=${CROSS_CMAKE_SYSTEM_PROCESSOR}
@@ -25,4 +28,4 @@ rustflags = ["-Clink-arg=-lgcc"]
 EOF
 
 RUN apt-get -y update && \
-    apt-get install -y pkg-config protobuf-compiler
+    apt-get install -y pkg-config protobuf-compiler libclang-dev

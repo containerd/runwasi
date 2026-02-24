@@ -1,8 +1,8 @@
-ARG CROSS_BASE_IMAGE
+ARG BASE_IMAGE
 ARG CROSS_DEB_ARCH
-FROM $CROSS_BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 ARG CROSS_DEB_ARCH
 RUN dpkg --add-architecture ${CROSS_DEB_ARCH} && \
     apt-get -y update && \
-    apt-get install -y pkg-config protobuf-compiler libseccomp-dev:${CROSS_DEB_ARCH} libzstd-dev:${CROSS_DEB_ARCH} libssl-dev
+    apt-get install -y pkg-config protobuf-compiler libseccomp-dev:${CROSS_DEB_ARCH} libzstd-dev:${CROSS_DEB_ARCH} libssl-dev libclang-dev
