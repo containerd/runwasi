@@ -8,13 +8,12 @@ use containerd_shim_wasm::sandbox::context::{
 };
 use containerd_shim_wasm::shim::{Compiler, Shim, Version, version};
 use tokio_util::sync::CancellationToken;
-use wasi_preview1::WasiP1Ctx;
-use wasi_preview2::bindings::Command;
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
-use wasmtime_wasi::p2::{self as wasi_preview2};
-use wasmtime_wasi::preview1::{self as wasi_preview1};
+use wasmtime_wasi::p2::bindings::Command;
+use wasmtime_wasi::preview1::{self as wasi_preview1, WasiP1Ctx};
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
@@ -85,7 +84,7 @@ impl Default for WasmtimeSandbox {
 }
 
 pub struct WasiPreview2Ctx {
-    pub(crate) wasi_ctx: wasi_preview2::WasiCtx,
+    pub(crate) wasi_ctx: WasiCtx,
     pub(crate) wasi_http: WasiHttpCtx,
     pub(crate) resource_table: ResourceTable,
 }
@@ -101,22 +100,23 @@ impl WasiPreview2Ctx {
     }
 }
 
-/// This impl is required to use wasmtime_wasi::preview2::WasiView trait.
-impl wasi_preview2::WasiView for WasiPreview2Ctx {
-    fn ctx(&mut self) -> &mut wasi_preview2::WasiCtx {
-        &mut self.wasi_ctx
-    }
-}
-
-impl wasi_preview2::IoView for WasiPreview2Ctx {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.resource_table
+/// This impl is required to use wasmtime_wasi::WasiView trait.
+impl WasiView for WasiPreview2Ctx {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.wasi_ctx,
+            table: &mut self.resource_table,
+        }
     }
 }
 
 impl WasiHttpView for WasiPreview2Ctx {
     fn ctx(&mut self) -> &mut wasmtime_wasi_http::WasiHttpCtx {
         &mut self.wasi_http
+    }
+
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.resource_table
     }
 }
 
@@ -384,7 +384,7 @@ pub(crate) fn envs_from_ctx(ctx: &impl RuntimeContext) -> Vec<(String, String)> 
         .collect()
 }
 
-fn store_for_context<T: wasi_preview2::WasiView>(
+fn store_for_context<T: WasiView + 'static>(
     engine: &wasmtime::Engine,
     ctx: T,
 ) -> Result<(Store<T>, component::Linker<T>)> {
@@ -392,12 +392,12 @@ fn store_for_context<T: wasi_preview2::WasiView>(
 
     log::debug!("init linker");
     let mut linker = component::Linker::new(engine);
-    wasi_preview2::add_to_linker_async(&mut linker)?;
+    wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
     Ok((store, linker))
 }
 
-fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuilder, anyhow::Error> {
+fn wasi_builder(ctx: &impl RuntimeContext) -> Result<WasiCtxBuilder, anyhow::Error> {
     // TODO: make this more configurable (e.g. allow the user to specify the
     // preopened directories and their permissions)
     // https://github.com/containerd/runwasi/issues/413
@@ -407,7 +407,7 @@ fn wasi_builder(ctx: &impl RuntimeContext) -> Result<wasi_preview2::WasiCtxBuild
     let dir_perms = wasmtime_wasi::DirPerms::all();
     let envs = envs_from_ctx(ctx);
 
-    let mut builder = wasi_preview2::WasiCtxBuilder::new();
+    let mut builder = WasiCtxBuilder::new();
     builder
         .args(ctx.args())
         .envs(&envs)
