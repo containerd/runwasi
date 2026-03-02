@@ -27,7 +27,7 @@ serde_json = { workspace = true }
 tempfile = { workspace = true, optional = true }
 wat = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-futures = { version = "0.3.30" }
+futures = { version = "0.3.32" }
 wasmparser = { version = "0.231.0" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
