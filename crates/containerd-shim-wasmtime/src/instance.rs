@@ -12,7 +12,7 @@ use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_wasi::p2::bindings::Command;
-use wasmtime_wasi::preview1::{self as wasi_preview1, WasiP1Ctx};
+use wasmtime_wasi::p1::{self as wasi_preview1, WasiP1Ctx};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};

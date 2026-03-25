@@ -55,7 +55,7 @@ cfg-if = "1.0"
 # wasmtime
 wasmtime = { version = "38.0.4", features = ["async"] }
 wasmtime-wasi = { version = "38.0.4" }
-wasmtime-wasi-http = { version = "36.0.6" }
+wasmtime-wasi-http = { version = "38.0.4" }
 
 [profile.release]
 panic = "abort"
