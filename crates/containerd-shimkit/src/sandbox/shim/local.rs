@@ -159,7 +159,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             .map_err(|err| Error::InvalidArgument(format!("could not load runtime spec: {err}")))?;
 
         spec.canonicalize_rootfs(req.bundle()).map_err(|err| {
-            ShimError::InvalidArgument(format!("could not canonicalize rootfs: {}", err))
+            ShimError::InvalidArgument(format!("could not canonicalize rootfs: {err}"))
         })?;
 
         let rootfs = spec
@@ -261,7 +261,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
         }
         .spawn();
 
-        debug!("started: {:?}", req);
+        debug!("started: {req:?}");
 
         Ok(StartResponse {
             pid,
@@ -385,7 +385,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
         _ctx: &TtrpcContext,
         req: CreateTaskRequest,
     ) -> TtrpcResult<CreateTaskResponse> {
-        debug!("create: {:?}", req);
+        debug!("create: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -395,7 +395,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn start(&self, _ctx: &TtrpcContext, req: StartRequest) -> TtrpcResult<StartResponse> {
-        debug!("start: {:?}", req);
+        debug!("start: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -405,7 +405,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn kill(&self, _ctx: &TtrpcContext, req: KillRequest) -> TtrpcResult<Empty> {
-        debug!("kill: {:?}", req);
+        debug!("kill: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -415,7 +415,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn delete(&self, _ctx: &TtrpcContext, req: DeleteRequest) -> TtrpcResult<DeleteResponse> {
-        debug!("delete: {:?}", req);
+        debug!("delete: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -425,7 +425,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn wait(&self, _ctx: &TtrpcContext, req: WaitRequest) -> TtrpcResult<WaitResponse> {
-        debug!("wait: {:?}", req);
+        debug!("wait: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         let span_exporter = {
@@ -465,7 +465,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn connect(&self, _ctx: &TtrpcContext, req: ConnectRequest) -> TtrpcResult<ConnectResponse> {
-        debug!("connect: {:?}", req);
+        debug!("connect: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -482,7 +482,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn state(&self, _ctx: &TtrpcContext, req: StateRequest) -> TtrpcResult<StateResponse> {
-        debug!("state: {:?}", req);
+        debug!("state: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));
@@ -505,7 +505,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), level = "Info"))]
     fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
-        debug!("stats: {:?}", req);
+        debug!("stats: {req:?}");
 
         #[cfg(feature = "opentelemetry")]
         tracing::Span::current().set_parent(extract_context(&_ctx.metadata));

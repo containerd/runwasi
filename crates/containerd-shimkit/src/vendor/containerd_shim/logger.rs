@@ -70,7 +70,7 @@ pub(crate) struct SimpleWriteVisitor {
 
 impl<'kvs> Visitor<'kvs> for SimpleWriteVisitor {
     fn visit_pair(&mut self, k: kv::Key<'kvs>, v: kv::Value<'kvs>) -> Result<(), kv::Error> {
-        write!(&mut self.key_values, " {}=\"{}\"", k, v)?;
+        write!(&mut self.key_values, " {k}=\"{v}\"")?;
         Ok(())
     }
 }

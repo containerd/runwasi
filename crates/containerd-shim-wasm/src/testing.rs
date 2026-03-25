@@ -124,7 +124,7 @@ impl<WasiEngine: Shim> WasiTestBuilder<WasiEngine> {
 
         let dir = self.tempdir.path();
 
-        log::info!("setting wasi test stdout to {:?}", stdout);
+        log::info!("setting wasi test stdout to {stdout:?}");
 
         std::fs::remove_file(dir.join("stdout"))?;
         symlink(stdout, dir.join("stdout"))?;
@@ -137,7 +137,7 @@ impl<WasiEngine: Shim> WasiTestBuilder<WasiEngine> {
 
         let dir = self.tempdir.path();
 
-        log::info!("setting wasi test stderr to {:?}", stderr);
+        log::info!("setting wasi test stderr to {stderr:?}");
 
         std::fs::remove_file(dir.join("stderr"))?;
         symlink(stderr, dir.join("stderr"))?;
@@ -260,7 +260,7 @@ impl<WasiEngine: Shim> WasiTest<WasiEngine> {
 
     pub fn kill(&self) -> Result<&Self> {
         log::info!("sending SIGKILL");
-        self.instance.kill(SIGKILL as u32).block_on()?;
+        self.instance.kill(SIGKILL).block_on()?;
         Ok(self)
     }
 
@@ -330,7 +330,7 @@ pub mod oci_helpers {
     }
 
     pub fn clean_container(container_name: String) -> Result<()> {
-        log::debug!("deleting container '{}'", container_name);
+        log::debug!("deleting container '{container_name}'");
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -380,7 +380,7 @@ pub mod oci_helpers {
         let mut builder = Builder::default();
 
         for (i, content) in wasm_content.iter().enumerate() {
-            let path = tempdir.path().join(format!("{}.wasm", i));
+            let path = tempdir.path().join(format!("{i}.wasm"));
             write(path.clone(), content.bytes.clone())?;
             builder.add_layer_with_media_type(&path, content.media_type.clone());
         }
@@ -428,7 +428,7 @@ pub mod oci_helpers {
             Err(_) => return Ok(()), // doesn't exist
         };
 
-        log::debug!("deleting image '{}'", image_name);
+        log::debug!("deleting image '{image_name}'");
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -476,7 +476,7 @@ pub mod oci_helpers {
     }
 
     fn get_image_sha(image_name: &str) -> Result<String> {
-        log::info!("getting image sha for '{}'", image_name);
+        log::info!("getting image sha for '{image_name}'");
         let mut grep = Command::new("grep")
             .arg(image_name)
             .stdout(Stdio::piped())
@@ -493,14 +493,14 @@ pub mod oci_helpers {
 
         let output = grep.wait_with_output()?;
         let stdout = String::from_utf8(output.stdout)?;
-        log::warn!("stdout: {}", stdout);
+        log::warn!("stdout: {stdout}");
 
         let parts: Vec<&str> = stdout.trim().split(' ').collect();
         if parts.len() < 3 {
             bail!("failed to get image sha");
         }
         let sha = parts[2];
-        log::warn!("sha: {}", sha);
+        log::warn!("sha: {sha}");
         Ok(sha.to_string())
     }
 
@@ -522,7 +522,7 @@ pub mod oci_helpers {
 
         let output = grep.wait_with_output()?;
         let stdout = String::from_utf8(output.stdout)?;
-        log::debug!("stdout: {}", stdout);
+        log::debug!("stdout: {stdout}");
         let label: Vec<&str> = stdout.split('=').collect();
 
         Ok((
@@ -565,7 +565,7 @@ pub mod oci_helpers {
 
         let stdout = String::from_utf8(output.stdout)?;
 
-        log::debug!("stdout: {}", stdout);
+        log::debug!("stdout: {stdout}");
 
         let label: Vec<&str> = stdout.split('=').collect();
 
@@ -576,7 +576,7 @@ pub mod oci_helpers {
     }
 
     pub fn remove_content(digest: String) -> Result<()> {
-        log::debug!("cleaning content '{}'", digest);
+        log::debug!("cleaning content '{digest}'");
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)

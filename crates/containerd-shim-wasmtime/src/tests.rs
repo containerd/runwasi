@@ -61,8 +61,7 @@ fn test_hello_world_oci_uses_precompiled() -> anyhow::Result<()> {
     let (label, _id) = oci_helpers::get_content_label()?;
     assert!(
         label.starts_with("runwasi.io/precompiled/wasmtime/"),
-        "was {}",
-        label
+        "was {label}"
     );
 
     // run second time, it should succeed without recompiling
@@ -100,8 +99,7 @@ fn test_hello_world_oci_uses_precompiled_when_content_removed() -> anyhow::Resul
     let (label, id) = oci_helpers::get_content_label()?;
     assert!(
         label.starts_with("runwasi.io/precompiled/wasmtime/"),
-        "was {}",
-        label
+        "was {label}"
     );
     oci_helpers::remove_content(id)?;
 

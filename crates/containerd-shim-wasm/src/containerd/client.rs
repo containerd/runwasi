@@ -140,7 +140,7 @@ impl Client {
             .into_inner()
             .lease
             .ok_or_else(|| {
-                ShimError::Containerd(format!("unable to create lease for  {}", reference))
+                ShimError::Containerd(format!("unable to create lease for  {reference}"))
             })?;
 
         Ok(LeaseGuard::new(
@@ -158,7 +158,7 @@ impl Client {
         labels: HashMap<String, String>,
     ) -> Result<WriteContent> {
         let expected = format!("sha256:{}", digest(data.clone()));
-        let reference = format!("precompile-{}", unique_id);
+        let reference = format!("precompile-{unique_id}");
         let lease = self.lease(reference.clone()).await?;
 
         let digest = 'digest: {
@@ -166,7 +166,7 @@ impl Client {
             let (tx, rx) = mpsc::channel(1);
 
             let len = data.len() as i64;
-            log::debug!("Writing {} bytes to content store", len);
+            log::debug!("Writing {len} bytes to content store");
             let mut client = ContentClient::new(self.inner.clone());
 
             // Send write request with Stat action to containerd to let it know that we are going to write content
@@ -200,14 +200,11 @@ impl Client {
                 .map_err(|e| ShimError::Containerd(e.to_string()))?
                 .ok_or_else(|| {
                     ShimError::Containerd(format!(
-                        "no response received after write request for {}",
-                        expected
+                        "no response received after write request for {expected}"
                     ))
                 })?;
             log::debug!(
-                "Starting to write content for layer {} with current status response {:?}",
-                expected,
-                response
+                "Starting to write content for layer {expected} with current status response {response:?}"
             );
 
             // Separate the content into chunks and send a write request for each chunk.
@@ -227,10 +224,7 @@ impl Client {
                 let response =
                     send_message(write_request, &mut response_stream, &tx, &expected).await?;
                 log::debug!(
-                    "Writing content for layer {} at offset {} got response: {:?}",
-                    expected,
-                    offset,
-                    response
+                    "Writing content for layer {expected} at offset {offset} got response: {response:?}"
                 );
                 offset = end;
             }
@@ -248,9 +242,7 @@ impl Client {
             let response =
                 send_message(commit_request, &mut response_stream, &tx, &expected).await?;
             log::info!(
-                "Validating final response after writing content for layer {}: {:?}",
-                expected,
-                response
+                "Validating final response after writing content for layer {expected}: {response:?}"
             );
 
             // Client should validate that all bytes were written and that the digest matches
@@ -285,7 +277,7 @@ impl Client {
             .into_inner()
             .info
             .ok_or_else(|| {
-                ShimError::Containerd(format!("failed to get info for content {}", content_digest))
+                ShimError::Containerd(format!("failed to get info for content {content_digest}"))
             })?;
         Ok(info)
     }
@@ -469,7 +461,7 @@ impl Client {
                     compiled_layers
                 }
                 Err(e) => {
-                    log::error!("precompilation failed: {}", e);
+                    log::error!("precompilation failed: {e}");
                     return Ok(layers);
                 }
             };
@@ -505,7 +497,7 @@ impl Client {
                     .labels
                     .insert(precompile_id.clone(), precompiled_content.digest.clone());
                 original_layer.labels.insert(
-                    format!("containerd.io/gc.ref.content.precompile.{}", i),
+                    format!("containerd.io/gc.ref.content.precompile.{i}"),
                     precompiled_content.digest.clone(),
                 );
                 self.update_info(original_layer).await?;
@@ -519,7 +511,7 @@ impl Client {
                 );
                 let mut image_content = self.get_info(&image_digest).await?;
                 image_content.labels.insert(
-                    format!("containerd.io/gc.ref.content.precompile.{}", i),
+                    format!("containerd.io/gc.ref.content.precompile.{i}"),
                     precompiled_content.digest,
                 );
                 image_content
@@ -572,7 +564,7 @@ impl Client {
         config: &oci_spec::image::Descriptor,
     ) -> Result<WasmLayer, ShimError> {
         let digest = config.digest();
-        log::debug!("loading digest: {} ", digest);
+        log::debug!("loading digest: {digest} ");
         self.read_content(digest).await.map(|module| WasmLayer {
             config: config.clone(),
             layer: module,
@@ -586,7 +578,7 @@ fn precompile_label(name: &str, version: impl Hash) -> String {
         version.hash(&mut hasher);
         hasher.finish().to_string()
     };
-    format!("{}/{}/{}", PRECOMPILE_PREFIX, name, version)
+    format!("{PRECOMPILE_PREFIX}/{name}/{version}")
 }
 
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
@@ -607,15 +599,14 @@ async fn send_message(
 ) -> Result<WriteContentResponse> {
     tx.send(request)
         .await
-        .map_err(|err| ShimError::Containerd(format!("commit request error: {}", err)))?;
+        .map_err(|err| ShimError::Containerd(format!("commit request error: {err}")))?;
     response_stream
         .message()
         .await
-        .map_err(|err| ShimError::Containerd(format!("response stream error: {}", err)))?
+        .map_err(|err| ShimError::Containerd(format!("response stream error: {err}")))?
         .ok_or_else(|| {
             ShimError::Containerd(format!(
-                "no response received after write content request for {}",
-                digest
+                "no response received after write content request for {digest}"
             ))
         })
 }
@@ -642,7 +633,7 @@ mod tests {
         let data = b"hello world".to_vec();
 
         let expected = digest(data.clone());
-        let expected = format!("sha256:{}", expected);
+        let expected = format!("sha256:{expected}");
 
         let label = HashMap::from([(precompile_label("test", "hasdfh"), "original".to_string())]);
         let returned = client
@@ -796,7 +787,7 @@ mod tests {
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
         let mut engine = FakePrecomipler::new();
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
-        let expected_id = precompile_label("fake", &engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key());
 
         let layers = client
             .load_modules(
@@ -991,7 +982,7 @@ mod tests {
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
         engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
-        let expected_id = precompile_label("fake", &engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key());
 
         let layers = client
             .load_modules(
@@ -1038,10 +1029,10 @@ mod tests {
         let _ = env_logger::try_init();
 
         let random_number = random_number();
-        let image_name = name.unwrap_or(format!("localhost/test:latest{}", random_number));
+        let image_name = name.unwrap_or(format!("localhost/test:latest{random_number}"));
         oci_helpers::import_image(&image_name, original).unwrap();
 
-        let container_name = format!("test-container-{}", random_number);
+        let container_name = format!("test-container-{random_number}");
         oci_helpers::create_container(&container_name, &image_name).unwrap();
 
         let _cleanup = oci_helpers::OCICleanup {

@@ -274,8 +274,7 @@ async fn run_stress_test(cli: Cli, c8d: impl Containerd) -> Result<()> {
             unit: "tasks/s".to_string(),
             value: throuput,
             extra: Some(format!(
-                "Image: {}\nTasks: {}\nParallel: {}\nDuration: {}",
-                image, count, parallel, duration
+                "Image: {image}\nTasks: {count}\nParallel: {parallel}\nDuration: {duration}"
             )),
         }];
         serde_json::to_writer_pretty(&mut File::create(json_output)?, &results)?;

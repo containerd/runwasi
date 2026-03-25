@@ -36,7 +36,7 @@ where
         "ctr",
         "run",
         "--rm",
-        &format!("--runtime=io.containerd.{}.v1", runtime),
+        &format!("--runtime=io.containerd.{runtime}.v1"),
         test_case.image,
         "testwasm",
         test_case.entrypoint,
@@ -66,7 +66,7 @@ fn benchmark_image(c: &mut Criterion) {
                 .rsplit('/')
                 .next()
                 .unwrap_or(test_case.image);
-            let bench_name = format!("{}/{}", runtime, image_base_name);
+            let bench_name = format!("{runtime}/{image_base_name}");
             group.bench_function(&bench_name, |b| {
                 b.iter(|| {
                     run_container(runtime, test_case, |stdout| {
