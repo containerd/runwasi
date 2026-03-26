@@ -260,7 +260,7 @@ impl<WasiEngine: Shim> WasiTest<WasiEngine> {
 
     pub fn kill(&self) -> Result<&Self> {
         log::info!("sending SIGKILL");
-        self.instance.kill(SIGKILL as u32).block_on()?;
+        self.instance.kill(SIGKILL).block_on()?;
         Ok(self)
     }
 

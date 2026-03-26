@@ -500,7 +500,7 @@ fn test_default_runtime_options() -> Result<()> {
 
     let config = Config::get_from_options(options).unwrap();
 
-    assert_eq!(config.systemd_cgroup, false);
+    assert!(!config.systemd_cgroup);
 
     Ok(())
 }
@@ -524,7 +524,7 @@ fn test_custom_runtime_options() -> Result<()> {
 
     let config = Config::get_from_options(req.options.as_ref()).unwrap();
 
-    assert_eq!(config.systemd_cgroup, true);
+    assert!(config.systemd_cgroup);
 
     Ok(())
 }

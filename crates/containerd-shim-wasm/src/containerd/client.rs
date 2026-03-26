@@ -796,7 +796,7 @@ mod tests {
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
         let mut engine = FakePrecomipler::new();
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
-        let expected_id = precompile_label("fake", &engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key());
 
         let layers = client
             .load_modules(
@@ -991,7 +991,7 @@ mod tests {
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
         engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
-        let expected_id = precompile_label("fake", &engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key());
 
         let layers = client
             .load_modules(
