@@ -596,10 +596,11 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.2.16"
+version = "1.2.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be714c154be609ec7f5dad223a33bf1482fff90472de28f7362806e6d4832b8c"
+checksum = "aebf35691d1bfb0ac386a69bac2fde4dd276fb618cf8bf4f5318fe285e821bb2"
 dependencies = [
+ "find-msvc-tools",
  "jobserver",
  "libc",
  "shlex",
@@ -625,12 +626,6 @@ name = "cfg-if"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
-
-[[package]]
-name = "cfg_aliases"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
 name = "cfg_aliases"
@@ -923,7 +918,7 @@ dependencies = [
  "log",
  "mio",
  "nix 0.29.0",
- "oci-spec 0.7.1",
+ "oci-spec 0.8.4",
  "oci-tar-builder",
  "rand 0.9.1",
  "serde",
@@ -1014,7 +1009,7 @@ dependencies = [
  "log",
  "mio",
  "nix 0.29.0",
- "oci-spec 0.7.1",
+ "oci-spec 0.8.4",
  "oci-tar-builder",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -1905,6 +1900,12 @@ dependencies = [
  "libredox",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "fixedbitset"
@@ -3003,13 +3004,13 @@ checksum = "6800badb6cb2082ffd7b6a67e6125bb39f18782f793520caee8cb8846be06112"
 
 [[package]]
 name = "libcgroups"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "297f546e249532eae2595d93ebb2a2edc2e97462873b3277ee7238de83cee887"
+checksum = "973d4b59c0d0ff534f1671ab65cf42bc67e0b1d46b7d8087dcae24f7b3b540a2"
 dependencies = [
  "fixedbitset 0.5.7",
- "nix 0.28.0",
- "oci-spec 0.7.1",
+ "nix 0.29.0",
+ "oci-spec 0.8.4",
  "procfs",
  "serde",
  "thiserror 2.0.12",
@@ -3018,9 +3019,9 @@ dependencies = [
 
 [[package]]
 name = "libcontainer"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c14f87246c3fe3819e0f1fd8483193e677ac190932bd5bb040c164763576a6d"
+checksum = "e1c9cc73717f55e6c0c067b6ad2dd9c7753f7eeae148743961b6e45a80c35e62"
 dependencies = [
  "caps",
  "chrono",
@@ -3029,11 +3030,12 @@ dependencies = [
  "libcgroups",
  "libseccomp",
  "nc",
- "nix 0.28.0",
- "oci-spec 0.7.1",
+ "nix 0.29.0",
+ "oci-spec 0.8.4",
  "once_cell",
  "prctl",
  "procfs",
+ "protobuf 3.2.0",
  "regex",
  "rust-criu",
  "safe-path",
@@ -3260,6 +3262,15 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "memoffset"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
@@ -3366,9 +3377,9 @@ dependencies = [
 
 [[package]]
 name = "nc"
-version = "0.9.5"
+version = "0.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34566634a278b9af0f62b872339d884ea689982514825ba306705f264038144e"
+checksum = "44a4f56a68f96b49bca0ea29a91caa983bb5f37e064183436a45b80dc441cd55"
 dependencies = [
  "cc",
 ]
@@ -3383,6 +3394,8 @@ dependencies = [
  "bitflags 1.3.2",
  "cfg-if 1.0.1",
  "libc",
+ "memoffset 0.6.5",
+ "pin-utils",
 ]
 
 [[package]]
@@ -3411,26 +3424,13 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab2156c4fce2f8df6c499cc1c763e4394b7482525bf2a9701c9d79d215f519e4"
-dependencies = [
- "bitflags 2.6.0",
- "cfg-if 1.0.1",
- "cfg_aliases 0.1.1",
- "libc",
- "memoffset 0.9.1",
-]
-
-[[package]]
-name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if 1.0.1",
- "cfg_aliases 0.2.1",
+ "cfg_aliases",
  "libc",
  "memoffset 0.9.1",
 ]
@@ -3569,7 +3569,7 @@ dependencies = [
  "http-auth",
  "jwt",
  "lazy_static",
- "oci-spec 0.8.1",
+ "oci-spec 0.8.4",
  "olpc-cjson",
  "regex",
  "reqwest 0.12.9",
@@ -3600,9 +3600,9 @@ dependencies = [
 
 [[package]]
 name = "oci-spec"
-version = "0.8.1"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e9beda9d92fac7bf4904c34c83340ef1024159faee67179a04e0277523da33"
+checksum = "fc3da52b83ce3258fbf29f66ac784b279453c2ac3c22c5805371b921ede0d308"
 dependencies = [
  "const_format",
  "derive_builder 0.20.2",
@@ -3623,7 +3623,7 @@ dependencies = [
  "clap",
  "indexmap 2.9.0",
  "log",
- "oci-spec 0.7.1",
+ "oci-spec 0.8.4",
  "oci-wasm",
  "serde",
  "serde_json",
@@ -3662,9 +3662,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.21.1"
+version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
+checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "oorandom"
@@ -4029,7 +4029,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "059a34f111a9dee2ce1ac2826a68b24601c4298cfeb1a587c3cb493d5ab46f52"
 dependencies = [
  "libc",
- "nix 0.29.0",
+ "nix 0.25.1",
 ]
 
 [[package]]
@@ -4420,7 +4420,7 @@ version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e346e016eacfff12233c243718197ca12f148c84e1e84268a896699b41c71780"
 dependencies = [
- "cfg_aliases 0.2.1",
+ "cfg_aliases",
  "libc",
  "once_cell",
  "socket2",
@@ -5412,7 +5412,7 @@ dependencies = [
  "humantime",
  "log",
  "nix 0.29.0",
- "oci-spec 0.7.1",
+ "oci-spec 0.8.4",
  "prost 0.13.5",
  "prost-types 0.13.5",
  "serde",
@@ -6272,7 +6272,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.1",
+ "cfg-if 0.1.10",
  "static_assertions",
 ]
 
@@ -6637,7 +6637,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
- "oci-spec 0.7.1",
+ "oci-spec 0.8.4",
  "oci-tar-builder",
  "sha256",
  "tar",
