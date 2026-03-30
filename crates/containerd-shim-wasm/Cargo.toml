@@ -58,7 +58,7 @@ windows-sys = { workspace = true, features = [
     "Win32_Storage_FileSystem",
 ] }
 # vendored code
-mio = { version = "1.0", features = ["os-ext", "os-poll"] }
+mio = { version = "1.2", features = ["os-ext", "os-poll"] }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2" }
