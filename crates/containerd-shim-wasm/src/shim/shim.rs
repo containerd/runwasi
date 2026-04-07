@@ -41,6 +41,7 @@ pub trait Shim: Sync + 'static {
         &[
             "application/vnd.bytecodealliance.wasm.component.layer.v0+wasm",
             "application/wasm",
+            "application/vnd.wasm.content.layer.v1+wasm",
         ]
     }
 }
