@@ -246,13 +246,21 @@ where
     }
 
     #[cfg(feature = "opentelemetry")]
-    if otel_traces_enabled() {
+    // Only initialize OTEL in serve mode (empty action). In start/delete mode,
+    // containerd reads the shim's stdout+stderr together to parse the TTRPC socket
+    // address; any extraneous output (including OTEL error eprintln!) would corrupt
+    // the address string and cause "unsupported protocol" TTRPC connection failures.
+    if otel_traces_enabled() && flags.action.is_empty() {
         // opentelemetry uses tokio, so we need to initialize a runtime
         async {
-            let otlp_config = OtlpConfig::build_from_env().expect("Failed to build OtelConfig.");
-            let _guard = otlp_config
-                .init()
-                .expect("Failed to initialize OpenTelemetry.");
+            let _guard = OtlpConfig::build_from_env()
+                .and_then(|c| c.init())
+                .map_err(|e| {
+                    eprintln!(
+                        "Failed to initialize OpenTelemetry (continuing without tracing): {e}"
+                    )
+                })
+                .ok();
             tokio::task::block_in_place(move || {
                 shim_main_inner::<I>(name, config);
             });
