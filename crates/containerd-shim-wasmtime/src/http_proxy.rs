@@ -15,11 +15,12 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use wasmtime::Store;
 use wasmtime::component::ResourceTable;
-use wasmtime_wasi_http::bindings::ProxyPre;
-use wasmtime_wasi_http::bindings::http::types::Scheme;
-use wasmtime_wasi_http::body::HyperOutgoingBody;
+use wasmtime_wasi_http::WasiHttpCtx;
 use wasmtime_wasi_http::io::TokioIo;
-use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
+use wasmtime_wasi_http::p2::WasiHttpView;
+use wasmtime_wasi_http::p2::bindings::ProxyPre;
+use wasmtime_wasi_http::p2::bindings::http::types::Scheme;
+use wasmtime_wasi_http::p2::body::HyperOutgoingBody;
 
 use crate::instance::{WasiPreview2Ctx, envs_from_ctx};
 
@@ -194,8 +195,8 @@ impl ProxyHandler {
 
         let mut store = self.wasi_store_for_request(req_id);
 
-        let req = store.data_mut().new_incoming_request(Scheme::Http, req)?;
-        let out = store.data_mut().new_response_outparam(sender)?;
+        let req = store.data_mut().http().new_incoming_request(Scheme::Http, req)?;
+        let out = store.data_mut().http().new_response_outparam(sender)?;
         let proxy = self.instance_pre.instantiate_async(&mut store).await?;
 
         let task = self.tracker.spawn(async move {
