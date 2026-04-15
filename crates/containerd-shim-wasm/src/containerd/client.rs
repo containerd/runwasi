@@ -394,6 +394,7 @@ impl Client {
         engine_name: impl AsRef<str> + Debug,
         supported_layer_types: &[&str],
         compiler: Option<&impl Compiler>,
+        envs: &[String],
     ) -> Result<Vec<WasmLayer>> {
         let container = self.get_container(containerd_id).await?;
         let (manifest, image_digest) = self.get_image_manifest_and_digest(&container.image).await?;
@@ -435,7 +436,7 @@ impl Client {
             return Ok(layers);
         };
 
-        let precompile_id = precompile_label(engine_name.as_ref(), compiler.cache_key());
+        let precompile_id = precompile_label(engine_name.as_ref(), compiler.cache_key(envs));
 
         let image_info = self.get_info(&image_digest).await?;
         let mut needs_precompile = !image_info.labels.contains_key(&precompile_id);
@@ -459,7 +460,7 @@ impl Client {
 
         if needs_precompile {
             log::info!("precompiling layers for image: {}", container.image);
-            let compiled_layers = match compiler.compile(&layers).await {
+            let compiled_layers = match compiler.compile(&layers, envs).await {
                 Ok(compiled_layers) => {
                     if compiled_layers.len() != layers.len() {
                         return Err(ShimError::FailedPrecondition(
@@ -695,6 +696,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 NO_COMPILER.as_ref(),
+                &[],
             )
             .await
             .unwrap();
@@ -723,6 +725,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -735,6 +738,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -764,6 +768,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -776,6 +781,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -796,7 +802,7 @@ mod tests {
         let fake_precompiled_bytes = generate_content("precompiled", WASM_LAYER_MEDIA_TYPE);
         let mut engine = FakePrecomipler::new();
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
-        let expected_id = precompile_label("fake", engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key(&[]));
 
         let layers = client
             .load_modules(
@@ -804,6 +810,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -848,6 +855,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE, "textfile"],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -880,6 +888,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -914,6 +923,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -943,6 +953,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -962,6 +973,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -991,7 +1003,7 @@ mod tests {
         engine.add_precompiled_bits(fake_bytes.bytes.clone(), &fake_precompiled_bytes);
         engine.add_precompiled_bits(fake_bytes2.bytes.clone(), &fake_precompiled_bytes2);
 
-        let expected_id = precompile_label("fake", engine.cache_key());
+        let expected_id = precompile_label("fake", engine.cache_key(&[]));
 
         let layers = client
             .load_modules(
@@ -999,6 +1011,7 @@ mod tests {
                 "fake",
                 &[WASM_LAYER_MEDIA_TYPE],
                 Some(&engine),
+                &[],
             )
             .await
             .unwrap();
@@ -1097,11 +1110,15 @@ mod tests {
     }
 
     impl Compiler for FakePrecomipler {
-        fn cache_key(&self) -> impl Hash {
+        fn cache_key(&self, _envs: &[String]) -> impl Hash {
             self.precompile_id.clone()
         }
 
-        async fn compile(&self, layers: &[WasmLayer]) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
+        async fn compile(
+            &self,
+            layers: &[WasmLayer],
+            _envs: &[String],
+        ) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
             self.layers_compiled_per_call.store(0, Ordering::SeqCst);
             self.precompile_called.fetch_add(1, Ordering::SeqCst);
             let mut compiled_layers = vec![];
