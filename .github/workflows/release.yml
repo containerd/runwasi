@@ -139,6 +139,14 @@ jobs:
         uses: actions/download-artifact@master
         with:
           path: release
+      - name: Generate SHA256SUMS
+        if: ${{ matrix.is_shim == 'true' }}
+        run: |
+          for f in release/*/*.tar.gz; do
+            (cd "$(dirname "$f")" && sha256sum "$(basename "$f")")
+          done | sort > SHA256SUMS
+          echo "Generated SHA256SUMS:"
+          cat SHA256SUMS
       - name: Cargo publish
         if: ${{ matrix.is_shim  != 'true' && github.repository == 'containerd/runwasi' }}
         run: cargo publish ${{ inputs.dry_run && '--dry-run' || '' }} --package ${{ matrix.crate }} --verbose --locked
@@ -184,6 +192,7 @@ jobs:
           for i in release/*/*; do
             gh release upload ${RELEASE_NAME} $i
           done
+          gh release upload ${RELEASE_NAME} SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NAME: ${{ matrix.crate }}/v${{ matrix.version }}
