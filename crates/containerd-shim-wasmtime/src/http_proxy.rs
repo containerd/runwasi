@@ -195,7 +195,10 @@ impl ProxyHandler {
 
         let mut store = self.wasi_store_for_request(req_id);
 
-        let req = store.data_mut().http().new_incoming_request(Scheme::Http, req)?;
+        let req = store
+            .data_mut()
+            .http()
+            .new_incoming_request(Scheme::Http, req)?;
         let out = store.data_mut().http().new_response_outparam(sender)?;
         let proxy = self.instance_pre.instantiate_async(&mut store).await?;
 

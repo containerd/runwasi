@@ -11,8 +11,8 @@ use tokio_util::sync::CancellationToken;
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
-use wasmtime_wasi::p2::bindings::Command;
 use wasmtime_wasi::p1::{self as wasi_p1, WasiP1Ctx};
+use wasmtime_wasi::p2::bindings::Command;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 use wasmtime_wasi_http::p2::bindings::ProxyPre;
@@ -214,9 +214,7 @@ impl WasmtimeSandbox {
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
         log::debug!("init linker");
-        wasi_p1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiP1Ctx| {
-            wasi_ctx
-        })?;
+        wasi_p1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiP1Ctx| wasi_ctx)?;
 
         log::info!("instantiating instance");
         let instance: wasmtime::Instance =
