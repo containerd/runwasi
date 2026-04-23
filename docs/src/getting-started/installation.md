@@ -33,15 +33,21 @@ sudo install containerd-shim-wasmtime-v1 /usr/local/bin/
 
 4. Verify the binary signature (recommended):
 
-```bash
-# Verify using cosign
-cosign verify-blob \
-    --signature containerd-shim-wasmtime-v1.sig \
+Each release tarball includes `.sig` (signature) and `.pem` (certificate) files alongside the binary.
+After unpacking the tarball, verify the binary with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+```console
+$ cosign verify-blob \
     --certificate containerd-shim-wasmtime-v1.pem \
-    --certificate-identity https://github.com/containerd/runwasi/.github/workflows/action-build.yml@refs/heads/main \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --signature containerd-shim-wasmtime-v1.sig \
+    --certificate-identity \
+      "https://github.com/containerd/runwasi/.github/workflows/action-build.yml@refs/heads/main" \
+    --certificate-oidc-issuer \
+      "https://token.actions.githubusercontent.com" \
     containerd-shim-wasmtime-v1
 ```
+
+> **Note:** The certificate identity references `action-build.yml@refs/heads/main` because signing runs inside the reusable build workflow, which is invoked by the release workflow. See [RELEASE.md](https://github.com/containerd/runwasi/blob/main/RELEASE.md#verify-signing) for more details.
 
 ### Option 2: Building from Source
 
