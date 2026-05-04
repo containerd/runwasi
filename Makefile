@@ -30,6 +30,7 @@ override CARGO = cross
 endif
 
 ifeq ($(CARGO),cross)
+export DOCKER_DEFAULT_PLATFORM ?= linux/amd64
 override TARGET_DIR := $(or $(TARGET_DIR),./target/build/$(TARGET)/)
 # When using `cross` we need to run the tests outside the `cross` container.
 # We stop `cargo test` from running the tests with the `--no-run` flag.
@@ -75,6 +76,14 @@ STRESS_TEST_TIMEOUT ?= 5s
 STRESS_TEST_IMAGE ?= ghcr.io/containerd/runwasi/wasi-demo-app:latest
 STRESS_TEST_JSON ?= 
 STRESS_TEST_JSON_FLAG = $(if $(STRESS_TEST_JSON),--json-output $(STRESS_TEST_JSON),)
+
+CROSS_BUILD_TARGET ?= x86_64-unknown-linux-musl
+
+.PHONY: cross-build cross-build-%
+cross-build: $(RUNTIMES:%=cross-build-%);
+
+cross-build-%:
+	$(MAKE) build-$* TARGET=$(CROSS_BUILD_TARGET)
 
 .PHONY: build build-common build-wasm build-%
 build: build-wasm $(RUNTIMES:%=build-%);
