@@ -51,9 +51,11 @@ hyper = "1.8.1"
 tokio = { version = "1.45.1", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 cfg-if = "1.0"
+toml = "0.8"
 
 # wasmtime
-wasmtime = { version = "36.0.6", features = ["async"] }
+wasmtime = { version = "36.0.6", features = ["async", "gc"] }
+wasmtime-cli-flags = { version = "36.0.6", features = ["component-model", "gc", "parallel-compilation", "pooling-allocator"] }
 wasmtime-wasi = { version = "36.0.6" }
 wasmtime-wasi-http = { version = "36.0.6" }
 

@@ -55,7 +55,7 @@ pub trait Compiler: Sync {
     ///
     /// This hash will be used in the following way:
     /// "runwasi.io/precompiled/<Shim::name()>/<cache_key>"
-    fn cache_key(&self) -> impl Hash;
+    fn cache_key(&self, _envs: &[String]) -> impl Hash;
 
     /// `compile` passes supported OCI layers to engine for compilation.
     /// This is used to precompile the layers before they are run.
@@ -63,7 +63,11 @@ pub trait Compiler: Sync {
     /// The cached, precompiled layers will be reloaded on subsequent runs.
     /// The runtime is expected to return the same number of layers passed in, if the layer cannot be precompiled it should return `None` for that layer.
     /// In some edge cases it is possible that the layers may already be precompiled and None should be returned in this case.
-    async fn compile(&self, _layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>>;
+    async fn compile(
+        &self,
+        _layers: &[WasmLayer],
+        _envs: &[String],
+    ) -> Result<Vec<Option<Vec<u8>>>>;
 }
 
 /// Like the unstable never type, this type can never be constructed.
@@ -78,11 +82,15 @@ pub enum NoCompiler {}
 pub const NO_COMPILER: Option<NoCompiler> = None;
 
 impl Compiler for NoCompiler {
-    fn cache_key(&self) -> impl Hash {
+    fn cache_key(&self, _envs: &[String]) -> impl Hash {
         unreachable!()
     }
 
-    async fn compile(&self, _layers: &[WasmLayer]) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
+    async fn compile(
+        &self,
+        _layers: &[WasmLayer],
+        _envs: &[String],
+    ) -> anyhow::Result<Vec<Option<Vec<u8>>>> {
         unreachable!()
     }
 }

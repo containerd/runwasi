@@ -29,7 +29,8 @@ pub struct Instance<S: Shim> {
 
 #[async_trait]
 trait OciClient {
-    async fn load_modules(&self, id: &str) -> Result<Vec<WasmLayer>, SandboxError>;
+    async fn load_modules(&self, id: &str, envs: &[String])
+    -> Result<Vec<WasmLayer>, SandboxError>;
 }
 
 struct EngineOciClient<P: Compiler> {
@@ -41,13 +42,18 @@ struct EngineOciClient<P: Compiler> {
 
 #[async_trait]
 impl<P: Compiler> OciClient for EngineOciClient<P> {
-    async fn load_modules(&self, id: &str) -> Result<Vec<WasmLayer>, SandboxError> {
+    async fn load_modules(
+        &self,
+        id: &str,
+        envs: &[String],
+    ) -> Result<Vec<WasmLayer>, SandboxError> {
         self.client
             .load_modules(
                 id,
                 self.name,
                 self.supported_layer_types,
                 self.precompiler.as_ref(),
+                envs,
             )
             .await
     }
@@ -74,9 +80,22 @@ impl<S: Shim> SandboxInstance for Instance<S> {
             })
             .await?;
 
+        // Precompile runs before `RuntimeContext` exists, so read workload env
+        // from the OCI runtime-spec bundle (`<bundle>/config.json`), specifically
+        // the `process.env` field:
+        // https://github.com/opencontainers/runtime-spec/blob/6f7b71c2d216403715f7364ac88dec88d9da989c/config.md#process
+        let source_spec_path = cfg.bundle.join("config.json");
+        let spec = Spec::load(&source_spec_path)?;
+        let envs = spec
+            .process()
+            .as_ref()
+            .and_then(|p| p.env().as_ref())
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+
         // check if container is OCI image with wasm layers and attempt to read the module
         let modules = oci_client
-            .load_modules(&id)
+            .load_modules(&id, envs)
             .await
             .unwrap_or_else(|e| {
                 log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");

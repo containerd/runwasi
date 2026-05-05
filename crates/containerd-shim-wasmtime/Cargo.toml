@@ -11,8 +11,10 @@ log = { workspace = true }
 hyper = { workspace = true }
 tokio = { workspace = true, features = ["signal", "macros"] }
 tokio-util = { workspace = true, features = ["rt"] }
+toml = { workspace = true }
 
 wasmtime = { workspace = true }
+wasmtime-cli-flags = { workspace = true }
 wasmtime-wasi = { workspace = true }
 wasmtime-wasi-http = { workspace = true }
 

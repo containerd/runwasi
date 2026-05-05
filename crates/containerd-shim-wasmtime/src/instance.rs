@@ -1,4 +1,5 @@
-use std::hash::Hash;
+use std::collections::{HashMap, hash_map::DefaultHasher};
+use std::hash::{Hash, Hasher};
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
@@ -11,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
+use wasmtime_cli_flags::CommonOptions;
 use wasmtime_wasi::p2::bindings::Command;
 use wasmtime_wasi::preview1::{self as wasi_preview1, WasiP1Ctx};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
@@ -18,6 +20,9 @@ use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
+
+const WASMTIME_CONFIG_TOML_ENV: &str = "RUNWASI_WASMTIME_CONFIG_TOML";
+type EnvMap<'a> = HashMap<&'a str, &'a str>;
 
 /// Represents the WASI API that the component is targeting.
 enum ComponentTarget<'a> {
@@ -61,18 +66,8 @@ pub struct WasmtimeSandbox {
 
 impl Default for WasmtimeSandbox {
     fn default() -> Self {
-        let mut config = wasmtime::Config::new();
-
-        // Disable Wasmtime parallel compilation for the tests
-        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-        config.parallel_compilation(!cfg!(test));
-        config.wasm_component_model(true); // enable component linking
-        config.async_support(true); // must be on
-
-        if use_pooling_allocator_by_default() {
-            let cfg = wasmtime::PoolingAllocationConfig::default();
-            config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
-        }
+        let config = create_engine_config(&CommonOptions::default(), true)
+            .expect("failed to create wasmtime config");
 
         Self {
             engine: wasmtime::Engine::new(&config)
@@ -133,17 +128,10 @@ impl Shim for WasmtimeShim {
 
     #[allow(refining_impl_trait)]
     async fn compiler() -> Option<WasmtimeCompiler> {
-        let mut config = wasmtime::Config::new();
-
-        // Disable Wasmtime parallel compilation for the tests
-        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-        config.parallel_compilation(!cfg!(test));
-        config.wasm_component_model(true); // enable component linking
-        config.async_support(true); // must be on
-
+        let config = create_engine_config(&CommonOptions::default(), false)
+            .expect("failed to create wasmtime precompilation config");
         let engine = wasmtime::Engine::new(&config)
             .expect("failed to create wasmtime precompilation engine");
-
         Some(WasmtimeCompiler(engine))
     }
 }
@@ -160,17 +148,31 @@ impl Sandbox for WasmtimeSandbox {
         } = ctx.entrypoint();
 
         let wasm_bytes = &source.as_bytes()?;
+        let envs = env_map(ctx.envs());
 
-        self.execute(ctx, wasm_bytes, func).await.into_error_code()
+        if let Some(sandbox) = load_custom_engine(&envs, self.cancel.clone())? {
+            sandbox
+                .execute(ctx, wasm_bytes, func)
+                .await
+                .into_error_code()
+        } else {
+            self.execute(ctx, wasm_bytes, func).await.into_error_code()
+        }
     }
 }
 
 impl Compiler for WasmtimeCompiler {
-    fn cache_key(&self) -> impl Hash {
-        self.0.precompile_compatibility_hash()
+    fn cache_key(&self, envs: &[String]) -> impl Hash {
+        let envs = env_map(envs);
+        let mut hasher = DefaultHasher::new();
+        self.0.precompile_compatibility_hash().hash(&mut hasher);
+        envs.get(WASMTIME_CONFIG_TOML_ENV).hash(&mut hasher);
+        hasher.finish()
     }
 
-    async fn compile(&self, layers: &[WasmLayer]) -> Result<Vec<Option<Vec<u8>>>> {
+    async fn compile(&self, layers: &[WasmLayer], envs: &[String]) -> Result<Vec<Option<Vec<u8>>>> {
+        let envs = env_map(envs);
+        let engine = create_precompile_engine(&envs)?;
         let mut compiled_layers = Vec::<Option<Vec<u8>>>::with_capacity(layers.len());
 
         for layer in layers {
@@ -181,8 +183,8 @@ impl Compiler for WasmtimeCompiler {
             }
 
             let compiled_layer = match WasmBinaryType::from_bytes(&layer.layer) {
-                Some(WasmBinaryType::Module) => self.0.precompile_module(&layer.layer)?,
-                Some(WasmBinaryType::Component) => self.0.precompile_component(&layer.layer)?,
+                Some(WasmBinaryType::Module) => engine.precompile_module(&layer.layer)?,
+                Some(WasmBinaryType::Component) => engine.precompile_component(&layer.layer)?,
                 None => {
                     log::warn!("Unknown WASM binary type");
                     continue;
@@ -395,6 +397,76 @@ fn store_for_context<T: WasiView + 'static>(
     wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
     Ok((store, linker))
+}
+
+fn load_custom_engine(
+    envs: &EnvMap<'_>,
+    cancel: CancellationToken,
+) -> Result<Option<WasmtimeSandbox>> {
+    let Some(options) = load_config_from_envs(envs)? else {
+        return Ok(None);
+    };
+
+    let sandbox = WasmtimeSandbox {
+        engine: wasmtime::Engine::new(&create_engine_config(&options, true)?)
+            .context("failed to create wasmtime engine")?,
+        cancel,
+    };
+
+    Ok(Some(sandbox))
+}
+
+fn load_config_from_envs(envs: &EnvMap<'_>) -> Result<Option<CommonOptions>> {
+    let Some(config_toml) = envs.get(WASMTIME_CONFIG_TOML_ENV).copied() else {
+        return Ok(None);
+    };
+    if config_toml.is_empty() {
+        return Ok(None);
+    }
+
+    let config = toml::from_str::<CommonOptions>(config_toml).with_context(|| {
+        format!("failed to parse wasmtime config from {WASMTIME_CONFIG_TOML_ENV}")
+    })?;
+    Ok(Some(config))
+}
+
+fn env_map<'a>(envs: &'a [String]) -> EnvMap<'a> {
+    let mut map = HashMap::with_capacity(envs.len());
+    for entry in envs {
+        let (env_key, env_value) = entry.split_once('=').unwrap_or((entry.as_str(), ""));
+        map.entry(env_key).or_insert(env_value);
+    }
+    map
+}
+
+fn create_precompile_engine(envs: &EnvMap<'_>) -> Result<wasmtime::Engine> {
+    let options = load_config_from_envs(envs)?.unwrap_or_default();
+    let config = create_engine_config(&options, false)?;
+    wasmtime::Engine::new(&config).context("failed to create wasmtime precompilation engine")
+}
+
+fn create_engine_config(
+    toml_config: &CommonOptions,
+    include_pooling: bool,
+) -> Result<wasmtime::Config> {
+    let mut options = toml_config.clone();
+    if options.codegen.parallel_compilation.is_none() {
+        // Disable Wasmtime parallel compilation for the tests.
+        // See https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714
+        options.codegen.parallel_compilation = Some(!cfg!(test));
+    }
+    if options.wasm.component_model.is_none() {
+        options.wasm.component_model = Some(true);
+    }
+
+    let mut config = options
+        .config(include_pooling.then(use_pooling_allocator_by_default))
+        .context("failed to construct wasmtime::Config from workload config")?;
+    if !include_pooling {
+        config.allocation_strategy(wasmtime::InstanceAllocationStrategy::OnDemand);
+    }
+    config.async_support(true); // must be on
+    Ok(config)
 }
 
 fn wasi_builder(ctx: &impl RuntimeContext) -> Result<WasiCtxBuilder, anyhow::Error> {
