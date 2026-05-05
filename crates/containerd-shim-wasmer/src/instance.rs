@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use containerd_shim_wasm::sandbox::Sandbox;
 use containerd_shim_wasm::sandbox::context::{Entrypoint, RuntimeContext};
 use containerd_shim_wasm::shim::{Shim, Version, version};
-use tokio::runtime::Handle;
 use wasmer::{Module, Store};
+use wasmer_wasix::runtime::task_manager::tokio::TokioTaskManager;
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
-use wasmer_wasix::{WasiEnv, WasiError};
+use wasmer_wasix::{PluggableRuntime, WasiEnv, WasiError};
 
 pub struct WasmerShim;
 
@@ -46,20 +48,34 @@ impl Sandbox for WasmerSandbox {
 
         let mod_name = name.unwrap_or_else(|| "main".to_string());
 
+        let engine = wasmer::Engine::from(self.engine.clone());
+
         log::info!("Create a Store");
-        let mut store = Store::new(self.engine.clone());
+        let mut store = Store::new(engine.clone());
 
         let wasm_bytes = source.as_bytes()?;
         let module = Module::from_binary(&store, &wasm_bytes)?;
 
+        let tokio_runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?;
+        let tokio_handle = tokio_runtime.handle().clone();
+        let task_manager = Arc::new(TokioTaskManager::new(tokio_runtime));
+        let mut runtime = PluggableRuntime::new(task_manager);
+        runtime.set_engine(engine);
+        let runtime = Arc::new(runtime);
+
         log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
-        let fs = FileSystem::new(Handle::current(), "/")?;
+        let fs = FileSystem::new(tokio_handle, "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
             .envs(envs)
+            .runtime(runtime)
             .fs(Box::new(fs))
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
+
+        let _ = unsafe { wasi_env.bootstrap(&mut store)? };
 
         log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;

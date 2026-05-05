@@ -175,10 +175,10 @@ fn get_mem(pid: u32) -> (usize, usize) {
             if let Some(rest) = rest.strip_suffix("kB") {
                 total = rest.trim().parse().unwrap_or(0);
             }
-        } else if let Some(rest) = line.strip_prefix("VmHWM:") {
-            if let Some(rest) = rest.strip_suffix("kB") {
-                rss = rest.trim().parse().unwrap_or(0);
-            }
+        } else if let Some(rest) = line.strip_prefix("VmHWM:")
+            && let Some(rest) = rest.strip_suffix("kB")
+        {
+            rss = rest.trim().parse().unwrap_or(0);
         }
     }
     (rss, total)
