@@ -102,7 +102,7 @@ jobs:
           fi
       - name: Upload artifacts
         if: ${{ inputs.runtime != 'common' }}
-        uses: actions/upload-artifact@0c366cb4fc8897159c94880f94b55bc716ad6a66 # master
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ inputs.binprefix }}${{ inputs.runtime }}-${{ inputs.slug }}
           path: dist/${{ inputs.binprefix }}${{ inputs.runtime }}-${{ inputs.slug }}.tar.gz

@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: ./.github/actions/setup-env
       - name: Download artifacts
-        uses: actions/download-artifact@2a5974104b6d5dbdb2f9468a3e54da3bdd241578 # master
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl
           path: dist
@@ -30,7 +30,7 @@ jobs:
           mkdir -p dist/bin
           tar -xzf dist/containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl.tar.gz -C dist/bin
       - name: Download test image
-        uses: actions/download-artifact@2a5974104b6d5dbdb2f9468a3e54da3bdd241578 # master
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: test-img
           path: dist
@@ -51,7 +51,7 @@ jobs:
           sudo chown ${USER}:${USER} k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz
       - name: upload logs
         if: failure()
-        uses: actions/upload-artifact@0c366cb4fc8897159c94880f94b55bc716ad6a66 # master
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}
           path: k3s-logs-${{ inputs.runtime }}-${{ inputs.os }}.tar.gz
