@@ -14,8 +14,8 @@ jobs:
     outputs:
       dirs: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
         id: filter
         with:
           filters: |
@@ -28,15 +28,15 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
       - name: install mermaid preprocessor
         run: cargo install mdbook --version 0.4.52 && cargo install mdbook-mermaid --version 0.16.0
       - name: Build mdbook
         working-directory: ./docs
         run: mdbook build
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
         if: ${{ github.ref == 'refs/heads/main' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -64,7 +64,7 @@ jobs:
       
       - name: Setup GitHub CLI
         if: ${{ failure() }}
-        uses: cli/setup-gh@v1
+        uses: wusatosi/setup-gh@7dae6c8246092454793fe35dd4d5a9e8bf8ed34d # v1
       
       - name: Create or update issue on link check failure
         if: ${{ failure() }}

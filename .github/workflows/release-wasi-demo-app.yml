@@ -30,10 +30,10 @@ jobs:
       wasi_demo_oci_artifact: ${{ steps.get_digests.outputs.wasi_demo_oci_artifact }}
       wasi_demo_http: ${{ steps.get_digests.outputs.wasi_demo_http }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: ./.github/actions/setup-env
       - name: Install Rust and wasm32-wasi target
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           target: wasm32-wasip1
@@ -44,7 +44,7 @@ jobs:
         run: echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub container registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

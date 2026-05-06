@@ -24,8 +24,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - uses: ./.github/actions/setup-env
@@ -36,7 +36,7 @@ jobs:
           set -o pipefail
           cargo bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.7
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
           name: Criterion.rs Benchmark
           tool: 'cargo'
@@ -58,8 +58,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - uses: ./.github/actions/setup-env
@@ -73,7 +73,7 @@ jobs:
           done
           cat bench-mem-* | jq -s 'flatten(1)' > bench-mem.json
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.7
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
           name: Criterion.rs Benchmark
           tool: 'customSmallerIsBetter'
@@ -95,8 +95,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - uses: ./.github/actions/setup-env
@@ -128,8 +128,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
         with:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - uses: ./.github/actions/setup-env
@@ -159,7 +159,7 @@ jobs:
           done
           cat stress-bench-*.json | jq -s 'flatten(1)' > stress-bench.json
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1.20.7
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
           name: Stress Test Benchmark
           tool: 'customBiggerIsBetter'

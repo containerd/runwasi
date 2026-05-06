@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
   check:
     name: ${{ matrix.runtime }}
@@ -158,10 +158,10 @@ jobs:
     name: docs
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
     - uses: ./.github/actions/setup-env
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-    - uses: Swatinem/rust-cache@v2
+    - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+    - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
     - name: Check documentation
       run: make test-doc
     - name: Generate documentation
@@ -171,19 +171,19 @@ jobs:
     name: unused dependencies
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-    - uses: Swatinem/rust-cache@v2
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+    - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+    - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
     - name: Check unused dependencies
-      uses: bnjbvr/cargo-machete@v0.9.1
+      uses: bnjbvr/cargo-machete@7959c845782fed02ee69303126d4a12d64f1db18 # v0.9.1
 
   spelling:
     name: spell check with typos
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
     - name: Spell Check Repo
-      uses: crate-ci/typos@master
+      uses: crate-ci/typos@3bcd3b343e2ffaa3d23f8cfe7f78d0f8c2d0d0c6 # master
 
   linkChecker:
     name: link checker
@@ -193,7 +193,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
     - uses: lycheeverse/lychee-action@885c65f3dc543b57c898c8099f4e08c8afd178a2 # v2.6.1
       with:
         fail: false # don't fail the build on broken links
