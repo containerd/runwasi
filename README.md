@@ -64,3 +64,9 @@ Check out these projects that build on top of runwasi:
 ## Contributing
 
 To begin contributing, please read our [Contributing Guide](https://runwasi.dev/CONTRIBUTING.html).
+
+## Project Details
+
+**runwasi** is a non-core containerd sub-project, licensed under the [Apache 2.0 license](https://github.com/containerd/runwasi/blob/main/LICENSE).
+As a containerd sub-project, runwasi follows the containerd project's [governance](https://github.com/containerd/project/blob/main/GOVERNANCE.md) and [contributing guidelines](https://github.com/containerd/project/blob/main/CONTRIBUTING.md).
+Project maintainers are listed in [MAINTAINERS](https://github.com/containerd/runwasi/blob/main/MAINTAINERS).
