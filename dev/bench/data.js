@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778377208291,
+  "lastUpdate": 1778460118990,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -57128,6 +57128,52 @@ window.BENCHMARK_DATA = {
             "value": 239322130,
             "range": "± 116127047",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "29381636872dc7549e594a6e01478f4c51562f87",
+          "message": "MAINTAINERS: update Jiaxiao Zhou email to personal address (#1116)\n\nSigned-off-by: Jiaxiao (mossaka) Zhou <duibao55328@gmail.com>",
+          "timestamp": "2026-05-05T10:22:55Z",
+          "url": "https://github.com/containerd/runwasi/commit/29381636872dc7549e594a6e01478f4c51562f87"
+        },
+        "date": 1778460098948,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15276,
+            "unit": "kB",
+            "extra": "shim: 12388 kB\nzygote: 2888 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66384,
+            "unit": "kB",
+            "extra": "shim: 53780 kB\nzygote: 12604 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18500,
+            "unit": "kB",
+            "extra": "shim: 15052 kB\nzygote: 3448 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20144,
+            "unit": "kB",
+            "extra": "shim: 16604 kB\nzygote: 3540 kB"
           }
         ]
       }
