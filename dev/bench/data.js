@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778460218699,
+  "lastUpdate": 1778547160886,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -57244,6 +57244,52 @@ window.BENCHMARK_DATA = {
             "value": 274534678,
             "range": "± 6751976",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brian Goff",
+            "username": "cpuguy83",
+            "email": "cpuguy83@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "6b22300c2417a41d77033eae1b43d7e19ed1c062",
+          "message": "Merge pull request #1123 from AkihiroSuda/fix-MAINTAINERS-typo\n\nMAINTAINERS: fix a typo (cpuguy → cpuguy83)",
+          "timestamp": "2026-05-11T21:06:25Z",
+          "url": "https://github.com/containerd/runwasi/commit/6b22300c2417a41d77033eae1b43d7e19ed1c062"
+        },
+        "date": 1778547141240,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15052,
+            "unit": "kB",
+            "extra": "shim: 12184 kB\nzygote: 2868 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66620,
+            "unit": "kB",
+            "extra": "shim: 54052 kB\nzygote: 12568 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18788,
+            "unit": "kB",
+            "extra": "shim: 15308 kB\nzygote: 3480 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20280,
+            "unit": "kB",
+            "extra": "shim: 16724 kB\nzygote: 3556 kB"
           }
         ]
       }
