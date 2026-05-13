@@ -10,8 +10,13 @@ fi
 
 # Install cross using cargo-binstall (downloads pre-built binary)
 # Use --force to ensure the binary is actually present even if metadata
-# says it's already installed (the Rust cache may have cleaned the binary)
-cargo binstall cross --version 0.2.5 --no-confirm --force
+# says it's already installed (the Rust cache may have cleaned the binary).
+# Use --locked so that if cargo-binstall falls back to a source build
+# (e.g. when the GitHub releases API is rate-limited and metadata can't be
+# fetched), the resulting `cargo install` honours cross's own Cargo.lock
+# instead of re-resolving dependencies to versions that require a newer
+# rustc than the toolchain pinned in rust-toolchain.toml.
+cargo binstall cross --version 0.2.5 --locked --no-confirm --force
 
 if [ ! -z "$CI" ]; then
 

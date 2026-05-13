@@ -49,6 +49,12 @@ jobs:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup cross-rs
         if: runner.os == 'Linux'
+        # Pass GITHUB_TOKEN so cargo-binstall authenticates to the GitHub
+        # releases API and is not subject to the anonymous rate limit. When
+        # that limit is hit binstall silently falls back to building from
+        # source, which the pinned Rust toolchain cannot satisfy.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Setup build profile
         shell: bash
