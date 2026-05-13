@@ -9,13 +9,32 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install hey  
+    - name: Install hey
       shell: bash
+      # rakyll/hey used to ship a Linux binary at
+      # https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 but
+      # that bucket now returns an XML error page, which the previous
+      # implementation happily chmod+x'd and executed. rakyll/hey publishes
+      # no binary assets on its GitHub releases, so we build from the
+      # tagged source tarball instead. The tarball is fetched with `curl
+      # -fL` (fail loudly on non-2xx) and its sha256 is verified against a
+      # pinned digest so a future tampered or replaced archive aborts the
+      # job instead of silently feeding garbage into `go build`.
       run: |
-        curl -LO https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64
-        chmod +x hey_linux_amd64
-        sudo mv hey_linux_amd64 /usr/local/bin/hey
-        hey --help
+        set -euo pipefail
+        HEY_VERSION="v0.1.4"
+        HEY_TARBALL_SHA256="944097e62dd0bd5012d3b355d9fe2e7b7afcf13cc0b2c06151e0f4c2babfc279"
+        workdir="$(mktemp -d)"
+        trap 'rm -rf "$workdir"' EXIT
+        curl -fL --retry 5 --retry-all-errors \
+          -o "$workdir/hey-src.tar.gz" \
+          "https://github.com/rakyll/hey/archive/refs/tags/${HEY_VERSION}.tar.gz"
+        echo "${HEY_TARBALL_SHA256}  $workdir/hey-src.tar.gz" | sha256sum -c -
+        tar -xzf "$workdir/hey-src.tar.gz" -C "$workdir"
+        (cd "$workdir/hey-${HEY_VERSION#v}" && go build -trimpath -o "$workdir/hey" .)
+        file "$workdir/hey" | grep -q "ELF .* executable"
+        sudo install -m 0755 "$workdir/hey" /usr/local/bin/hey
+        hey -h 2>&1 | head -1 || true
     - name: Run hey benchmark
       shell: bash
       run: |
