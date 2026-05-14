@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778636525336,
+  "lastUpdate": 1778720285295,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -57476,6 +57476,52 @@ window.BENCHMARK_DATA = {
             "value": 284241217,
             "range": "± 8913157",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jiaxiao Zhou",
+            "username": "Mossaka",
+            "email": "duibao55328@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b2852bb114afb88d933c462e116556f7a9413985",
+          "message": "ci: unbreak Linux build matrix and benchmark-http (#1125)\n\n* ci: stop cross-rs install from falling back to a source build the pinned toolchain can't support\n\nWhen the GitHub releases API rate-limits the runner, cargo-binstall\nsilently falls back to `cargo install cross` without --locked. That\nre-resolves transitive deps to versions like `home@0.5.12` which require\nrustc 1.88, while rust-toolchain.toml pins 1.86.0, so the build aborts\nduring dependency resolution.\n\nTwo defences:\n\n* Pass --locked to cargo-binstall so the source-build fallback honours\n  cross's own Cargo.lock (MSRV-compatible).\n* Authenticate cargo-binstall to GitHub via GITHUB_TOKEN so the fast\n  path (prebuilt binary metadata lookup) keeps working under the\n  anonymous rate limit.\n\nCo-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>\n\n* ci: install hey from verified source tarball instead of broken S3 URL\n\nhttps://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 now\nreturns an S3 XML error body. The old step used `curl -LO` (no -f), so\nthe error body was written to disk, chmod +x'd, and moved to\n/usr/local/bin/hey -- then bash tried to interpret the XML and the\nbenchmark-http job died with `syntax error near unexpected token\nnewline` on every nightly run.\n\nrakyll/hey publishes no binary assets on its GitHub releases, so this\nswitches to building hey from its v0.1.4 source tarball, which:\n\n* uses `curl -fL` so a non-2xx response now aborts the step,\n* verifies the tarball against a pinned sha256 so a future tampered or\n  swapped archive fails loudly instead of being silently compiled, and\n* adds an `ELF .* executable` sanity check on the built binary so we\n  never install something that isn't actually a Linux executable.\n\nGo is preinstalled on the ubuntu-latest runners used by this workflow,\nso no extra setup step is required.\n\nCo-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 4.7 <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T18:46:35Z",
+          "url": "https://github.com/containerd/runwasi/commit/b2852bb114afb88d933c462e116556f7a9413985"
+        },
+        "date": 1778720265522,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15124,
+            "unit": "kB",
+            "extra": "shim: 12240 kB\nzygote: 2884 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 65752,
+            "unit": "kB",
+            "extra": "shim: 53124 kB\nzygote: 12628 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18596,
+            "unit": "kB",
+            "extra": "shim: 15124 kB\nzygote: 3472 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20284,
+            "unit": "kB",
+            "extra": "shim: 16732 kB\nzygote: 3552 kB"
           }
         ]
       }
