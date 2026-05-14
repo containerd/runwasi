@@ -69,7 +69,7 @@ containerd-shim-wasm-test-modules = { workspace = true }
 env_logger = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true }
-rand = "0.9"
+rand = "0.10"
 temp-env = "0.3"
 ctor = "0.4.2"
 

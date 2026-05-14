@@ -91,7 +91,7 @@ tokio = { workspace = true, features = ["signal"] }
 containerd-shim-wasm-test-modules = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true }
-rand = "0.9"
+rand = "0.10"
 temp-env = "0.3"
 
 [features]
