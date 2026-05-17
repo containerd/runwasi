@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778892870267,
+  "lastUpdate": 1778978585643,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -57824,6 +57824,52 @@ window.BENCHMARK_DATA = {
             "value": 279243347,
             "range": "± 6771912",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "ad18a019465d2c2acaeedc70005459294d490662",
+          "message": "Merge pull request #1121 from containerd/dependabot/cargo/wasmtime-36.0.8\n\nchore(deps): bump wasmtime from 36.0.6 to 36.0.8",
+          "timestamp": "2026-05-15T00:25:59Z",
+          "url": "https://github.com/containerd/runwasi/commit/ad18a019465d2c2acaeedc70005459294d490662"
+        },
+        "date": 1778978565381,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15236,
+            "unit": "kB",
+            "extra": "shim: 12280 kB\nzygote: 2956 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66356,
+            "unit": "kB",
+            "extra": "shim: 53792 kB\nzygote: 12564 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18980,
+            "unit": "kB",
+            "extra": "shim: 15440 kB\nzygote: 3540 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20432,
+            "unit": "kB",
+            "extra": "shim: 16872 kB\nzygote: 3560 kB"
           }
         ]
       }
