@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779151626228,
+  "lastUpdate": 1779151628459,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -83832,6 +83832,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.8,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "a62159a38730ef9b159af337acd346e5e52e789b",
+          "message": "Merge pull request #1127 from containerd/dependabot/cargo/rkyv-0.8.16\n\nchore(deps): bump rkyv from 0.8.8 to 0.8.16",
+          "timestamp": "2026-05-19T00:41:02Z",
+          "url": "https://github.com/containerd/runwasi/commit/a62159a38730ef9b159af337acd346e5e52e789b"
+        },
+        "date": 1779151628048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.8999999999999995,
             "unit": "ms"
           }
         ]
