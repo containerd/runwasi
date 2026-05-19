@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779068202924,
+  "lastUpdate": 1779151613889,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -58056,6 +58056,52 @@ window.BENCHMARK_DATA = {
             "value": 289550025,
             "range": "± 5495524",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "a62159a38730ef9b159af337acd346e5e52e789b",
+          "message": "Merge pull request #1127 from containerd/dependabot/cargo/rkyv-0.8.16\n\nchore(deps): bump rkyv from 0.8.8 to 0.8.16",
+          "timestamp": "2026-05-19T00:41:02Z",
+          "url": "https://github.com/containerd/runwasi/commit/a62159a38730ef9b159af337acd346e5e52e789b"
+        },
+        "date": 1779151589624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15192,
+            "unit": "kB",
+            "extra": "shim: 12324 kB\nzygote: 2868 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66432,
+            "unit": "kB",
+            "extra": "shim: 53680 kB\nzygote: 12752 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18920,
+            "unit": "kB",
+            "extra": "shim: 15312 kB\nzygote: 3608 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20188,
+            "unit": "kB",
+            "extra": "shim: 16692 kB\nzygote: 3496 kB"
           }
         ]
       }
