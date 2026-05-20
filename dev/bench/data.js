@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779238801373,
+  "lastUpdate": 1779238804031,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -83956,6 +83956,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP p95 Latency",
             "value": 4.8999999999999995,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "9e112ea17ef8821ed3a79018df4ba2d90b077587",
+          "message": "Merge pull request #1136 from containerd/dependabot/github_actions/lycheeverse/lychee-action-2.8.0\n\nchore(deps): bump lycheeverse/lychee-action from 2.6.1 to 2.8.0",
+          "timestamp": "2026-05-19T23:49:42Z",
+          "url": "https://github.com/containerd/runwasi/commit/9e112ea17ef8821ed3a79018df4ba2d90b077587"
+        },
+        "date": 1779238803463,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP p95 Latency",
+            "value": 4.2,
             "unit": "ms"
           }
         ]
