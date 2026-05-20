@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779238804031,
+  "lastUpdate": 1779238805840,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -58172,6 +58172,52 @@ window.BENCHMARK_DATA = {
             "value": 276802861,
             "range": "± 5282111",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "James Sturtevant",
+            "username": "jsturtevant",
+            "email": "jsturtevant@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "9e112ea17ef8821ed3a79018df4ba2d90b077587",
+          "message": "Merge pull request #1136 from containerd/dependabot/github_actions/lycheeverse/lychee-action-2.8.0\n\nchore(deps): bump lycheeverse/lychee-action from 2.6.1 to 2.8.0",
+          "timestamp": "2026-05-19T23:49:42Z",
+          "url": "https://github.com/containerd/runwasi/commit/9e112ea17ef8821ed3a79018df4ba2d90b077587"
+        },
+        "date": 1779238783924,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15424,
+            "unit": "kB",
+            "extra": "shim: 12396 kB\nzygote: 3028 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66060,
+            "unit": "kB",
+            "extra": "shim: 53492 kB\nzygote: 12568 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 18836,
+            "unit": "kB",
+            "extra": "shim: 15376 kB\nzygote: 3460 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 19900,
+            "unit": "kB",
+            "extra": "shim: 16420 kB\nzygote: 3480 kB"
           }
         ]
       }
