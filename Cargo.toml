@@ -30,24 +30,24 @@ containerd-shimkit = { path = "crates/containerd-shimkit", version = "0.1.1" }
 containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "1.0.0" }
 containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
-env_logger = "0.11"
+env_logger = "0.11.10"
 libc = "0.2.186"
-libcontainer = { version = "0.5", default-features = false }
+libcontainer = { version = "0.6", default-features = false }
 log = "0.4"
-nix = "0.29"
-oci-spec = { version = "0.8.1", features = ["runtime"] }
-protobuf = "=3.2"
+nix = "0.31.3"
+oci-spec = { version = "0.9.0", features = ["runtime"] }
+protobuf = "3.2"
 serde = "1.0"
 serde_json = "1.0"
 sha256 = "1.6.0"
 tar = "0.4"
-tempfile = "3.19"
+tempfile = "3.27"
 thiserror = "2.0"
-wat = "1.228"
-windows-sys = "0.59"
-serial_test = "3"
+wat = "1.249.0"
+windows-sys = "0.61.2"
+serial_test = "3.4.0"
 tracing = "0.1"
-hyper = "1.8.1"
+hyper = "1.9.0"
 tokio = { version = "1.52.3", default-features = false }
 tokio-util = { version = "0.7.18", default-features = false }
 cfg-if = "1.0"
