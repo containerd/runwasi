@@ -61,7 +61,7 @@ where
     fn start_shim(&mut self, opts: containerd_shim::StartOpts) -> shim::Result<String> {
         let dir = current_dir().map_err(|err| ShimError::Other(err.to_string()))?;
         let spec = Spec::load(dir.join("config.json")).map_err(|err| {
-            shim::Error::InvalidArgument(format!("error loading runtime spec: {}", err))
+            shim::Error::InvalidArgument(format!("error loading runtime spec: {err}"))
         })?;
 
         let id = opts.id.clone();

@@ -196,9 +196,9 @@ impl<C: OciConfig> Builder<C> {
             }
 
             for id in config.0.layers().iter() {
-                debug!("id: {}", id);
+                debug!("id: {id}");
                 if layer_digests.get(id).is_none() {
-                    warn!("rootfs diff with id {} not found in layers", id);
+                    warn!("rootfs diff with id {id} not found in layers");
                 }
             }
 

@@ -45,12 +45,19 @@ pub enum Error {
     /// Errors from libcontainer
     #[cfg(unix)]
     #[error("{0}")]
-    Libcontainer(#[from] libcontainer::error::LibcontainerError),
+    Libcontainer(#[source] Box<libcontainer::error::LibcontainerError>),
     #[error("{0}")]
     Containerd(String),
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
+
+#[cfg(unix)]
+impl From<libcontainer::error::LibcontainerError> for Error {
+    fn from(err: libcontainer::error::LibcontainerError) -> Self {
+        Self::Libcontainer(Box::new(err))
+    }
+}
 
 impl From<Error> for ttrpc::Error {
     fn from(e: Error) -> Self {

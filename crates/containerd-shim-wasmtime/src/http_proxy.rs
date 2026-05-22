@@ -204,7 +204,7 @@ impl ProxyHandler {
                 .call_handle(store, req, out)
                 .await
             {
-                log::error!("[{req_id}] :: {:#?}", e);
+                log::error!("[{req_id}] :: {e:#?}");
                 return Err(e);
             }
 

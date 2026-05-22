@@ -59,7 +59,7 @@ opentelemetry_sdk = { version = "0.23", default-features = false, features = [
 tracing-opentelemetry = { version = "0.24", optional = true }
 
 # vendored code
-time = { version = "0.3.45", features = ["serde", "std", "formatting"] }
+time = { version = "0.3.47", features = ["serde", "std", "formatting"] }
 
 [target.'cfg(unix)'.dependencies]
 zygote = { version = "0.1.2" }
@@ -81,7 +81,7 @@ windows-sys = { workspace = true, features = [
     "Win32_Storage_FileSystem",
 ] }
 # vendored code
-mio = { version = "1.0", features = ["os-ext", "os-poll"] }
+mio = { version = "1.2", features = ["os-ext", "os-poll"] }
 
 [build-dependencies]
 ttrpc-codegen = { version = "0.4.2" }
@@ -91,7 +91,7 @@ tokio = { workspace = true, features = ["signal"] }
 containerd-shim-wasm-test-modules = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true }
-rand = "0.9"
+rand = "0.10"
 temp-env = "0.3"
 
 [features]

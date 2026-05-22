@@ -205,7 +205,7 @@ where
         if let Some(otel_data) = extensions.get_mut::<OtelData>() {
             let target = attrs.metadata().target();
             let original_name = attrs.metadata().name();
-            let new_name = format!("{}::{}", target, original_name);
+            let new_name = format!("{target}::{original_name}");
             otel_data.builder.name = new_name.into();
         }
     }

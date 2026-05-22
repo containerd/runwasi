@@ -11,9 +11,19 @@ updates:
     groups:
       wasmtime-deps:
         patterns:
-          - "wasmtime"
-          - "wasmtime-wasi"
+          - "wasmtime*"
           - "wasi-common"
+        update-types:
+          - "patch"
       patch:
         update-types:
-        - "patch"
+          - "patch"
+    ignore:
+      - dependency-name: "wasmtime*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: "wasi-common"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

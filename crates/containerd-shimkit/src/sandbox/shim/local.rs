@@ -159,7 +159,7 @@ impl<T: Instance + Send + Sync, E: EventSender> Local<T, E> {
             .map_err(|err| Error::InvalidArgument(format!("could not load runtime spec: {err}")))?;
 
         spec.canonicalize_rootfs(req.bundle()).map_err(|err| {
-            ShimError::InvalidArgument(format!("could not canonicalize rootfs: {}", err))
+            ShimError::InvalidArgument(format!("could not canonicalize rootfs: {err}"))
         })?;
 
         let rootfs = spec

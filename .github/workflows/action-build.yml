@@ -40,7 +40,7 @@ jobs:
       - name: describe runner
         run: |
           echo "::notice::Running job with os: '${{ inputs.os }}', arch: '${{ inputs.arch }}', slug: '${{ inputs.slug }}', runtime: '${{ inputs.runtime }}', target: '${{ inputs.target }}'"
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup-env
       - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
         env:
@@ -49,6 +49,12 @@ jobs:
           rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
       - name: Setup cross-rs
         if: runner.os == 'Linux'
+        # Pass GITHUB_TOKEN so cargo-binstall authenticates to the GitHub
+        # releases API and is not subject to the anonymous rate limit. When
+        # that limit is hit binstall silently falls back to building from
+        # source, which the pinned Rust toolchain cannot satisfy.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/setup-cross.sh ${{ inputs.target }}
       - name: Setup build profile
         shell: bash
