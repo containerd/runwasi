@@ -26,7 +26,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
 futures = { version = "0.3.32" }
 serde_bytes = "0.11"
-prost = "0.13"
+prost = "0.14"
 toml = "0.8"
 trait-variant = "0.1"
 tokio-async-drop = "0.1"
