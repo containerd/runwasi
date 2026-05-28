@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779844104799,
+  "lastUpdate": 1779928955582,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -59100,6 +59100,52 @@ window.BENCHMARK_DATA = {
             "value": 87873038,
             "range": "± 4740606",
             "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mateo Lelong",
+            "username": "TheRayquaza",
+            "email": "77465848+TheRayquaza@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "be1ca93e8fb155a2c3beb68c396f1ffd2a87bad8",
+          "message": "feat: shimkit: implement info flag (#1120)\n\nSigned-off-by: Mateo Lelong <mateo.lelong@datadoghq.com>",
+          "timestamp": "2026-05-21T16:07:33Z",
+          "url": "https://github.com/containerd/runwasi/commit/be1ca93e8fb155a2c3beb68c396f1ffd2a87bad8"
+        },
+        "date": 1779928932490,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "wamr/memory-usage",
+            "value": 15836,
+            "unit": "kB",
+            "extra": "shim: 12768 kB\nzygote: 3068 kB"
+          },
+          {
+            "name": "wasmedge/memory-usage",
+            "value": 66608,
+            "unit": "kB",
+            "extra": "shim: 53728 kB\nzygote: 12880 kB"
+          },
+          {
+            "name": "wasmer/memory-usage",
+            "value": 19316,
+            "unit": "kB",
+            "extra": "shim: 15620 kB\nzygote: 3696 kB"
+          },
+          {
+            "name": "wasmtime/memory-usage",
+            "value": 20680,
+            "unit": "kB",
+            "extra": "shim: 17052 kB\nzygote: 3628 kB"
           }
         ]
       }
