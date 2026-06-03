@@ -88,7 +88,7 @@ impl Config {
     /// Initializes the tracer, sets up the telemetry and subscriber layers, and sets the global subscriber.
     ///
     /// Note: this function should be called only once and be called by the binary entry point.
-    pub fn init(&self) -> anyhow::Result<impl Drop + use<>> {
+    pub fn init(&self) -> anyhow::Result<ShutdownGuard> {
         let tracer = self.init_tracer()?;
         let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
         set_text_map_propagator(TraceContextPropagator::new());
@@ -154,7 +154,7 @@ impl Config {
 
 /// Shutdown of the open telemetry services will automatically called when the OtelConfig instance goes out of scope.
 #[must_use]
-struct ShutdownGuard;
+pub struct ShutdownGuard;
 
 impl Drop for ShutdownGuard {
     fn drop(&mut self) {
