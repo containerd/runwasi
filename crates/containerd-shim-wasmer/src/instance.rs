@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use containerd_shim_wasm::sandbox::Sandbox;
 use containerd_shim_wasm::sandbox::context::{Entrypoint, RuntimeContext};
 use containerd_shim_wasm::shim::{Shim, Version, version};
 use tokio::runtime::Handle;
 use wasmer::{Module, Store};
-use wasmer_wasix::virtual_fs::host_fs::FileSystem;
+use wasmer_wasix::virtual_fs::FileSystem as VirtualFileSystem;
+use wasmer_wasix::virtual_fs::host_fs::FileSystem as HostFileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
 
 pub struct WasmerShim;
@@ -53,11 +56,13 @@ impl Sandbox for WasmerSandbox {
         let module = Module::from_binary(&store, &wasm_bytes)?;
 
         log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
-        let fs = FileSystem::new(Handle::current(), "/")?;
+        let fs: Arc<dyn VirtualFileSystem + Send + Sync> =
+            Arc::new(HostFileSystem::new(Handle::current(), "/")?);
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
             .envs(envs)
-            .fs(Box::new(fs))
+            .fs(fs)
+            .engine(store.engine().clone())
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
 

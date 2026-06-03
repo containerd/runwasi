@@ -97,8 +97,11 @@
 //! - `OTEL_SDK_DISABLED`: Disable OpenTelemetry SDK
 //!
 
+use std::io::Write as _;
 use std::path::PathBuf;
 
+use containerd_shim::protos::protobuf::{Message, MessageField};
+use containerd_shim::protos::types::introspection;
 use containerd_shim::{Config, parse, run};
 
 #[cfg(feature = "opentelemetry")]
@@ -171,14 +174,14 @@ fn get_mem(pid: u32) -> (usize, usize) {
         // VmPeak is the maximum total virtual memory used so far.
         // VmHWM (high water mark) is the maximum resident set memory used so far.
         // See: https://man7.org/linux/man-pages/man5/proc_pid_status.5.html
-        if let Some(rest) = line.strip_prefix("VmPeak:") {
-            if let Some(rest) = rest.strip_suffix("kB") {
-                total = rest.trim().parse().unwrap_or(0);
-            }
-        } else if let Some(rest) = line.strip_prefix("VmHWM:") {
-            if let Some(rest) = rest.strip_suffix("kB") {
-                rss = rest.trim().parse().unwrap_or(0);
-            }
+        if let Some(rest) = line.strip_prefix("VmPeak:")
+            && let Some(rest) = rest.strip_suffix("kB")
+        {
+            total = rest.trim().parse().unwrap_or(0);
+        } else if let Some(rest) = line.strip_prefix("VmHWM:")
+            && let Some(rest) = rest.strip_suffix("kB")
+        {
+            rss = rest.trim().parse().unwrap_or(0);
         }
     }
     (rss, total)
@@ -239,10 +242,30 @@ where
 
     // Initialize the zygote and logger for the container process
     #[cfg(unix)]
-    {
+    if !flags.info {
         let default_config = Config::default();
         let config = config.as_ref().unwrap_or(&default_config);
         init_zygote_and_logger(flags.debug, config);
+    }
+
+    // Handle -info
+    if flags.info {
+        let info = introspection::RuntimeInfo {
+            name: name.to_string(),
+            version: MessageField::some(introspection::RuntimeVersion {
+                version: version.version.to_string(),
+                revision: version.revision.to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let bytes = info
+            .write_to_bytes()
+            .expect("failed to serialize RuntimeInfo");
+        std::io::stdout()
+            .write_all(&bytes)
+            .expect("failed to write RuntimeInfo");
+        return;
     }
 
     #[cfg(feature = "opentelemetry")]

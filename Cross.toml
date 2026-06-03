@@ -11,8 +11,8 @@ build-args = { BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:main", C
 
 [target.aarch64-unknown-linux-gnu.dockerfile]
 file = "cross/Dockerfile.gnu"
-build-args = { BASE_IMAGE = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main" }
+build-args = { BASE_IMAGE = "ubuntu:22.04", CROSS_CMAKE_SYSTEM_PROCESSOR = "aarch64", CROSS_SYSROOT = "/usr/aarch64-linux-gnu", GNU_TARGET_TRIPLE = "aarch64-linux-gnu", GNU_TARGET_PACKAGES = "g++-aarch64-linux-gnu gfortran-aarch64-linux-gnu libc6-dev-arm64-cross" }
 
 [target.x86_64-unknown-linux-gnu.dockerfile]
 file = "cross/Dockerfile.gnu"
-build-args = { BASE_IMAGE = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:main" }
+build-args = { BASE_IMAGE = "ubuntu:22.04", CROSS_CMAKE_SYSTEM_PROCESSOR = "x86_64", CROSS_SYSROOT = "/", GNU_TARGET_TRIPLE = "x86_64-linux-gnu", GNU_TARGET_PACKAGES = "" }

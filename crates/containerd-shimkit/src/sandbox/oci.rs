@@ -81,12 +81,12 @@ pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> 
                 // error, in the case that the hook command is waiting for us to
                 // write to stdin.
                 let state = format!("{{ \"pid\": {} }}", std::process::id());
-                if let Err(e) = stdin.write_all(state.as_bytes()) {
-                    if e.kind() != ErrorKind::BrokenPipe {
-                        // Not a broken pipe. The hook command may be waiting
-                        // for us.
-                        let _ = hook_process.kill();
-                    }
+                if let Err(e) = stdin.write_all(state.as_bytes())
+                    && e.kind() != ErrorKind::BrokenPipe
+                {
+                    // Not a broken pipe. The hook command may be waiting
+                    // for us.
+                    let _ = hook_process.kill();
                 }
             }
             hook_process.wait()?;
