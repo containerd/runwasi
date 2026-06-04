@@ -56,7 +56,7 @@ jobs:
         run: |
           echo "::error::This workflow should not be triggered with workflow_dispatch on a branch other than main"
           exit 1
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       ### Determine the name of the runtime and if it is a binary release or crates.io
       - name: verify version input
         uses: actions/github-script@v9
@@ -132,7 +132,7 @@ jobs:
       - name: Matrix description
         run: |
           echo "::notice::Running job with dry_run: '${{ inputs.dry_run }}', crate: '${{ matrix.crate }}', version: '${{ matrix.version }}', runtime: '${{ matrix.runtime }}', and is_shim: '${{ matrix.is_shim }}'."
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: ./.github/actions/setup-env
       - name: Download artifacts
         if: ${{ matrix.is_shim == 'true' }}
