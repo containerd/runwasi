@@ -16,7 +16,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2024"
-version = "0.4.0"
+version = "0.4.1"
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/containerd/runwasi"
@@ -26,9 +26,9 @@ homepage = "https://github.com/containerd/runwasi"
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 containerd-shim = "0.8"
-containerd-shimkit = { path = "crates/containerd-shimkit", version = "0.1.1" }
-containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "1.0.0" }
-containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.0"}
+containerd-shimkit = { path = "crates/containerd-shimkit", version = "0.1.2" }
+containerd-shim-wasm = { path = "crates/containerd-shim-wasm", version = "1.0.1" }
+containerd-shim-wasm-test-modules = { path = "crates/containerd-shim-wasm-test-modules", version = "0.4.1"}
 oci-tar-builder = { path = "crates/oci-tar-builder", version = "0.4.0" }
 env_logger = "0.11.10"
 libc = "0.2.186"

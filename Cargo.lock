@@ -912,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-benchmarks"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "criterion",
 ]
@@ -930,7 +930,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wamr"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
@@ -941,7 +941,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasm"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "caps",
@@ -990,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmedge"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.4",
@@ -1003,7 +1003,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmer"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
@@ -1017,7 +1017,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shim-wasmtime"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "containerd-shim-wasm",
@@ -1035,7 +1035,7 @@ dependencies = [
 
 [[package]]
 name = "containerd-shimkit"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "caps",
@@ -5732,7 +5732,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stress-test"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -6944,7 +6944,7 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasi-demo-app"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "env_logger",
