@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781139808795,
+  "lastUpdate": 1781139843969,
   "repoUrl": "https://github.com/containerd/runwasi",
   "entries": {
     "Criterion.rs Benchmark": [
@@ -74593,6 +74593,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "HTTP RPS",
             "value": 28137.2325,
+            "unit": "req/s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jorge Prendes",
+            "username": "jprendes",
+            "email": "jorge.prendes@gmail.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "d9154c263427ae6c462ba82c21d944b2d1cd58e8",
+          "message": "chore: bump crates patch versions (#1154)\n\nSigned-off-by: Jorge Prendes <jorge.prendes@gmail.com>",
+          "timestamp": "2026-06-11T00:08:00Z",
+          "url": "https://github.com/containerd/runwasi/commit/d9154c263427ae6c462ba82c21d944b2d1cd58e8"
+        },
+        "date": 1781139825596,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "HTTP RPS",
+            "value": 18957.6153,
             "unit": "req/s"
           }
         ]
