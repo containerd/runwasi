@@ -62,7 +62,7 @@ tracing-opentelemetry = { version = "0.24", optional = true }
 time = { version = "0.3.45", features = ["serde", "std", "formatting"] }
 
 [target.'cfg(unix)'.dependencies]
-zygote = { version = "0.1.2" }
+zygote = { version =  "0.1.2" }
 caps = "0.5"
 # this must match the version pulled by libcontainer
 dbus = { version = "0", features = ["vendored"] }
