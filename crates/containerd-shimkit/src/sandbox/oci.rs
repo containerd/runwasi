@@ -26,7 +26,9 @@ fn parse_env(envs: &[String]) -> HashMap<String, String> {
 
 pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> Result<()> {
     if let Some(hooks) = hooks {
-        let prestart_hooks = hooks.prestart().as_ref().unwrap();
+        let Some(prestart_hooks) = hooks.prestart().as_ref() else {
+            return Ok(());
+        };
 
         for hook in prestart_hooks {
             let mut hook_command = process::Command::new(hook.path());
@@ -93,4 +95,48 @@ pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> 
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use oci_spec::runtime::{HookBuilder, HooksBuilder};
+    use tempfile::tempdir;
+
+    use super::setup_prestart_hooks;
+
+    #[test]
+    fn setup_prestart_hooks_ignores_missing_prestart_list() {
+        let hooks = HooksBuilder::default()
+            .create_runtime(vec![
+                HookBuilder::default().path("/bin/true").build().unwrap(),
+            ])
+            .build()
+            .unwrap();
+
+        setup_prestart_hooks(&Some(hooks)).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn setup_prestart_hooks_still_runs_prestart_hooks() {
+        let tempdir = tempdir().unwrap();
+        let marker = tempdir.path().join("prestart-ran");
+        let command = format!("touch {}", marker.display());
+        let hooks = HooksBuilder::default()
+            .prestart(vec![
+                HookBuilder::default()
+                    .path("/bin/sh")
+                    .args(vec!["sh".to_string(), "-c".to_string(), command])
+                    .build()
+                    .unwrap(),
+            ])
+            .build()
+            .unwrap();
+
+        setup_prestart_hooks(&Some(hooks)).unwrap();
+
+        assert!(fs::metadata(marker).is_ok());
+    }
 }
