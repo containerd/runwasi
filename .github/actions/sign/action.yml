@@ -26,9 +26,10 @@ runs:
             --bundle containerd-shim-${{ inputs.runtime }}-v1.bundle \
             dist/bin/containerd-shim-${{ inputs.runtime }}-v1
           
-          # Copy the certs to the dist/bin folder
+          # Copy the signing artifacts to the dist/bin folder
           cp *.sig dist/bin/
           cp *.pem dist/bin/
+          cp *.bundle dist/bin/
         else
           echo "::warning::No files to sign"
         fi
