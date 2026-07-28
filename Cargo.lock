@@ -961,7 +961,7 @@ dependencies = [
  "nix 0.31.3",
  "oci-spec 0.9.0",
  "oci-tar-builder",
- "rand 0.10.1",
+ "rand 0.10.2",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -1057,7 +1057,7 @@ dependencies = [
  "opentelemetry_sdk",
  "prost 0.13.5",
  "protobuf 3.2.0",
- "rand 0.10.1",
+ "rand 0.10.2",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -4604,9 +4604,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
 dependencies = [
  "chacha20",
  "getrandom 0.4.2",
@@ -7471,7 +7471,7 @@ dependencies = [
  "petgraph 0.8.3",
  "pin-project",
  "pin-utils",
- "rand 0.10.1",
+ "rand 0.10.2",
  "reqwest 0.13.3",
  "rkyv",
  "rusty_pool",
