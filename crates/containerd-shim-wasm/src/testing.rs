@@ -405,11 +405,29 @@ pub mod oci_helpers {
         let f = File::create(img_path.clone())?;
         builder.build(f)?;
 
-        let success = Command::new("ctr")
+        let use_local = Command::new("ctr")
+            .arg("--version")
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .and_then(|output| {
+                output
+                    .split_whitespace()
+                    .find_map(|part| semver::Version::parse(part.strip_prefix('v')?).ok())
+            })
+            .is_some_and(|version| version >= semver::Version::new(1, 7, 7));
+
+        let mut command = Command::new("ctr");
+        command
             .arg("-n")
             .arg(TEST_NAMESPACE)
             .arg("image")
-            .arg("import")
+            .arg("import");
+        if use_local {
+            command.arg("--local");
+        }
+        let success = command
             .arg("--all-platforms")
             .arg(img_path)
             .spawn()?

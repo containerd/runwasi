@@ -32,6 +32,7 @@ wasmparser = { version = "0.231.0" }
 tokio-stream = { version = "0.1" }
 sha256 = { workspace = true }
 serde_bytes = "0.11"
+semver = { version = "1.0", optional = true }
 tokio-async-drop = "0.1"
 trait-variant = "0.1"
 
@@ -70,6 +71,7 @@ env_logger = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true }
 rand = "0.10"
+semver = "1.0"
 temp-env = "0.3"
 ctor = "1.0.6"
 
@@ -79,6 +81,7 @@ testing = [
     "dep:env_logger",
     "dep:tempfile",
     "dep:oci-tar-builder",
+    "dep:semver",
 ]
 opentelemetry = ["containerd-shimkit/opentelemetry"]
 tracing = ["dep:tracing", "containerd-shimkit/tracing"]
