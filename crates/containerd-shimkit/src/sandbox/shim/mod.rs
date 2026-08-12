@@ -1,4 +1,4 @@
-//! The shim exposes the [Config] struct to configure the shim and [OtlpConfig] module to enable tracing if the `opentelemetry` feature is enabled.
+//! The shim exposes the [Config] struct to configure the shim and `OtlpConfig` module to enable tracing if the `opentelemetry` feature is enabled.
 
 pub use local::Config;
 

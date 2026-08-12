@@ -19,7 +19,7 @@
 //! This module contains vendored code from the containerd-shim crate.
 //! It should be replaced with the upstream version when a new release is available.
 //!
-//! Source: https://github.com/containerd/rust-extensions/tree/shim-v0.8.0/crates/shim
+//! Source: <https://github.com/containerd/rust-extensions/tree/shim-v0.8.0/crates/shim>
 
 pub mod logger;
 mod sys;
