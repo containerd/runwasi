@@ -370,6 +370,16 @@ pub mod oci_helpers {
         pub media_type: String,
     }
 
+    fn add_import_flags(command: &mut Command, use_local: bool) {
+        if use_local {
+            // The generated image config has no rootfs diff IDs, so these
+            // tests only need the image and its content. Avoid creating local
+            // snapshots whose asynchronous cleanup can race later tests.
+            command.arg("--local").arg("--no-unpack");
+        }
+        command.arg("--all-platforms");
+    }
+
     pub fn import_image(
         image_name: &str,
         wasm_content: &[&ImageContent],
@@ -424,15 +434,8 @@ pub mod oci_helpers {
             .arg(TEST_NAMESPACE)
             .arg("image")
             .arg("import");
-        if use_local {
-            command.arg("--local");
-        }
-        let success = command
-            .arg("--all-platforms")
-            .arg(img_path)
-            .spawn()?
-            .wait()?
-            .success();
+        add_import_flags(&mut command, use_local);
+        let success = command.arg(img_path).spawn()?.wait()?.success();
         if !success {
             // if the container still exists try cleaning it up
             bail!(" failed to import image");
@@ -610,5 +613,36 @@ pub mod oci_helpers {
         }
 
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn local_import_does_not_unpack() {
+            let mut command = Command::new("ctr");
+
+            add_import_flags(&mut command, true);
+
+            let args: Vec<_> = command
+                .get_args()
+                .map(|arg| arg.to_str().unwrap())
+                .collect();
+            assert_eq!(args, ["--local", "--no-unpack", "--all-platforms"]);
+        }
+
+        #[test]
+        fn legacy_import_keeps_compatible_flags() {
+            let mut command = Command::new("ctr");
+
+            add_import_flags(&mut command, false);
+
+            let args: Vec<_> = command
+                .get_args()
+                .map(|arg| arg.to_str().unwrap())
+                .collect();
+            assert_eq!(args, ["--all-platforms"]);
+        }
     }
 }
