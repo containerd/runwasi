@@ -962,6 +962,7 @@ dependencies = [
  "oci-spec 0.9.0",
  "oci-tar-builder",
  "rand 0.10.1",
+ "semver",
  "serde",
  "serde_bytes",
  "serde_json",
