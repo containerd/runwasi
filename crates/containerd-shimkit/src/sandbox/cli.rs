@@ -226,9 +226,19 @@ where
     // parse the version flag
     let os_args: Vec<_> = std::env::args_os().collect();
 
-    let flags = parse(&os_args[1..]).unwrap();
     let argv0 = PathBuf::from(&os_args[0]);
     let argv0 = argv0.file_stem().unwrap_or_default().to_string_lossy();
+
+    // Only -v and -info are defined, so anything else lands here. Report it
+    // rather than panicking: the caller gets the reason instead of a backtrace
+    // notice.
+    let flags = match parse(&os_args[1..]) {
+        Ok(flags) => flags,
+        Err(err) => {
+            eprintln!("{argv0}: {err}");
+            std::process::exit(1);
+        }
+    };
 
     if flags.version {
         println!("{argv0}:");
