@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- Linux (native) containers now run with the environment from their OCI spec. `Executor::setup_envs` was a no-op for every container type, so a native container sharing a pod with a Wasm container (for example Knative's `queue-proxy`) ran with the shim's own environment, including its `PATH`. ([#1061](https://github.com/containerd/runwasi/issues/1061))
+
 ## [v1.0.1] - 2025-06-10
 
 ## [v1.0.0]
