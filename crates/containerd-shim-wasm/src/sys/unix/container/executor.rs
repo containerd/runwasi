@@ -110,6 +110,7 @@ impl<S: Shim> Executor<S> {
                 Ok(_) => ExecutorType::Linux,
                 Err(err) => {
                     log::debug!("error checking if linux container: {err}. Fallback to wasm container");
+                    enter_selinux_context(spec);
                     let container = S::Sandbox::default();
                     match container.can_handle(ctx).block_on() {
                         Ok(_) => ExecutorType::Wasm(container),
@@ -150,5 +151,22 @@ fn is_linux_container(ctx: &impl RuntimeContext) -> Result<()> {
         [0x7f, 0x45, 0x4c, 0x46] => Ok(()), // ELF magic number
         [0x23, 0x21, ..] => Ok(()),         // shebang
         _ => bail!("not a valid script or elf file"),
+    }
+}
+
+fn enter_selinux_context(spec: &Spec) {
+    let Some(label) = spec
+        .process()
+        .as_ref()
+        .and_then(|p| p.selinux_label().as_deref())
+        .filter(|l| !l.is_empty())
+    else {
+        return;
+    };
+    match std::fs::write("/proc/thread-self/attr/current", label) {
+        Ok(()) => log::info!("entered SELinux context {label}"),
+        Err(err) => log::error!(
+            "could not enter SELinux context {label}: {err}; running in the runtime's context"
+        ),
     }
 }
