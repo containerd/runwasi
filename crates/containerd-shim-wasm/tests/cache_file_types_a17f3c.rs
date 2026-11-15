@@ -96,7 +96,10 @@ async fn an_open_cache_rejects_a_layer_symlink_to_matching_bytes() {
         cached.compile(&[layer(b"aaa")]).await.unwrap(),
         vec![Some(compiled(b"aaa"))]
     );
-    assert_eq!(*inner.0.lock().unwrap(), vec![b"aaa".to_vec(), b"aaa".to_vec()]);
+    assert_eq!(
+        *inner.0.lock().unwrap(),
+        vec![b"aaa".to_vec(), b"aaa".to_vec()]
+    );
     let observed = cached.stats().unwrap();
     assert_eq!(observed.hits, 0);
     assert_eq!(observed.misses, 2);
@@ -119,9 +122,7 @@ async fn symlinked_bookkeeping_is_absent_when_opening_or_using_a_cache() {
         let records: Vec<_> = files(dir.path())
             .into_iter()
             .filter(|(path, bytes)| {
-                !bytes.is_empty()
-                    && *bytes != compiled(b"aaa")
-                    && before.get(path) != Some(bytes)
+                !bytes.is_empty() && *bytes != compiled(b"aaa") && before.get(path) != Some(bytes)
             })
             .collect();
         if records.is_empty() {
@@ -147,7 +148,10 @@ async fn symlinked_bookkeeping_is_absent_when_opening_or_using_a_cache() {
             cached.compile(&[layer(b"aaa")]).await.unwrap(),
             vec![Some(compiled(b"aaa"))]
         );
-        assert_eq!(*inner.0.lock().unwrap(), vec![b"aaa".to_vec(), b"aaa".to_vec()]);
+        assert_eq!(
+            *inner.0.lock().unwrap(),
+            vec![b"aaa".to_vec(), b"aaa".to_vec()]
+        );
         let observed = cached.stats().unwrap();
         assert_eq!(observed.hits, 0);
         assert_eq!(observed.misses, if reopen { 1 } else { 2 });

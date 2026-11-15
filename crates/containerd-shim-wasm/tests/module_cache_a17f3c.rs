@@ -1245,7 +1245,11 @@ async fn opening_brings_the_stored_layers_inside_a_lowered_bound() {
         after.compile(&[layer(b"aaa")]).await.unwrap(),
         vec![Some(compiled(b"aaa"))]
     );
-    assert_eq!(inner.call_count(), 0, "the most recently used entry survives");
+    assert_eq!(
+        inner.call_count(),
+        0,
+        "the most recently used entry survives"
+    );
     assert_eq!(
         after
             .compile(&[layer(b"bbb"), layer(b"ccc"), layer(b"ddd")])
@@ -2569,7 +2573,11 @@ fn a_cache_recovers_after_directory_access_is_denied() {
                 vec![Some(compiled(b"bbb"))]
             );
         }
-        assert_eq!(inner.call_count(), 5, "successful storage must restore hits");
+        assert_eq!(
+            inner.call_count(),
+            5,
+            "successful storage must restore hits"
+        );
         let observed = stats(&cached);
         assert_eq!(observed.hits, 1);
         assert_eq!(observed.misses, 5);
@@ -2581,7 +2589,11 @@ fn a_cache_recovers_after_directory_access_is_denied() {
             block_on(fresh.compile(&[layer(b"bbb")])).unwrap(),
             vec![Some(compiled(b"bbb"))]
         );
-        assert_eq!(fresh_inner.call_count(), 0, "the recovered store must persist");
+        assert_eq!(
+            fresh_inner.call_count(),
+            0,
+            "the recovered store must persist"
+        );
     }
 }
 
@@ -2608,10 +2620,17 @@ async fn one_store_evicts_every_entry_needed_to_fit() {
     let inner = FakeCompiler::new("v1");
     let after = compiler(&dir, inner.clone(), max_bytes);
     assert_eq!(
-        after.compile(&[layer(b"aaa"), layer(&large)]).await.unwrap(),
+        after
+            .compile(&[layer(b"aaa"), layer(&large)])
+            .await
+            .unwrap(),
         vec![Some(compiled(b"aaa")), Some(compiled(&large))]
     );
-    assert_eq!(inner.call_count(), 0, "the most recently used entry survives");
+    assert_eq!(
+        inner.call_count(),
+        0,
+        "the most recently used entry survives"
+    );
     assert_eq!(
         after
             .compile(&[layer(b"bbb"), layer(b"ccc"), layer(b"ddd")])
@@ -2648,7 +2667,10 @@ async fn opening_rejects_a_readable_symlink_to_matching_layer_bytes() {
 
     let reopened = open(&dir, HOUR, BUDGET);
     let observed = reopened.stats();
-    assert_eq!(observed.rejected, 1, "a readable symlink is not a regular layer");
+    assert_eq!(
+        observed.rejected, 1,
+        "a readable symlink is not a regular layer"
+    );
     assert_eq!(observed.entries, 1);
     assert_eq!(observed.bytes, LAYER_SIZE);
     let inner = FakeCompiler::new("v1");
