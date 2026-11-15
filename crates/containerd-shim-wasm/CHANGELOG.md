@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- An opt-in on-disk cache of precompiled layers in `containerd_shim_wasm::shim::cache`, shared by every shim running against the same directory and turned on with `RUNWASI_MODULE_CACHE_DIR`, `RUNWASI_MODULE_CACHE_TTL_SECS` and `RUNWASI_MODULE_CACHE_MAX_BYTES`.
+
 ## [v1.0.1] - 2025-06-10
 
 ## [v1.0.0]

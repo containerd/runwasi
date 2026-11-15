@@ -58,6 +58,8 @@
 #[allow(clippy::module_inception)]
 mod shim;
 
+pub mod cache;
+
 pub(crate) use instance::Instance;
 pub use shim::{Compiler, Shim, Version};
 
