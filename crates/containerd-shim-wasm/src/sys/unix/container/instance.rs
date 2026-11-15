@@ -76,7 +76,7 @@ impl<S: Shim> SandboxInstance for Instance<S> {
 
         let source_spec_path = cfg.bundle.join("config.json");
         let spec = Spec::load(&source_spec_path)?;
-        let precompiler = S::compiler_with_spec(&spec).await;
+        let precompiler = crate::shim::cache::precompiler::<S>(&spec).await;
 
         // check if container is OCI image with wasm layers and attempt to read the module
         let modules = oci_client
